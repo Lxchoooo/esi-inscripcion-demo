@@ -12,65 +12,82 @@
       --green-soft: #e8f5e9;
       --red: #b3261e;
       --red-soft: #fdecea;
-      --bg: #f4f6f4;
+      --amber: #a05a00;
+      --amber-soft: #fff4e0;
+      --bg: #f2f5f2;
       --card: #ffffff;
-      --ink: #17251a;
+      --ink: #16241a;
       --muted: #5b6a5f;
       --border: #d8e0d8;
+      --shadow: 0 1px 2px rgba(20, 40, 25, .06), 0 6px 18px rgba(20, 40, 25, .06);
     }
     * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--ink);
-      padding-bottom: 40px;
+      padding-bottom: 48px;
+      line-height: 1.45;
     }
-    header { background: var(--green); color: #fff; padding: 14px 16px 12px; }
-    body.admin header { background: var(--green-dark); }
-    body.demo header { background: #b35400; }
-    header h1 { font-size: 20px; margin: 0 0 4px; }
+    header {
+      position: sticky; top: 0; z-index: 20;
+      background: linear-gradient(160deg, var(--green) 0%, var(--green-dark) 100%);
+      color: #fff; padding: 16px 16px 14px;
+      box-shadow: 0 3px 14px rgba(10, 30, 15, .18);
+    }
+    body.admin header { background: linear-gradient(160deg, #234d27 0%, #14361a 100%); }
+    body.demo header { background: linear-gradient(160deg, #b35400 0%, #8a3f00 100%); }
+    header h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: .2px; }
     #hdr-sub { font-size: 14px; opacity: .95; }
     #hdr-sub.alert { color: #ffd7d3; font-weight: 700; }
-    .wrap { max-width: 560px; margin: 0 auto; padding: 14px; }
-    body.admin .wrap { max-width: 860px; }
+    .wrap { max-width: 580px; margin: 0 auto; padding: 16px 14px; }
+    body.admin .wrap { max-width: 900px; }
     .screen { display: none; }
-    .screen.active { display: block; }
+    .screen.active { display: block; animation: fade .18s ease-out; }
+    @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
     .card {
       background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: 14px;
-      padding: 14px;
-      margin: 10px 0;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 12px 0;
+      box-shadow: var(--shadow);
     }
-    h2.intro { font-size: 22px; margin: 8px 0 12px; }
-    p.hint { font-size: 15px; color: var(--muted); margin: 0 0 12px; }
+    .steps { font-size: 13px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--green-dark); margin-bottom: 4px; }
+    h2.intro { font-size: 24px; margin: 4px 0 10px; line-height: 1.2; }
+    p.hint { font-size: 15px; color: var(--muted); margin: 0 0 14px; }
     .btn {
       display: inline-block;
       padding: 16px 18px;
       font-size: 18px;
+      font-weight: 600;
       border: 0;
       border-radius: 14px;
       background: var(--green);
       color: #fff;
-      min-height: 52px;
+      min-height: 54px;
       cursor: pointer;
+      transition: transform .05s ease, filter .15s ease;
+      box-shadow: 0 3px 10px rgba(46, 125, 50, .22);
     }
-    .btn:disabled { opacity: .5; cursor: default; }
-    .btn.secondary { background: #fff; color: var(--green-dark); border: 2px solid var(--green); }
-    .btn.red { background: var(--red); }
-    .btn.small { padding: 12px; font-size: 16px; min-height: 46px; }
-    .btn.full { display: block; width: 100%; margin-top: 10px; }
+    .btn:active { transform: translateY(1px); filter: brightness(.97); }
+    .btn:disabled { opacity: .5; cursor: default; box-shadow: none; }
+    .btn.secondary { background: #fff; color: var(--green-dark); border: 2px solid var(--green); box-shadow: none; }
+    .btn.red { background: var(--red); box-shadow: 0 3px 10px rgba(179, 38, 30, .2); }
+    .btn.small { padding: 12px; font-size: 16px; min-height: 48px; }
+    .btn.full { display: block; width: 100%; margin-top: 12px; }
     label { display: block; font-size: 15px; margin: 14px 0 6px; font-weight: 600; }
     input[type=text], input[type=password], input[type=email] {
       width: 100%;
-      padding: 14px;
+      padding: 15px;
       font-size: 17px;
       border: 2px solid var(--border);
       border-radius: 12px;
       background: #fff;
     }
-    select { width: 100%; padding: 14px; font-size: 17px; border: 2px solid var(--border); border-radius: 12px; background: #fff; }
+    select { width: 100%; padding: 15px; font-size: 17px; border: 2px solid var(--border); border-radius: 12px; background: #fff; }
     input:focus, select:focus { outline: 3px solid var(--green-soft); border-color: var(--green); }
     .banner {
       display: none;
@@ -84,25 +101,35 @@
     .banner.err { display: block; background: var(--red-soft); color: var(--red); border: 1px solid var(--red); }
     .summary {
       background: var(--card);
-      border: 2px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
       margin: 4px 0 10px;
       font-size: 15px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: baseline;
     }
+    .summary .who { font-weight: 700; color: var(--green-dark); }
     .summary b { color: var(--green-dark); }
-    .summary .row { display: flex; gap: 8px; padding: 3px 0; }
+    .summary .row { display: flex; gap: 8px; padding: 3px 0; width: 100%; }
     .summary .time { flex: 0 0 118px; font-weight: 700; }
     .summary .none { color: var(--muted); }
-    .chips { margin: 10px 0 2px; }
+    .progress { margin-left: auto; font-size: 13px; font-weight: 700; background: var(--green-soft); color: var(--green-dark); border-radius: 999px; padding: 4px 12px; }
+    .progress.zero { background: #eef0ee; color: var(--muted); }
+    .chips { margin: 8px 0 2px; }
     .chip {
       display: inline-block; background: var(--green-soft); border: 1.5px solid var(--green);
-      color: var(--green-dark); border-radius: 999px; padding: 4px 10px; font-size: 13px;
+      color: var(--green-dark); border-radius: 999px; padding: 5px 12px; font-size: 13px;
       margin: 3px 6px 3px 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       vertical-align: top;
     }
     .chip.miss { background: #f1f1f1; border-color: #c9c9c9; color: #7a7a7a; }
-    .slot h2 { font-size: 18px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
+    .slot h2 { font-size: 18px; margin: 22px 0 4px; display: flex; align-items: center; gap: 10px; }
+    .slot h2 .time-pill { font-size: 13px; font-weight: 700; background: var(--green-dark); color: #fff; border-radius: 999px; padding: 4px 12px; }
+    .slot .slot-hint { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
     .talk {
       display: block;
       width: 100%;
@@ -110,35 +137,52 @@
       background: var(--card);
       border: 2px solid var(--border);
       border-radius: 14px;
-      padding: 12px 14px;
+      padding: 14px 16px;
       margin: 8px 0;
       font-size: 16px;
       line-height: 1.35;
       color: var(--ink);
-      min-height: 54px;
+      min-height: 56px;
       cursor: pointer;
+      box-shadow: 0 1px 2px rgba(20, 40, 25, .05);
+      transition: border-color .12s ease, background .12s ease;
     }
-    .talk .t-title { font-weight: 600; }
-    .talk .t-meta { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+    .talk .t-title { font-weight: 700; }
+    .talk .t-meta { color: var(--muted); font-size: 13.5px; margin-top: 6px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .talk .seats { font-weight: 700; }
+    .talk .seats.low { color: var(--amber); }
+    .talk .seats.none { color: var(--red); }
     .talk.selected { border-color: var(--green); background: var(--green-soft); }
-    .talk.selected .t-meta::before { content: 'ANOTADO · '; color: var(--green-dark); font-weight: 700; }
-    .talk:disabled { opacity: .55; }
+    .talk.selected .t-meta::before { content: '✓ ANOTADO'; color: var(--green-dark); font-weight: 800; font-size: 12.5px; letter-spacing: .3px; }
+    .talk:disabled { opacity: .55; cursor: default; }
     .footer-note { font-size: 13.5px; color: var(--muted); margin-top: 16px; }
-    .actions { margin-top: 14px; }
+    .actions { margin-top: 14px; display: grid; gap: 8px; }
     .totals { font-size: 15px; margin: 6px 0; }
-    .talk-row { margin: 10px 0; }
+    .status-pill { display: inline-block; font-size: 13px; font-weight: 800; border-radius: 999px; padding: 4px 12px; letter-spacing: .3px; }
+    .status-pill.open { background: var(--green-soft); color: var(--green-dark); border: 1px solid var(--green); }
+    .status-pill.closed { background: var(--red-soft); color: var(--red); border: 1px solid var(--red); }
+    .talk-row { margin: 12px 0; }
     .talk-row .t { display: flex; justify-content: space-between; font-size: 15px; gap: 8px; }
-    .talk-row .bar { height: 10px; background: #e3e8e3; border-radius: 6px; overflow: hidden; margin-top: 5px; }
-    .talk-row .bar span { display: block; height: 100%; background: var(--green); }
+    .talk-row .t .num { font-weight: 700; white-space: nowrap; }
+    .talk-row .bar { height: 10px; background: #e3e8e3; border-radius: 6px; overflow: hidden; margin-top: 6px; }
+    .talk-row .bar span { display: block; height: 100%; background: var(--green); border-radius: 6px; }
+    .talk-row .bar span.high { background: var(--amber); }
     .talk-row .bar span.full { background: var(--red); }
-    h3 { margin: 16px 0 4px; }
-    h4 { margin: 10px 0 2px; color: var(--green-dark); }
+    h3 { margin: 18px 0 8px; font-size: 18px; }
+    h4 { margin: 14px 0 4px; color: var(--green-dark); font-size: 15px; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    th { background: #eef2ee; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: #eef2ee; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; color: var(--green-dark); position: sticky; top: 0; }
     td.narrow { white-space: nowrap; }
     .toolbar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
     .toolbar > div { flex: 1; min-width: 220px; }
+    details summary { cursor: pointer; font-weight: 700; color: var(--green-dark); padding: 6px 0; }
+    code { background: #eef2ee; padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+    .link-row { display: flex; gap: 8px; margin-top: 10px; }
+    .link-row input { flex: 1; min-width: 0; font-size: 13px; padding: 10px 12px; color: var(--muted); }
+    .talk-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 720px) { .talk-grid { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
@@ -150,6 +194,7 @@
     <div id="s-banner" class="banner"></div>
 
     <section id="s-screen-mail" class="screen">
+      <div class="steps">Paso 1 de 3 · Tu mail</div>
       <h2 class="intro">Escribí tu mail</h2>
       <p class="hint" id="hint-mail">Ingresá tu mail institucional para entrar.</p>
       <label for="input-mail">Mail institucional</label>
@@ -158,6 +203,8 @@
     </section>
 
     <section id="s-screen-datos" class="screen">
+      <div class="steps">Paso 2 de 3 · Tus datos</div>
+      <h2 class="intro">Confirmá tus datos</h2>
       <div id="fieldset-nombre">
         <label for="input-nombre">Nombre y apellido</label>
         <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
@@ -177,13 +224,7 @@
         </div>
         <div style="flex:1">
           <label for="select-division">División</label>
-          <select id="select-division">
-            <option value="">Elegí...</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-            <option value="D">D</option>
-          </select>
+          <select id="select-division"></select>
         </div>
       </div>
       <button id="btn-datos" class="btn full" type="button">Ver las charlas</button>
@@ -191,6 +232,7 @@
     </section>
 
     <section id="s-screen-panel" class="screen">
+      <div class="steps">Paso 3 de 3 · Elegí tus charlas</div>
       <div class="summary" id="summary"></div>
       <div class="chips" id="chips"></div>
       <div id="slots-container"></div>
@@ -246,6 +288,7 @@
             <label for="input-buscar">Buscar alumno</label>
             <input id="input-buscar" type="text" autocomplete="off" placeholder="Nombre, mail, curso o charla...">
           </div>
+          <button id="btn-copiar-link" class="btn secondary small" type="button">Copiar link alumnos</button>
           <button id="btn-csv" class="btn secondary small" type="button">Descargar CSV</button>
           <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
           <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
@@ -332,20 +375,41 @@
           emailKey: e
         };
       }
-      function cursoFromParts(year, division) {
+      function divisionsForYear(year) {
     var y = Number(year);
-    var d = String(division == null ? '' : division).toUpperCase().replace(/[^A-D]/g, '');
+    if (y >= 1 && y <= 3) return ['A', 'B'];
+    if (y >= 4 && y <= 6) return ['Turismo', 'Econom\u00EDa'];
+    return [];
+  }
+
+  function cursoFromParts(year, division) {
+    var y = Number(year);
     if (!(y >= 1 && y <= 6)) return null;
-    return y + '\u00B0' + d;
+    var raw = String(division == null ? '' : division).replace(/\s+/g, ' ').trim();
+    if (!raw) return y + '\u00B0';
+    if (y <= 3) {
+      var d = raw.charAt(0).toUpperCase();
+      if (d !== 'A' && d !== 'B') return null;
+      return y + '\u00B0' + d;
+    }
+    var first = raw.charAt(0).toLowerCase();
+    if (first !== 't' && first !== 'e') return null;
+    return y + '\u00B0' + (first === 't' ? 'Turismo' : 'Econom\u00EDa');
   }
 
   function parseCurso(value) {
-    var m = String(value == null ? '' : value)
-      .toUpperCase()
-      .replace(/[^0-9ABCD]/g, '')
-      .match(/^([1-6])([ABCD])?$/);
+    var s = normalizeText(value).replace(/\u00B0/g, '').replace(/\s+/g, '');
+    var m = s.match(/^([1-6])(a|b|t|tur|turismo|e|eco|econ|econom|economia)?$/);
     if (!m) return null;
-    return m[1] + '\u00B0' + (m[2] || '');
+    var y = Number(m[1]);
+    var d = m[2] || '';
+    if (!d) return y + '\u00B0';
+    if (y <= 3) {
+      if (d !== 'a' && d !== 'b') return null;
+      return y + '\u00B0' + d.toUpperCase();
+    }
+    if (d.charAt(0) !== 't' && d.charAt(0) !== 'e') return null;
+    return y + '\u00B0' + (d.charAt(0) === 't' ? 'Turismo' : 'Econom\u00EDa');
   }
 
   function parseRoster(text) {
@@ -453,6 +517,7 @@
         planRegistration: planRegistration,
         cursoFromParts: cursoFromParts,
         parseCurso: parseCurso,
+        divisionsForYear: divisionsForYear,
         parseRoster: parseRoster,
         aggregateTalks: aggregateTalks
       };
@@ -902,9 +967,14 @@
       $('chips').innerHTML = chipHtml;
 
       var st = sState.student;
-      var html = '<div class="row">'
-        + '<span class="none">' + esc(st.nombre) + ' · ' + esc(st.curso) + ' · ' + esc(st.email) + '</span>'
-        + '</div>';
+      var chosenCount = 0;
+      for (var k in (d.mine || {})) {
+        if (Object.prototype.hasOwnProperty.call(d.mine, k)) chosenCount++;
+      }
+      var html = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
+        + '<span class="progress' + (chosenCount ? '' : ' zero') + '">'
+        + chosenCount + ' de 3 elegidas</span>'
+        + '<div class="row"><span class="none" style="font-size:13px">' + esc(st.email) + '</span></div>';
       var slots = d.slots || [];
       for (var i = 0; i < slots.length; i++) {
         var chosen = d.mine ? d.mine[slots[i].id] : null;
@@ -923,7 +993,8 @@
         section.className = 'slot';
         var h2 = document.createElement('h2');
         h2.className = 'slot-title';
-        h2.textContent = slots[s].label;
+        h2.innerHTML = '<span class="time-pill">' + esc(slots[s].label) + '</span>'
+          + '<span style="font-size:14px;color:var(--muted);font-weight:600">Elegí una</span>';
         section.appendChild(h2);
         for (var t = 0; t < d.talks.length; t++) {
           if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
@@ -939,11 +1010,13 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'talk' + (chosen ? ' selected' : '');
+      var seatClass = talk.restantes <= 0 ? ' none' : (talk.restantes <= 5 ? ' low' : '');
       var places = chosen
         ? 'tu charla'
         : (talk.restantes > 0 ? 'quedan ' + talk.restantes + ' de ' + talk.cupo : 'sin lugares');
       btn.innerHTML = '<div class="t-title">' + esc(talk.titulo) + '</div>'
-        + '<div class="t-meta">' + esc(talk.lugar) + ' · ' + places + '</div>';
+        + '<div class="t-meta"><span>' + esc(talk.lugar) + '</span>'
+        + '<span class="seats' + seatClass + '">' + esc(places) + '</span></div>';
       if (chosen || talk.restantes <= 0) {
         btn.disabled = true;
       } else {
@@ -1039,19 +1112,32 @@
         });
     }
 
+    function sFillDivisions(year, selected) {
+      var sel = $('select-division');
+      var divs = EsiClient.divisionsForYear(year);
+      var html = '<option value="">Elegí...</option>';
+      for (var i = 0; i < divs.length; i++) {
+        html += '<option value="' + esc(divs[i]) + '">' + esc(divs[i]) + '</option>';
+      }
+      sel.innerHTML = html;
+      if (selected) sel.value = selected;
+    }
+
     function sShowDatos() {
       var needsNombre = sState.lookup.needsNombre;
       var needsCurso = sState.lookup.needsCurso;
       document.body.className = '';
       $('fieldset-nombre').style.display = needsNombre ? 'block' : 'none';
       $('select-anio').value = '';
-      $('select-division').value = '';
       var pc = EsiClient.parseCurso(sState.curso || '');
+      var yearSel = '';
+      var divSel = '';
       if (needsCurso && pc) {
-        $('select-anio').value = String(Number(pc.match(/\d/)[0]));
-        var d = pc.match(/([ABCD])$/);
-        if (d) $('select-division').value = d[1];
+        yearSel = String(Number(pc.match(/\d/)[0]));
+        divSel = pc.slice(2);
       }
+      sFillDivisions(yearSel, divSel);
+      $('select-anio').value = yearSel;
       $('fieldset-anio').style.display = needsCurso ? 'flex' : 'none';
       $('input-nombre').value = sState.nombre;
       $('input-nombre').readOnly = !needsNombre;
@@ -1088,6 +1174,9 @@
       $('btn-mail').addEventListener('click', sLookup);
       $('input-mail').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') sLookup();
+      });
+      $('select-anio').addEventListener('change', function () {
+        sFillDivisions(this.value, '');
       });
       $('btn-datos').addEventListener('click', sSubmitDatos);
       $('btn-datos-volver').addEventListener('click', function () {
@@ -1202,8 +1291,9 @@
       var listInfo = d.rosterLoaded
         ? 'Lista de mails cargada (' + d.rosterCount + ')'
         : 'Lista de mails sin cargar (se acepta cualquier mail)';
-      $('a-totals').innerHTML = '<b>Estado:</b> ' + (d.evento_abierto ? 'inscripción ABIERTA' : 'inscripción CERRADA')
-        + '<br>' + esc(listInfo);
+      $('a-totals').innerHTML = '<span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
+        + (d.evento_abierto ? 'INSCRIPCIÓN ABIERTA' : 'INSCRIPCIÓN CERRADA') + '</span>'
+        + '<div style="margin-top:8px">' + esc(listInfo) + '</div>';
       $('a-roster-info').textContent = listInfo;
 
       var tb = $('a-toggle-box');
@@ -1242,7 +1332,7 @@
       var d = aData;
       if (!d) return;
       var q = $('input-buscar').value.replace(/\s+/g, ' ').trim().toLowerCase();
-      var rows = '<table><thead><tr>'
+      var rows = '<div class="table-wrap"><table><thead><tr>'
         + '<th>Cuándo</th><th>Nombre</th><th>Mail</th><th>Curso</th><th>Ciclo</th><th>Horario</th><th>Charla</th><th></th>'
         + '</tr></thead><tbody>';
       var shown = 0;
@@ -1262,7 +1352,7 @@
           + '<td><button class="btn red" style="padding:6px 10px;min-height:0;font-size:13px" onclick="aOnDelete(\'' + esc(s.id) + '\')">Borrar</button></td>'
           + '</tr>';
       }
-      rows += '</tbody></table>';
+      rows += '</tbody></table></div>';
       if (!shown) rows = '<p>No hay inscripciones' + (q ? ' que coincidan con la búsqueda' : '') + '.</p>';
       $('a-table').innerHTML = rows;
     }
@@ -1359,6 +1449,18 @@
       return s;
     }
 
+    function aCopyLink() {
+      var url = window.location.href.split('?')[0];
+      var done = function () { aBanner('Link de alumnos copiado.', 'ok'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () {
+          window.prompt('Copiá el link para los alumnos:', url);
+        });
+      } else {
+        window.prompt('Copiá el link para los alumnos:', url);
+      }
+    }
+
     function aDownloadCsv() {
       var d = aData;
       if (!d) return;
@@ -1398,6 +1500,7 @@
       $('input-pin').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') $('btn-pin').click();
       });
+      $('btn-copiar-link').addEventListener('click', aCopyLink);
       $('btn-csv').addEventListener('click', aDownloadCsv);
       $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
       $('btn-salir').addEventListener('click', aLogout);
