@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="theme-color" content="#2e7d32">
+  <title>ESI</title>
+  <style>
+    :root {
+      --green: #2e7d32;
+      --green-dark: #1b5e20;
+      --green-soft: #e8f5e9;
+      --red: #b3261e;
+      --red-soft: #fdecea;
+      --bg: #f4f6f4;
+      --card: #ffffff;
+      --ink: #17251a;
+      --muted: #5b6a5f;
+      --border: #d8e0d8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      padding-bottom: 40px;
+    }
+    header { background: var(--green); color: #fff; padding: 14px 16px 12px; }
+    body.admin header { background: var(--green-dark); }
+    body.demo header { background: #b35400; }
+    header h1 { font-size: 20px; margin: 0 0 4px; }
+    #hdr-sub { font-size: 14px; opacity: .95; }
+    #hdr-sub.alert { color: #ffd7d3; font-weight: 700; }
+    .wrap { max-width: 560px; margin: 0 auto; padding: 14px; }
+    body.admin .wrap { max-width: 860px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 10px 0;
+    }
+    h2.intro { font-size: 22px; margin: 8px 0 12px; }
+    p.hint { font-size: 15px; color: var(--muted); margin: 0 0 12px; }
+    .btn {
+      display: inline-block;
+      padding: 16px 18px;
+      font-size: 18px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--green);
+      color: #fff;
+      min-height: 52px;
+      cursor: pointer;
+    }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn.secondary { background: #fff; color: var(--green-dark); border: 2px solid var(--green); }
+    .btn.red { background: var(--red); }
+    .btn.small { padding: 12px; font-size: 16px; min-height: 46px; }
+    .btn.full { display: block; width: 100%; margin-top: 10px; }
+    label { display: block; font-size: 15px; margin: 14px 0 6px; font-weight: 600; }
+    input[type=text], input[type=password], input[type=email] {
+      width: 100%;
+      padding: 14px;
+      font-size: 17px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+    select { width: 100%; padding: 14px; font-size: 17px; border: 2px solid var(--border); border-radius: 12px; background: #fff; }
+    input:focus, select:focus { outline: 3px solid var(--green-soft); border-color: var(--green); }
+    .banner {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      margin: 12px 0;
+    }
+    .banner.ok { display: block; background: var(--green-soft); color: var(--green-dark); border: 1px solid var(--green); }
+    .banner.err { display: block; background: var(--red-soft); color: var(--red); border: 1px solid var(--red); }
+    .summary {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 4px 0 10px;
+      font-size: 15px;
+    }
+    .summary b { color: var(--green-dark); }
+    .summary .row { display: flex; gap: 8px; padding: 3px 0; }
+    .summary .time { flex: 0 0 118px; font-weight: 700; }
+    .summary .none { color: var(--muted); }
+    .slot h2 { font-size: 18px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
+    .talk {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 8px 0;
+      font-size: 16px;
+      line-height: 1.35;
+      color: var(--ink);
+      min-height: 54px;
+      cursor: pointer;
+    }
+    .talk .t-title { font-weight: 600; }
+    .talk .t-meta { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+    .talk.selected { border-color: var(--green); background: var(--green-soft); }
+    .talk.selected .t-meta::before { content: 'ANOTADO · '; color: var(--green-dark); font-weight: 700; }
+    .talk:disabled { opacity: .55; }
+    .footer-note { font-size: 13.5px; color: var(--muted); margin-top: 16px; }
+    .actions { margin-top: 14px; }
+    .totals { font-size: 15px; margin: 6px 0; }
+    .talk-row { margin: 10px 0; }
+    .talk-row .t { display: flex; justify-content: space-between; font-size: 15px; gap: 8px; }
+    .talk-row .bar { height: 10px; background: #e3e8e3; border-radius: 6px; overflow: hidden; margin-top: 5px; }
+    .talk-row .bar span { display: block; height: 100%; background: var(--green); }
+    .talk-row .bar span.full { background: var(--red); }
+    h3 { margin: 16px 0 4px; }
+    h4 { margin: 10px 0 2px; color: var(--green-dark); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: #eef2ee; }
+    td.narrow { white-space: nowrap; }
+    .toolbar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .toolbar > div { flex: 1; min-width: 220px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="hdr-title">ESI</h1>
+    <div id="hdr-sub"></div>
+  </header>
+  <div class="wrap">
+    <div id="s-banner" class="banner"></div>
+
+    <section id="s-screen-mail" class="screen">
+      <h2 class="intro">Escribí tu mail</h2>
+      <p class="hint" id="hint-mail">Ingresá tu mail institucional para entrar.</p>
+      <label for="input-mail">Mail institucional</label>
+      <input id="input-mail" type="email" autocomplete="off" maxlength="120">
+      <button id="btn-mail" class="btn full" type="button">Continuar</button>
+    </section>
+
+    <section id="s-screen-datos" class="screen">
+      <div id="fieldset-nombre">
+        <label for="input-nombre">Nombre y apellido</label>
+        <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
+      </div>
+      <div id="fieldset-anio">
+        <label for="select-anio">Año</label>
+        <select id="select-anio">
+          <option value="">Elegí tu año...</option>
+          <option value="1°">1°</option>
+          <option value="2°">2°</option>
+          <option value="3°">3°</option>
+          <option value="4°">4°</option>
+          <option value="5°">5°</option>
+          <option value="6°">6°</option>
+        </select>
+      </div>
+      <button id="btn-datos" class="btn full" type="button">Ver las charlas</button>
+      <button id="btn-datos-volver" class="btn secondary small full" type="button">Volver</button>
+    </section>
+
+    <section id="s-screen-panel" class="screen">
+      <div class="summary" id="summary"></div>
+      <div id="slots-container"></div>
+      <div class="actions">
+        <button id="btn-refresh" class="btn secondary small full" type="button">Actualizar lugares</button>
+        <button id="btn-cambiar-datos" class="btn secondary small full" type="button">Cambiar mis datos</button>
+      </div>
+      <p class="footer-note">
+        Podés elegir hasta 3 charlas: una por horario. Si te equivocaste, tocá otra charla
+        del mismo horario y se cambia sola. Si quedó sin lugares, elegí otra de ese horario
+        y avisale a un profe.
+      </p>
+    </section>
+
+    <section id="a-screen-gate" class="screen">
+      <div class="card">
+        <label for="input-pin">Clave de profes</label>
+        <input id="input-pin" type="password" inputmode="numeric" autocomplete="off">
+        <div id="gate-msg" class="banner err"></div>
+        <button id="btn-pin" class="btn" type="button">Entrar</button>
+      </div>
+    </section>
+
+    <section id="a-screen-panel" class="screen">
+      <div class="card">
+        <div class="totals" id="a-totals"></div>
+        <div id="a-toggle-box"></div>
+        <div id="a-msg" class="banner"></div>
+      </div>
+      <div class="card" id="a-cupos"></div>
+      <div class="card">
+        <div class="toolbar">
+          <div>
+            <label for="input-buscar">Buscar alumno</label>
+            <input id="input-buscar" type="text" autocomplete="off" placeholder="Nombre, mail, curso o charla...">
+          </div>
+          <button id="btn-csv" class="btn secondary small" type="button">Descargar CSV</button>
+          <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
+          <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
+        </div>
+        <div id="a-table"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    var IS_ADMIN = /(^|[?&])admin=1(&|$)/.test(window.location.search);
+    var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
+
+    function $(id) { return document.getElementById(id); }
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function lsGet(key) {
+      try { return window.localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function lsSet(key, value) {
+      try { window.localStorage.setItem(key, value); } catch (e) { }
+    }
+    function lsDel(key) {
+      try { window.localStorage.removeItem(key); } catch (e) { }
+    }
+    function sessGet() {
+      try { return window.sessionStorage.getItem('esi_admin_pin'); } catch (e) { return null; }
+    }
+    function sessSet(v) {
+      try { window.sessionStorage.setItem('esi_admin_pin', v); } catch (e) { }
+    }
+    function sessDel() {
+      try { window.sessionStorage.removeItem('esi_admin_pin'); } catch (e) { }
+    }
+
+    var EsiClient = (function () {
+      'use strict';
+      function normalizeText(value) {
+        return String(value == null ? '' : value)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+      }
+      function normalizeEmail(value) {
+        return String(value == null ? '' : value).replace(/\s+/g, '').trim().toLowerCase();
+      }
+      function isValidEmail(email) {
+        var e = String(email == null ? '' : email);
+        if (!e || e.length > 120) return false;
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+      }
+      function cicloFromCurso(curso) {
+        var m = String(curso == null ? '' : curso).match(/\d/);
+        if (!m) return null;
+        var year = Number(m[0]);
+        if (year >= 1 && year <= 3) return 'basico';
+        if (year >= 4 && year <= 6) return 'orientado';
+        return null;
+      }
+      function validateStudentInput(email, nombre, curso) {
+        var e = normalizeEmail(email);
+        if (!isValidEmail(e)) return { ok: false, error: 'email' };
+        var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
+        if (n.length < 3 || n.length > 60) return { ok: false, error: 'nombre' };
+        var ciclo = cicloFromCurso(curso);
+        if (!ciclo) return { ok: false, error: 'curso' };
+        var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
+        return {
+          ok: true,
+          email: e,
+          nombre: n,
+          curso: c,
+          ciclo: ciclo,
+          nombreKey: normalizeText(n),
+          emailKey: e
+        };
+      }
+      function planRegistration(signups, talksById, student, talkId) {
+        var talk = talksById[talkId];
+        if (!talk) return { error: 'talkNotFound' };
+        if (!talk.activa) return { error: 'talkInactive' };
+        if (talk.ciclo !== student.ciclo) return { error: 'talkWrongCycle' };
+        var counts = {};
+        var mine = [];
+        for (var i = 0; i < signups.length; i++) {
+          var s = signups[i];
+          counts[s.talk_id] = (counts[s.talk_id] || 0) + 1;
+          if (s.emailKey === student.emailKey) mine.push(s);
+        }
+        var sameSlot = null;
+        for (var j = 0; j < mine.length; j++) {
+          if (Number(mine[j].slot_id) === Number(talk.slot_id)) {
+            sameSlot = mine[j];
+            break;
+          }
+        }
+        var full = (counts[talkId] || 0) >= Number(talk.cupo);
+        if (sameSlot) {
+          if (sameSlot.talk_id === String(talkId)) return { action: 'none' };
+          if (full) return { error: 'full' };
+          return { action: 'change', signupId: sameSlot.id, previousTalkId: sameSlot.talk_id };
+        }
+        if (full) return { error: 'full' };
+        return { action: 'insert' };
+      }
+      return {
+        normalizeText: normalizeText,
+        normalizeEmail: normalizeEmail,
+        isValidEmail: isValidEmail,
+        cicloFromCurso: cicloFromCurso,
+        validateStudentInput: validateStudentInput,
+        planRegistration: planRegistration
+      };
+    })();
+
+    var DEMO_PIN = '1234';
+    var STUDENT_MSG = {
+      email: 'Escribí tu mail institucional.',
+      nombre: 'Escribí tu nombre y apellido (mínimo 3 letras).',
+      curso: 'Elegí tu año: 1° a 6°.'
+    };
+
+    var DEMO_SLOTS = [
+      { id: 1, label: '10:30 a 11:20' },
+      { id: 2, label: '11:30 a 12:20' },
+      { id: 3, label: '12:30 a 13:30' }
+    ];
+    var DEMO_TALKS = [
+      { id: 'B1', titulo: 'Salud Mental: Ansiedad', ciclo: 'basico', slot_id: 1, lugar: 'Aula 5', cupo: 40, activa: true },
+      { id: 'B2', titulo: 'Consumos Problemáticos: Alcohol', ciclo: 'basico', slot_id: 1, lugar: 'Aula 6', cupo: 40, activa: true },
+      { id: 'B3', titulo: 'Deportes y Alimentación saludable', ciclo: 'basico', slot_id: 1, lugar: 'Gimnasio', cupo: 40, activa: true },
+      { id: 'B4', titulo: 'Ciberbullying y grooming', ciclo: 'basico', slot_id: 1, lugar: 'Biblioteca', cupo: 40, activa: true },
+      { id: 'B5', titulo: 'Salud Mental: Autolesiones', ciclo: 'basico', slot_id: 2, lugar: 'Aula 7', cupo: 40, activa: true },
+      { id: 'B6', titulo: 'Consumos Problemáticos: Cigarrillo/Vapeo', ciclo: 'basico', slot_id: 2, lugar: 'Laboratorio', cupo: 40, activa: true },
+      { id: 'B7', titulo: 'Masculinidades', ciclo: 'basico', slot_id: 2, lugar: 'Aula 8', cupo: 40, activa: true },
+      { id: 'B8', titulo: 'Consumos Problemáticos: Juegos/Ludopatía', ciclo: 'basico', slot_id: 3, lugar: 'Aula 9', cupo: 40, activa: true },
+      { id: 'B9', titulo: 'Relaciones sexuales, cuidado y prevención', ciclo: 'basico', slot_id: 3, lugar: 'Biblioteca', cupo: 40, activa: true },
+      { id: 'B10', titulo: 'Nueva ley penal juvenil / Delitos informáticos', ciclo: 'basico', slot_id: 3, lugar: 'Aula 10', cupo: 40, activa: true },
+      { id: 'O1', titulo: 'Salud Mental: Ansiedad', ciclo: 'orientado', slot_id: 1, lugar: 'Aula 12', cupo: 40, activa: true },
+      { id: 'O2', titulo: 'Consumos Problemáticos: Alcohol', ciclo: 'orientado', slot_id: 1, lugar: 'Aula 13', cupo: 40, activa: true },
+      { id: 'O3', titulo: 'Deportes y Alimentación saludable', ciclo: 'orientado', slot_id: 1, lugar: 'Gimnasio', cupo: 40, activa: true },
+      { id: 'O4', titulo: 'Ciberbullying y grooming', ciclo: 'orientado', slot_id: 1, lugar: 'Biblioteca', cupo: 40, activa: true },
+      { id: 'O5', titulo: 'Salud Mental: Autolesiones', ciclo: 'orientado', slot_id: 2, lugar: 'Aula 14', cupo: 40, activa: true },
+      { id: 'O6', titulo: 'Consumos Problemáticos: Cigarrillo/Vapeo', ciclo: 'orientado', slot_id: 2, lugar: 'Laboratorio', cupo: 40, activa: true },
+      { id: 'O7', titulo: 'Masculinidades', ciclo: 'orientado', slot_id: 2, lugar: 'Aula 15', cupo: 40, activa: true },
+      { id: 'O8', titulo: 'Consumos Problemáticos: Juegos/Ludopatía', ciclo: 'orientado', slot_id: 3, lugar: 'Aula 16', cupo: 40, activa: true },
+      { id: 'O9', titulo: 'ITS: adolescentes expuestos, sífilis y otras infecciones', ciclo: 'orientado', slot_id: 3, lugar: 'Biblioteca', cupo: 40, activa: true }
+    ];
+
+    var TRANSPORT = 'demo';
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      TRANSPORT = 'gscript';
+    } else if (getApiUrl()) {
+      TRANSPORT = 'jsonp';
+    }
+
+    function getApiUrl() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var v = params.get('api');
+        if (v) {
+          lsSet('esi_api', v);
+          return v;
+        }
+        return lsGet('esi_api');
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function call(fn, args) {
+      if (TRANSPORT === 'gscript') {
+        return new Promise(function (resolve, reject) {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)[fn].apply(null, args);
+        });
+      }
+      if (TRANSPORT === 'jsonp') return jsonpCall(fn, args);
+      return demoCall(fn, args || []);
+    }
+
+    function jsonpCall(fn, args) {
+      return new Promise(function (resolve, reject) {
+        var cb = 'esi_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+        var url = getApiUrl() + (getApiUrl().indexOf('?') >= 0 ? '&' : '?')
+          + 'fn=' + encodeURIComponent(fn)
+          + '&args=' + encodeURIComponent(JSON.stringify(args))
+          + '&callback=' + cb;
+        var s = document.createElement('script');
+        var done = false;
+        function cleanup() {
+          if (done) return;
+          done = true;
+          try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+          if (s.parentNode) s.parentNode.removeChild(s);
+        }
+        window[cb] = function (r) {
+          cleanup();
+          resolve(r);
+        };
+        s.onload = cleanup;
+        s.onerror = function () {
+          cleanup();
+          reject(new Error('No se pudo conectar con el servidor.'));
+        };
+        window.setTimeout(function () {
+          if (!done) {
+            cleanup();
+            reject(new Error('Tiempo de espera agotado.'));
+          }
+        }, 30000);
+        s.src = url;
+        document.body.appendChild(s);
+      });
+    }
+
+    function demoRead(key, def) {
+      try {
+        var v = window.localStorage.getItem(key);
+        return v == null ? def : JSON.parse(v);
+      } catch (e) {
+        return def;
+      }
+    }
+    function demoWrite(key, value) {
+      lsSet(key, JSON.stringify(value));
+    }
+    function demoOpen() {
+      return demoRead('esi_demo_abierto', true);
+    }
+    function demoSignups() {
+      return demoRead('esi_demo_signups', []);
+    }
+    function demoTs(millis) {
+      var d = new Date(millis);
+      var p = function (n) { return (n < 10 ? '0' : '') + n; };
+      return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function demoPublicData(ciclo, mine) {
+      var counts = {};
+      var signups = demoSignups();
+      for (var i = 0; i < signups.length; i++) {
+        counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
+      }
+      var talks = DEMO_TALKS
+        .filter(function (t) { return t.ciclo === ciclo && t.activa; })
+        .map(function (t) {
+          return {
+            id: t.id,
+            titulo: t.titulo,
+            slot_id: t.slot_id,
+            lugar: t.lugar,
+            cupo: t.cupo,
+            restantes: Math.max(0, t.cupo - (counts[t.id] || 0))
+          };
+        });
+      return {
+        evento_abierto: demoOpen(),
+        slots: DEMO_SLOTS,
+        talks: talks,
+        mine: mine || {}
+      };
+    }
+    function demoStudent(email, nombre, curso) {
+      var v = EsiClient.validateStudentInput(email, nombre, curso);
+      if (!v.ok) return v;
+      return v;
+    }
+    function demoMine(email) {
+      var key = EsiClient.normalizeEmail(email);
+      var m = {};
+      var signups = demoSignups();
+      for (var i = 0; i < signups.length; i++) {
+        if (signups[i].emailKey === key) {
+          m[Number(signups[i].slot_id)] = signups[i].talk_id;
+        }
+      }
+      return m;
+    }
+    function demoRegister(email, nombre, curso, talkId) {
+      var s = demoStudent(email, nombre, curso);
+      if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
+      if (!demoOpen()) return Promise.resolve({ ok: false, message: 'La inscripción está cerrada.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      var talksById = {};
+      for (var i = 0; i < DEMO_TALKS.length; i++) talksById[DEMO_TALKS[i].id] = DEMO_TALKS[i];
+      var talk = talksById[String(talkId || '')];
+      var signups = demoSignups();
+      if (!talk) return Promise.resolve({ ok: false, message: 'No encontramos esa charla. Actualizá la lista.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (!talk.activa) return Promise.resolve({ ok: false, message: 'Esa charla no está disponible.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (talk.ciclo !== s.ciclo) return Promise.resolve({ ok: false, message: 'Esa charla no es de tu ciclo.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      var plan = EsiClient.planRegistration(signups, talksById, { emailKey: s.emailKey, ciclo: s.ciclo }, talkId);
+      if (plan.error) {
+        return Promise.resolve({
+          ok: false,
+          message: plan.error === 'full' ? 'Sin lugares en esa charla. No se cambió tu anotación anterior.' : 'No se pudo anotar.',
+          data: demoPublicData(s.ciclo, demoMine(s.email))
+        });
+      }
+      var message = '';
+      if (plan.action === 'insert') {
+        var slot = DEMO_SLOTS.filter(function (x) { return x.id === Number(talk.slot_id); })[0];
+        signups.push({
+          id: 'd' + Date.now() + '_' + Math.floor(Math.random() * 100000),
+          ts: Date.now(),
+          email: s.email,
+          nombre: s.nombre,
+          curso: s.curso,
+          ciclo: s.ciclo,
+          slot_id: Number(talk.slot_id),
+          talk_id: String(talkId),
+          emailKey: s.emailKey
+        });
+        message = 'Te anotaste en ' + talk.titulo + ' (' + (slot ? slot.label : '') + ').';
+        demoWrite('esi_demo_signups', signups);
+      } else if (plan.action === 'change') {
+        for (var k = 0; k < signups.length; k++) {
+          if (signups[k].id === plan.signupId) {
+            signups[k].talk_id = String(talkId);
+            signups[k].ts = Date.now();
+          }
+        }
+        message = 'Cambiaste tu charla de ese horario a ' + talk.titulo + '.';
+        demoWrite('esi_demo_signups', signups);
+      } else {
+        message = 'Ya estabas anotado en esa charla.';
+      }
+      return Promise.resolve({
+        ok: true,
+        message: message,
+        student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+        data: demoPublicData(s.ciclo, demoMine(s.email))
+      });
+    }
+    function demoAdminData(pin) {
+      if (pin !== DEMO_PIN) return { ok: false, message: 'Clave incorrecta.' };
+      var signups = demoSignups();
+      var counts = {};
+      for (var i = 0; i < signups.length; i++) {
+        counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
+      }
+      var titulos = {};
+      for (var t = 0; t < DEMO_TALKS.length; t++) {
+        titulos[DEMO_TALKS[t].id] = DEMO_TALKS[t].titulo;
+      }
+      var out = signups.map(function (s) {
+        return {
+          id: s.id,
+          cuando: s.ts ? demoTs(s.ts) : '',
+          email: s.email,
+          nombre: s.nombre,
+          curso: s.curso,
+          ciclo: s.ciclo,
+          slotLabel: (DEMO_SLOTS.filter(function (x) { return x.id === Number(s.slot_id); })[0] || {}).label || '',
+          talkTitulo: titulos[s.talk_id] || s.talk_id
+        };
+      });
+      var porCiclo = { basico: 0, orientado: 0 };
+      for (var c = 0; c < out.length; c++) {
+        if (porCiclo[out[c].ciclo] != null) porCiclo[out[c].ciclo]++;
+      }
+      return {
+        ok: true,
+        evento_abierto: demoOpen(),
+        rosterLoaded: false,
+        rosterCount: 0,
+        slots: DEMO_SLOTS,
+        talks: DEMO_TALKS.map(function (t) {
+          return { id: t.id, titulo: t.titulo, ciclo: t.ciclo, slot_id: t.slot_id, cupo: t.cupo, activa: !!t.activa, anotados: counts[t.id] || 0 };
+        }),
+        signups: out,
+        total: out.length,
+        porCiclo: porCiclo
+      };
+    }
+    function demoCall(fn, args) {
+      var a = args || [];
+      if (fn === 'apiLookup') {
+        var email = EsiClient.normalizeEmail(a[0]);
+        if (!EsiClient.isValidEmail(email)) {
+          return Promise.resolve({ ok: false, message: STUDENT_MSG.email });
+        }
+        return Promise.resolve({ ok: true, rosterLoaded: false, nombre: '', curso: '', needsNombre: true, needsCurso: true });
+      }
+      if (fn === 'apiGetData') {
+        var s = demoStudent(a[0], a[1], a[2]);
+        if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
+        return Promise.resolve({
+          ok: true,
+          student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+          data: demoPublicData(s.ciclo, demoMine(s.email))
+        });
+      }
+      if (fn === 'apiRegister') return demoRegister(a[0], a[1], a[2], a[3]);
+      if (fn === 'apiAdminLogin') return Promise.resolve({ ok: a[0] === DEMO_PIN });
+      if (fn === 'apiAdminGetData') return Promise.resolve(demoAdminData(a[0]));
+      if (fn === 'apiAdminSetOpen') {
+        if (a[0] !== DEMO_PIN) return Promise.resolve({ ok: false, message: 'Clave incorrecta.' });
+        demoWrite('esi_demo_abierto', !!a[1]);
+        return Promise.resolve({ ok: true, evento_abierto: !!a[1] });
+      }
+      if (fn === 'apiAdminDeleteSignup') {
+        if (a[0] !== DEMO_PIN) return Promise.resolve({ ok: false, message: 'Clave incorrecta.' });
+        var remain = demoSignups().filter(function (x) { return x.id !== String(a[1]); });
+        demoWrite('esi_demo_signups', remain);
+        return Promise.resolve({ ok: true });
+      }
+      return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
+    }
+
+    function showScreen(ids, activeId) {
+      for (var i = 0; i < ids.length; i++) {
+        $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' : '');
+      }
+    }
+
+    var S_SCREENS = ['s-screen-mail', 's-screen-datos', 's-screen-panel'];
+    var A_SCREENS = ['a-screen-gate', 'a-screen-panel'];
+
+    var sState = {
+      email: '', nombre: '', curso: '',
+      needsNombre: false, needsCurso: false,
+      data: null, busy: false, lookup: null,
+      student: { email: '', nombre: '', curso: '', ciclo: '' }
+    };
+
+    function sBanner(text, type) {
+      var el = $('s-banner');
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function sSlotsLabel(id) {
+      var slots = sState.data && sState.data.slots ? sState.data.slots : [];
+      for (var i = 0; i < slots.length; i++) {
+        if (Number(slots[i].id) === Number(id)) return slots[i].label;
+      }
+      return '';
+    }
+
+    function sTalkById(id) {
+      var talks = sState.data && sState.data.talks ? sState.data.talks : [];
+      for (var i = 0; i < talks.length; i++) {
+        if (talks[i].id === id) return talks[i];
+      }
+      return null;
+    }
+
+    function sRender() {
+      var d = sState.data;
+      if (!d) return;
+      var sub = $('hdr-sub');
+      sub.textContent = (d.evento_abierto ? 'Inscripción abierta' : 'INSCRIPCIÓN CERRADA')
+        + ' · ' + CICLO_LABELS[sState.student.ciclo]
+        + (TRANSPORT === 'demo' ? ' · MODO PRUEBA' : '');
+      sub.className = d.evento_abierto ? '' : 'alert';
+
+      var st = sState.student;
+      var html = '<div class="row">'
+        + '<span class="none">' + esc(st.nombre) + ' · ' + esc(st.curso) + ' · ' + esc(st.email) + '</span>'
+        + '</div>';
+      var slots = d.slots || [];
+      for (var i = 0; i < slots.length; i++) {
+        var chosen = d.mine ? d.mine[slots[i].id] : null;
+        var chosenTalk = chosen ? sTalkById(chosen) : null;
+        html += '<div class="row">'
+          + '<span class="time">' + slots[i].label + '</span>'
+          + '<span>' + (chosenTalk ? '<b>' + esc(chosenTalk.titulo) + '</b>' : '<span class="none">sin elegir todavía</span>') + '</span>'
+          + '</div>';
+      }
+      $('summary').innerHTML = html;
+
+      var cont = $('slots-container');
+      cont.innerHTML = '';
+      for (var s = 0; s < slots.length; s++) {
+        var section = document.createElement('div');
+        section.className = 'slot';
+        var h2 = document.createElement('h2');
+        h2.className = 'slot-title';
+        h2.textContent = slots[s].label;
+        section.appendChild(h2);
+        for (var t = 0; t < d.talks.length; t++) {
+          if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
+          section.appendChild(sBuildTalk(d.talks[t], slots[s]));
+        }
+        cont.appendChild(section);
+      }
+    }
+
+    function sBuildTalk(talk, slot) {
+      var mine = sState.data.mine || {};
+      var chosen = mine[slot.id] === talk.id;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'talk' + (chosen ? ' selected' : '');
+      var places = chosen
+        ? 'tu charla'
+        : (talk.restantes > 0 ? 'quedan ' + talk.restantes + ' de ' + talk.cupo : 'sin lugares');
+      btn.innerHTML = '<div class="t-title">' + esc(talk.titulo) + '</div>'
+        + '<div class="t-meta">' + esc(talk.lugar) + ' · ' + places + '</div>';
+      if (chosen || talk.restantes <= 0) {
+        btn.disabled = true;
+      } else {
+        btn.addEventListener('click', function () { sOnTalk(talk); });
+      }
+      return btn;
+    }
+
+    function sOnTalk(talk) {
+      if (sState.busy) return;
+      var ok = window.confirm('¿Anotarte en "' + talk.titulo + '"? (' + sSlotsLabel(talk.slot_id) + ')');
+      if (!ok) return;
+      sRegister(talk.id);
+    }
+
+    function sRegister(talkId) {
+      if (sState.busy) return;
+      sState.busy = true;
+      sBanner('Guardando...', 'ok');
+      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId])
+        .then(function (resp) {
+          sState.busy = false;
+          if (resp.data) sState.data = resp.data;
+          if (resp.student) sState.student = resp.student;
+          sBanner(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
+          sRender();
+        })
+        .catch(function () {
+          sState.busy = false;
+          sBanner('Hubo un problema de conexión. Probá de nuevo.', 'err');
+        });
+    }
+
+    function sEnterPanel(nombre, curso) {
+      if (sState.busy) return Promise.resolve();
+      sState.busy = true;
+      sBanner('Cargando...', 'ok');
+      return call('apiGetData', [sState.email, nombre, curso])
+        .then(function (resp) {
+          sState.busy = false;
+          if (resp.ok) {
+            sState.student = resp.student;
+            sState.nombre = resp.student.nombre;
+            sState.curso = resp.student.curso;
+            sState.data = resp.data;
+            lsSet('esi_student', JSON.stringify({
+              email: sState.email, nombre: sState.nombre, curso: sState.curso, ciclo: resp.student.ciclo
+            }));
+            sBanner('');
+            showScreen(S_SCREENS, 's-screen-panel');
+            sRender();
+          } else {
+            sBanner(resp.message || 'No se pudo cargar.', 'err');
+            if (resp.message && String(resp.message).indexOf('no está en la lista') >= 0) {
+              lsDel('esi_student');
+              sState.email = '';
+              showScreen(S_SCREENS, 's-screen-mail');
+            }
+          }
+        })
+        .catch(function () {
+          sState.busy = false;
+          sBanner('Sin conexión con el servidor. Probá de nuevo.', 'err');
+        });
+    }
+
+    function sLookup() {
+      if (sState.busy) return;
+      var email = $('input-mail').value;
+      sState.busy = true;
+      sBanner('Buscando...', 'ok');
+      call('apiLookup', [email])
+        .then(function (resp) {
+          sState.busy = false;
+          if (!resp.ok) {
+            sBanner(resp.message || 'No se pudo validar el mail.', 'err');
+            return;
+          }
+          sBanner('');
+          sState.email = email.replace(/\s/g, '').toLowerCase();
+          sState.lookup = resp;
+          sState.nombre = resp.nombre || '';
+          sState.curso = resp.curso || '';
+          if (!resp.needsNombre && !resp.needsCurso) {
+            sEnterPanel(sState.nombre, sState.curso);
+            return;
+          }
+          sShowDatos();
+        })
+        .catch(function () {
+          sState.busy = false;
+          sBanner('Sin conexión. Probá de nuevo.', 'err');
+        });
+    }
+
+    function sShowDatos() {
+      var needsNombre = sState.lookup.needsNombre;
+      var needsCurso = sState.lookup.needsCurso;
+      document.body.className = '';
+      $('fieldset-nombre').style.display = needsNombre ? 'block' : 'none';
+      $('fieldset-anio').style.display = needsCurso ? 'block' : 'none';
+      $('input-nombre').value = sState.nombre;
+      $('input-nombre').readOnly = !needsNombre;
+      if (needsCurso && /\d/.test(sState.curso || '')) {
+        $('select-anio').value = String(Number(sState.curso.match(/\d/)[0])) + '°';
+      } else {
+        $('select-anio').value = '';
+      }
+      $('btn-datos').textContent = (needsNombre || needsCurso) ? 'Ver las charlas' : 'Continuar';
+      showScreen(S_SCREENS, 's-screen-datos');
+      if (needsNombre) {
+        $('input-nombre').focus();
+      } else if (needsCurso) {
+        $('select-anio').focus();
+      }
+    }
+
+    function sSubmitDatos() {
+      var needsNombre = sState.lookup.needsNombre;
+      var needsCurso = sState.lookup.needsCurso;
+      var nombre = needsNombre ? $('input-nombre').value : sState.nombre;
+      var curso = needsCurso ? $('select-anio').value : sState.curso;
+      if (needsNombre && String(nombre).replace(/\s/g, '').length < 3) {
+        sBanner('Escribí tu nombre y apellido (mínimo 3 letras).', 'err');
+        return;
+      }
+      if (needsCurso && !/\d/.test(curso || '')) {
+        sBanner('Elegí tu año.', 'err');
+        return;
+      }
+      sEnterPanel(nombre, curso);
+    }
+
+    function sInit() {
+      document.body.className = '';
+      $('hdr-title').textContent = 'Inscripción a charlas ESI';
+      $('btn-mail').addEventListener('click', sLookup);
+      $('input-mail').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') sLookup();
+      });
+      $('btn-datos').addEventListener('click', sSubmitDatos);
+      $('btn-datos-volver').addEventListener('click', function () {
+        showScreen(S_SCREENS, 's-screen-mail');
+      });
+      $('btn-refresh').addEventListener('click', function () {
+        sEnterPanel(sState.nombre, sState.curso);
+      });
+      $('btn-cambiar-datos').addEventListener('click', function () {
+        var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;
+        var ok = has
+          ? window.confirm('Tu inscripción sigue en el sistema. Si querés borrarla, avisale a un profe. ¿Seguro que querés cambiar tus datos?')
+          : true;
+        if (!ok) return;
+        lsDel('esi_student');
+        sState = {
+          email: '', nombre: '', curso: '',
+          needsNombre: false, needsCurso: false,
+          data: null, busy: false, lookup: null,
+          student: { email: '', nombre: '', curso: '', ciclo: '' }
+        };
+        $('input-mail').value = '';
+        sBanner('');
+        showScreen(S_SCREENS, 's-screen-mail');
+      });
+
+      var saved = lsGet('esi_student');
+      if (saved) {
+        try {
+          var st = JSON.parse(saved);
+          if (st && st.email && st.nombre && st.curso) {
+            sState.email = st.email;
+            sEnterPanel(st.nombre, st.curso);
+            return;
+          }
+        } catch (e) { }
+      }
+      showScreen(S_SCREENS, 's-screen-mail');
+    }
+
+    var aData = null;
+    var aBusy = false;
+
+    function aBanner(text, type) {
+      var el = $('a-msg');
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function aLogin(pin) {
+      if (aBusy) return;
+      aBusy = true;
+      call('apiAdminLogin', [pin])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            sessSet(pin);
+            showScreen(A_SCREENS, 'a-screen-panel');
+            aLoad(true);
+          } else {
+            $('gate-msg').textContent = resp.message || 'Clave incorrecta.';
+            $('gate-msg').style.display = 'block';
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          $('gate-msg').textContent = 'Error de conexión.';
+          $('gate-msg').style.display = 'block';
+        });
+    }
+
+    function aLoad(silent) {
+      if (aBusy) return;
+      var pin = sessGet();
+      if (!pin) {
+        showScreen(A_SCREENS, 'a-screen-gate');
+        return;
+      }
+      aBusy = true;
+      if (!silent) aBanner('Actualizando datos...', 'ok');
+      call('apiAdminGetData', [pin])
+        .then(function (resp) {
+          aBusy = false;
+          if (!resp.ok) {
+            if (String(resp.message).indexOf('Clave') >= 0) {
+              sessDel();
+              aData = null;
+              showScreen(A_SCREENS, 'a-screen-gate');
+              return;
+            }
+            aBanner(resp.message || 'No se pudo cargar.', 'err');
+            return;
+          }
+          aData = resp;
+          aRender();
+          if (!silent) aBanner('Datos actualizados.', 'ok');
+        })
+        .catch(function () {
+          aBusy = false;
+          aBanner('Error de conexión.', 'err');
+        });
+    }
+
+    function aRender() {
+      var d = aData;
+      if (!d) return;
+      var sub = $('hdr-sub');
+      sub.textContent = 'Total: ' + d.total + ' · Básico: ' + d.porCiclo.basico + ' · Orientado: ' + d.porCiclo.orientado
+        + (TRANSPORT === 'demo' ? ' · MODO PRUEBA' : '');
+
+      var listInfo = d.rosterLoaded
+        ? 'Lista de mails cargada (' + d.rosterCount + ')'
+        : 'Lista de mails sin cargar (se acepta cualquier mail)';
+      $('a-totals').innerHTML = '<b>Estado:</b> ' + (d.evento_abierto ? 'inscripción ABIERTA' : 'inscripción CERRADA')
+        + '<br>' + esc(listInfo);
+
+      var tb = $('a-toggle-box');
+      tb.innerHTML = '';
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'btn ' + (d.evento_abierto ? 'red' : '');
+      toggle.textContent = d.evento_abierto ? 'Cerrar inscripciones' : 'Abrir inscripciones';
+      toggle.addEventListener('click', aOnToggle);
+      tb.appendChild(toggle);
+
+      var html = '';
+      var ciclos = ['basico', 'orientado'];
+      for (var c = 0; c < ciclos.length; c++) {
+        html += '<h3>' + esc(CICLO_LABELS[ciclos[c]]) + '</h3>';
+        for (var s = 0; s < d.slots.length; s++) {
+          html += '<h4>' + esc(d.slots[s].label) + '</h4>';
+          for (var t = 0; t < d.talks.length; t++) {
+            var talk = d.talks[t];
+            if (talk.ciclo !== ciclos[c] || Number(talk.slot_id) !== Number(d.slots[s].id)) continue;
+            var pct = talk.cupo > 0 ? Math.min(100, Math.round(talk.anotados * 100 / talk.cupo)) : 0;
+            var full = talk.anotados >= talk.cupo;
+            html += '<div class="talk-row">'
+              + '<div class="t"><span>' + esc(talk.titulo) + (talk.activa ? '' : ' (inactiva)') + '</span>'
+              + '<span><b>' + talk.anotados + '/' + talk.cupo + '</b></span></div>'
+              + '<div class="bar"><span class="' + (full ? 'full' : '') + '" style="width:' + pct + '%"></span></div>'
+              + '</div>';
+          }
+        }
+      }
+      $('a-cupos').innerHTML = html;
+      aRenderTable();
+    }
+
+    function aRenderTable() {
+      var d = aData;
+      if (!d) return;
+      var q = $('input-buscar').value.replace(/\s+/g, ' ').trim().toLowerCase();
+      var rows = '<table><thead><tr>'
+        + '<th>Cuándo</th><th>Nombre</th><th>Mail</th><th>Curso</th><th>Ciclo</th><th>Horario</th><th>Charla</th><th></th>'
+        + '</tr></thead><tbody>';
+      var shown = 0;
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        var hay = (s.nombre + ' ' + s.email + ' ' + s.curso + ' ' + s.ciclo + ' ' + s.slotLabel + ' ' + s.talkTitulo).toLowerCase();
+        if (q && hay.indexOf(q) < 0) continue;
+        shown++;
+        rows += '<tr>'
+          + '<td class="narrow">' + esc(s.cuando) + '</td>'
+          + '<td>' + esc(s.nombre) + '</td>'
+          + '<td>' + esc(s.email) + '</td>'
+          + '<td>' + esc(s.curso) + '</td>'
+          + '<td>' + esc(s.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
+          + '<td>' + esc(s.slotLabel) + '</td>'
+          + '<td>' + esc(s.talkTitulo) + '</td>'
+          + '<td><button class="btn red" style="padding:6px 10px;min-height:0;font-size:13px" onclick="aOnDelete(\'' + esc(s.id) + '\')">Borrar</button></td>'
+          + '</tr>';
+      }
+      rows += '</tbody></table>';
+      if (!shown) rows = '<p>No hay inscripciones' + (q ? ' que coincidan con la búsqueda' : '') + '.</p>';
+      $('a-table').innerHTML = rows;
+    }
+
+    window.aOnDelete = function (signupId) {
+      if (aBusy) return;
+      var ok = window.confirm('¿Borrar esta inscripción? El lugar vuelve a quedar libre.');
+      if (!ok) return;
+      aBusy = true;
+      call('apiAdminDeleteSignup', [sessGet(), signupId])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            aBanner('Inscripción borrada.', 'ok');
+            aLoad(true);
+          } else {
+            aBanner(resp.message || 'No se pudo borrar.', 'err');
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          aBanner('Error de conexión.', 'err');
+        });
+    };
+
+    function aOnToggle() {
+      if (aBusy) return;
+      var open = aData && aData.evento_abierto;
+      var ok = window.confirm(open
+        ? '¿Cerrar la inscripción? Los alumnos ya no van a poder anotarse.'
+        : '¿Abrir la inscripción?');
+      if (!ok) return;
+      aBusy = true;
+      call('apiAdminSetOpen', [sessGet(), !open])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            aBanner(resp.evento_abierto ? 'Inscripción abierta.' : 'Inscripción cerrada.', 'ok');
+            aLoad(true);
+          } else {
+            aBanner(resp.message || 'No se pudo cambiar.', 'err');
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          aBanner('Error de conexión.', 'err');
+        });
+    }
+
+    function aCsvCell(v) {
+      var s = String(v == null ? '' : v);
+      if (s.indexOf(';') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    function aDownloadCsv() {
+      var d = aData;
+      if (!d) return;
+      var rows = [['Fecha', 'Mail', 'Nombre', 'Curso', 'Ciclo', 'Horario', 'Charla']];
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        rows.push([s.cuando, s.email, s.nombre, s.curso, s.ciclo, s.slotLabel, s.talkTitulo]);
+      }
+      var csv = '\uFEFF' + rows.map(function (r) {
+        return r.map(aCsvCell).join(';');
+      }).join('\r\n');
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'inscripciones-esi.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function aLogout() {
+      sessDel();
+      aData = null;
+      $('input-pin').value = '';
+      $('gate-msg').textContent = '';
+      showScreen(A_SCREENS, 'a-screen-gate');
+    }
+
+    function aInit() {
+      document.body.className = 'admin';
+      $('hdr-title').textContent = 'ESI - Panel de profes';
+      $('btn-pin').addEventListener('click', function () {
+        var pin = $('input-pin').value;
+        if (!pin) return;
+        aLogin(pin);
+      });
+      $('input-pin').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') $('btn-pin').click();
+      });
+      $('btn-csv').addEventListener('click', aDownloadCsv);
+      $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
+      $('btn-salir').addEventListener('click', aLogout);
+      $('input-buscar').addEventListener('input', aRenderTable);
+
+      if (sessGet()) {
+        showScreen(A_SCREENS, 'a-screen-panel');
+        aLoad(true);
+      } else {
+        showScreen(A_SCREENS, 'a-screen-gate');
+      }
+
+      window.setInterval(function () {
+        if (document.visibilityState === 'visible' && sessGet() && aData && !aBusy) {
+          aLoad(true);
+        }
+      }, 30000);
+    }
+
+    function boot() {
+      if (TRANSPORT === 'demo') {
+        document.body.classList.add('demo');
+        var hint = $('hint-mail');
+        if (hint) {
+          hint.textContent = 'MODO PRUEBA: entrá con cualquier mail válido (ej: ana.lopez@instituto.edu.ar).'
+            + ' En la versión real este paso valida contra la lista del colegio.';
+        }
+      }
+      if (IS_ADMIN) {
+        aInit();
+      } else {
+        sInit();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', boot);
+  </script>
+</body>
+</html>
