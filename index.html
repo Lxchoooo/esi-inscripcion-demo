@@ -133,16 +133,14 @@
     }
     .nav-links a:hover { color: var(--ink); border-bottom-color: var(--accent-fill); }
     .nav-links a:focus-visible { outline: none; color: var(--ink); border-bottom-color: var(--accent); }
-    #nav-cta { display: none; margin-left: auto; }
     @media (min-width: 720px) {
       body[data-screen="s-screen-mail"] .nav-links { display: flex; }
     }
-    body[data-screen="s-screen-panel"] #nav-cta { display: inline-flex; }
     body.admin #nav { background: #1F1F1F; border-bottom-color: #1F1F1F; color: #F5F2EB; }
     body.admin .brand-mark { background: #313B2E; color: #D8E5D3; }
     body.admin #hdr-sub { color: #B9B6AC; }
     body.admin #hdr-sub.alert { color: #F0B5AA; }
-    body.admin .nav-links, body.admin #nav-cta { display: none !important; }
+    body.admin .nav-links { display: none !important; }
 
     .wrap {
       max-width: 660px; margin: 0 auto;
@@ -435,7 +433,7 @@
     .landing { display: none; }
     body[data-screen="s-screen-mail"] .landing { display: block; }
     body.admin .landing { display: none !important; }
-    #como-funciona, #faq { scroll-margin-top: 86px; }
+    #faq { scroll-margin-top: 86px; }
 
     .reveal.reveal-armed { opacity: 0; transform: translateY(14px); }
     .reveal.reveal-in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
@@ -479,6 +477,108 @@
     .sheet-actions .btn { margin: 0; }
 
     #a-screen-gate .card { max-width: 420px; margin: 48px auto; }
+
+    /* Selección de charlas y ajustes */
+    .wrap { max-width: 760px; }
+    .footer-inner { max-width: 760px; }
+    .hero { padding: 48px 0 6px; }
+    .hero h2 { font-size: clamp(30px, 6.4vw, 44px); max-width: 18ch; }
+    .hero > p:not(.hero-eyebrow) { margin-bottom: 4px; }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 10px 0 2px; }
+    .panel-head .steps { margin-bottom: 6px; }
+    .panel-head .hint { margin-bottom: 0; }
+    .panel-head .btn.link { min-height: 0; padding: 6px 0; font-size: 13px; white-space: nowrap; }
+    .summary { display: block; padding: 12px 14px; margin: 12px 0 2px; }
+    .summary .who { font-size: 14.5px; }
+    .summary .email { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+    .chips { display: none; }
+    .slot { margin: 0 0 30px; }
+    .slot h2 { margin: 24px 0 10px; font-size: 15px; font-weight: 700; }
+    .slot h2 .time-pill { padding: 0; border: 0; background: transparent; font-size: 15px; font-weight: 700; color: var(--ink); }
+    .slot h2 .slot-time { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .slot-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 640px) { .slot-grid { grid-template-columns: 1fr 1fr; } }
+    .talk { display: block; margin: 0; padding: 15px 16px; min-height: 0; border-radius: 14px; animation: none; }
+    .talk:not(:disabled):hover { transform: translateY(-1px); }
+    .talk-top { display: flex; align-items: flex-start; gap: 10px; }
+    .talk .t-title { flex: 1; font-size: 14.5px; line-height: 1.4; }
+    .talk .t-meta { justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 12px; }
+    .talk .talk-room { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .talk .talk-seats { font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .talk .talk-seats.low { color: var(--warn); }
+    .talk .talk-seats.none { color: var(--danger); }
+    .talk-check {
+      display: grid; place-items: center; flex: 0 0 auto;
+      width: 18px; height: 18px; border: 1px solid var(--line-strong); border-radius: 50%;
+      color: transparent; font-size: 11px; line-height: 1;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .talk.selected .talk-check { border-color: var(--accent); background: var(--accent); color: var(--paper); }
+    .talk.selected .t-meta::before { content: none; }
+    .seatbar { display: block; height: 4px; margin-top: 9px; overflow: hidden; background: var(--surface-2); border-radius: 999px; }
+    .seatbar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent-fill); transition: width .3s ease; }
+    .seatbar > span.is-low { background: var(--warn); }
+    .seatbar > span.is-full { background: var(--line-strong); }
+    .talk.selected .seatbar > span { background: var(--accent); }
+    .talk.full { background: var(--surface-2); border-color: var(--line); }
+    .talk.full:disabled { opacity: .7; }
+    .talk.selected:disabled { opacity: 1; cursor: default; }
+    .talk.full .talk-seats.none { color: var(--muted); }
+    .sel-bar {
+      display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+      padding: 11px 20px calc(11px + env(safe-area-inset-bottom));
+      background: var(--nav-bg);
+      -webkit-backdrop-filter: blur(14px) saturate(1.3);
+      backdrop-filter: blur(14px) saturate(1.3);
+      border-top: 1px solid var(--line);
+    }
+    body[data-screen="s-screen-panel"] .sel-bar { display: block; }
+    body[data-screen="s-screen-panel"] .wrap { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+    body[data-screen="s-screen-panel"] footer.site { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    .sel-bar-inner { display: flex; align-items: center; gap: 14px; max-width: 760px; margin: 0 auto; }
+    .sel-count { font-size: 14px; font-weight: 600; }
+    .sel-bar .btn { margin-left: auto; min-height: 46px; }
+    body.admin .sel-bar { display: none !important; }
+
+    /* Panel de profes */
+    #a-screen-gate .card { margin: 64px auto; }
+    #a-screen-gate .intro { margin-bottom: 16px; }
+    #a-cupos h3:first-child { margin-top: 0; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+    .stat-num { display: block; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .stat-label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    #a-toggle-box { margin-top: 12px; }
+    .tabs { display: flex; gap: 2px; margin: 18px 0 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .tab {
+      margin-bottom: -1px; padding: 12px 14px; border: 0; border-bottom: 2px solid transparent;
+      background: none; font-family: inherit; font-size: 14px; font-weight: 600;
+      color: var(--muted); cursor: pointer; white-space: nowrap;
+      transition: color .16s ease, border-color .16s ease;
+    }
+    .tab:hover { color: var(--ink); }
+    .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+    .tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--accent-soft); }
+    .tabpanel { padding-top: 4px; }
+    .filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
+    @media (min-width: 720px) { .filters { grid-template-columns: 1.4fr 1fr 1fr 1.4fr; } }
+    .filters input, .filters select { min-height: 44px; padding: 9px 12px; font-size: 14px; }
+    .filters select { padding-right: 34px; background-position: right 12px center; }
+    .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+    .admin-actions .btn { gap: 6px; }
+    .icon { width: 16px; height: 16px; flex: 0 0 auto; }
+    #ta-roster { min-height: 128px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; }
+    .hint-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+    #a-table table { font-size: 13.5px; }
+    #a-table th { padding: 10px; }
+    #a-table td { padding: 12px 10px; }
+    #a-table tbody tr { transition: background .12s ease; }
+    #a-table tbody tr:hover { background: var(--surface-2); }
+    .empty-state { padding: 34px 16px; text-align: center; color: var(--muted); }
+    .empty-state svg { margin-bottom: 10px; color: var(--line-strong); }
+    .empty-state .es-title { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--ink); }
+    .empty-state p { margin: 0; font-size: 13px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
     @media (max-width: 640px) {
       .wrap { padding-left: 16px; padding-right: 16px; }
@@ -524,43 +624,32 @@
         </span>
       </a>
       <nav class="nav-links" aria-label="Secciones">
-        <a href="#como-funciona">Cómo funciona</a>
         <a href="#faq">Dudas</a>
         <a href="?admin=1" id="nav-profes">Profes</a>
       </nav>
-      <button id="nav-cta" class="btn small" type="button">Confirmar</button>
     </div>
   </header>
   <div class="wrap" id="top">
     <section class="hero landing" aria-labelledby="hero-title">
-      <p class="hero-eyebrow">ESI 2026 · Encuentro de charlas</p>
-      <h2 id="hero-title">Elegí tus charlas.</h2>
-      <p>Tres horarios, charlas para básico y orientado, y ganas de encontrar una idea nueva. Entrá con tu mail del colegio y armá tu recorrido en un minuto.</p>
-      <div class="hero-meta">
-        <span>3 horarios</span>
-        <span>Básico y orientado</span>
-        <span>Cupo 40 por charla</span>
-      </div>
-      <div class="hero-actions">
-        <button id="hero-start" class="btn" type="button">Empezar inscripción</button>
-        <a class="btn ghost" href="#como-funciona">Cómo funciona</a>
-      </div>
+      <p class="hero-eyebrow">ESI 2026</p>
+      <h2 id="hero-title">Inscripción a las charlas</h2>
+      <p>Elegí una charla por horario.</p>
     </section>
 
     <div id="s-banner" class="banner"></div>
 
     <section id="s-screen-mail" class="screen card">
-      <div class="steps">Paso 1 de 3 · Tu mail</div>
-      <h2 class="intro">Escribí tu mail</h2>
-      <p class="hint" id="hint-mail">Ingresá tu mail institucional para entrar.</p>
+      <div class="steps">1 de 3</div>
+      <h2 class="intro">Tu mail</h2>
+      <p class="hint" id="hint-mail">Usá el mail del colegio.</p>
       <label for="input-mail">Mail institucional</label>
       <input id="input-mail" type="email" autocomplete="off" maxlength="120">
       <button id="btn-mail" class="btn full" type="button">Continuar</button>
     </section>
 
     <section id="s-screen-datos" class="screen card">
-      <div class="steps">Paso 2 de 3 · Tus datos</div>
-      <h2 class="intro">Confirmá tus datos</h2>
+      <div class="steps">2 de 3</div>
+      <h2 class="intro">Tus datos</h2>
       <div id="fieldset-nombre">
         <label for="input-nombre">Nombre y apellido</label>
         <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
@@ -588,119 +677,115 @@
     </section>
 
     <section id="s-screen-panel" class="screen">
-      <div class="steps">Paso 3 de 3 · Elegí tus charlas</div>
-      <div class="summary" id="summary"></div>
-      <div class="chips" id="chips"></div>
-      <div id="slots-container"></div>
-      <div class="actions">
-        <button id="btn-confirmar" class="btn full" type="button">Confirmar mis charlas</button>
-        <button id="btn-cambiar-datos" class="btn link full" type="button">Cambiar mis datos</button>
+      <div class="panel-head">
+        <div>
+          <div class="steps">3 de 3</div>
+          <h2 class="intro">Elegí tus charlas</h2>
+          <p class="hint">Una por horario.</p>
+        </div>
+        <button id="btn-cambiar-datos" class="btn link" type="button">Cambiar datos</button>
       </div>
-      <p class="footer-note">
-        Hasta 3 charlas, una por horario. Si te equivocás, tocá otra del mismo horario:
-        se cambia sola. Cuando estés listo, tocá "Confirmar mis charlas".
-      </p>
+      <div class="summary" id="summary"></div>
+      <div class="chips" id="chips" hidden></div>
+      <div id="slots-container"></div>
     </section>
+    <div class="sel-bar">
+      <div class="sel-bar-inner">
+        <span class="sel-count" id="sel-count" aria-live="polite">0 de 3 elegidas</span>
+        <button id="btn-confirmar" class="btn" type="button">Confirmar</button>
+      </div>
+    </div>
 
     <section id="a-screen-gate" class="screen">
       <div class="card">
-        <label for="input-pin">Clave de profes</label>
+        <h2 class="intro">Panel de profes</h2>
+        <label for="input-pin">Clave</label>
         <input id="input-pin" type="password" inputmode="numeric" autocomplete="off">
         <div id="gate-msg" class="banner err"></div>
-        <button id="btn-pin" class="btn" type="button">Entrar</button>
+        <button id="btn-pin" class="btn full" type="button">Entrar</button>
       </div>
     </section>
 
     <section id="a-screen-panel" class="screen">
       <div class="card">
-        <div class="totals" id="a-totals"></div>
+        <div id="a-totals"></div>
         <div id="a-toggle-box"></div>
         <div id="a-msg" class="banner"></div>
       </div>
-      <div class="card" id="a-cupos"></div>
-      <div class="card">
-        <h3>Lista de mails</h3>
-        <div class="totals" id="a-roster-info"></div>
-        <details>
-          <summary>Agregar o reemplazar la lista</summary>
-          <label for="ta-roster">Una línea por alumno: <code>mail;nombre;curso</code> o solo el mail.
-            Sirve separado con ; , o tab (podés pegar directo desde el mail o el Excel).</label>
-          <textarea id="ta-roster" rows="6" style="width:100%;font-size:15px;padding:10px;border:1px solid var(--line-strong);border-radius:12px;box-sizing:border-box"></textarea>
-          <div class="toolbar" style="margin-top:10px">
-            <button id="btn-import-add" class="btn small" type="button">Agregar a la lista</button>
-            <button id="btn-import-rep" class="btn red small" type="button">Reemplazar todo</button>
-          </div>
-          <p class="footer-note">
-            Agregar: suma mails nuevos y actualiza nombre/curso de los que ya estaban.
-            Reemplazar todo: borra la lista actual y deja solo lo pegado (te pide confirmación).
-          </p>
-          <div id="a-import-msg" class="banner"></div>
-        </details>
-      </div>
-      <div class="card">
-        <div class="toolbar">
-          <div>
-            <label for="input-buscar">Buscar alumno</label>
-            <input id="input-buscar" type="text" autocomplete="off" placeholder="Nombre, mail, curso o charla...">
-          </div>
-          <button id="btn-copiar-link" class="btn secondary small" type="button">Copiar link alumnos</button>
-          <button id="btn-csv" class="btn secondary small" type="button">Descargar CSV</button>
-          <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
-          <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
-        </div>
-        <div id="a-table"></div>
-      </div>
-    </section>
 
-    <section class="section landing" id="como-funciona" aria-labelledby="como-title">
-      <p class="eyebrow">En tres pasos</p>
-      <h2 id="como-title">Cómo funciona.</h2>
-      <p class="lead">Sin cuentas ni formularios largos: tu mail del colegio alcanza para entrar.</p>
-      <div class="how-grid">
-        <article class="how-card reveal">
-          <span class="how-num">01</span>
-          <h3>Tu mail</h3>
-          <p>Ingresá con tu mail institucional. Si estás en la lista, reconocemos tu nombre y tu curso.</p>
-        </article>
-        <article class="how-card reveal">
-          <span class="how-num">02</span>
-          <h3>Tus datos</h3>
-          <p>Confirmá cómo querés figurar. Si falta algo, lo completás en el momento.</p>
-        </article>
-        <article class="how-card reveal">
-          <span class="how-num">03</span>
-          <h3>Tus charlas</h3>
-          <p>Elegí una charla por horario. Podés cambiarla cuando quieras mientras la inscripción esté abierta.</p>
-        </article>
+      <div class="tabs" role="tablist" aria-label="Panel">
+        <button id="tab-inscriptos" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-inscriptos">Inscriptos</button>
+        <button id="tab-mails" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Lista de mails</button>
+      </div>
+
+      <div id="pane-inscriptos" class="tabpanel" role="tabpanel" aria-labelledby="tab-inscriptos">
+        <div class="card" id="a-cupos"></div>
+        <div class="card">
+          <div class="filters">
+            <input id="input-buscar" type="text" autocomplete="off" placeholder="Buscar" aria-label="Buscar">
+            <select id="filter-curso" aria-label="Curso"></select>
+            <select id="filter-division" aria-label="División"></select>
+            <select id="filter-charla" aria-label="Charla"></select>
+          </div>
+          <div class="admin-actions">
+            <button id="btn-copiar-link" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              Copiar link
+            </button>
+            <button id="btn-csv" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>
+              CSV
+            </button>
+            <button id="btn-arefresh" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+              Actualizar
+            </button>
+            <button id="btn-salir" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
+              Salir
+            </button>
+          </div>
+          <div id="a-table"></div>
+        </div>
+      </div>
+
+      <div id="pane-mails" class="tabpanel" role="tabpanel" aria-labelledby="tab-mails" hidden>
+        <div class="card">
+          <h3>Lista de mails</h3>
+          <div class="totals" id="a-roster-info"></div>
+          <label class="sr-only" for="ta-roster">Lista de mails</label>
+          <textarea id="ta-roster" rows="6" placeholder="mail;nombre;curso"></textarea>
+          <p class="hint-line">Una línea por alumno.</p>
+          <div class="toolbar" style="margin-top:10px">
+            <button id="btn-import-add" class="btn small" type="button">Agregar</button>
+            <button id="btn-import-rep" class="btn red small" type="button">Reemplazar</button>
+          </div>
+          <div id="a-import-msg" class="banner"></div>
+        </div>
       </div>
     </section>
 
     <section class="section landing" id="faq" aria-labelledby="faq-title">
-      <p class="eyebrow">Antes de empezar</p>
-      <h2 id="faq-title">Dudas frecuentes.</h2>
-      <p class="lead">Lo que suelen preguntar antes de anotarse.</p>
+      <p class="eyebrow">Dudas</p>
+      <h2 id="faq-title">Preguntas frecuentes.</h2>
       <details class="faq">
         <summary>¿Cuántas charlas puedo elegir?</summary>
-        <p>Hasta tres: una por cada horario. Cada charla tiene un cupo de 40 personas, así que conviene no dejarlo para el final.</p>
+        <p>Tres, una por horario.</p>
       </details>
       <details class="faq">
-        <summary>¿Puedo cambiar una charla después de confirmar?</summary>
-        <p>Sí. Mientras la inscripción esté abierta, volvé a entrar con tu mail y tocá otra charla del mismo horario: se reemplaza sola.</p>
+        <summary>¿Puedo cambiar una charla?</summary>
+        <p>Sí, mientras la inscripción esté abierta.</p>
       </details>
       <details class="faq">
-        <summary>¿Qué pasa si una charla se llena?</summary>
-        <p>La vas a ver marcada como completa y no te va a dejar elegirla. Buscá otra del mismo horario: siempre hay alternativas.</p>
-      </details>
-      <details class="faq">
-        <summary>¿Necesito crear una cuenta?</summary>
-        <p>No. Entrás con tu mail institucional, que es también con el que quedás anotado. Nada de contraseñas ni registros.</p>
+        <summary>¿Qué pasa si se llena?</summary>
+        <p>No vas a poder elegirla. Probá con otra del mismo horario.</p>
       </details>
     </section>
   </div>
 
   <footer class="site">
     <div class="footer-inner">
-      <span>ESI 2026 · Inscripción a charlas</span>
+      <span>ESI 2026</span>
       <span><a href="?admin=1" id="footer-admin">Panel de profes</a></span>
     </div>
   </footer>
@@ -945,9 +1030,9 @@
     var DEMO_PIN = '1234';
     var STUDENT_MSG = {
       email: 'Escribí tu mail institucional.',
-      nombre: 'Escribí tu nombre y apellido (mínimo 3 letras).',
-      curso: 'Elegí tu año y división.',
-      notInRoster: 'Ese mail no está en la lista del colegio. Revisá si lo escribiste bien.'
+      nombre: 'Escribí nombre y apellido.',
+      curso: 'Elegí año y división.',
+      notInRoster: 'Ese mail no está en la lista.'
     };
 
     var DEMO_SLOTS = [
@@ -1129,14 +1214,14 @@
       for (var i = 0; i < DEMO_TALKS.length; i++) talksById[DEMO_TALKS[i].id] = DEMO_TALKS[i];
       var talk = talksById[String(talkId || '')];
       var signups = demoSignups();
-      if (!talk) return Promise.resolve({ ok: false, message: 'No encontramos esa charla. Actualizá la lista.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (!talk) return Promise.resolve({ ok: false, message: 'No encontramos esa charla.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       if (!talk.activa) return Promise.resolve({ ok: false, message: 'Esa charla no está disponible.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       if (talk.ciclo !== s.ciclo) return Promise.resolve({ ok: false, message: 'Esa charla no es de tu ciclo.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       var plan = EsiClient.planRegistration(signups, talksById, { emailKey: s.emailKey, ciclo: s.ciclo }, talkId);
       if (plan.error) {
         return Promise.resolve({
           ok: false,
-          message: plan.error === 'full' ? 'Sin lugares en esa charla. No se cambió tu anotación anterior.' : 'No se pudo anotar.',
+          message: plan.error === 'full' ? 'Sin lugares.' : 'No se pudo anotar.',
           data: demoPublicData(s.ciclo, demoMine(s.email))
         });
       }
@@ -1154,7 +1239,7 @@
           talk_id: String(talkId),
           emailKey: s.emailKey
         });
-        message = 'Te anotaste en ' + talk.titulo + ' (' + (slot ? slot.label : '') + ').';
+        message = 'Listo, quedaste anotado.';
         demoWrite('esi_demo_signups', signups);
       } else if (plan.action === 'change') {
         for (var k = 0; k < signups.length; k++) {
@@ -1163,10 +1248,10 @@
             signups[k].ts = Date.now();
           }
         }
-        message = 'Cambiaste tu charla de ese horario a ' + talk.titulo + '.';
+        message = 'Listo, cambiaste de charla.';
         demoWrite('esi_demo_signups', signups);
       } else {
-        message = 'Ya estabas anotado en esa charla.';
+        message = 'Ya estabas anotado.';
       }
       return Promise.resolve({
         ok: true,
@@ -1248,7 +1333,7 @@
       if (!parsed.rows.length) {
         return {
           ok: false,
-          message: 'No se encontró ningún mail válido. Pegá una línea por alumno: mail;nombre;curso (o solo el mail).',
+          message: 'No hay mails válidos.',
           invalidos: parsed.invalidos.length,
           duplicados: parsed.duplicados
         };
@@ -1407,60 +1492,39 @@
       var d = sState.data;
       if (!d) return;
       var sub = $('hdr-sub');
-      sub.textContent = (d.evento_abierto ? 'Inscripción abierta' : 'INSCRIPCIÓN CERRADA')
+      sub.textContent = (d.evento_abierto ? 'Inscripción abierta' : 'Inscripción cerrada')
         + ' · ' + CICLO_LABELS[sState.student.ciclo]
-        + (TRANSPORT === 'demo' ? ' · MODO PRUEBA' : '');
+        + (TRANSPORT === 'demo' ? ' · Prueba' : '');
       sub.className = d.evento_abierto ? '' : 'alert';
-
-      var chipHtml = '';
-      var slotsAll = d.slots || [];
-      for (var c = 0; c < slotsAll.length; c++) {
-        var slotId = Number(slotsAll[c].id);
-        var chosen = d.mine ? d.mine[slotId] : null;
-        var t = chosen ? sTalkById(chosen) : null;
-        if (t) {
-          chipHtml += '<span class="chip" title="' + esc(t.lugar || '') + '">'
-            + esc(slotsAll[c].label) + ': ' + esc(t.titulo) + '</span>';
-        } else {
-          chipHtml += '<span class="chip miss">' + esc(slotsAll[c].label) + ': sin charla</span>';
-        }
-      }
-      $('chips').innerHTML = chipHtml;
 
       var st = sState.student;
       var chosenCount = 0;
       for (var k in (d.mine || {})) {
         if (Object.prototype.hasOwnProperty.call(d.mine, k)) chosenCount++;
       }
-      var html = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
-        + '<span class="progress' + (chosenCount ? '' : ' zero') + '">'
-        + chosenCount + ' de 3 elegidas</span>'
-        + '<div class="row"><span class="none" style="font-size:13px">' + esc(st.email) + '</span></div>';
-      var slots = d.slots || [];
-      for (var i = 0; i < slots.length; i++) {
-        var chosen = d.mine ? d.mine[slots[i].id] : null;
-        var chosenTalk = chosen ? sTalkById(chosen) : null;
-        html += '<div class="row">'
-          + '<span class="time">' + slots[i].label + '</span>'
-          + '<span>' + (chosenTalk ? '<b>' + esc(chosenTalk.titulo) + '</b>' : '<span class="none">sin elegir todavía</span>') + '</span>'
-          + '</div>';
-      }
-      $('summary').innerHTML = html;
+      $('summary').innerHTML = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
+        + '<div class="email">' + esc(st.email) + '</div>';
+      var countEl = $('sel-count');
+      if (countEl) countEl.textContent = chosenCount + ' de 3 elegidas';
 
       var cont = $('slots-container');
       cont.innerHTML = '';
+      var slots = d.slots || [];
       for (var s = 0; s < slots.length; s++) {
         var section = document.createElement('div');
         section.className = 'slot';
         var h2 = document.createElement('h2');
         h2.className = 'slot-title';
-        h2.innerHTML = '<span class="time-pill">' + esc(slots[s].label) + '</span>'
-          + '<span style="font-size:14px;color:var(--muted);font-weight:600">Elegí una</span>';
+        h2.innerHTML = '<span class="time-pill">Horario ' + (s + 1) + '</span>'
+          + '<span class="slot-time">· ' + esc(slots[s].label) + '</span>';
         section.appendChild(h2);
+        var grid = document.createElement('div');
+        grid.className = 'slot-grid';
         for (var t = 0; t < d.talks.length; t++) {
           if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
-          section.appendChild(sBuildTalk(d.talks[t], slots[s]));
+          grid.appendChild(sBuildTalk(d.talks[t], slots[s]));
         }
+        section.appendChild(grid);
         cont.appendChild(section);
       }
     }
@@ -1468,19 +1532,26 @@
     function sBuildTalk(talk, slot) {
       var mine = sState.data.mine || {};
       var chosen = mine[slot.id] === talk.id;
+      var full = talk.restantes <= 0 && !chosen;
+      var low = talk.restantes > 0 && talk.restantes <= 5;
+      var anotados = Math.max(0, talk.cupo - talk.restantes);
+      var pct = talk.cupo > 0 ? Math.min(100, Math.round(anotados * 100 / talk.cupo)) : 0;
+      var seats = chosen ? 'Elegida'
+        : (full ? 'Completa'
+          : (low ? 'Últimos ' + talk.restantes : talk.restantes + ' lugares'));
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'talk' + (chosen ? ' selected' : '');
-      var seatClass = talk.restantes <= 0 ? ' none' : (talk.restantes <= 5 ? ' low' : '');
-      var places = chosen
-        ? 'tu charla'
-        : (talk.restantes > 0 ? 'quedan ' + talk.restantes + ' de ' + talk.cupo : 'sin lugares');
-      btn.innerHTML = '<span class="t-body">'
-        + '<div class="t-title">' + esc(talk.titulo) + '</div>'
-        + '<div class="t-meta"><span>' + esc(talk.lugar) + '</span>'
-        + '<span class="seats' + seatClass + '">' + esc(places) + '</span></div></span>'
-        + '<span class="chev" aria-hidden="true">\u203A</span>';
-      if (chosen || talk.restantes <= 0) {
+      btn.className = 'talk' + (chosen ? ' selected' : '') + (full ? ' full' : '') + (low ? ' low' : '');
+      btn.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+      btn.setAttribute('aria-label', talk.titulo + ', ' + talk.lugar + ', ' + seats);
+      var barClass = full ? 'is-full' : (low ? 'is-low' : '');
+      btn.innerHTML = '<span class="talk-top">'
+        + '<span class="t-title">' + esc(talk.titulo) + '</span>'
+        + '<span class="talk-check" aria-hidden="true">\u2713</span></span>'
+        + '<span class="t-meta"><span class="talk-room">' + esc(talk.lugar) + '</span>'
+        + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span></span>'
+        + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + '" style="width:' + pct + '%"></span></span>';
+      if (chosen || full) {
         btn.disabled = true;
       } else {
         btn.addEventListener('click', function () { sOnTalk(talk); });
@@ -1502,24 +1573,23 @@
             + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
         } else {
           lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
-            + '<span class="sheet-meta">sin charla elegida</span></p>';
+            + '<span class="sheet-meta">Sin elegir.</span></p>';
         }
       }
       var body = lines;
       var missing = 3 - count;
       if (count === 0) {
-        body += '<p class="sheet-warn">Todavía no elegiste ninguna charla. Tocá una tarjeta de cualquier horario para empezar.</p>';
+        body += '<p class="sheet-warn">Todavía no elegiste ninguna.</p>';
       } else if (missing > 0) {
-        body += '<p class="sheet-warn">Te ' + (missing === 1 ? 'falta 1 horario' : 'faltan ' + missing + ' horarios')
-          + ' por elegir. Igual podés confirmar y completar después.</p>';
+        body += '<p class="sheet-warn">Te ' + (missing === 1 ? 'falta 1 horario' : 'faltan ' + missing + ' horarios') + '.</p>';
       }
       openSheet({
-        title: count ? 'Revisá tus charlas' : 'Sin charlas todavía',
+        title: count ? 'Tus charlas' : 'Sin charlas',
         body: body,
         confirm: count ? 'Confirmar' : 'Cerrar',
         onConfirm: function () {
           if (!count) return;
-          toast('¡Listo! Tus charlas quedaron confirmadas.', 'ok');
+          toast('Listo, quedaste anotado.', 'ok');
         }
       });
     }
@@ -1532,14 +1602,13 @@
       var body = '<p class="sheet-meta">' + esc(sSlotsLabel(talk.slot_id)) + ' · ' + esc(talk.lugar) + '</p>'
         + '<p class="sheet-talk">' + esc(talk.titulo) + '</p>'
         + '<p class="sheet-seats">' + (talk.restantes > 0
-          ? 'Quedan ' + talk.restantes + ' de ' + talk.cupo + ' lugares'
+          ? talk.restantes + ' lugares'
           : 'Sin lugares') + '</p>';
       if (prev && prev.id !== talk.id) {
-        body += '<p class="sheet-warn">Ya tenés "' + esc(prev.titulo) + '" en este horario. '
-          + 'Si cambiás, tu lugar anterior queda libre.</p>';
+        body += '<p class="sheet-warn">Dejás "' + esc(prev.titulo) + '".</p>';
       }
       openSheet({
-        title: prev && prev.id !== talk.id ? 'Cambiar de charla' : 'Anotarte en esta charla',
+        title: prev && prev.id !== talk.id ? 'Cambiar charla' : 'Elegir charla',
         body: body,
         confirm: prev && prev.id !== talk.id ? 'Cambiar' : 'Anotarme',
         onConfirm: function () { sRegister(talk.id); }
@@ -1559,7 +1628,7 @@
         })
         .catch(function () {
           sState.busy = false;
-          toast('Hubo un problema de conexión. Probá de nuevo.', 'err');
+          toast('Sin conexión. Probá de nuevo.', 'err');
         });
     }
 
@@ -1592,7 +1661,7 @@
         })
         .catch(function () {
           sState.busy = false;
-          sBanner('Sin conexión con el servidor. Probá de nuevo.', 'err');
+          sBanner('Sin conexión. Probá de nuevo.', 'err');
         });
     }
 
@@ -1671,11 +1740,11 @@
         ? EsiClient.cursoFromParts($('select-anio').value, $('select-division').value)
         : sState.curso;
       if (needsNombre && String(nombre).replace(/\s/g, '').length < 3) {
-        sBanner('Escribí tu nombre y apellido (mínimo 3 letras).', 'err');
+        sBanner('Escribí nombre y apellido.', 'err');
         return;
       }
       if (needsCurso && !curso) {
-        sBanner('Elegí tu año y división.', 'err');
+        sBanner('Elegí año y división.', 'err');
         return;
       }
       sEnterPanel(nombre, curso);
@@ -1683,8 +1752,8 @@
 
     function sInit() {
       document.body.className = '';
-      $('hdr-title').textContent = 'Charlas ESI';
-      $('hdr-sub').textContent = 'Inscripción 2026';
+      $('hdr-title').textContent = 'Inscripción a las charlas';
+      $('hdr-sub').textContent = 'ESI 2026';
       $('btn-mail').addEventListener('click', sLookup);
       $('input-mail').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') sLookup();
@@ -1697,19 +1766,10 @@
         showScreen(S_SCREENS, 's-screen-mail');
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
-      var navCta = $('nav-cta');
-      if (navCta) navCta.addEventListener('click', sConfirmar);
-      var heroStart = $('hero-start');
-      if (heroStart) heroStart.addEventListener('click', function () {
-        var input = $('input-mail');
-        if (!input) return;
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        input.focus({ preventScroll: true });
-      });
       $('btn-cambiar-datos').addEventListener('click', function () {
         var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;
         var ok = has
-          ? window.confirm('Tu inscripción sigue en el sistema. Si querés borrarla, avisale a un profe. ¿Seguro que querés cambiar tus datos?')
+          ? window.confirm('Tus charlas quedan guardadas. ¿Cambiar tus datos?')
           : true;
         if (!ok) return;
         lsDel('esi_student');
@@ -1772,7 +1832,7 @@
         })
         .catch(function () {
           aBusy = false;
-          $('gate-msg').textContent = 'Error de conexión.';
+          $('gate-msg').textContent = 'Sin conexión.';
           $('gate-msg').style.display = 'block';
         });
     }
@@ -1785,7 +1845,7 @@
         return;
       }
       aBusy = true;
-      if (!silent) aBanner('Actualizando datos...', 'ok');
+      if (!silent) aBanner('Actualizando', 'ok');
       call('apiAdminGetData', [pin])
         .then(function (resp) {
           aBusy = false;
@@ -1801,42 +1861,44 @@
           }
           aData = resp;
           aRender();
-          if (!silent) aBanner('Datos actualizados.', 'ok');
+          if (!silent) aBanner('Actualizado.', 'ok');
         })
         .catch(function () {
           aBusy = false;
-          aBanner('Error de conexión.', 'err');
+          aBanner('Sin conexión.', 'err');
         });
     }
 
     function aRender() {
       var d = aData;
       if (!d) return;
-      var sub = $('hdr-sub');
-      sub.textContent = 'Total: ' + d.total + ' · Básico: ' + d.porCiclo.basico + ' · Orientado: ' + d.porCiclo.orientado
-        + (TRANSPORT === 'demo' ? ' · MODO PRUEBA' : '');
+      $('hdr-sub').textContent = 'ESI 2026' + (TRANSPORT === 'demo' ? ' · Prueba' : '');
 
-      var listInfo = d.rosterLoaded
-        ? 'Lista de mails cargada (' + d.rosterCount + ')'
-        : 'Lista de mails sin cargar (se acepta cualquier mail)';
-      $('a-totals').innerHTML = '<span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
-        + (d.evento_abierto ? 'INSCRIPCIÓN ABIERTA' : 'INSCRIPCIÓN CERRADA') + '</span>'
-        + '<div style="margin-top:8px">' + esc(listInfo) + '</div>';
-      $('a-roster-info').textContent = listInfo;
+      $('a-roster-info').textContent = d.rosterLoaded
+        ? d.rosterCount + ' mails'
+        : 'Sin lista cargada';
+
+      $('a-totals').innerHTML = '<div class="stat-grid">'
+        + '<div class="stat"><span class="stat-num">' + d.total + '</span><span class="stat-label">Inscriptos</span></div>'
+        + '<div class="stat"><span class="stat-num">' + d.porCiclo.basico + '</span><span class="stat-label">Básico</span></div>'
+        + '<div class="stat"><span class="stat-num">' + d.porCiclo.orientado + '</span><span class="stat-label">Orientado</span></div>'
+        + '</div>'
+        + '<div class="admin-status"><span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
+        + (d.evento_abierto ? 'Abierta' : 'Cerrada') + '</span></div>';
 
       var tb = $('a-toggle-box');
       tb.innerHTML = '';
       var toggle = document.createElement('button');
       toggle.type = 'button';
-      toggle.className = 'btn ' + (d.evento_abierto ? 'red' : '');
-      toggle.textContent = d.evento_abierto ? 'Cerrar inscripciones' : 'Abrir inscripciones';
+      toggle.className = 'btn small' + (d.evento_abierto ? ' red' : '');
+      toggle.textContent = d.evento_abierto ? 'Cerrar inscripción' : 'Abrir inscripción';
       toggle.addEventListener('click', aOnToggle);
       tb.appendChild(toggle);
 
-      var html = '';
+      var html = '<h3>Cupos por charla</h3>';
       var ciclos = ['basico', 'orientado'];
       for (var c = 0; c < ciclos.length; c++) {
-        html += '<h3>' + esc(CICLO_LABELS[ciclos[c]]) + '</h3>';
+        html += '<h4>' + esc(CICLO_LABELS[ciclos[c]]) + '</h4>';
         for (var s = 0; s < d.slots.length; s++) {
           html += '<h4>' + esc(d.slots[s].label) + '</h4>';
           for (var t = 0; t < d.talks.length; t++) {
@@ -1853,35 +1915,101 @@
         }
       }
       $('a-cupos').innerHTML = html;
+      aFillFilters();
       aRenderTable();
+    }
+
+    function fillFilter(id, values, allLabel) {
+      var el = $(id);
+      if (!el) return;
+      var current = el.value;
+      var keys = Object.keys(values).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+      var html = '<option value="">' + esc(allLabel || 'Todos') + '</option>';
+      for (var i = 0; i < keys.length; i++) {
+        html += '<option value="' + esc(keys[i]) + '">' + esc(keys[i]) + '</option>';
+      }
+      el.innerHTML = html;
+      if (current && keys.indexOf(current) >= 0) el.value = current;
+    }
+
+    function aFillFilters() {
+      var d = aData;
+      if (!d) return;
+      var cursos = {};
+      var divs = {};
+      var charlas = {};
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        if (s.curso) cursos[s.curso] = 1;
+        var pc = EsiClient.parseCurso(s.curso);
+        if (pc) {
+          var div = pc.slice(2);
+          if (div) divs[div] = 1;
+        }
+        if (s.talkTitulo) charlas[s.talkTitulo] = 1;
+      }
+      fillFilter('filter-curso', cursos, 'Todos los cursos');
+      fillFilter('filter-division', divs, 'Todas las divisiones');
+      fillFilter('filter-charla', charlas, 'Todas las charlas');
+    }
+
+    function aTab(name) {
+      var mails = name === 'mails';
+      var panes = [['pane-inscriptos', !mails], ['pane-mails', mails]];
+      for (var i = 0; i < panes.length; i++) {
+        var pane = $(panes[i][0]);
+        if (pane) pane.hidden = !panes[i][1];
+      }
+      var tabs = [['tab-inscriptos', !mails], ['tab-mails', mails]];
+      for (var j = 0; j < tabs.length; j++) {
+        var tab = $(tabs[j][0]);
+        if (!tab) continue;
+        tab.classList.toggle('active', tabs[j][1]);
+        tab.setAttribute('aria-selected', tabs[j][1] ? 'true' : 'false');
+      }
     }
 
     function aRenderTable() {
       var d = aData;
       if (!d) return;
       var q = $('input-buscar').value.replace(/\s+/g, ' ').trim().toLowerCase();
+      var fCurso = $('filter-curso') ? $('filter-curso').value : '';
+      var fDiv = $('filter-division') ? $('filter-division').value : '';
+      var fCharla = $('filter-charla') ? $('filter-charla').value : '';
       var rows = '<div class="table-wrap"><table><thead><tr>'
-        + '<th>Cuándo</th><th>Nombre</th><th>Mail</th><th>Curso</th><th>Ciclo</th><th>Horario</th><th>Charla</th><th></th>'
+        + '<th>Fecha</th><th>Nombre</th><th>Mail</th><th>Curso</th><th>Horario</th><th>Charla</th><th></th>'
         + '</tr></thead><tbody>';
       var shown = 0;
       for (var i = 0; i < d.signups.length; i++) {
         var s = d.signups[i];
-        var hay = (s.nombre + ' ' + s.email + ' ' + s.curso + ' ' + s.ciclo + ' ' + s.slotLabel + ' ' + s.talkTitulo).toLowerCase();
+        if (fCurso && s.curso !== fCurso) continue;
+        if (fDiv) {
+          var pc = EsiClient.parseCurso(s.curso);
+          if (!pc || pc.slice(2) !== fDiv) continue;
+        }
+        if (fCharla && s.talkTitulo !== fCharla) continue;
+        var hay = (s.nombre + ' ' + s.email + ' ' + s.curso + ' ' + s.slotLabel + ' ' + s.talkTitulo).toLowerCase();
         if (q && hay.indexOf(q) < 0) continue;
         shown++;
         rows += '<tr>'
-          + '<td class="narrow" data-label="Cuándo">' + esc(s.cuando) + '</td>'
+          + '<td class="narrow" data-label="Fecha">' + esc(s.cuando) + '</td>'
           + '<td data-label="Nombre">' + esc(s.nombre) + '</td>'
           + '<td data-label="Mail">' + esc(s.email) + '</td>'
           + '<td data-label="Curso">' + esc(s.curso) + '</td>'
-          + '<td data-label="Ciclo">' + esc(s.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
           + '<td data-label="Horario">' + esc(s.slotLabel) + '</td>'
           + '<td data-label="Charla">' + esc(s.talkTitulo) + '</td>'
           + '<td data-label=""><button class="btn red small" type="button" onclick="aOnDelete(\'' + esc(s.id) + '\')">Borrar</button></td>'
           + '</tr>';
       }
       rows += '</tbody></table></div>';
-      if (!shown) rows = '<p>No hay inscripciones' + (q ? ' que coincidan con la búsqueda' : '') + '.</p>';
+      if (!d.signups.length) {
+        rows = '<div class="empty-state">'
+          + '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".5"/><circle cx="3.5" cy="12" r=".5"/><circle cx="3.5" cy="18" r=".5"/></svg>'
+          + '<p class="es-title">Todavía no hay inscriptos.</p>'
+          + '<p>Cuando alguien se anote, aparece acá.</p></div>';
+      } else if (!shown) {
+        rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p><p>Probá con otros filtros.</p></div>';
+      }
       $('a-table').innerHTML = rows;
     }
 
@@ -1896,13 +2024,13 @@
       if (aBusy) return;
       var text = $('ta-roster').value;
       if (!text) {
-        aImportMsg('Pegá la lista primero.', 'err');
+        aImportMsg('Pegá la lista.', 'err');
         return;
       }
       if (mode === 'reemplazar') {
         openSheet({
           title: 'Reemplazar la lista',
-          body: '<p class="sheet-warn">Se borra la lista actual de mails y queda solo el texto pegado. No se puede deshacer.</p>',
+          body: '<p class="sheet-warn">Se reemplaza la lista actual.</p>',
           confirm: 'Reemplazar',
           danger: true,
           onConfirm: function () { aImportConfirmed(text, mode); }
@@ -1920,9 +2048,7 @@
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
-            aImportMsg('Listo: ' + resp.total + ' mails en total (' + resp.nuevos + ' nuevos, '
-              + resp.actualizados + ' actualizados, ' + resp.invalidos + ' inválidos, '
-              + resp.duplicados + ' repetidos).', 'ok');
+            aImportMsg('Listo: ' + resp.total + ' mails.', 'ok');
             $('ta-roster').value = '';
             aLoad(true);
           } else {
@@ -1931,15 +2057,15 @@
         })
         .catch(function () {
           aBusy = false;
-          aImportMsg('Error de conexión.', 'err');
+          aImportMsg('Sin conexión.', 'err');
         });
     }
 
     window.aOnDelete = function (signupId) {
       if (aBusy) return;
       openSheet({
-        title: 'Borrar inscripción',
-        body: '<p class="sheet-warn">El lugar vuelve a quedar libre y el alumno tendrá que anotarse de nuevo.</p>',
+        title: '¿Borrar esta inscripción?',
+        body: '<p class="sheet-warn">El lugar queda libre.</p>',
         confirm: 'Borrar',
         danger: true,
         onConfirm: function () { aDeleteConfirmed(signupId); }
@@ -1961,7 +2087,7 @@
         })
         .catch(function () {
           aBusy = false;
-          aBanner('Error de conexión.', 'err');
+          aBanner('Sin conexión.', 'err');
         });
     }
 
@@ -1969,10 +2095,9 @@
       if (aBusy) return;
       var open = aData && aData.evento_abierto;
       openSheet({
-        title: open ? 'Cerrar la inscripción' : 'Abrir la inscripción',
+        title: open ? 'Cerrar inscripción' : 'Abrir inscripción',
         body: '<p class="footer-note" style="margin:0;text-align:left">'
-          + (open ? 'Los alumnos ya no van a poder anotarse ni cambiar sus charlas.'
-            : 'Los alumnos van a poder anotarse de nuevo.') + '</p>',
+          + (open ? 'Los alumnos no van a poder anotarse.' : 'Los alumnos van a poder anotarse.') + '</p>',
         confirm: open ? 'Cerrar' : 'Abrir',
         danger: open,
         onConfirm: aToggleConfirmed
@@ -2009,13 +2134,13 @@
 
     function aCopyLink() {
       var url = window.location.href.split('?')[0];
-      var done = function () { aBanner('Link de alumnos copiado.', 'ok'); };
+      var done = function () { aBanner('Link copiado.', 'ok'); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done, function () {
-          window.prompt('Copiá el link para los alumnos:', url);
+          window.prompt('Copiá el link:', url);
         });
       } else {
-        window.prompt('Copiá el link para los alumnos:', url);
+        window.prompt('Copiá el link:', url);
       }
     }
 
@@ -2050,7 +2175,7 @@
     function aInit() {
       document.body.className = 'admin';
       $('hdr-title').textContent = 'Panel de profes';
-      $('hdr-sub').textContent = 'Acceso para profes';
+      $('hdr-sub').textContent = 'ESI 2026';
       $('btn-pin').addEventListener('click', function () {
         var pin = $('input-pin').value;
         if (!pin) return;
@@ -2064,6 +2189,11 @@
       $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
       $('btn-salir').addEventListener('click', aLogout);
       $('input-buscar').addEventListener('input', aRenderTable);
+      $('filter-curso').addEventListener('change', aRenderTable);
+      $('filter-division').addEventListener('change', aRenderTable);
+      $('filter-charla').addEventListener('change', aRenderTable);
+      $('tab-inscriptos').addEventListener('click', function () { aTab('inscriptos'); });
+      $('tab-mails').addEventListener('click', function () { aTab('mails'); });
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
 
@@ -2128,8 +2258,7 @@
         document.body.classList.add('demo');
         var hint = $('hint-mail');
         if (hint) {
-          hint.textContent = 'MODO PRUEBA: entrá con cualquier mail válido (ej: ana.lopez@instituto.edu.ar).'
-            + ' En la versión real este paso valida contra la lista del colegio.';
+          hint.textContent = 'MODO PRUEBA: usá cualquier mail válido.';
         }
       }
       if (IS_ADMIN) {
