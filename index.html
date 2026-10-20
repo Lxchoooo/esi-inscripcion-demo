@@ -94,6 +94,14 @@
     .summary .row { display: flex; gap: 8px; padding: 3px 0; }
     .summary .time { flex: 0 0 118px; font-weight: 700; }
     .summary .none { color: var(--muted); }
+    .chips { margin: 10px 0 2px; }
+    .chip {
+      display: inline-block; background: var(--green-soft); border: 1.5px solid var(--green);
+      color: var(--green-dark); border-radius: 999px; padding: 4px 10px; font-size: 13px;
+      margin: 3px 6px 3px 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      vertical-align: top;
+    }
+    .chip.miss { background: #f1f1f1; border-color: #c9c9c9; color: #7a7a7a; }
     .slot h2 { font-size: 18px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
     .talk {
       display: block;
@@ -154,17 +162,29 @@
         <label for="input-nombre">Nombre y apellido</label>
         <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
       </div>
-      <div id="fieldset-anio">
-        <label for="select-anio">Año</label>
-        <select id="select-anio">
-          <option value="">Elegí tu año...</option>
-          <option value="1°">1°</option>
-          <option value="2°">2°</option>
-          <option value="3°">3°</option>
-          <option value="4°">4°</option>
-          <option value="5°">5°</option>
-          <option value="6°">6°</option>
-        </select>
+      <div id="fieldset-anio" style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label for="select-anio">Año</label>
+          <select id="select-anio">
+            <option value="">Elegí...</option>
+            <option value="1">1°</option>
+            <option value="2">2°</option>
+            <option value="3">3°</option>
+            <option value="4">4°</option>
+            <option value="5">5°</option>
+            <option value="6">6°</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label for="select-division">División</label>
+          <select id="select-division">
+            <option value="">Elegí...</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+        </div>
       </div>
       <button id="btn-datos" class="btn full" type="button">Ver las charlas</button>
       <button id="btn-datos-volver" class="btn secondary small full" type="button">Volver</button>
@@ -172,6 +192,7 @@
 
     <section id="s-screen-panel" class="screen">
       <div class="summary" id="summary"></div>
+      <div class="chips" id="chips"></div>
       <div id="slots-container"></div>
       <div class="actions">
         <button id="btn-refresh" class="btn secondary small full" type="button">Actualizar lugares</button>
@@ -200,6 +221,25 @@
         <div id="a-msg" class="banner"></div>
       </div>
       <div class="card" id="a-cupos"></div>
+      <div class="card">
+        <h3>Lista de mails</h3>
+        <div class="totals" id="a-roster-info"></div>
+        <details>
+          <summary>Agregar o reemplazar la lista</summary>
+          <label for="ta-roster">Una línea por alumno: <code>mail;nombre;curso</code> o solo el mail.
+            Sirve separado con ; , o tab (podés pegar directo desde el mail o el Excel).</label>
+          <textarea id="ta-roster" rows="6" style="width:100%;font-size:15px;padding:10px;border:2px solid var(--border);border-radius:12px;box-sizing:border-box"></textarea>
+          <div class="toolbar" style="margin-top:10px">
+            <button id="btn-import-add" class="btn small" type="button">Agregar a la lista</button>
+            <button id="btn-import-rep" class="btn red small" type="button">Reemplazar todo</button>
+          </div>
+          <p class="footer-note">
+            Agregar: suma mails nuevos y actualiza nombre/curso de los que ya estaban.
+            Reemplazar todo: borra la lista actual y deja solo lo pegado (te pide confirmación).
+          </p>
+          <div id="a-import-msg" class="banner"></div>
+        </details>
+      </div>
       <div class="card">
         <div class="toolbar">
           <div>
@@ -292,7 +332,91 @@
           emailKey: e
         };
       }
-      function planRegistration(signups, talksById, student, talkId) {
+      function cursoFromParts(year, division) {
+    var y = Number(year);
+    var d = String(division == null ? '' : division).toUpperCase().replace(/[^A-D]/g, '');
+    if (!(y >= 1 && y <= 6)) return null;
+    return y + '\u00B0' + d;
+  }
+
+  function parseCurso(value) {
+    var m = String(value == null ? '' : value)
+      .toUpperCase()
+      .replace(/[^0-9ABCD]/g, '')
+      .match(/^([1-6])([ABCD])?$/);
+    if (!m) return null;
+    return m[1] + '\u00B0' + (m[2] || '');
+  }
+
+  function parseRoster(text) {
+    var raw = String(text == null ? '' : text).split(/\r?\n/);
+    var rows = [];
+    var invalidos = [];
+    var seen = {};
+    var duplicados = 0;
+    var firstIdx = -1;
+    for (var p = 0; p < raw.length; p++) {
+      if (raw[p].replace(/[^A-Za-z0-9@.]/g, '').trim()) {
+        if (firstIdx < 0) firstIdx = p;
+        break;
+      }
+    }
+    for (var i = 0; i < raw.length; i++) {
+      var line = raw[i].replace(/\t/g, ';').replace(/,/g, ';').replace(/\s*;\s*/g, ';');
+      var parts = line.split(';');
+      var email = normalizeEmail(parts[0]);
+      if (!email) continue;
+      if (i === firstIdx && /mail|correo/.test(normalizeText(email)) && !isValidEmail(email)) continue;
+      if (parts.length > 1) {
+        var nombre = String(parts[1] || '').replace(/\s+/g, ' ').trim();
+        var cursoRaw = parts[2] || '';
+        if (seen[email]) { duplicados++; continue; }
+        if (!isValidEmail(email)) {
+          invalidos.push({ linea: i + 1, texto: line.trim().slice(0, 80) });
+          continue;
+        }
+        seen[email] = true;
+        rows.push({ email: email, nombre: nombre, curso: parseCurso(cursoRaw) || '' });
+      } else {
+        if (seen[email]) { duplicados++; continue; }
+        if (!isValidEmail(email)) {
+          invalidos.push({ linea: i + 1, texto: email.slice(0, 80) });
+          continue;
+        }
+        seen[email] = true;
+        rows.push({ email: email, nombre: '', curso: '' });
+      }
+    }
+    return { rows: rows, invalidos: invalidos, duplicados: duplicados };
+  }
+
+  function aggregateTalks(signups, talks) {
+    var counts = {};
+    var porCiclo = { basico: 0, orientado: 0 };
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      counts[s.talk_id] = (counts[s.talk_id] || 0) + 1;
+      if (porCiclo[s.ciclo] != null) porCiclo[s.ciclo]++;
+    }
+    var rows = talks.map(function (t) {
+      var anotados = counts[t.id] || 0;
+      var cupo = Number(t.cupo);
+      return {
+        id: t.id,
+        titulo: t.titulo,
+        ciclo: t.ciclo,
+        slot_id: t.slot_id,
+        lugar: t.lugar,
+        cupo: cupo,
+        activa: !!t.activa,
+        anotados: anotados,
+        restantes: Math.max(0, cupo - anotados)
+      };
+    });
+    return { counts: counts, porCiclo: porCiclo, rows: rows, total: signups.length };
+  }
+
+  function planRegistration(signups, talksById, student, talkId) {
         var talk = talksById[talkId];
         if (!talk) return { error: 'talkNotFound' };
         if (!talk.activa) return { error: 'talkInactive' };
@@ -326,7 +450,11 @@
         isValidEmail: isValidEmail,
         cicloFromCurso: cicloFromCurso,
         validateStudentInput: validateStudentInput,
-        planRegistration: planRegistration
+        planRegistration: planRegistration,
+        cursoFromParts: cursoFromParts,
+        parseCurso: parseCurso,
+        parseRoster: parseRoster,
+        aggregateTalks: aggregateTalks
       };
     })();
 
@@ -334,7 +462,8 @@
     var STUDENT_MSG = {
       email: 'Escribí tu mail institucional.',
       nombre: 'Escribí tu nombre y apellido (mínimo 3 letras).',
-      curso: 'Elegí tu año: 1° a 6°.'
+      curso: 'Elegí tu año y división.',
+      notInRoster: 'Ese mail no está en la lista del colegio. Revisá si lo escribiste bien.'
     };
 
     var DEMO_SLOTS = [
@@ -479,9 +608,22 @@
         mine: mine || {}
       };
     }
+    function demoRoster() {
+      return demoRead('esi_demo_roster', []);
+    }
     function demoStudent(email, nombre, curso) {
-      var v = EsiClient.validateStudentInput(email, nombre, curso);
+      var norm = EsiClient.normalizeEmail(email);
+      if (!EsiClient.isValidEmail(norm)) return { ok: false, error: 'email' };
+      var roster = demoRoster();
+      var entry = null;
+      for (var i = 0; i < roster.length; i++) {
+        if (roster[i].email === norm) { entry = roster[i]; break; }
+      }
+      if (roster.length && !entry) return { ok: false, error: 'notInRoster' };
+      var pc = entry ? EsiClient.parseCurso(entry.curso || '') : null;
+      var v = EsiClient.validateStudentInput(norm, entry && entry.nombre ? entry.nombre : (nombre || ''), pc || curso || '');
       if (!v.ok) return v;
+      v.rosterLoaded = roster.length > 0;
       return v;
     }
     function demoMine(email) {
@@ -576,11 +718,12 @@
       for (var c = 0; c < out.length; c++) {
         if (porCiclo[out[c].ciclo] != null) porCiclo[out[c].ciclo]++;
       }
+      var roster = demoRoster();
       return {
         ok: true,
         evento_abierto: demoOpen(),
-        rosterLoaded: false,
-        rosterCount: 0,
+        rosterLoaded: roster.length > 0,
+        rosterCount: roster.length,
         slots: DEMO_SLOTS,
         talks: DEMO_TALKS.map(function (t) {
           return { id: t.id, titulo: t.titulo, ciclo: t.ciclo, slot_id: t.slot_id, cupo: t.cupo, activa: !!t.activa, anotados: counts[t.id] || 0 };
@@ -590,15 +733,84 @@
         porCiclo: porCiclo
       };
     }
+    function demoLookup(emailRaw) {
+      var email = EsiClient.normalizeEmail(emailRaw);
+      if (!EsiClient.isValidEmail(email)) {
+        return { ok: false, message: STUDENT_MSG.email };
+      }
+      var roster = demoRoster();
+      var entry = null;
+      for (var i = 0; i < roster.length; i++) {
+        if (roster[i].email === email) { entry = roster[i]; break; }
+      }
+      if (roster.length && !entry) {
+        return { ok: false, message: STUDENT_MSG.notInRoster };
+      }
+      var nombre = entry && entry.nombre ? entry.nombre : '';
+      var pc = EsiClient.parseCurso(entry ? entry.curso : '');
+      return {
+        ok: true,
+        rosterLoaded: roster.length > 0,
+        nombre: nombre,
+        curso: entry ? (entry.curso || '') : '',
+        cursoParsed: pc || '',
+        needsNombre: !nombre,
+        needsCurso: !pc
+      };
+    }
+    function demoImportRoster(pinRaw, textRaw, mode) {
+      if (pinRaw !== DEMO_PIN) return { ok: false, message: 'Clave incorrecta.' };
+      var parsed = EsiClient.parseRoster(String(textRaw == null ? '' : textRaw));
+      if (!parsed.rows.length) {
+        return {
+          ok: false,
+          message: 'No se encontró ningún mail válido. Pegá una línea por alumno: mail;nombre;curso (o solo el mail).',
+          invalidos: parsed.invalidos.length,
+          duplicados: parsed.duplicados
+        };
+      }
+      var replace = String(mode || 'agregar') === 'reemplazar';
+      var byEmail = {};
+      var ordered = [];
+      if (!replace) {
+        var existing = demoRoster();
+        for (var i = 0; i < existing.length; i++) {
+          byEmail[existing[i].email] = existing[i];
+          ordered.push(existing[i].email);
+        }
+      }
+      var nuevos = 0;
+      var actualizados = 0;
+      for (var j = 0; j < parsed.rows.length; j++) {
+        var r = parsed.rows[j];
+        if (byEmail[r.email]) {
+          if (byEmail[r.email].nombre !== r.nombre || byEmail[r.email].curso !== r.curso) actualizados++;
+          byEmail[r.email] = r;
+        } else {
+          byEmail[r.email] = r;
+          ordered.push(r.email);
+          nuevos++;
+        }
+      }
+      var outRows = [];
+      for (var k = 0; k < ordered.length; k++) {
+        var s = byEmail[ordered[k]];
+        outRows.push({ email: s.email, nombre: s.nombre || '', curso: s.curso || '' });
+      }
+      demoWrite('esi_demo_roster', outRows);
+      return {
+        ok: true,
+        total: outRows.length,
+        nuevos: nuevos,
+        actualizados: actualizados,
+        invalidos: parsed.invalidos.length,
+        duplicados: parsed.duplicados,
+        modo: replace ? 'reemplazar' : 'agregar'
+      };
+    }
     function demoCall(fn, args) {
       var a = args || [];
-      if (fn === 'apiLookup') {
-        var email = EsiClient.normalizeEmail(a[0]);
-        if (!EsiClient.isValidEmail(email)) {
-          return Promise.resolve({ ok: false, message: STUDENT_MSG.email });
-        }
-        return Promise.resolve({ ok: true, rosterLoaded: false, nombre: '', curso: '', needsNombre: true, needsCurso: true });
-      }
+      if (fn === 'apiLookup') return Promise.resolve(demoLookup(a[0]));
       if (fn === 'apiGetData') {
         var s = demoStudent(a[0], a[1], a[2]);
         if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
@@ -622,6 +834,7 @@
         demoWrite('esi_demo_signups', remain);
         return Promise.resolve({ ok: true });
       }
+      if (fn === 'apiAdminImportRoster') return Promise.resolve(demoImportRoster(a[0], a[1], a[2]));
       return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
     }
 
@@ -672,6 +885,21 @@
         + ' · ' + CICLO_LABELS[sState.student.ciclo]
         + (TRANSPORT === 'demo' ? ' · MODO PRUEBA' : '');
       sub.className = d.evento_abierto ? '' : 'alert';
+
+      var chipHtml = '';
+      var slotsAll = d.slots || [];
+      for (var c = 0; c < slotsAll.length; c++) {
+        var slotId = Number(slotsAll[c].id);
+        var chosen = d.mine ? d.mine[slotId] : null;
+        var t = chosen ? sTalkById(chosen) : null;
+        if (t) {
+          chipHtml += '<span class="chip" title="' + esc(t.lugar || '') + '">'
+            + esc(slotsAll[c].label) + ': ' + esc(t.titulo) + '</span>';
+        } else {
+          chipHtml += '<span class="chip miss">' + esc(slotsAll[c].label) + ': sin charla</span>';
+        }
+      }
+      $('chips').innerHTML = chipHtml;
 
       var st = sState.student;
       var html = '<div class="row">'
@@ -816,14 +1044,17 @@
       var needsCurso = sState.lookup.needsCurso;
       document.body.className = '';
       $('fieldset-nombre').style.display = needsNombre ? 'block' : 'none';
-      $('fieldset-anio').style.display = needsCurso ? 'block' : 'none';
+      $('select-anio').value = '';
+      $('select-division').value = '';
+      var pc = EsiClient.parseCurso(sState.curso || '');
+      if (needsCurso && pc) {
+        $('select-anio').value = String(Number(pc.match(/\d/)[0]));
+        var d = pc.match(/([ABCD])$/);
+        if (d) $('select-division').value = d[1];
+      }
+      $('fieldset-anio').style.display = needsCurso ? 'flex' : 'none';
       $('input-nombre').value = sState.nombre;
       $('input-nombre').readOnly = !needsNombre;
-      if (needsCurso && /\d/.test(sState.curso || '')) {
-        $('select-anio').value = String(Number(sState.curso.match(/\d/)[0])) + '°';
-      } else {
-        $('select-anio').value = '';
-      }
       $('btn-datos').textContent = (needsNombre || needsCurso) ? 'Ver las charlas' : 'Continuar';
       showScreen(S_SCREENS, 's-screen-datos');
       if (needsNombre) {
@@ -837,13 +1068,15 @@
       var needsNombre = sState.lookup.needsNombre;
       var needsCurso = sState.lookup.needsCurso;
       var nombre = needsNombre ? $('input-nombre').value : sState.nombre;
-      var curso = needsCurso ? $('select-anio').value : sState.curso;
+      var curso = needsCurso
+        ? EsiClient.cursoFromParts($('select-anio').value, $('select-division').value)
+        : sState.curso;
       if (needsNombre && String(nombre).replace(/\s/g, '').length < 3) {
         sBanner('Escribí tu nombre y apellido (mínimo 3 letras).', 'err');
         return;
       }
-      if (needsCurso && !/\d/.test(curso || '')) {
-        sBanner('Elegí tu año.', 'err');
+      if (needsCurso && !curso) {
+        sBanner('Elegí tu año y división.', 'err');
         return;
       }
       sEnterPanel(nombre, curso);
@@ -971,6 +1204,7 @@
         : 'Lista de mails sin cargar (se acepta cualquier mail)';
       $('a-totals').innerHTML = '<b>Estado:</b> ' + (d.evento_abierto ? 'inscripción ABIERTA' : 'inscripción CERRADA')
         + '<br>' + esc(listInfo);
+      $('a-roster-info').textContent = listInfo;
 
       var tb = $('a-toggle-box');
       tb.innerHTML = '';
@@ -1031,6 +1265,45 @@
       rows += '</tbody></table>';
       if (!shown) rows = '<p>No hay inscripciones' + (q ? ' que coincidan con la búsqueda' : '') + '.</p>';
       $('a-table').innerHTML = rows;
+    }
+
+    function aImportMsg(text, type) {
+      var el = $('a-import-msg');
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function aImport(mode) {
+      if (aBusy) return;
+      var text = $('ta-roster').value;
+      if (!text) {
+        aImportMsg('Pegá la lista primero.', 'err');
+        return;
+      }
+      if (mode === 'reemplazar') {
+        var ok = window.confirm('¿Reemplazar TODA la lista actual de mails por el texto pegado? La lista anterior se pierde.');
+        if (!ok) return;
+      }
+      aBusy = true;
+      aImportMsg('Importando...', 'ok');
+      call('apiAdminImportRoster', [sessGet(), text, mode])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            aImportMsg('Listo: ' + resp.total + ' mails en total (' + resp.nuevos + ' nuevos, '
+              + resp.actualizados + ' actualizados, ' + resp.invalidos + ' inválidos, '
+              + resp.duplicados + ' repetidos).', 'ok');
+            $('ta-roster').value = '';
+            aLoad(true);
+          } else {
+            aImportMsg(resp.message || 'No se pudo importar.', 'err');
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          aImportMsg('Error de conexión.', 'err');
+        });
     }
 
     window.aOnDelete = function (signupId) {
@@ -1129,6 +1402,8 @@
       $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
       $('btn-salir').addEventListener('click', aLogout);
       $('input-buscar').addEventListener('input', aRenderTable);
+      $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
+      $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
 
       if (sessGet()) {
         showScreen(A_SCREENS, 'a-screen-panel');
