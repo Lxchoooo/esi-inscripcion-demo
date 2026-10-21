@@ -26,16 +26,36 @@ En demo, todo queda en el navegador y no hay clave real.
    - Acceso: cualquiera.
 6. Copiar la URL `/exec`.
 
-## Configurar la clave
+`setup()` deja la hoja `Signups` con la columna `presente` y genera las dos
+claves si no existen.
 
-- La clave vive en Script Properties con el nombre `ADMIN_PIN`.
-- `setup()` la genera si no existe. Para cambiarla, editá `ADMIN_PIN` en
-  Project Settings > Script Properties.
-- No está en el código ni en la planilla. Se valida solo en el backend.
-- Tras 5 intentos fallidos hay un bloqueo de 60 segundos.
-- El navegador no guarda la clave: al recargar el panel se vuelve a pedir.
-- La clave se usa una sola vez. Después el panel trabaja con un token de
-  sesión de 2 horas, que tampoco se guarda en el disco.
+## Roles y claves
+
+Hay dos claves, en Script Properties, nunca en el código ni en la planilla:
+
+- `ADMIN_PIN`: clave de profes. Ve todo y puede escribir.
+- `GUIDE_PIN`: clave de guías. Solo lee.
+
+En el login hay un solo campo: la clave decide el rol.
+
+| | Profe | Guía |
+|---|---|---|
+| Por charla y sin anotar | sí | sí |
+| Ver mails | sí | no |
+| Cerrar o abrir la inscripción | sí | no |
+| Borrar inscripciones | sí | no |
+| Importar la lista de mails | sí | no |
+| Descargar CSV | sí | no |
+| Marcar presente | sí | sí |
+
+El filtro por rol lo hace el backend, no la interfaz.
+
+La clave se usa una sola vez: al entrar, el backend devuelve un token de
+sesión de 2 horas, que tampoco se guarda en el disco. Tras 5 intentos
+fallidos hay un bloqueo de 60 segundos.
+
+En la demo, la clave `guia` entra con el rol de guía y cualquier otra entra
+como profe.
 
 ## Conectar esta web
 
@@ -56,10 +76,10 @@ vista de alumnos.
 - En modo real no se guardan mails, nombres ni listas en `localStorage`.
 - El alumno se mantiene en `sessionStorage` y se borra al cerrar la pestaña.
 - La API pública devuelve charlas, horarios, cupos y las elecciones propias.
-- La lista de inscriptos y los mails solo salen con clave válida.
-- La identidad del alumno es el mail: con ese mail se recuperan las
-  elecciones propias. Si hace falta más, se puede sumar un código por alumno
-  en la lista importada.
+- Para los mails de la lista, la API pública devuelve nombre y curso, para
+  que el alumno reconozca su cuenta.
+- La lista de inscriptos y los mails solo salen con clave válida, y las
+  guías los ven sin mail.
 - No versionar listas, CSV ni exportaciones: ver `.gitignore`.
 
 ## Tests
@@ -69,6 +89,6 @@ node tests/esi-tests.js src
 node tests/ui-smoke.js src
 ```
 
-Sin dependencias. Los tests de lógica cubren el backend y la paridad con el
-panel; el smoke de interfaz corre el panel con un DOM simulado.
-En GitHub Actions los dos archivos corren en cada push a `main`.
+Sin dependencias. Los tests de lógica cubren el backend, los roles y la
+paridad con el panel; el smoke de interfaz corre el panel con un DOM
+simulado. En GitHub Actions los dos archivos corren en cada push a `main`.
