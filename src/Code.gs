@@ -131,32 +131,81 @@ var EsiCore = (function () {
         break;
       }
     }
-    for (var i = 0; i < raw.length; i++) {
-      var line = raw[i].replace(/\t/g, ';').replace(/,/g, ';').replace(/\s*;\s*/g, ';');
-      var parts = line.split(';');
-      var email = normalizeEmail(parts[0]);
-      if (!email) continue;
-      if (i === firstIdx && /mail|correo/.test(normalizeText(email)) && !isValidEmail(email)) continue;
-      if (parts.length > 1) {
-        var nombre = String(parts[1] || '').replace(/\s+/g, ' ').trim();
-        var cursoRaw = parts[2] || '';
-        var key = email;
-        if (seen[key]) { duplicados++; continue; }
-        if (!isValidEmail(email)) {
-          invalidos.push({ linea: i + 1, texto: line.trim().slice(0, 80) });
-          continue;
-        }
-        seen[key] = true;
-        rows.push({ email: email, nombre: nombre, curso: parseCurso(cursoRaw) || '' });
-      } else {
-        if (seen[email]) { duplicados++; continue; }
-        if (!isValidEmail(email)) {
-          invalidos.push({ linea: i + 1, texto: email.slice(0, 80) });
-          continue;
-        }
-        seen[email] = true;
-        rows.push({ email: email, nombre: '', curso: '' });
+    function clean(value) {
+      return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    }
+    function cells(line) {
+      return String(line == null ? '' : line)
+        .replace(/\t/g, ';')
+        .replace(/,/g, ';')
+        .replace(/\s*;\s*/g, ';')
+        .split(';')
+        .map(clean);
+    }
+    function headerMap(cols) {
+      var map = {};
+      for (var i = 0; i < cols.length; i++) {
+        var h = normalizeText(cols[i]);
+        if (!h) continue;
+        if (/^(mail|email|correo|e-mail)$/.test(h)) map.email = i;
+        else if (/^(apellido|apellidos)$/.test(h)) map.apellido = i;
+        else if (/^(nombre|nombres)$/.test(h)) map.nombre = i;
+        else if (/^(nombre completo|nombre y apellido|apellido y nombre|alumno|alumna)$/.test(h)) map.completo = i;
+        else if (/^(curso|division|a\u00F1o|ano)$/.test(h)) map.curso = i;
       }
+      if (map.email == null) return null;
+      if (map.apellido == null && map.nombre == null && map.completo == null) return null;
+      return map;
+    }
+    var header = null;
+    for (var i = 0; i < raw.length; i++) {
+      var cols = cells(raw[i]);
+      if (!cols[0]) continue;
+      if (i === firstIdx) {
+        header = headerMap(cols);
+        if (header) continue;
+        if (/mail|correo/.test(normalizeText(cols[0])) && !isValidEmail(normalizeEmail(cols[0]))) continue;
+      }
+      var email = normalizeEmail(cols[0]);
+      var apellido = '';
+      var nombre = '';
+      var completo = '';
+      var cursoRaw = '';
+      if (header) {
+        email = normalizeEmail(cols[header.email]);
+        if (header.apellido != null) apellido = cols[header.apellido] || '';
+        if (header.completo != null) completo = cols[header.completo] || '';
+        else if (header.nombre != null) nombre = cols[header.nombre] || '';
+        if (header.curso != null) cursoRaw = cols[header.curso] || '';
+      } else if (cols.length >= 4) {
+        apellido = cols[1];
+        nombre = cols[2];
+        cursoRaw = cols[3];
+      } else if (cols.length === 3) {
+        completo = cols[1];
+        cursoRaw = cols[2];
+      } else if (cols.length === 2) {
+        completo = cols[1];
+      }
+      if (!email) continue;
+      if (seen[email]) { duplicados++; continue; }
+      if (!isValidEmail(email)) {
+        invalidos.push({ linea: i + 1, texto: cols.join(';').slice(0, 80) });
+        continue;
+      }
+      seen[email] = true;
+      var nombreCompleto = completo || clean([nombre, apellido].filter(Boolean).join(' '));
+      if (completo) {
+        nombre = completo;
+        apellido = '';
+      }
+      rows.push({
+        email: email,
+        apellido: apellido,
+        nombre: nombre,
+        nombreCompleto: nombreCompleto,
+        curso: parseCurso(cursoRaw) || ''
+      });
     }
     return { rows: rows, invalidos: invalidos, duplicados: duplicados };
   }
@@ -246,7 +295,8 @@ var API_FN_MAP_ = {
   apiAdminImportRoster: apiAdminImportRoster,
   apiAdminTalkRoster: apiAdminTalkRoster,
   apiAdminPending: apiAdminPending,
-  apiAdminSetPresent: apiAdminSetPresent
+  apiAdminSetPresent: apiAdminSetPresent,
+  apiAdminReports: apiAdminReports
 };
 
 function doGet(e) {
@@ -513,18 +563,53 @@ function presenteCol_(sh) {
   return col;
 }
 
+function studentsHeader_(head) {
+  var map = {};
+  for (var i = 0; i < (head || []).length; i++) {
+    var h = EsiCore.normalizeText(head[i]);
+    if (!h) continue;
+    if (/^(mail|email|correo|e-mail)$/.test(h)) map.email = i;
+    else if (/^(apellido|apellidos)$/.test(h)) map.apellido = i;
+    else if (/^(nombre|nombres)$/.test(h)) map.nombre = i;
+    else if (/^(nombre completo|nombre y apellido|apellido y nombre|alumno|alumna)$/.test(h)) map.completo = i;
+    else if (/^(curso|division|a\u00F1o|ano)$/.test(h)) map.curso = i;
+  }
+  if (map.email == null) return null;
+  if (map.apellido == null && map.nombre == null && map.completo == null) return null;
+  return map;
+}
+
 function readStudents_() {
   try {
     var sh = SpreadsheetApp.getActive().getSheetByName(STUDENTS_SHEET);
     if (!sh) return [];
     var vals = sh.getDataRange().getValues();
+    if (!vals.length) return [];
+    var map = studentsHeader_(vals[0]);
+    function cell(row, idx) {
+      return String(row[idx] == null ? '' : row[idx]).replace(/\s+/g, ' ').trim();
+    }
     var students = [];
     for (var i = 1; i < vals.length; i++) {
-      if (vals[i][0] === '') continue;
+      var row = vals[i];
+      var email = EsiCore.normalizeEmail(map ? cell(row, map.email) : cell(row, 0));
+      if (!email) continue;
+      var apellido = '';
+      var nombre = '';
+      if (map) {
+        if (map.apellido != null) apellido = cell(row, map.apellido);
+        if (map.completo != null) nombre = cell(row, map.completo);
+        else if (map.nombre != null) nombre = cell(row, map.nombre);
+      } else {
+        nombre = cell(row, 1);
+      }
+      var curso = cell(row, map && map.curso != null ? map.curso : 2);
       students.push({
-        email: EsiCore.normalizeEmail(vals[i][0]),
-        nombre: String(vals[i][1] == null ? '' : vals[i][1]).replace(/\s+/g, ' ').trim(),
-        curso: String(vals[i][2] == null ? '' : vals[i][2]).replace(/\s+/g, ' ').trim()
+        email: email,
+        apellido: apellido,
+        nombre: nombre,
+        nombreCompleto: apellido && nombre ? nombre + ' ' + apellido : (nombre || apellido),
+        curso: curso
       });
     }
     return students;
@@ -572,19 +657,27 @@ function invalidateDataCache_() {
   } catch (e) { }
 }
 
-function apellidoDe_(nombre) {
-  var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
-  if (!n) return '';
-  var parts = n.split(' ');
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : n.toLowerCase();
+function sortKey_(row) {
+  var ap = String(row.apellido == null ? '' : row.apellido).replace(/\s+/g, ' ').trim();
+  var nombre = String(row.nombre == null ? '' : row.nombre).replace(/\s+/g, ' ').trim();
+  var completo = String(row.nombreCompleto == null ? '' : row.nombreCompleto).replace(/\s+/g, ' ').trim() || nombre;
+  if (!ap && completo) {
+    var parts = completo.split(' ');
+    ap = parts.length > 1 ? parts[parts.length - 1] : completo;
+    nombre = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+  }
+  return { key: ap + ' ' + nombre, full: nombre + ' ' + ap };
 }
 
 function sortBySurname_(list) {
   return list.sort(function (a, b) {
-    var ka = apellidoDe_(a.nombre);
-    var kb = apellidoDe_(b.nombre);
-    if (ka === kb) return String(a.nombre).localeCompare(String(b.nombre));
-    return ka < kb ? -1 : 1;
+    var ka = sortKey_(a);
+    var kb = sortKey_(b);
+    var c = ka.key.localeCompare(kb.key, 'es', { sensitivity: 'base' });
+    if (c) return c;
+    c = ka.full.localeCompare(kb.full, 'es', { sensitivity: 'base' });
+    if (c) return c;
+    return String(a.email || '').localeCompare(String(b.email || ''));
   });
 }
 
@@ -650,7 +743,7 @@ function buildStudent_(email, nombre, curso) {
   var roster = readStudents_();
   var entry = findStudent_(roster, norm);
   if (roster.length && !entry) return { ok: false, error: 'notInRoster' };
-  var n = entry && entry.nombre ? entry.nombre : nombre;
+  var n = entry ? (entry.nombreCompleto || entry.nombre) : nombre;
   var pc = entry ? EsiCore.parseCurso(entry.curso) : null;
   var c = pc || curso;
   var v = EsiCore.validateStudentInput(norm, n, c);
@@ -670,13 +763,17 @@ function apiLookup(email) {
       return { ok: false, message: STUDENT_ERRORS_.notInRoster };
     }
     var nombre = entry && entry.nombre ? entry.nombre : '';
+    var nombreCompleto = entry ? (entry.nombreCompleto || entry.nombre || '') : '';
+    var apellido = entry && entry.apellido ? entry.apellido : '';
     var curso = entry && entry.curso ? entry.curso : '';
     var pc = EsiCore.parseCurso(curso);
     return {
       ok: true,
       rosterLoaded: roster.length > 0,
-      needsNombre: !nombre,
+      needsNombre: !nombreCompleto,
       needsCurso: !pc,
+      apellido: apellido,
+      nombreCompleto: nombreCompleto,
       nombre: nombre,
       curso: pc || ''
     };
@@ -932,11 +1029,17 @@ function apiAdminGetData(cred) {
     var slots = readSlots_();
     var talks = readTalks_();
     var students = readStudents_();
+    var apellidos = {};
+    for (var st = 0; st < students.length; st++) {
+      apellidos[students[st].email] = students[st].apellido || '';
+    }
     var signupsRaw = readSignupsCached_();
     var counts = countByTalk_(signupsRaw);
     var titulos = {};
+    var lugares = {};
     for (var t = 0; t < talks.length; t++) {
       titulos[talks[t].id] = talks[t].titulo;
+      lugares[talks[t].id] = talks[t].lugar || '';
     }
     var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
     var signups = admin ? signupsRaw.map(function (s) {
@@ -944,11 +1047,14 @@ function apiAdminGetData(cred) {
         id: s.id,
         cuando: s.ts ? Utilities.formatDate(s.ts, tz, 'dd/MM HH:mm') : '',
         email: s.email,
+        apellido: apellidos[s.emailKey] || '',
         nombre: s.nombre,
         curso: s.curso,
         ciclo: s.ciclo,
         slotLabel: slotLabelFor_(slots, s.slot_id),
-        talkTitulo: titulos[s.talk_id] || s.talk_id
+        talkTitulo: titulos[s.talk_id] || s.talk_id,
+        lugar: lugares[s.talk_id] || '',
+        presente: !!s.presente
       };
     }) : [];
     var porCiclo = { basico: 0, orientado: 0 };
@@ -1054,7 +1160,7 @@ function apiAdminImportRoster(cred, text, mode) {
       var r = parsed.rows[j];
       if (byEmail[r.email]) {
         var before = byEmail[r.email];
-        if (before.nombre !== r.nombre || before.curso !== r.curso) actualizados++;
+        if (before.nombreCompleto !== r.nombreCompleto || before.curso !== r.curso) actualizados++;
         byEmail[r.email] = r;
       } else {
         byEmail[r.email] = r;
@@ -1062,14 +1168,14 @@ function apiAdminImportRoster(cred, text, mode) {
         nuevos++;
       }
     }
-    var outRows = [];
+    var outRows = [['email', 'apellido', 'nombre', 'curso']];
     for (var k = 0; k < ordered.length; k++) {
       var s = byEmail[ordered[k]];
-      outRows.push([s.email, s.nombre || '', s.curso || '']);
+      outRows.push([s.email, s.apellido || '', s.nombre || '', s.curso || '']);
     }
     var last = sh.getLastRow();
-    if (last > 1) sh.getRange(2, 1, last - 1, Math.max(3, sh.getLastColumn())).clearContent();
-    sh.getRange(2, 1, outRows.length, 3).setValues(outRows);
+    if (last > 1) sh.getRange(2, 1, last - 1, Math.max(4, sh.getLastColumn())).clearContent();
+    sh.getRange(1, 1, outRows.length, 4).setValues(outRows);
     invalidateDataCache_();
     return {
       ok: true,
@@ -1099,12 +1205,18 @@ function apiAdminTalkRoster(cred, talkId) {
       if (String(talks[i].id) === String(talkId)) { talk = talks[i]; break; }
     }
     if (!talk) return { ok: false, message: 'No encontramos esa charla.' };
+    var roster = readStudents_();
+    var apellidos = {};
+    for (var r = 0; r < roster.length; r++) {
+      apellidos[roster[r].email] = roster[r].apellido || '';
+    }
     var signups = readSignupsCached_();
     var rows = [];
     for (var j = 0; j < signups.length; j++) {
       if (String(signups[j].talk_id) !== String(talk.id)) continue;
       var row = {
         id: signups[j].id,
+        apellido: apellidos[signups[j].emailKey] || '',
         nombre: signups[j].nombre,
         curso: signups[j].curso,
         slotLabel: slotLabelFor_(slots, signups[j].slot_id),
@@ -1185,7 +1297,9 @@ function apiAdminPending(cred) {
       }
       if (!faltan.length) continue;
       var row = {
+        apellido: st.apellido || '',
         nombre: st.nombre || '',
+        nombreCompleto: st.nombreCompleto || st.nombre || '',
         curso: st.curso || '',
         faltan: faltan
       };
@@ -1199,6 +1313,204 @@ function apiAdminPending(cred) {
       total: students.length,
       pending: rows.length,
       students: rows
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function reportSlots_(slots) {
+  return slots.map(function (s) {
+    return {
+      id: Number(s.id),
+      nombre: s.nombre || String(s.id),
+      label: s.inicio + ' a ' + s.fin
+    };
+  });
+}
+
+function apiAdminReports(cred) {
+  try {
+    var auth = adminAuth_(cred);
+    if (!auth.ok) return { ok: false, message: auth.message };
+    var admin = isAdmin_(auth);
+    var students = readStudentsCached_();
+    var signups = readSignupsCached_();
+    var slots = reportSlots_(readSlots_());
+    var talks = readTalks_();
+    var talkById = {};
+    for (var t = 0; t < talks.length; t++) talkById[talks[t].id] = talks[t];
+
+    var mineByEmail = {};
+    for (var i = 0; i < signups.length; i++) {
+      var sg = signups[i];
+      if (!mineByEmail[sg.emailKey]) mineByEmail[sg.emailKey] = {};
+      mineByEmail[sg.emailKey][Number(sg.slot_id)] = sg;
+    }
+
+    function talksFor_(st) {
+      var mine = mineByEmail[st.email] || {};
+      var out = [];
+      for (var k = 0; k < slots.length; k++) {
+        var slot = slots[k];
+        var signup = mine[Number(slot.id)] || null;
+        var talk = signup ? talkById[signup.talk_id] : null;
+        out.push({
+          slot_id: slot.id,
+          slot: slot.nombre,
+          slotLabel: slot.label,
+          talk_id: talk ? talk.id : '',
+          titulo: talk ? talk.titulo : '',
+          lugar: talk ? (talk.lugar || '') : '',
+          signup_id: signup ? signup.id : '',
+          presente: !!(signup && signup.presente)
+        });
+      }
+      return out;
+    }
+
+    var totals = {
+      roster: students.length,
+      complete: 0,
+      incomplete: 0,
+      missing: 0,
+      signups: signups.length,
+      presentBySlot: slots.map(function (slot) {
+        return { slot_id: slot.id, slot: slot.nombre, label: slot.label, presentes: 0 };
+      })
+    };
+    var coursesMap = {};
+    function courseRow_(curso) {
+      if (!coursesMap[curso]) {
+        coursesMap[curso] = {
+          curso: curso,
+          roster: 0,
+          complete: 0,
+          incomplete: 0,
+          missing: 0,
+          presentBySlot: slots.map(function (slot) {
+            return { slot_id: slot.id, slot: slot.nombre, label: slot.label, presentes: 0 };
+          }),
+          students: []
+        };
+      }
+      return coursesMap[curso];
+    }
+
+    for (var s = 0; s < students.length; s++) {
+      var st = students[s];
+      var curso = st.curso || 'Sin curso';
+      var row = courseRow_(curso);
+      var stTalks = talksFor_(st);
+      var filled = 0;
+      var presentes = 0;
+      for (var k = 0; k < stTalks.length; k++) {
+        if (stTalks[k].signup_id) filled++;
+        if (stTalks[k].presente) {
+          presentes++;
+          row.presentBySlot[k].presentes++;
+          totals.presentBySlot[k].presentes++;
+        }
+      }
+      var student = {
+        apellido: st.apellido || '',
+        nombre: st.nombre || '',
+        nombreCompleto: st.nombreCompleto || st.nombre || '',
+        curso: curso,
+        count: filled,
+        presentes: presentes,
+        talks: stTalks
+      };
+      if (admin) student.email = st.email;
+      row.students.push(student);
+      row.roster++;
+      if (filled >= slots.length) {
+        row.complete++;
+        totals.complete++;
+      } else if (filled > 0) {
+        row.incomplete++;
+        totals.incomplete++;
+      } else {
+        row.missing++;
+        totals.missing++;
+      }
+    }
+
+    var courseList = Object.keys(coursesMap).map(function (key) {
+      sortBySurname_(coursesMap[key].students);
+      return coursesMap[key];
+    });
+    courseList.sort(function (a, b) {
+      return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true });
+    });
+
+    var apellidos = {};
+    for (var a = 0; a < students.length; a++) {
+      apellidos[students[a].email] = students[a].apellido || '';
+    }
+    var slotLabels = {};
+    for (var sl = 0; sl < slots.length; sl++) slotLabels[Number(slots[sl].id)] = slots[sl].label;
+    var talksOut = talks.map(function (talk) {
+      return {
+        id: talk.id,
+        titulo: talk.titulo,
+        ciclo: talk.ciclo,
+        slot_id: Number(talk.slot_id),
+        slotLabel: slotLabels[Number(talk.slot_id)] || '',
+        lugar: talk.lugar || '',
+        cupo: Number(talk.cupo),
+        activa: !!talk.activa,
+        anotados: 0,
+        presentes: 0,
+        ausentes: 0,
+        porCurso: {},
+        students: []
+      };
+    });
+    var talkIndex = {};
+    for (var ti = 0; ti < talksOut.length; ti++) talkIndex[talksOut[ti].id] = talksOut[ti];
+    for (var si = 0; si < signups.length; si++) {
+      var signup = signups[si];
+      var talkRow = talkIndex[signup.talk_id];
+      if (!talkRow) continue;
+      talkRow.anotados++;
+      if (signup.presente) talkRow.presentes++;
+      var cursoKey = signup.curso || 'Sin curso';
+      talkRow.porCurso[cursoKey] = (talkRow.porCurso[cursoKey] || 0) + 1;
+      var talkStudent = {
+        id: signup.id,
+        apellido: apellidos[signup.emailKey] || '',
+        nombre: signup.nombre,
+        curso: signup.curso,
+        presente: !!signup.presente
+      };
+      if (admin) talkStudent.email = signup.email;
+      talkRow.students.push(talkStudent);
+    }
+    for (var to = 0; to < talksOut.length; to++) {
+      var rowOut = talksOut[to];
+      rowOut.ausentes = Math.max(0, rowOut.anotados - rowOut.presentes);
+      sortBySurname_(rowOut.students);
+      var porCurso = [];
+      var cursoKeys = Object.keys(rowOut.porCurso);
+      for (var ck = 0; ck < cursoKeys.length; ck++) {
+        porCurso.push({ curso: cursoKeys[ck], anotados: rowOut.porCurso[cursoKeys[ck]] });
+      }
+      porCurso.sort(function (a, b) {
+        return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true });
+      });
+      rowOut.porCurso = porCurso;
+    }
+
+    return {
+      ok: true,
+      role: auth.role,
+      rosterLoaded: students.length > 0,
+      generatedAt: Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'dd/MM/yyyy HH:mm'),
+      slots: slots,
+      totals: totals,
+      courses: courseList,
+      talks: talksOut
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };

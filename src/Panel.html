@@ -548,6 +548,8 @@
       font-size: 14.5px;
     }
     .roster-name { font-weight: 600; }
+    .roster-mail, .row-mail { display: block; width: 100%; color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+    .row-name { display: block; font-weight: 600; }
     .roster-curso { color: var(--muted); font-size: 13px; }
     .roster-faltan { margin-left: auto; color: var(--danger); font-size: 12.5px; font-weight: 700; }
     .present-btn {
@@ -606,6 +608,31 @@
     .stat-num { display: block; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
     .stat-label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
     #a-toggle-box { margin-top: 12px; }
+    .seg { display: flex; gap: 4px; padding: 4px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); }
+    .seg-btn {
+      flex: 1; min-height: 40px; padding: 8px 12px; border: 0; border-radius: 999px;
+      background: none; font-family: inherit; font-size: 13.5px; font-weight: 600;
+      color: var(--muted); cursor: pointer;
+    }
+    .seg-btn.active { color: var(--paper); background: var(--accent); }
+    .seg-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .rep-filters { grid-template-columns: 1fr; }
+    .rep-filters .btn { min-height: 44px; }
+    .report-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .report-table th { padding: 9px 8px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-strong); }
+    .report-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .report-table td.num { font-variant-numeric: tabular-nums; color: var(--muted); width: 34px; }
+    .rep-talk { display: block; font-weight: 600; font-size: 12.5px; overflow-wrap: anywhere; }
+    .rep-place { display: block; color: var(--muted); font-size: 11.5px; }
+    .rep-missing { color: var(--muted); font-size: 12px; }
+    .present-mini {
+      margin-top: 4px; min-height: 32px; padding: 4px 9px;
+      font-family: inherit; font-size: 11px; font-weight: 700;
+      color: var(--muted); background: transparent;
+      border: 1px solid var(--line-ui); border-radius: 999px; cursor: pointer;
+    }
+    .present-mini.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
+    .present-mini:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .tabs { display: flex; gap: 2px; margin: 18px 0 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
     .tab {
       margin-bottom: -1px; padding: 12px 14px; border: 0; border-bottom: 2px solid transparent;
@@ -657,6 +684,22 @@
       #a-table td[data-label=""] { padding-top: 10px; }
       #a-table td[data-label=""]::before { display: none; }
       #a-table td[data-label=""] .btn { width: 100%; }
+      .report-table table, .report-table tbody { display: block; }
+      .report-table thead { display: none; }
+      .report-table tr {
+        display: block; border: 1px solid var(--line); border-radius: 12px;
+        background: var(--surface); margin: 10px 0; padding: 6px 14px;
+      }
+      .report-table td { display: block; border: 0; padding: 4px 0; }
+      .report-table td::before {
+        content: attr(data-label); display: inline-block; min-width: 82px;
+        color: var(--muted); font-size: 10.5px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .05em;
+      }
+      .report-table td[data-label=""]::before { display: none; }
+      .report-table td.num { width: auto; }
+      .report-table .present-mini { min-height: 40px; padding: 8px 14px; }
+      .report-table td .present-mini { width: 100%; }
     }
 
     @media (max-width: 380px) {
@@ -670,6 +713,39 @@
       .stat { padding: 10px; }
       .stat-num { font-size: 21px; }
       .slot-missing { width: 100%; margin-left: 0; }
+    }
+
+    #print-area { display: none; }
+
+    @media print {
+      @page { size: A4 portrait; margin: 14mm 12mm; }
+      html, body { background: #fff !important; color: #000 !important; }
+      body > * { display: none !important; }
+      body > #print-area { display: block !important; }
+      #print-area {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 10.5pt;
+        color: #000;
+      }
+      .print-page { break-after: page; page-break-after: always; }
+      .print-page:last-child { break-after: auto; page-break-after: auto; }
+      .print-head { margin-bottom: 5mm; }
+      .print-school { margin: 0; font-size: 9pt; letter-spacing: .12em; text-transform: uppercase; }
+      .print-event { margin: 1mm 0 0; font-size: 16pt; }
+      .print-title { margin: 1mm 0 0; font-size: 12pt; font-weight: bold; }
+      .print-date { margin: 1mm 0 0; font-size: 9pt; color: #333; }
+      .print-summary { margin: 3mm 0; font-size: 9.5pt; }
+      .print-table { width: 100%; border-collapse: collapse; }
+      .print-table th, .print-table td { border: 1px solid #000; padding: 4px 5px; text-align: left; vertical-align: top; }
+      .print-table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9pt; }
+      .print-table td { font-size: 10pt; }
+      .print-table tr { break-inside: avoid; page-break-inside: avoid; }
+      .print-table .num { width: 9mm; text-align: right; }
+      .print-table .sign { width: 32mm; }
+      .print-talk { font-weight: bold; }
+      .print-place { display: block; font-size: 8.5pt; color: #333; }
+      .print-missing { color: #555; }
+      .print-note { margin-top: 3mm; font-size: 8.5pt; color: #333; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -814,6 +890,7 @@
       <div class="tabs" role="tablist" aria-label="Panel">
         <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">Por charla</button>
         <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend">Sin anotar</button>
+        <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes">Reportes</button>
         <button id="tab-inscriptos" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos">Inscriptos</button>
         <button id="tab-mails" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Lista de mails</button>
       </div>
@@ -851,6 +928,22 @@
         </div>
       </div>
 
+      <div id="pane-reportes" class="tabpanel" role="tabpanel" aria-labelledby="tab-reportes" hidden>
+        <div class="card">
+          <div class="seg" role="group" aria-label="Tipo de reporte">
+            <button id="rep-tab-curso" class="seg-btn active" type="button" aria-pressed="true">Por curso</button>
+            <button id="rep-tab-charla" class="seg-btn" type="button" aria-pressed="false">Por charla</button>
+            <button id="rep-tab-total" class="seg-btn" type="button" aria-pressed="false">Total</button>
+          </div>
+          <div class="filters rep-filters">
+            <select id="rep-curso" aria-label="Curso"></select>
+            <select id="rep-charla" aria-label="Charla" hidden></select>
+            <button id="btn-print" class="btn small" type="button">Imprimir o guardar PDF</button>
+          </div>
+          <div id="rep-out"></div>
+        </div>
+      </div>
+
       <div id="pane-inscriptos" class="tabpanel admin-only" role="tabpanel" aria-labelledby="tab-inscriptos" hidden>
         <div class="card" id="a-cupos"></div>
         <div class="card">
@@ -869,8 +962,8 @@
           <h3>Lista de mails</h3>
           <div class="totals" id="a-roster-info"></div>
           <label class="sr-only" for="ta-roster">Lista de mails</label>
-          <textarea id="ta-roster" rows="6" placeholder="mail;nombre;curso"></textarea>
-          <p class="hint-line">Una línea por alumno.</p>
+          <textarea id="ta-roster" rows="6" placeholder="mail;apellido;nombre;curso"></textarea>
+          <p class="hint-line">Una línea por alumno. También sirve mail;nombre completo;curso.</p>
           <div class="toolbar" style="margin-top:10px">
             <button id="btn-import-add" class="btn small" type="button">Agregar</button>
             <button id="btn-import-rep" class="btn red small" type="button">Reemplazar</button>
@@ -904,6 +997,7 @@
     </div>
   </footer>
 
+  <div id="print-area"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="sheet-backdrop" class="sheet-backdrop"></div>
   <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -918,6 +1012,8 @@
 
   <script>
     var IS_ADMIN = /(^|[?&])admin=1(&|$)/.test(window.location.search);
+    var SCHOOL_NAME = 'Colegio';
+    var EVENT_NAME = 'ESI 2026';
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
     function $(id) { return document.getElementById(id); }
@@ -1043,31 +1139,81 @@
         break;
       }
     }
-    for (var i = 0; i < raw.length; i++) {
-      var line = raw[i].replace(/\t/g, ';').replace(/,/g, ';').replace(/\s*;\s*/g, ';');
-      var parts = line.split(';');
-      var email = normalizeEmail(parts[0]);
-      if (!email) continue;
-      if (i === firstIdx && /mail|correo/.test(normalizeText(email)) && !isValidEmail(email)) continue;
-      if (parts.length > 1) {
-        var nombre = String(parts[1] || '').replace(/\s+/g, ' ').trim();
-        var cursoRaw = parts[2] || '';
-        if (seen[email]) { duplicados++; continue; }
-        if (!isValidEmail(email)) {
-          invalidos.push({ linea: i + 1, texto: line.trim().slice(0, 80) });
-          continue;
-        }
-        seen[email] = true;
-        rows.push({ email: email, nombre: nombre, curso: parseCurso(cursoRaw) || '' });
-      } else {
-        if (seen[email]) { duplicados++; continue; }
-        if (!isValidEmail(email)) {
-          invalidos.push({ linea: i + 1, texto: email.slice(0, 80) });
-          continue;
-        }
-        seen[email] = true;
-        rows.push({ email: email, nombre: '', curso: '' });
+    function clean(value) {
+      return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    }
+    function cells(line) {
+      return String(line == null ? '' : line)
+        .replace(/\t/g, ';')
+        .replace(/,/g, ';')
+        .replace(/\s*;\s*/g, ';')
+        .split(';')
+        .map(clean);
+    }
+    function headerMap(cols) {
+      var map = {};
+      for (var i = 0; i < cols.length; i++) {
+        var h = normalizeText(cols[i]);
+        if (!h) continue;
+        if (/^(mail|email|correo|e-mail)$/.test(h)) map.email = i;
+        else if (/^(apellido|apellidos)$/.test(h)) map.apellido = i;
+        else if (/^(nombre|nombres)$/.test(h)) map.nombre = i;
+        else if (/^(nombre completo|nombre y apellido|apellido y nombre|alumno|alumna)$/.test(h)) map.completo = i;
+        else if (/^(curso|division|a\u00F1o|ano)$/.test(h)) map.curso = i;
       }
+      if (map.email == null) return null;
+      if (map.apellido == null && map.nombre == null && map.completo == null) return null;
+      return map;
+    }
+    var header = null;
+    for (var i = 0; i < raw.length; i++) {
+      var cols = cells(raw[i]);
+      if (!cols[0]) continue;
+      if (i === firstIdx) {
+        header = headerMap(cols);
+        if (header) continue;
+        if (/mail|correo/.test(normalizeText(cols[0])) && !isValidEmail(normalizeEmail(cols[0]))) continue;
+      }
+      var email = normalizeEmail(cols[0]);
+      var apellido = '';
+      var nombre = '';
+      var completo = '';
+      var cursoRaw = '';
+      if (header) {
+        email = normalizeEmail(cols[header.email]);
+        if (header.apellido != null) apellido = cols[header.apellido] || '';
+        if (header.completo != null) completo = cols[header.completo] || '';
+        else if (header.nombre != null) nombre = cols[header.nombre] || '';
+        if (header.curso != null) cursoRaw = cols[header.curso] || '';
+      } else if (cols.length >= 4) {
+        apellido = cols[1];
+        nombre = cols[2];
+        cursoRaw = cols[3];
+      } else if (cols.length === 3) {
+        completo = cols[1];
+        cursoRaw = cols[2];
+      } else if (cols.length === 2) {
+        completo = cols[1];
+      }
+      if (!email) continue;
+      if (seen[email]) { duplicados++; continue; }
+      if (!isValidEmail(email)) {
+        invalidos.push({ linea: i + 1, texto: cols.join(';').slice(0, 80) });
+        continue;
+      }
+      seen[email] = true;
+      var nombreCompleto = completo || clean([nombre, apellido].filter(Boolean).join(' '));
+      if (completo) {
+        nombre = completo;
+        apellido = '';
+      }
+      rows.push({
+        email: email,
+        apellido: apellido,
+        nombre: nombre,
+        nombreCompleto: nombreCompleto,
+        curso: parseCurso(cursoRaw) || ''
+      });
     }
     return { rows: rows, invalidos: invalidos, duplicados: duplicados };
   }
@@ -1300,6 +1446,12 @@
     function demoRoster() {
       return demoRead('esi_demo_roster', []);
     }
+    function demoFull_(st) {
+      if (!st) return '';
+      if (st.nombreCompleto) return st.nombreCompleto;
+      if (st.apellido && st.nombre) return st.nombre + ' ' + st.apellido;
+      return st.nombre || st.apellido || '';
+    }
     function demoStudent(email, nombre, curso) {
       var norm = EsiClient.normalizeEmail(email);
       if (!EsiClient.isValidEmail(norm)) return { ok: false, error: 'email' };
@@ -1310,7 +1462,7 @@
       }
       if (roster.length && !entry) return { ok: false, error: 'notInRoster' };
       var pc = entry ? EsiClient.parseCurso(entry.curso || '') : null;
-      var v = EsiClient.validateStudentInput(norm, entry && entry.nombre ? entry.nombre : (nombre || ''), pc || curso || '');
+      var v = EsiClient.validateStudentInput(norm, entry ? demoFull_(entry) : (nombre || ''), pc || curso || '');
       if (!v.ok) return v;
       v.rosterLoaded = roster.length > 0;
       return v;
@@ -1388,19 +1540,29 @@
         counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
       }
       var titulos = {};
+      var lugares = {};
       for (var t = 0; t < DEMO_TALKS.length; t++) {
         titulos[DEMO_TALKS[t].id] = DEMO_TALKS[t].titulo;
+        lugares[DEMO_TALKS[t].id] = DEMO_TALKS[t].lugar || '';
+      }
+      var apellidos = {};
+      var rosterA = demoRoster();
+      for (var ra = 0; ra < rosterA.length; ra++) {
+        apellidos[rosterA[ra].email] = rosterA[ra].apellido || '';
       }
       var out = admin ? signups.map(function (s) {
         return {
           id: s.id,
           cuando: s.ts ? demoTs(s.ts) : '',
           email: s.email,
+          apellido: apellidos[s.email],
           nombre: s.nombre,
           curso: s.curso,
           ciclo: s.ciclo,
           slotLabel: demoSlotLabel_(s.slot_id),
-          talkTitulo: titulos[s.talk_id] || s.talk_id
+          talkTitulo: titulos[s.talk_id] || s.talk_id,
+          lugar: lugares[s.talk_id] || '',
+          presente: !!s.presente
         };
       }) : [];
       var porCiclo = { basico: 0, orientado: 0 };
@@ -1441,9 +1603,11 @@
       return {
         ok: true,
         rosterLoaded: roster.length > 0,
-        needsNombre: !nombre,
+        needsNombre: !(entry && demoFull_(entry)),
         needsCurso: !pc,
+        apellido: entry && entry.apellido ? entry.apellido : '',
         nombre: nombre,
+        nombreCompleto: entry ? demoFull_(entry) : '',
         curso: pc || ''
       };
     }
@@ -1483,7 +1647,13 @@
       var outRows = [];
       for (var k = 0; k < ordered.length; k++) {
         var s = byEmail[ordered[k]];
-        outRows.push({ email: s.email, nombre: s.nombre || '', curso: s.curso || '' });
+        outRows.push({
+          email: s.email,
+          apellido: s.apellido || '',
+          nombre: s.nombre || '',
+          nombreCompleto: s.nombreCompleto || demoFull_(s),
+          curso: s.curso || ''
+        });
       }
       demoWrite('esi_demo_roster', outRows);
       return {
@@ -1494,6 +1664,172 @@
         invalidos: parsed.invalidos.length,
         duplicados: parsed.duplicados,
         modo: replace ? 'reemplazar' : 'agregar'
+      };
+    }
+    function demoReports(role) {
+      var admin = role === 'admin';
+      var slots = DEMO_SLOTS.map(function (s) {
+        return { id: Number(s.id), nombre: s.nombre, label: s.label };
+      });
+      var slotName = {};
+      for (var si = 0; si < slots.length; si++) slotName[slots[si].id] = slots[si].nombre;
+      var roster = demoSort_(demoRoster().slice());
+      var signups = demoSignups();
+      var byEmail = {};
+      for (var gi = 0; gi < signups.length; gi++) {
+        var key = signups[gi].email;
+        if (!byEmail[key]) byEmail[key] = [];
+        byEmail[key].push(signups[gi]);
+      }
+      var apellidosBy = {};
+      for (var ri = 0; ri < roster.length; ri++) apellidosBy[roster[ri].email] = roster[ri].apellido || '';
+      var talksOut = DEMO_TALKS.map(function (t) {
+        return {
+          id: t.id, titulo: t.titulo, ciclo: t.ciclo,
+          slot_id: Number(t.slot_id), slotLabel: demoSlotLabel_(t.slot_id),
+          lugar: t.lugar || '', cupo: Number(t.cupo), activa: !!t.activa,
+          anotados: 0, presentes: 0, ausentes: 0, porCurso: {}, students: []
+        };
+      });
+      var talkIndex = {};
+      for (var ti = 0; ti < talksOut.length; ti++) talkIndex[talksOut[ti].id] = talksOut[ti];
+      var courseStats = {};
+      var totalPresentes = {};
+      for (var kj = 0; kj < signups.length; kj++) {
+        var sg = signups[kj];
+        var talkRow = talkIndex[sg.talk_id];
+        if (talkRow) {
+          talkRow.anotados++;
+          if (sg.presente) talkRow.presentes++;
+          var cursoKey = sg.curso || 'Sin curso';
+          talkRow.porCurso[cursoKey] = (talkRow.porCurso[cursoKey] || 0) + 1;
+          var st = {
+            id: sg.id,
+            apellido: apellidosBy[sg.email] || '',
+            nombre: sg.nombre,
+            curso: sg.curso,
+            presente: !!sg.presente
+          };
+          if (admin) st.email = sg.email;
+          talkRow.students.push(st);
+        }
+        if (sg.curso) {
+          if (!courseStats[sg.curso]) courseStats[sg.curso] = { roster: 0, complete: 0, incomplete: 0, missing: 0, presentes: {} };
+          if (sg.presente) courseStats[sg.curso].presentes[sg.slot_id] = (courseStats[sg.curso].presentes[sg.slot_id] || 0) + 1;
+        }
+        if (sg.presente) totalPresentes[sg.slot_id] = (totalPresentes[sg.slot_id] || 0) + 1;
+      }
+      for (var tk = 0; tk < talksOut.length; tk++) {
+        var rowOut = talksOut[tk];
+        rowOut.ausentes = Math.max(0, rowOut.anotados - rowOut.presentes);
+        demoSort_(rowOut.students);
+        var porCurso = [];
+        for (var ck = 0; ck < Object.keys(rowOut.porCurso).length; ck++) {
+          var key2 = Object.keys(rowOut.porCurso)[ck];
+          porCurso.push({ curso: key2, anotados: rowOut.porCurso[key2] });
+        }
+        porCurso.sort(function (a, b) {
+          return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true });
+        });
+        rowOut.porCurso = porCurso;
+      }
+      var courses = [];
+      var seenCurso = {};
+      for (var ci = 0; ci < roster.length; ci++) {
+        var student = roster[ci];
+        var curso = student.curso || 'Sin curso';
+        if (!seenCurso[curso]) {
+          seenCurso[curso] = true;
+          var stat = courseStats[curso] || { roster: 0, complete: 0, incomplete: 0, missing: 0, presentes: {} };
+          var bySlot = [];
+          for (var sl = 0; sl < slots.length; sl++) {
+            bySlot.push({ slot: slots[sl].nombre, presentes: stat.presentes[slots[sl].id] || 0 });
+          }
+          courses.push({
+            curso: curso,
+            roster: 0, complete: 0, incomplete: 0, missing: 0,
+            presentBySlot: bySlot,
+            students: []
+          });
+        }
+        var course = courses[courses.length - 1];
+        course.roster++;
+        var count = (byEmail[student.email] || []).length;
+        if (count === 3) course.complete++;
+        else if (count > 0) course.incomplete++;
+        else course.missing++;
+        var rowStudent = {
+          apellido: student.apellido || '',
+          nombre: student.nombre || '',
+          nombreCompleto: student.nombreCompleto || student.nombre || '',
+          curso: student.curso || '',
+          count: count,
+          presentes: (byEmail[student.email] || []).filter(function (x) { return x.presente; }).length,
+          talks: []
+        };
+        for (var di = 0; di < slots.length; di++) {
+          var slotTalks = (byEmail[student.email] || []).filter(function (x) { return Number(x.slot_id) === Number(slots[di].id); });
+          if (slotTalks.length) {
+            var mapped = slotTalks.map(function (x) {
+              var talkInfo = talkIndex[x.talk_id] || {};
+              return {
+                slot: slots[di].nombre,
+                talk_id: x.talk_id,
+                titulo: talkInfo.titulo || '',
+                lugar: talkInfo.lugar || '',
+                signup_id: x.id,
+                presente: !!x.presente
+              };
+            });
+            rowStudent.talks = rowStudent.talks.concat(mapped);
+          } else {
+            rowStudent.talks.push({ slot: slots[di].nombre, talk_id: '', titulo: '', lugar: '', signup_id: '', presente: false });
+          }
+        }
+        if (admin) rowStudent.email = student.email;
+        course.students.push(rowStudent);
+      }
+      demoSort_(courses);
+      for (var co = 0; co < courses.length; co++) {
+        var statOut = courseStats[courses[co].curso] || { presentes: {} };
+        var pl = [];
+        for (var p2 = 0; p2 < slots.length; p2++) {
+          pl.push({ slot: slots[p2].nombre, presentes: statOut.presentes[slots[p2].id] || 0 });
+        }
+        courses[co].presentBySlot = pl;
+      }
+      var totals = {
+        roster: roster.length,
+        complete: 0, incomplete: 0, missing: 0,
+        presentBySlot: []
+      };
+      for (var t3 = 0; t3 < totals.roster; t3++) {
+        var c = (byEmail[roster[t3].email] || []).length;
+        if (c === 3) totals.complete++;
+        else if (c > 0) totals.incomplete++;
+        else totals.missing++;
+      }
+      for (var t4 = 0; t4 < slots.length; t4++) {
+        totals.presentBySlot.push({
+          slot: slots[t4].nombre,
+          label: slots[t4].label,
+          presentes: totalPresentes[slots[t4].id] || 0
+        });
+      }
+      var d = new Date();
+      function two(n) { return (n < 10 ? '0' : '') + n; }
+      var generatedAt = two(d.getDate()) + '/' + two(d.getMonth() + 1) + '/' + d.getFullYear()
+        + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
+      totals.signups = signups.length;
+      return {
+        ok: true,
+        role: role,
+        evento_abierto: demoOpen(),
+        generatedAt: generatedAt,
+        slots: slots,
+        totals: totals,
+        courses: courses,
+        talks: talksOut
       };
     }
     function demoRole_(cred) {
@@ -1509,16 +1845,26 @@
       }
       return s ? s.label : '';
     }
-    function demoApellido_(nombre) {
-      var parts = String(nombre || '').replace(/\s+/g, ' ').trim().split(' ');
-      return (parts.length > 1 ? parts[parts.length - 1] : String(nombre || '')).toLowerCase();
-    }
     function demoSort_(list) {
+      function key(row) {
+        var ap = String(row.apellido || '').replace(/\s+/g, ' ').trim();
+        var nombre = String(row.nombre || '').replace(/\s+/g, ' ').trim();
+        var completo = String(row.nombreCompleto || '').replace(/\s+/g, ' ').trim() || nombre;
+        if (!ap && completo) {
+          var parts = completo.split(' ');
+          ap = parts.length > 1 ? parts[parts.length - 1] : completo;
+          nombre = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+        }
+        return { key: ap + ' ' + nombre, full: nombre + ' ' + ap };
+      }
       return list.sort(function (a, b) {
-        var ka = demoApellido_(a.nombre);
-        var kb = demoApellido_(b.nombre);
-        if (ka === kb) return String(a.nombre).localeCompare(String(b.nombre));
-        return ka < kb ? -1 : 1;
+        var ka = key(a);
+        var kb = key(b);
+        var c = ka.key.localeCompare(kb.key, 'es', { sensitivity: 'base' });
+        if (c) return c;
+        c = ka.full.localeCompare(kb.full, 'es', { sensitivity: 'base' });
+        if (c) return c;
+        return String(a.email || '').localeCompare(String(b.email || ''));
       });
     }
     function demoTalkRoster(talkId, role) {
@@ -1532,8 +1878,14 @@
       var rows = [];
       for (var j = 0; j < signups.length; j++) {
         if (String(signups[j].talk_id) !== String(talk.id)) continue;
+        var rosterT = demoRoster();
+        var apellidoT = '';
+        for (var rt = 0; rt < rosterT.length; rt++) {
+          if (rosterT[rt].email === signups[j].email) { apellidoT = rosterT[rt].apellido || ''; break; }
+        }
         var row = {
           id: signups[j].id,
+          apellido: apellidoT,
           nombre: signups[j].nombre,
           curso: signups[j].curso,
           slotLabel: demoSlotLabel_(signups[j].slot_id),
@@ -1583,7 +1935,13 @@
           if (!done[Number(DEMO_SLOTS[s].id)]) faltan.push(DEMO_SLOTS[s].nombre);
         }
         if (!faltan.length) continue;
-        var row = { nombre: st.nombre || '', curso: st.curso || '', faltan: faltan };
+        var row = {
+          apellido: st.apellido || '',
+          nombre: st.nombre || '',
+          nombreCompleto: demoFull_(st),
+          curso: st.curso || '',
+          faltan: faltan
+        };
         if (admin) row.email = st.email;
         rows.push(row);
       }
@@ -1633,6 +1991,7 @@
       }
       if (fn === 'apiAdminTalkRoster') return Promise.resolve(demoTalkRoster(a[1], demoRole_(a[0])));
       if (fn === 'apiAdminPending') return Promise.resolve(demoPending(demoRole_(a[0])));
+      if (fn === 'apiAdminReports') return Promise.resolve(demoReports(demoRole_(a[0])));
       return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
     }
 
@@ -2033,7 +2392,8 @@
           sBanner('');
           sState.email = email.replace(/\s/g, '').toLowerCase();
           sState.lookup = resp;
-          sState.nombre = resp.nombre || '';
+          sState.nombre = resp.nombreCompleto || resp.nombre || '';
+          sState.greeting = resp.nombre || '';
           sState.curso = resp.curso || '';
           $('mail-hint').hidden = true;
           if (resp.nombre) {
@@ -2053,7 +2413,7 @@
     }
 
     function sShowHello() {
-      var nombre = sState.nombre || '';
+      var nombre = sState.greeting || sState.nombre || '';
       var curso = sState.curso || '';
       var first = nombre.split(' ')[0] || nombre;
       $('hello-text').textContent = curso
@@ -2215,6 +2575,10 @@
     var aTalkData = null;
     var aPendingData = null;
     var aTalkId = '';
+    var aReports = null;
+    var aRepType = 'curso';
+    var aRepCurso = '';
+    var aRepTalkId = '';
     var aUpdatedAt = 0;
     var aTabName = 'charla';
     var aTimer = null;
@@ -2324,6 +2688,7 @@
       if (!adminCred) return;
       if (aTabName === 'charla') aLoadTalk();
       else if (aTabName === 'pend') aLoadPending();
+      else if (aTabName === 'reportes') aLoadReports();
       else if (aTabName === 'inscriptos') aLoad(true);
     }
 
@@ -2416,13 +2781,15 @@
         var st = d.students[i];
         if (st.curso) cursos[st.curso] = 1;
         if (fCurso && st.curso !== fCurso) continue;
-        if (q && (st.nombre + ' ' + st.curso).toLowerCase().indexOf(q) < 0) continue;
+        if (q && aSearch_(st).indexOf(q) < 0) continue;
         shown++;
+        var stMail = aRole === 'admin' && st.email ? '<span class="roster-mail">' + esc(st.email) + '</span>' : '';
         rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '">'
           + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
           + ' data-id="' + esc(st.id) + '" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
-          + ' aria-label="Marcar presente a ' + esc(st.nombre || 'alumno') + '">Presente</button>'
-          + '<span class="roster-name">' + esc(st.nombre || 'Sin nombre') + '</span>'
+          + ' aria-label="Marcar presente a ' + esc(aDisplay_(st, false)) + '">Presente</button>'
+          + '<span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
+          + stMail
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '</div>';
       }
@@ -2475,10 +2842,12 @@
         }
         if (fCurso && st.curso !== fCurso) continue;
         if (fDiv && (!pc || pc.slice(2) !== fDiv)) continue;
-        if (q && (st.nombre + ' ' + st.curso).toLowerCase().indexOf(q) < 0) continue;
+        if (q && aSearch_(st).indexOf(q) < 0) continue;
         shown++;
+        var pendMail = aRole === 'admin' && st.email ? '<span class="roster-mail">' + esc(st.email) + '</span>' : '';
         rows += '<div class="roster-row">'
-          + '<span class="roster-name">' + esc(st.nombre || 'Sin nombre') + '</span>'
+          + '<span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
+          + pendMail
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '<span class="roster-faltan">Falta ' + esc(st.faltan.join(' y ')) + '</span>'
           + '</div>';
@@ -2493,6 +2862,403 @@
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
       $('pend-list').innerHTML = rows;
+    }
+
+    function aLoadReports(done) {
+      if (!adminCred) return;
+      call('apiAdminReports', [adminCred])
+        .then(function (resp) {
+          if (!resp.ok) {
+            if (aAuthLost(resp)) return;
+            aBanner(resp.message || 'No se pudo cargar.', 'err');
+            return;
+          }
+          aReports = resp;
+          aFillReportFilters();
+          aRenderReport();
+          if (typeof done === 'function') done();
+        })
+        .catch(function () {
+          aBanner('Sin conexión.', 'err');
+        });
+    }
+
+    function aFillReportFilters() {
+      var d = aReports;
+      if (!d) return;
+      var sel = $('rep-curso');
+      if (sel) {
+        var current = aRepCurso || sel.value;
+        var html = '';
+        for (var i = 0; i < d.courses.length; i++) {
+          html += '<option value="' + esc(d.courses[i].curso) + '">' + esc(d.courses[i].curso) + '</option>';
+        }
+        sel.innerHTML = html || '<option value="">Sin cursos</option>';
+        if (current && html.indexOf('value="' + current + '"') >= 0) sel.value = current;
+        aRepCurso = sel.value;
+      }
+      var tsel = $('rep-charla');
+      if (tsel) {
+        var tid = aRepTalkId || tsel.value;
+        var thtml = '';
+        var tlist = d.talks || [];
+        for (var j = 0; j < tlist.length; j++) {
+          thtml += '<option value="' + esc(tlist[j].id) + '">' + esc(tlist[j].titulo) + '</option>';
+        }
+        tsel.innerHTML = thtml || '<option value="">Sin charlas</option>';
+        if (tid && thtml.indexOf('value="' + tid + '"') >= 0) tsel.value = tid;
+        aRepTalkId = tsel.value;
+      }
+    }
+
+    function reportStats_(items) {
+      var html = '<div class="stat-grid">';
+      for (var i = 0; i < items.length; i++) {
+        html += '<div class="stat"><span class="stat-num">' + items[i][0] + '</span>'
+          + '<span class="stat-label">' + esc(items[i][1]) + '</span></div>';
+      }
+      return html + '</div>';
+    }
+
+    function reportPresentLine_(list) {
+      var parts = [];
+      for (var i = 0; i < list.length; i++) {
+        parts.push((list[i].slot || '') + ' ' + list[i].presentes);
+      }
+      return 'Presentes por franja: ' + parts.join(' · ');
+    }
+
+    function aRenderReport() {
+      var d = aReports;
+      var out = $('rep-out');
+      if (!d || !out) return;
+      if (aRepType === 'curso') {
+        aRenderCourseReport();
+        return;
+      }
+      if (aRepType === 'charla') {
+        aRenderTalkReport();
+        return;
+      }
+      aRenderTotalReport();
+    }
+
+    function findCourse_(curso) {
+      var list = aReports ? aReports.courses : [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].curso === curso) return list[i];
+      }
+      return list.length ? list[0] : null;
+    }
+
+    function aRenderCourseReport() {
+      var d = aReports;
+      var course = findCourse_(aRepCurso || ($('rep-curso') ? $('rep-curso').value : ''));
+      var out = $('rep-out');
+      if (!course) {
+        out.innerHTML = '<div class="empty-state"><p class="es-title">Todavía no hay cursos en la lista.</p></div>';
+        return;
+      }
+      aRepCurso = course.curso;
+      if ($('rep-curso')) $('rep-curso').value = course.curso;
+      var showMail = aRole === 'admin';
+      var html = reportStats_([
+        [course.roster, 'En la lista'],
+        [course.complete, 'Completos'],
+        [course.incomplete, 'Incompletos'],
+        [course.missing, 'Sin anotar']
+      ]);
+      html += '<p class="hint-line">' + esc(reportPresentLine_(course.presentBySlot)) + '</p>';
+      html += '<div class="table-wrap report-table"><table><thead><tr>'
+        + '<th>#</th><th>Alumno</th><th>Curso</th>';
+      for (var k = 0; k < d.slots.length; k++) {
+        html += '<th>' + esc(d.slots[k].nombre) + '</th>';
+      }
+      html += '</tr></thead><tbody>';
+      for (var i = 0; i < course.students.length; i++) {
+        var st = course.students[i];
+        html += '<tr><td class="num" data-label="#">' + (i + 1) + '</td>'
+          + '<td data-label="Alumno"><span class="row-name">' + esc(aDisplay_(st, showMail)) + '</span>'
+          + (showMail && st.email ? '<span class="row-mail">' + esc(st.email) + '</span>' : '')
+          + '</td><td data-label="Curso">' + esc(st.curso) + '</td>';
+        for (var t = 0; t < st.talks.length; t++) {
+          var tk = st.talks[t];
+          html += '<td data-label="' + esc(tk.slot || '') + '">';
+          if (!tk.signup_id) {
+            html += '<span class="rep-missing">Sin anotar</span>';
+          } else {
+            html += '<span class="rep-talk">' + esc(tk.titulo) + '</span>'
+              + '<span class="rep-place">' + esc(tk.lugar || '') + '</span>'
+              + '<button class="present-mini' + (tk.presente ? ' on' : '') + '" type="button"'
+              + ' data-signup="' + esc(tk.signup_id) + '" data-present="' + (tk.presente ? 'true' : 'false') + '"'
+              + ' aria-pressed="' + (tk.presente ? 'true' : 'false') + '"'
+              + ' aria-label="Presente en ' + esc(tk.titulo) + '">Presente</button>';
+          }
+          html += '</td>';
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table></div>';
+      if (!course.students.length) {
+        html = '<div class="empty-state"><p class="es-title">No hay alumnos en este curso.</p></div>';
+      }
+      out.innerHTML = html;
+    }
+
+    function aOnReportPresent(signupId, present) {
+      if (!adminCred || !signupId) return;
+      call('apiAdminSetPresent', [adminCred, signupId, !present])
+        .then(function (resp) {
+          if (!resp.ok) {
+            aBanner(resp.message || 'No se pudo marcar.', 'err');
+            return;
+          }
+          aLoadReports();
+        })
+        .catch(function () {
+          aBanner('Sin conexión.', 'err');
+        });
+    }
+
+    function aRenderTalkReport() {
+      var d = aReports;
+      var list = d.talks || [];
+      var id = aRepTalkId || ($('rep-charla') ? $('rep-charla').value : '');
+      var talk = null;
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].id) === String(id)) { talk = list[i]; break; }
+      }
+      if (!talk) talk = list.length ? list[0] : null;
+      var out = $('rep-out');
+      if (!talk) {
+        out.innerHTML = '<div class="empty-state"><p class="es-title">Todavía no hay charlas cargadas.</p></div>';
+        return;
+      }
+      aRepTalkId = talk.id;
+      if ($('rep-charla')) $('rep-charla').value = talk.id;
+      var showMailTalk = aRole === 'admin';
+      var html = reportStats_([
+        [talk.anotados, 'Inscriptos'],
+        [talk.presentes, 'Presentes'],
+        [talk.ausentes, 'Ausentes'],
+        [talk.cupo, 'Cupo']
+      ]);
+      html += '<p class="hint-line">' + esc(talk.titulo) + ' · ' + esc(talk.slotLabel) + ' · ' + esc(talk.lugar) + '</p>';
+      var parts = [];
+      for (var c = 0; c < (talk.porCurso || []).length; c++) {
+        parts.push(talk.porCurso[c].curso + ' ' + talk.porCurso[c].anotados);
+      }
+      if (parts.length) {
+        html += '<p class="hint-line">Por curso: ' + esc(parts.join(', ')) + '</p>';
+      }
+      html += '<div class="table-wrap report-table"><table><thead><tr>'
+        + '<th>#</th><th>Alumno</th><th>Curso</th><th>Presente</th>'
+        + '</tr></thead><tbody>';
+      var students = talk.students || [];
+      for (var s = 0; s < students.length; s++) {
+        var st = students[s];
+        html += '<tr><td class="num" data-label="#">' + (s + 1) + '</td>'
+          + '<td data-label="Alumno"><span class="row-name">' + esc(aDisplay_(st, showMailTalk)) + '</span>'
+          + (showMailTalk && st.email ? '<span class="row-mail">' + esc(st.email) + '</span>' : '')
+          + '</td><td data-label="Curso">' + esc(st.curso) + '</td>'
+          + '<td data-label="Presente">'
+          + '<button class="present-mini' + (st.presente ? ' on' : '') + '" type="button"'
+          + ' data-signup="' + esc(st.id) + '" data-present="' + (st.presente ? 'true' : 'false') + '"'
+          + ' aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
+          + ' aria-label="Presente en ' + esc(talk.titulo) + '">Presente</button>'
+          + '</td></tr>';
+      }
+      html += '</tbody></table></div>';
+      if (!students.length) {
+        html += '<p class="hint-line">Todavía no hay inscriptos en esta charla.</p>';
+      }
+      out.innerHTML = html;
+    }
+
+    function aRenderTotalReport() {
+      var d = aReports;
+      var t = d.totals || {};
+      var html = reportStats_([
+        [t.roster || 0, 'En la lista'],
+        [t.complete || 0, 'Completos'],
+        [t.incomplete || 0, 'Incompletos'],
+        [t.missing || 0, 'Sin anotar']
+      ]);
+      html += '<p class="hint-line">' + esc(reportPresentLine_(t.presentBySlot || [])) + '</p>';
+      html += '<div class="table-wrap report-table"><table><thead><tr>'
+        + '<th>Charla</th><th>Ciclo</th><th>Horario</th><th>Inscriptos</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th>'
+        + '</tr></thead><tbody>';
+      var list = d.talks || [];
+      var sumAnotados = 0;
+      var sumPresentes = 0;
+      var sumCupo = 0;
+      for (var i = 0; i < list.length; i++) {
+        var talk = list[i];
+        sumAnotados += Number(talk.anotados || 0);
+        sumPresentes += Number(talk.presentes || 0);
+        sumCupo += Number(talk.cupo || 0);
+        html += '<tr>'
+          + '<td data-label="Charla"><span class="rep-talk">' + esc(talk.titulo) + '</span>'
+          + '<span class="rep-place">' + esc(talk.lugar || '') + '</span></td>'
+          + '<td data-label="Ciclo">' + esc(talk.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
+          + '<td data-label="Horario">' + esc(talk.slotLabel) + '</td>'
+          + '<td data-label="Inscriptos">' + talk.anotados + '</td>'
+          + '<td data-label="Presentes">' + talk.presentes + '</td>'
+          + '<td data-label="Ausentes">' + talk.ausentes + '</td>'
+          + '<td data-label="Cupo">' + talk.cupo + '</td>'
+          + '</tr>';
+      }
+      html += '</tbody></table></div>';
+      if (!list.length) {
+        html += '<div class="empty-state"><p class="es-title">Todavía no hay charlas cargadas.</p></div>';
+      } else {
+        html += '<p class="hint-line">Total: ' + sumAnotados + ' inscriptos, ' + sumPresentes
+          + ' presentes, ' + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
+      }
+      $('rep-out').innerHTML = html;
+    }
+
+    function printDate_() {
+      var d = new Date();
+      function two(n) { return (n < 10 ? '0' : '') + n; }
+      return two(d.getDate()) + '/' + two(d.getMonth() + 1) + '/' + d.getFullYear()
+        + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
+    }
+
+    function printHead_(title) {
+      return '<header class="print-head">'
+        + '<p class="print-school">' + esc(SCHOOL_NAME) + '</p>'
+        + '<h1 class="print-event">' + esc(EVENT_NAME) + '</h1>'
+        + '<p class="print-title">' + esc(title) + '</p>'
+        + '<p class="print-date">Emitido el ' + esc(printDate_()) + '</p>'
+        + '</header>';
+    }
+
+    function printSignCell_() {
+      return '<td class="sign"></td>';
+    }
+
+    function aBuildPrint() {
+      var d = aReports;
+      var area = $('print-area');
+      if (!d || !area) return;
+      var parts = [];
+      var i, j, k;
+      if (aRepType === 'curso') {
+        for (i = 0; i < d.courses.length; i++) {
+          var course = d.courses[i];
+          var summary = 'En la lista: ' + course.roster + ' · Completos: ' + course.complete
+            + ' · Incompletos: ' + course.incomplete + ' · Sin anotar: ' + course.missing
+            + ' · ' + reportPresentLine_(course.presentBySlot);
+          var rows = '';
+          for (j = 0; j < course.students.length; j++) {
+            var st = course.students[j];
+            rows += '<tr><td class="num">' + (j + 1) + '</td>'
+              + '<td>' + esc(aDisplay_(st, false)) + '</td>'
+              + '<td>' + esc(st.curso) + '</td>';
+            for (k = 0; k < st.talks.length; k++) {
+              var tk = st.talks[k];
+              rows += '<td>';
+              if (tk.signup_id) {
+                rows += '<span class="print-talk">' + esc(tk.titulo) + '</span>'
+                  + '<span class="print-place">' + esc(tk.lugar || '') + (tk.presente ? ' · presente' : '') + '</span>';
+              } else {
+                rows += '<span class="print-missing">Sin anotar</span>';
+              }
+              rows += '</td>';
+            }
+            rows += printSignCell_() + '</tr>';
+          }
+          var head = '<tr><th class="num">#</th><th>Apellido y nombre</th><th>Curso</th>';
+          for (k = 0; k < d.slots.length; k++) {
+            head += '<th>' + esc(d.slots[k].nombre) + '</th>';
+          }
+          head += '<th class="sign">Firma o presente</th></tr>';
+          parts.push('<section class="print-page">' + printHead_('Reporte por curso: ' + course.curso)
+            + '<p class="print-summary">' + esc(summary) + '</p>'
+            + '<table class="print-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table>'
+            + '</section>');
+        }
+      } else if (aRepType === 'charla') {
+        var talks = d.talks || [];
+        for (i = 0; i < talks.length; i++) {
+          var talk = talks[i];
+          var tsummary = 'Inscriptos: ' + talk.anotados + ' · Presentes: ' + talk.presentes
+            + ' · Ausentes: ' + talk.ausentes + ' · Cupo: ' + talk.cupo
+            + ' · ' + (talk.slotLabel || '');
+          var trows = '';
+          var students = talk.students || [];
+          for (j = 0; j < students.length; j++) {
+            var ts = students[j];
+            trows += '<tr><td class="num">' + (j + 1) + '</td>'
+              + '<td>' + esc(aDisplay_(ts, false)) + '</td>'
+              + '<td>' + esc(ts.curso) + '</td>'
+              + '<td>' + (ts.presente ? 'Sí' : 'No') + '</td>'
+              + printSignCell_() + '</tr>';
+          }
+          var thead = '<tr><th class="num">#</th><th>Apellido y nombre</th><th>Curso</th>'
+            + '<th>Presente</th><th class="sign">Firma o presente</th></tr>';
+          parts.push('<section class="print-page">'
+            + printHead_('Reporte por charla: ' + talk.titulo)
+            + '<p class="print-summary">' + esc(tsummary) + '</p>'
+            + '<table class="print-table"><thead>' + thead + '</thead><tbody>' + trows + '</tbody></table>'
+            + '</section>');
+        }
+      } else {
+        var t = d.totals || {};
+        var sum = 'En la lista: ' + (t.roster || 0) + ' · Completos: ' + (t.complete || 0)
+          + ' · Incompletos: ' + (t.incomplete || 0) + ' · Sin anotar: ' + (t.missing || 0)
+          + ' · ' + reportPresentLine_(t.presentBySlot || []);
+        var all = d.talks || [];
+        var tbody = '';
+        for (i = 0; i < all.length; i++) {
+          var row = all[i];
+          tbody += '<tr><td>' + esc(row.titulo) + '<span class="print-place">' + esc(row.lugar || '') + '</span></td>'
+            + '<td>' + esc(row.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
+            + '<td>' + esc(row.slotLabel) + '</td>'
+            + '<td>' + row.anotados + '</td><td>' + row.presentes + '</td>'
+            + '<td>' + row.ausentes + '</td><td>' + row.cupo + '</td></tr>';
+        }
+        parts.push('<section class="print-page">' + printHead_('Reporte total')
+          + '<p class="print-summary">' + esc(sum) + '</p>'
+          + '<table class="print-table"><thead><tr><th>Charla</th><th>Ciclo</th><th>Horario</th>'
+          + '<th>Inscriptos</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th></tr></thead>'
+          + '<tbody>' + tbody + '</tbody></table>'
+          + '<p class="print-note">' + esc(EVENT_NAME) + ' · ' + esc(SCHOOL_NAME) + ' · ' + esc(printDate_()) + '</p>'
+          + '</section>');
+      }
+      if (!parts.length) {
+        parts.push('<section class="print-page">' + printHead_('Reporte') 
+          + '<p class="print-summary">Sin datos para imprimir.</p></section>');
+      }
+      area.innerHTML = parts.join('');
+    }
+
+    function aPrint() {
+      if (!adminCred) return;
+      if (!aReports) {
+        aLoadReports(aPrint);
+        return;
+      }
+      aBuildPrint();
+      window.print();
+    }
+
+    function aRepSetType(type) {
+      aRepType = type;
+      var ids = [['rep-tab-curso', 'curso'], ['rep-tab-charla', 'charla'], ['rep-tab-total', 'total']];
+      for (var i = 0; i < ids.length; i++) {
+        var el = $(ids[i][0]);
+        if (!el) continue;
+        el.classList.toggle('active', ids[i][1] === type);
+        el.setAttribute('aria-pressed', ids[i][1] === type ? 'true' : 'false');
+      }
+      if ($('rep-curso')) $('rep-curso').hidden = type !== 'curso';
+      if ($('rep-charla')) $('rep-charla').hidden = type !== 'charla';
+      if (type === 'charla' && !aRepTalkId && aReports && aReports.talks && aReports.talks.length) {
+        aRepTalkId = aReports.talks[0].id;
+      }
+      aRenderReport();
     }
 
     function aApplyRole() {
@@ -2556,6 +3322,19 @@
       aRenderTable();
     }
 
+    function aDisplay_(st, showMail) {
+      var ap = String(st && st.apellido ? st.apellido : '').replace(/\s+/g, ' ').trim();
+      var nombre = String(st && st.nombre ? st.nombre : '').replace(/\s+/g, ' ').trim();
+      if (ap && nombre) return ap + ', ' + nombre;
+      if (ap) return ap;
+      if (nombre) return nombre;
+      return showMail && st && st.email ? st.email : 'Sin nombre';
+    }
+
+    function aSearch_(st) {
+      return (String(st.apellido || '') + ' ' + String(st.nombre || '') + ' ' + String(st.nombreCompleto || '') + ' ' + String(st.curso || '')).toLowerCase();
+    }
+
     function fillFilter(id, values, allLabel) {
       var el = $(id);
       if (!el) return;
@@ -2593,12 +3372,14 @@
     function aTab(name) {
       aTabName = name;
       var panes = [['pane-charla', name === 'charla'], ['pane-pend', name === 'pend'],
+        ['pane-reportes', name === 'reportes'],
         ['pane-inscriptos', name === 'inscriptos'], ['pane-mails', name === 'mails']];
       for (var i = 0; i < panes.length; i++) {
         var pane = $(panes[i][0]);
         if (pane) pane.hidden = !panes[i][1];
       }
       var tabs = [['tab-charla', name === 'charla'], ['tab-pend', name === 'pend'],
+        ['tab-reportes', name === 'reportes'],
         ['tab-inscriptos', name === 'inscriptos'], ['tab-mails', name === 'mails']];
       for (var j = 0; j < tabs.length; j++) {
         var tab = $(tabs[j][0]);
@@ -2617,7 +3398,7 @@
       var fDiv = $('filter-division') ? $('filter-division').value : '';
       var fCharla = $('filter-charla') ? $('filter-charla').value : '';
       var rows = '<div class="table-wrap"><table><thead><tr>'
-        + '<th>Fecha</th><th>Nombre</th><th>Mail</th><th>Curso</th><th>Horario</th><th>Charla</th><th></th>'
+        + '<th>Fecha</th><th>Alumno</th><th>Curso</th><th>Horario</th><th>Charla</th><th></th>'
         + '</tr></thead><tbody>';
       var shown = 0;
       for (var i = 0; i < d.signups.length; i++) {
@@ -2633,8 +3414,8 @@
         shown++;
         rows += '<tr>'
           + '<td class="narrow" data-label="Fecha">' + esc(s.cuando) + '</td>'
-          + '<td data-label="Nombre">' + esc(s.nombre) + '</td>'
-          + '<td data-label="Mail">' + esc(s.email) + '</td>'
+          + '<td data-label="Alumno"><span class="row-name">' + esc(aDisplay_(s, true)) + '</span>'
+          + '<span class="row-mail">' + esc(s.email) + '</span></td>'
           + '<td data-label="Curso">' + esc(s.curso) + '</td>'
           + '<td data-label="Horario">' + esc(s.slotLabel) + '</td>'
           + '<td data-label="Charla">' + esc(s.talkTitulo) + '</td>'
@@ -2795,10 +3576,10 @@
     function aDownloadCsv() {
       var d = aData;
       if (!d) return;
-      var rows = [['Fecha', 'Mail', 'Nombre', 'Curso', 'Ciclo', 'Horario', 'Charla']];
+      var rows = [['Apellido', 'Nombre', 'Curso', 'Horario', 'Charla', 'Lugar', 'Presente', 'Mail']];
       for (var i = 0; i < d.signups.length; i++) {
         var s = d.signups[i];
-        rows.push([s.cuando, s.email, s.nombre, s.curso, s.ciclo, s.slotLabel, s.talkTitulo]);
+        rows.push([s.apellido || '', s.nombre, s.curso, s.slotLabel, s.talkTitulo, s.lugar || '', s.presente ? 'si' : 'no', s.email]);
       }
       var csv = '\uFEFF' + rows.map(function (r) {
         return r.map(aCsvCell).join(';');
@@ -2856,6 +3637,17 @@
       $('filter-charla').addEventListener('change', aRenderTable);
       $('tab-charla').addEventListener('click', function () { aTab('charla'); });
       $('tab-pend').addEventListener('click', function () { aTab('pend'); });
+      $('tab-reportes').addEventListener('click', function () { aTab('reportes'); });
+      $('rep-tab-curso').addEventListener('click', function () { aRepSetType('curso'); });
+      $('rep-tab-charla').addEventListener('click', function () { aRepSetType('charla'); });
+      $('rep-tab-total').addEventListener('click', function () { aRepSetType('total'); });
+      $('rep-curso').addEventListener('change', function () { aRepCurso = this.value; aRenderReport(); });
+      $('rep-charla').addEventListener('change', function () { aRepTalkId = this.value; aRenderReport(); });
+      $('btn-print').addEventListener('click', aPrint);
+      $('rep-out').addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.classList && ev.target.classList.contains('present-mini') ? ev.target : null;
+        if (btn) aOnReportPresent(btn.getAttribute('data-signup'), btn.getAttribute('data-present') === 'true');
+      });
       $('tab-inscriptos').addEventListener('click', function () { aTab('inscriptos'); });
       $('tab-mails').addEventListener('click', function () { aTab('mails'); });
       $('select-charla').addEventListener('change', function () {
