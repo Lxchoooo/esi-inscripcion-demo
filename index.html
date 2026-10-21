@@ -1486,7 +1486,10 @@
     }
 
     var sheetCb = null;
+    var sheetPrevFocus = null;
+
     function openSheet(opts) {
+      sheetPrevFocus = document.activeElement || null;
       $('sheet-title').textContent = opts.title || '';
       $('sheet-body').innerHTML = opts.body || '';
       var ok = $('sheet-confirm');
@@ -1497,12 +1500,18 @@
       $('sheet-backdrop').classList.add('show');
       $('sheet').classList.add('show');
       document.body.classList.add('sheet-open');
+      try { $('sheet-confirm').focus(); } catch (e) { }
     }
     function closeSheet() {
       $('sheet-backdrop').classList.remove('show');
       $('sheet').classList.remove('show');
       document.body.classList.remove('sheet-open');
       sheetCb = null;
+      var back = sheetPrevFocus;
+      sheetPrevFocus = null;
+      if (back && back.focus) {
+        try { back.focus(); } catch (e) { }
+      }
     }
     function sheetInit() {
       $('sheet-cancel').addEventListener('click', closeSheet);
@@ -1513,7 +1522,28 @@
         if (cb) cb();
       });
       document.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape') closeSheet();
+        if (ev.key === 'Escape') {
+          closeSheet();
+          return;
+        }
+        if (ev.key !== 'Tab' || !$('sheet').classList.contains('show')) return;
+        var items = [];
+        try {
+          items = Array.prototype.slice.call(
+            $('sheet').querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+          );
+        } catch (e) { }
+        items = items.filter(function (el) { return el && el.offsetParent !== null; });
+        if (!items.length) return;
+        var first = items[0];
+        var last = items[items.length - 1];
+        if (ev.shiftKey && document.activeElement === first) {
+          ev.preventDefault();
+          last.focus();
+        } else if (!ev.shiftKey && document.activeElement === last) {
+          ev.preventDefault();
+          first.focus();
+        }
       });
     }
 
@@ -1609,6 +1639,7 @@
         var isMissing = sState.showMissing && missingMap[Number(slots[s].id)];
         section.className = 'slot' + (isMissing ? ' is-missing' : '');
         section.setAttribute('data-slot-id', slots[s].id);
+        section.setAttribute('tabindex', '-1');
         var h2 = document.createElement('h2');
         h2.className = 'slot-title';
         h2.innerHTML = '<span class="time-pill">Horario ' + (s + 1) + '</span>'
@@ -1679,6 +1710,13 @@
           } catch (e) {
             target.scrollIntoView();
           }
+        }
+        var btn = null;
+        try { btn = target ? target.querySelector('.talk') : null; } catch (e) { }
+        if (btn && btn.focus) {
+          try { btn.focus({ preventScroll: true }); } catch (e) { try { btn.focus(); } catch (e2) { } }
+        } else if (target && target.focus) {
+          try { target.focus({ preventScroll: true }); } catch (e) { try { target.focus(); } catch (e2) { } }
         }
         return;
       }
