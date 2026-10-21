@@ -98,7 +98,7 @@ return {
   retryTransient_: retryTransient_,
   setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
-  sState: sState, setA: function (v) { aData = v; },
+  sState: sState, getState: function () { return sState; }, setA: function (v) { aData = v; },
   setTalk: function (v) { aTalkData = v; },
   setPending: function (v) { aPendingData = v; },
   setRole: function (r) { aRole = r; },
@@ -263,6 +263,15 @@ function tick() {
   assert(!JSON.stringify(savedSession).includes('30111222'), 'el dni no se guarda');
   ui.sSalir();
   assert(!('esi_student' in store), 'salir borra la sesion');
+  assert(!('esi_student_data' in store), 'salir borra la copia de sesion');
+  assert(ui.getState().email === '' && ui.getState().nombre === '' && ui.getState().curso === '', 'salir limpia el estado');
+  assert(ui.getState().data === null && ui.getState().lookup === null, 'salir limpia los datos');
+  assert(document.getElementById('input-mail').value === '', 'salir limpia el mail');
+  assert(document.getElementById('input-dni').value === '', 'salir limpia el dni');
+  assert(document.getElementById('input-apellido').value === '', 'salir limpia el apellido');
+  assert(document.getElementById('summary').innerHTML === '', 'salir limpia el resumen');
+  assert(document.getElementById('login-mail-box').hidden === false, 'salir vuelve al mail');
+  assert(document.getElementById('login-dni-box').hidden === true, 'salir oculta el dni');
   assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'salir vuelve al ingreso');
   ui.sSetLoginMode('mail');
 
@@ -297,7 +306,7 @@ function tick() {
   ui.aRenderTalk();
   assert(!document.getElementById('charla-list').innerHTML.includes('@'), 'la guia no ve el mail');
 
-  assert(document.getElementById('hdr-sub').textContent === 'ESI 2026 · Guía', 'subtitulo de guia');
+  assert(document.getElementById('hdr-sub').textContent === 'Jornada ESI 2026 · Guía', 'subtitulo de guia');
   assert(document.getElementById('btn-csv').style.display === 'none', 'csv oculto para guia');
   assert(document.getElementById('tab-mails').style.display === 'none', 'tab de mails oculto');
   ui.setRole('admin');
@@ -476,6 +485,9 @@ function tick() {
   assert(printHtml.includes('Firma o presente'), 'columna de firma en el PDF');
   assert(printHtml.includes('Reporte por curso: 2°B'), 'encabezado del curso');
   assert(printHtml.includes('Emitido el'), 'fecha de emision');
+  assert(printHtml.includes('Instituto Secundario Salsipuedes (ISS)'), 'institucion en el PDF');
+  assert(printHtml.includes('Jornada ESI 2026'), 'jornada en el PDF');
+  assert(/Emitido el \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/.test(printHtml), 'fecha y hora en el PDF');
   assert(printHtml.includes('Gómez, Ana'), 'apellido primero en el PDF');
   assert(printHtml.includes('Sin anotar'), 'charla vacia en el PDF');
   assert(printHtml.includes('print-page'), 'pagina de impresion');
