@@ -675,15 +675,82 @@ t('Panel keeps the session token in memory and not the pin in storage', () => {
   if (!/aAuthLost/.test(panelSrc)) throw new Error('no session expiry handling');
 });
 
+function cssVar(block, name) {
+  const m = block.match(new RegExp('--' + name + ':\\s*(#[0-9A-Fa-f]{6})'));
+  if (!m) throw new Error('missing --' + name);
+  return m[1];
+}
+
+function contrast(a, b) {
+  function lum(hex) {
+    const c = hex.replace('#', '').match(/../g).map((h) => parseInt(h, 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  const l1 = lum(a);
+  const l2 = lum(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
 t('Panel keeps control borders and focus rings above the contrast minimum', () => {
-  if (!/--line-ui:\s*#8E8A80/.test(panelHtml)) throw new Error('line-ui claro missing');
-  if (!/--line-ui:\s*#787C71/.test(panelHtml)) throw new Error('line-ui oscuro missing');
+  const root = panelHtml.match(/:root \{([\s\S]*?)\}/)[1];
+  const dark = panelHtml.match(/@media \(prefers-color-scheme: dark\) \{\s*:root \{([\s\S]*?)\}/)[1];
+  const pairs = [
+    ['claro accent/paper', cssVar(root, 'accent'), cssVar(root, 'paper'), 4.5],
+    ['claro accent/surface', cssVar(root, 'accent'), cssVar(root, 'surface'), 4.5],
+    ['claro accent/soft', cssVar(root, 'accent'), cssVar(root, 'accent-soft'), 4.5],
+    ['claro strong/soft', cssVar(root, 'accent-strong'), cssVar(root, 'accent-soft'), 4.5],
+    ['claro paper/accent', cssVar(root, 'paper'), cssVar(root, 'accent'), 4.5],
+    ['oscuro accent/paper', cssVar(dark, 'accent'), cssVar(dark, 'paper'), 4.5],
+    ['oscuro accent/surface', cssVar(dark, 'accent'), cssVar(dark, 'surface'), 4.5],
+    ['oscuro accent/soft', cssVar(dark, 'accent'), cssVar(dark, 'accent-soft'), 4.5],
+    ['claro line-ui/paper', cssVar(root, 'line-ui'), cssVar(root, 'paper'), 3.2],
+    ['claro line-ui/surface', cssVar(root, 'line-ui'), cssVar(root, 'surface'), 3.2],
+    ['oscuro line-ui/paper', cssVar(dark, 'line-ui'), cssVar(dark, 'paper'), 3.2],
+    ['oscuro line-ui/surface', cssVar(dark, 'line-ui'), cssVar(dark, 'surface'), 3.2]
+  ];
+  for (const p of pairs) {
+    const r = contrast(p[1], p[2]);
+    if (r < p[3]) throw new Error(p[0] + ' contrast ' + r.toFixed(2));
+  }
   if (!/\.talk \{[^}]*border:\s*1px solid var\(--line-ui\)/.test(panelHtml)) throw new Error('talk border not using line-ui');
   if (!/border:\s*1px solid var\(--line-ui\); border-radius: var\(--radius-sm\)/.test(panelHtml)) throw new Error('inputs not using line-ui');
   if (/focus-visible[^}]*var\(--accent-soft\)/.test(panelHtml)) throw new Error('weak focus ring');
   if (/focus-visible[^}]*var\(--accent-fill\)/.test(panelHtml)) throw new Error('weak focus ring');
   if (!/focus-visible[^}]*var\(--accent\)/.test(panelHtml)) throw new Error('focus ring missing');
   if (!/overflow-wrap:\s*anywhere/.test(panelHtml)) throw new Error('long text can overflow on narrow screens');
+});
+
+t('Panel carries the ISS identity and an accessible green palette', () => {
+  if (!/var SCHOOL_NAME = 'Instituto Secundario Salsipuedes \(ISS\)';/.test(panelSrc)) throw new Error('SCHOOL_NAME placeholder');
+  if (!/var EVENT_NAME = 'Jornada ESI 2026';/.test(panelSrc)) throw new Error('EVENT_NAME');
+  for (const needle of ['brand-logo', 'Instituto Secundario Salsipuedes (ISS)',
+    'ISS · Jornada ESI 2026', '<title>ISS · Jornada ESI 2026</title>',
+    'aria-label="Inicio, Instituto Secundario Salsipuedes (ISS)"']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/viewBox="0 0 40 40"/.test(panelHtml)) throw new Error('logo viewBox');
+  if (!/@media \(prefers-color-scheme: dark\)[\s\S]*?--accent: #9BD3A6/.test(panelHtml)) throw new Error('dark accent');
+});
+
+t('Panel uses a dense desktop admin layout with keyboard shortcuts', () => {
+  for (const needle of ['@media (min-width: 1024px)', 'body.admin .wrap { max-width: 1240px',
+    'body.admin .filters { display: flex', 'position: sticky; top: 0',
+    'body.admin .roster-who { display: flex', 'class="kbd-hint"',
+    'function aOnKey_', "if (ev.key === '/')", 'document.addEventListener(\'keydown\', aOnKey_)']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+});
+
+t('Panel stays usable at 360px with 40px targets and safe overflow', () => {
+  for (const needle of ['@media (max-width: 380px)', 'overflow-wrap: anywhere',
+    'text-overflow: ellipsis', 'min-height: 40px', 'z-index: 50',
+    'box-shadow: 0 -8px 24px', 'padding-bottom: calc(128px']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/\.present-btn \{[^}]*min-height: 40px/s.test(panelHtml)) throw new Error('present button target');
+  if (!/\.present-mini \{[^}]*min-height: 40px/s.test(panelHtml)) throw new Error('present mini target');
+  if (!/\.sel-bar \{[^}]*z-index: 50/s.test(panelHtml)) throw new Error('sel bar stacking');
 });
 
 function fakeSheet(name, headers, rows) {
@@ -1256,10 +1323,34 @@ t('Panel renders the total report with a summary line', () => {
 
 t('Panel prints A4 reports with a signature column and page breaks', () => {
   for (const needle of ['@page { size: A4 portrait;', 'window.print()', 'id="print-area"',
-    'Firma o presente', 'break-after: page', 'btn-print', 'SCHOOL_NAME', 'EVENT_NAME']) {
+    'Firma o presente', 'break-after: page', 'btn-print', 'SCHOOL_NAME', 'EVENT_NAME',
+    'Jornada ESI 2026']) {
+    if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/var SCHOOL_NAME = 'Instituto Secundario Salsipuedes \(ISS\)';/.test(panelSrc)) throw new Error('SCHOOL_NAME is not the ISS name');
+  if (!/@media print[\s\S]*?#nav, \.sel-bar, \.tabs, \.admin-actions, \.filters, button \{ display: none !important; \}/.test(panelHtml)) {
+    throw new Error('print does not hide chrome');
+  }
+  if (/#print-area, #print-area \* \{[\s\S]*?color: #000 !important/.test(panelHtml) === false) {
+    throw new Error('print does not force black ink');
+  }
+  if (!/function printDate_[\s\S]*?getHours\(\)[\s\S]*?getMinutes\(\)/.test(panelSrc)) {
+    throw new Error('print date misses the time');
+  }
+  if (/print-table th \{[^}]*background: #eee/.test(panelHtml)) throw new Error('print keeps a gray header');
+});
+
+t('Panel wipes student data on Salir and warns about shared phones', () => {
+  if (!/function sClearStudentSession_\(\)[\s\S]*?lsDel\('esi_student'\)[\s\S]*?ssDel\('esi_student'\)/.test(panelSrc)) {
+    throw new Error('session wipe helper');
+  }
+  if (!/function sSalir\(\) \{[\s\S]*?sClearStudentSession_\(\)[\s\S]*?sEmptyState_\(\)[\s\S]*?sClearLoginFields_\(\)[\s\S]*?sSetLoginMode\('mail'\)/.test(panelSrc)) {
+    throw new Error('Salir does not reset the login');
+  }
+  for (const needle of ['id="login-note"', 'Si el celular es compartido',
+    'sClearStudentSession_()', 'sClearLoginFields_()']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/var SCHOOL_NAME = '[^']+';/.test(panelSrc)) throw new Error('SCHOOL_NAME is not a constant');
 });
 
 
