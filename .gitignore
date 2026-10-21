@@ -1,0 +1,29 @@
+# Lists and exports
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.ods
+lista*.txt
+listas/
+mails*.txt
+alumnos*.txt
+students*.txt
+
+# Local data and secrets
+*.local
+*.private
+data/
+private/
+secrets/
+.env
+.env.*
+
+# Logs and temp
+*.log
+build/*.log
+build/put*.json
+
+# Tooling
+.DS_Store
+node_modules/
