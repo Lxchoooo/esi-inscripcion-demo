@@ -282,8 +282,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 8) throw new Error('expected 8 api fns, got ' + names.length);
-  const want = ['apiLookup', 'apiGetData', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster'];
+  if (names.length !== 11) throw new Error('expected 11 api fns, got ' + names.length);
+  const want = ['apiLookup', 'apiGetData', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -682,6 +682,299 @@ t('Panel keeps control borders and focus rings above the contrast minimum', () =
   if (/focus-visible[^}]*var\(--accent-fill\)/.test(panelHtml)) throw new Error('weak focus ring');
   if (!/focus-visible[^}]*var\(--accent\)/.test(panelHtml)) throw new Error('focus ring missing');
   if (!/overflow-wrap:\s*anywhere/.test(panelHtml)) throw new Error('long text can overflow on narrow screens');
+});
+
+function fakeSheet(name, headers, rows) {
+  const sh = {
+    name: name,
+    data: [headers.slice()].concat((rows || []).map((r) => r.slice())),
+    getDataRange() {
+      return { getValues: () => sh.data.map((r) => r.slice()) };
+    },
+    appendRow(row) { sh.data.push(row.slice()); },
+    getRange(r, c, nr, nc) {
+      return {
+        getValues: () => {
+          const out = [];
+          for (let i = 0; i < (nr || 1); i++) {
+            const row = [];
+            for (let j = 0; j < (nc || 1); j++) {
+              const cell = sh.data[r - 1 + i] || [];
+              row.push(cell[c - 1 + j]);
+            }
+            out.push(row);
+          }
+          return out;
+        },
+        setValue: (v) => { sh.data[r - 1][c - 1] = v; },
+        setValues: (vals) => {
+          for (let i = 0; i < vals.length; i++) {
+            for (let j = 0; j < vals[i].length; j++) sh.data[r - 1 + i][j] = vals[i][j];
+          }
+        },
+        clearContent: () => {
+          for (let i = r - 1; i < sh.data.length; i++) sh.data[i] = sh.data[i].map(() => '');
+        }
+      };
+    },
+    getLastRow() { return sh.data.length; },
+    getLastColumn() { return Math.max(1, sh.data[0] ? sh.data[0].length : 1); },
+    deleteRow(r) { sh.data.splice(r - 1, 1); },
+    setFrozenRows() { },
+    clear() { sh.data = [headers.slice()]; }
+  };
+  return sh;
+}
+
+function backendStub(props, seed) {
+  props = props || {};
+  const cache = new Map();
+  let uuid = 0;
+  const sheets = {
+    Config: fakeSheet('Config', ['clave', 'valor'], [['evento_abierto', 'abierto']]),
+    Slots: fakeSheet('Slots', ['id', 'nombre', 'inicio', 'fin', 'orden'], [
+      [1, '1ra', '10:30', '11:20', 1],
+      [2, '2da', '11:30', '12:20', 2],
+      [3, '3ra', '12:30', '13:30', 3]
+    ]),
+    Talks: fakeSheet('Talks', ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], [
+      ['B1', 'Charla uno', 'basico', 1, 'Aula 1', 40, 'si'],
+      ['B2', 'Charla dos', 'basico', 2, 'Aula 2', 40, 'si'],
+      ['O1', 'Charla tres', 'orientado', 3, 'Aula 3', 40, 'si']
+    ]),
+    Students: fakeSheet('Students', ['email', 'nombre', 'curso'], (seed && seed.students) || [
+      ['ana@esc.edu.ar', 'Ana Gomez', '2°B'],
+      ['beto@esc.edu.ar', 'Beto Sanchez', '5°Turismo'],
+      ['carla@esc.edu.ar', 'Carla Diaz', '3°A']
+    ]),
+    Signups: fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'],
+      (seed && seed.signups) || [
+        ['s1', new Date(), 'ana@esc.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1'],
+        ['s2', new Date(), 'beto@esc.edu.ar', 'Beto Sanchez', '5°Turismo', 'orientado', 2, 'B2'],
+        ['s3', new Date(), 'carla@esc.edu.ar', 'Carla Diaz', '3°A', 'basico', 3, 'O1']
+      ])
+  };
+  const fakeProps = {
+    getProperty: (k) => (k in props ? props[k] : null),
+    setProperty: (k, v) => { props[k] = String(v); },
+    deleteProperty: (k) => { delete props[k]; }
+  };
+  const spreadsheet = {
+    getSheetByName: (n) => sheets[n] || null,
+    insertSheet: (n) => { sheets[n] = fakeSheet(n, [], []); return sheets[n]; },
+    getSpreadsheetTimeZone: () => 'America/Argentina/Cordoba',
+    toast: () => { }
+  };
+  return {
+    props: props,
+    cache: cache,
+    sheets: sheets,
+    PropertiesService: { getScriptProperties: () => fakeProps },
+    LockService: { getScriptLock: () => ({ waitLock: function () { }, releaseLock: function () { } }) },
+    CacheService: {
+      getScriptCache: () => ({
+        get: (k) => (cache.has(k) ? cache.get(k) : null),
+        put: (k, v) => { cache.set(k, v); },
+        remove: (k) => { cache.delete(k); }
+      })
+    },
+    SpreadsheetApp: { getActive: () => spreadsheet },
+    Utilities: {
+      DigestAlgorithm: { SHA_256: 'sha256' },
+      getUuid: () => 'uuid-' + (++uuid),
+      formatDate: (d) => '01/01 10:00',
+      computeDigest: (algo, value) => {
+        let h = 7;
+        const s = String(value);
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 255;
+        return [h, (h + 17) & 255, (h + 91) & 255, 250, 255];
+      }
+    }
+  };
+}
+
+function backendApi(services, names) {
+  const src = names.split(',').map((n) => n.trim());
+  const body = src.map((n) => n + ': ' + n).join(',');
+  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities',
+    codeSrc + '\nreturn {' + body + '};')(
+    services.PropertiesService, services.LockService, services.CacheService,
+    services.SpreadsheetApp, services.Utilities);
+}
+
+t('Code.gs has two roles and a separate guide key', () => {
+  if (!/GUIDE_PIN_PROP\s*=\s*'GUIDE_PIN'/.test(codeSrc)) throw new Error('guide pin property missing');
+  if (!/function ensureGuidePin_/.test(codeSrc)) throw new Error('ensureGuidePin_ missing');
+  if (!/ROLE_ADMIN\s*=\s*'admin'/.test(codeSrc)) throw new Error('admin role missing');
+  if (!/ROLE_GUIDE\s*=\s*'guide'/.test(codeSrc)) throw new Error('guide role missing');
+  if (!/setup\(\)[\s\S]{0,2000}ensureGuidePin_\(\)/.test(codeSrc)) throw new Error('setup does not create guide pin');
+  if (/\[.'admin_pin',/.test(codeSrc) || /\[.'guide_pin',/.test(codeSrc)) throw new Error('pin seeded in sheet');
+});
+
+t('Code.gs resolves the role from the key and keeps it in the token', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'adminAuth_, apiAdminLogin');
+  assertEq(api.adminAuth_('1111').role, 'admin', 'admin role');
+  assertEq(api.adminAuth_('2222').role, 'guide', 'guide role');
+  assertEq(api.adminAuth_('3333').ok, false, 'wrong key');
+  const login = api.apiAdminLogin('2222');
+  assertEq(login.ok, true, 'guide login');
+  assertEq(login.role, 'guide', 'guide role in login');
+  if (!login.token) throw new Error('no token issued');
+  assertEq(api.adminAuth_(login.token).role, 'guide', 'role kept in token');
+  const adminLogin = api.apiAdminLogin('1111');
+  assertEq(api.adminAuth_(adminLogin.token).role, 'admin', 'admin role in token');
+});
+
+t('Code.gs blocks write actions for the guide role', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'apiAdminSetOpen, apiAdminDeleteSignup, apiAdminImportRoster');
+  const setOpen = api.apiAdminSetOpen('2222', false);
+  assertEq(setOpen.ok, false, 'guide cannot close signup');
+  if (!/no permite esta acción/.test(setOpen.message)) throw new Error('message: ' + setOpen.message);
+  const del = api.apiAdminDeleteSignup('2222', 'x');
+  assertEq(del.ok, false, 'guide cannot delete');
+  const imp = api.apiAdminImportRoster('2222', 'a@b.co', 'agregar');
+  assertEq(imp.ok, false, 'guide cannot import');
+  const noKey = api.apiAdminSetOpen('', false);
+  assertEq(noKey.ok, false, 'no key');
+  if (!/Clave incorrecta/.test(noKey.message)) throw new Error('no key message: ' + noKey.message);
+});
+
+t('Code.gs guide payload has no signup list', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'apiAdminGetData');
+  const noKey = api.apiAdminGetData('');
+  assertEq(noKey.ok, false, 'no key rejected');
+  const guideData = api.apiAdminGetData('2222');
+  assertEq(guideData.ok, true, 'guide can read');
+  assertEq(guideData.role, 'guide', 'role in payload');
+  assertEq(guideData.signups.length, 0, 'guide gets no full signup list');
+  if (JSON.stringify(guideData).indexOf('@') >= 0) throw new Error('guide payload leaks a mail');
+  const adminData = api.apiAdminGetData('1111');
+  assertEq(adminData.signups.length, 3, 'admin sees the signups');
+  assertEq(adminData.signups[0].email, 'ana@esc.edu.ar', 'admin sees the mails');
+});
+
+t('Code.gs lookup returns the roster name and course and nothing else', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiLookup');
+  const r = api.apiLookup('ana@esc.edu.ar');
+  assertEq(r.ok, true, 'lookup ok');
+  assertEq(r.nombre, 'Ana Gomez', 'name from roster');
+  assertEq(r.curso, '2°B', 'course from roster');
+  assertEq(r.needsNombre, false, 'name not needed');
+  assertEq(r.needsCurso, false, 'course not needed');
+  if (JSON.stringify(r).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
+  if (JSON.stringify(r).indexOf('beto@') >= 0) throw new Error('lookup leaks the list');
+  const out = api.apiLookup('nadie@esc.edu.ar');
+  assertEq(out.ok, false, 'mail out of roster');
+});
+
+t('Code.gs guide reads of the new views never leak mails', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'apiAdminTalkRoster, apiAdminPending');
+  const roster = api.apiAdminTalkRoster('2222', 'B1');
+  assertEq(roster.ok, true, 'guide can read talk roster');
+  const pending = api.apiAdminPending('2222');
+  assertEq(pending.ok, true, 'guide can read pending');
+  if (JSON.stringify(roster).indexOf('@') >= 0) throw new Error('talk roster leaks mail');
+  if (JSON.stringify(pending).indexOf('@') >= 0) throw new Error('pending leaks mail');
+});
+
+t('Code.gs caches reads and invalidates on writes', () => {
+  if (!/DATA_CACHE_TTL\s*=\s*12/.test(codeSrc)) throw new Error('cache ttl missing');
+  if (!/function readSignupsCached_/.test(codeSrc)) throw new Error('cached signups missing');
+  if (!/function readStudentsCached_/.test(codeSrc)) throw new Error('cached students missing');
+  if (!/function invalidateDataCache_/.test(codeSrc)) throw new Error('invalidate missing');
+  const writes = codeSrc.match(/invalidateDataCache_\(\);/g) || [];
+  if (writes.length < 3) throw new Error('cache not invalidated on every write');
+});
+
+t('Code.gs pending list tells which slots each student is missing', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminPending');
+  const r = api.apiAdminPending('1111');
+  assertEq(r.ok, true, 'pending ok');
+  assertEq(r.total, 3, 'roster size');
+  assertEq(r.pending, 3, 'three pending');
+  const names = r.students.map((s) => s.nombre);
+  assertEq(names[0], 'Carla Diaz', 'sorted by surname');
+  const ana = r.students.filter((s) => s.nombre === 'Ana Gomez')[0];
+  assertEq(ana.faltan.join(','), '2da,3ra', 'missing slots');
+  assertEq(ana.curso, '2°B', 'course kept');
+});
+
+t('Code.gs talk roster counts and sorts by surname', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminTalkRoster');
+  const r = api.apiAdminTalkRoster('1111', 'B1');
+  assertEq(r.ok, true, 'talk roster ok');
+  assertEq(r.count, 1, 'count');
+  assertEq(r.talk.cupo, 40, 'cupo');
+  assertEq(r.students[0].nombre, 'Ana Gomez', 'student in talk');
+  assertEq(r.students[0].email, 'ana@esc.edu.ar', 'admin sees the mail');
+  const missing = api.apiAdminTalkRoster('1111', 'NOPE');
+  assertEq(missing.ok, false, 'unknown talk');
+});
+
+t('Code.gs marks attendance under lock and counts it per talk', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const calls = [];
+  services.LockService = {
+    getScriptLock: () => ({
+      waitLock: () => calls.push('lock'),
+      releaseLock: () => calls.push('unlock')
+    })
+  };
+  const api = backendApi(services, 'apiAdminSetPresent, apiAdminTalkRoster');
+  const first = api.apiAdminSetPresent('2222', 's1', true);
+  assertEq(first.ok, true, 'guide can mark attendance');
+  if (calls.indexOf('lock') < 0) throw new Error('write without lock');
+  const roster = api.apiAdminTalkRoster('2222', 'B1');
+  assertEq(roster.presentes, 1, 'present counter');
+  assertEq(roster.students[0].presente, true, 'student marked');
+  const second = api.apiAdminSetPresent('2222', 's1', false);
+  assertEq(second.ok, true, 'unmark');
+  const after = api.apiAdminTalkRoster('2222', 'B1');
+  assertEq(after.presentes, 0, 'counter back to zero');
+  assertEq(after.students[0].presente, false, 'student unmarked');
+  const missing = api.apiAdminSetPresent('2222', 'nope', true);
+  assertEq(missing.ok, false, 'unknown signup');
+  const noKey = api.apiAdminSetPresent('', 's1', true);
+  assertEq(noKey.ok, false, 'no key');
+});
+
+t('Code.gs writes attendance after taking the lock', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const calls = [];
+  services.LockService = {
+    getScriptLock: () => ({
+      waitLock: () => calls.push('lock'),
+      releaseLock: () => calls.push('unlock')
+    })
+  };
+  const sh = services.sheets.Signups;
+  const setValue = sh.getRange.bind(sh);
+  sh.getRange = (r, c) => {
+    const range = setValue(r, c);
+    const original = range.setValue;
+    range.setValue = (v) => { calls.push('write'); original(v); };
+    return range;
+  };
+  const api = backendApi(services, 'apiAdminSetPresent');
+  api.apiAdminSetPresent('1111', 's1', true);
+  if (calls.indexOf('lock') > calls.indexOf('write')) {
+    throw new Error('write happened before the lock: ' + calls.join(','));
+  }
+  if (calls.indexOf('write') < 0) throw new Error('no write');
+});
+
+t('Code.gs exposes the attendance column and the attendance api', () => {
+  if (!/function ensureColumn_/.test(codeSrc)) throw new Error('ensureColumn_ missing');
+  if (!/apiAdminSetPresent: apiAdminSetPresent/.test(codeSrc)) throw new Error('api not in map');
+  if (!/'presente'/.test(codeSrc)) throw new Error('presente column missing');
+  if (!/presentes: presentes/.test(codeSrc)) throw new Error('present counter missing');
 });
 
 summary();

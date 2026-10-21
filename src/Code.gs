@@ -5,12 +5,16 @@ var SIGNUPS_SHEET = 'Signups';
 var STUDENTS_SHEET = 'Students';
 var MAX_EMAIL_ = 120;
 var ADMIN_PIN_PROP = 'ADMIN_PIN';
+var GUIDE_PIN_PROP = 'GUIDE_PIN';
 var ADMIN_FAIL_PROP = 'ADMIN_FAIL_COUNT';
 var ADMIN_BLOCK_PROP = 'ADMIN_BLOCK_UNTIL';
 var ADMIN_MAX_FAILS = 5;
 var ADMIN_BLOCK_MS = 60000;
 var ADMIN_TOKEN_PREFIX = 't_';
 var ADMIN_TOKEN_TTL = 7200;
+var ROLE_ADMIN = 'admin';
+var ROLE_GUIDE = 'guide';
+var DATA_CACHE_TTL = 12;
 
 var ERROR_MESSAGES_ = {
   full: 'Sin lugares.',
@@ -239,7 +243,10 @@ var API_FN_MAP_ = {
   apiAdminGetData: apiAdminGetData,
   apiAdminSetOpen: apiAdminSetOpen,
   apiAdminDeleteSignup: apiAdminDeleteSignup,
-  apiAdminImportRoster: apiAdminImportRoster
+  apiAdminImportRoster: apiAdminImportRoster,
+  apiAdminTalkRoster: apiAdminTalkRoster,
+  apiAdminPending: apiAdminPending,
+  apiAdminSetPresent: apiAdminSetPresent
 };
 
 function doGet(e) {
@@ -297,8 +304,10 @@ function setup() {
   ensureSheet_(ss, TALKS_SHEET, ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], seedTalks_());
   ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
+  ensureColumn_(sheet_(SIGNUPS_SHEET), 'presente');
   ensureAdminPin_();
-  ss.toast('Listo. La clave de profes está en Script Properties (ADMIN_PIN).');
+  ensureGuidePin_();
+  ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
 }
 
@@ -313,6 +322,17 @@ function ensureAdminPin_() {
     Logger.log('Clave de profes guardada en Script Properties (ADMIN_PIN).');
   }
   try { removeConfigKey_('admin_pin'); } catch (e) { }
+  return pin;
+}
+
+function ensureGuidePin_() {
+  var props = PropertiesService.getScriptProperties();
+  var pin = String(props.getProperty(GUIDE_PIN_PROP) || '').trim();
+  if (!pin) {
+    pin = randomPin_();
+    props.setProperty(GUIDE_PIN_PROP, pin);
+    Logger.log('Clave de guías guardada en Script Properties (GUIDE_PIN).');
+  }
   return pin;
 }
 
@@ -345,6 +365,17 @@ function ensureSheet_(ss, name, headers, rows) {
     sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
   }
   return sh;
+}
+
+function ensureColumn_(sh, header) {
+  var last = Math.max(1, sh.getLastColumn());
+  var vals = sh.getRange(1, 1, 1, last).getValues()[0];
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i]).trim() === header) return i + 1;
+  }
+  var col = last + 1;
+  sh.getRange(1, col).setValue(header);
+  return col;
 }
 
 function seedTalks_() {
@@ -448,6 +479,10 @@ function readTalks_() {
 
 function readSignups_() {
   var vals = sheet_(SIGNUPS_SHEET).getDataRange().getValues();
+  var col = -1;
+  for (var h = 0; h < (vals[0] || []).length; h++) {
+    if (String(vals[0][h]).trim() === 'presente') { col = h; break; }
+  }
   var signups = [];
   for (var i = 1; i < vals.length; i++) {
     if (vals[i][0] === '') continue;
@@ -460,10 +495,22 @@ function readSignups_() {
       ciclo: String(vals[i][5]).trim().toLowerCase(),
       slot_id: Number(vals[i][6]),
       talk_id: String(vals[i][7]),
+      presente: col >= 0 ? convertBool_(vals[i][col]) : false,
       emailKey: EsiCore.normalizeEmail(vals[i][2])
     });
   }
   return signups;
+}
+
+function presenteCol_(sh) {
+  var last = sh.getLastColumn();
+  var vals = sh.getRange(1, 1, 1, Math.max(1, last)).getValues()[0];
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i]).trim() === 'presente') return i + 1;
+  }
+  var col = Math.max(2, last + 1);
+  sh.getRange(1, col).setValue('presente');
+  return col;
 }
 
 function readStudents_() {
@@ -491,6 +538,54 @@ function findStudent_(students, email) {
     if (students[i].email === email) return students[i];
   }
   return null;
+}
+
+function readSignupsCached_() {
+  try {
+    var hit = CacheService.getScriptCache().get('signups_v1');
+    if (hit) return JSON.parse(hit);
+  } catch (e) { }
+  var signups = readSignups_();
+  try {
+    CacheService.getScriptCache().put('signups_v1', JSON.stringify(signups), DATA_CACHE_TTL);
+  } catch (e) { }
+  return signups;
+}
+
+function readStudentsCached_() {
+  try {
+    var hit = CacheService.getScriptCache().get('students_v1');
+    if (hit) return JSON.parse(hit);
+  } catch (e) { }
+  var students = readStudents_();
+  try {
+    CacheService.getScriptCache().put('students_v1', JSON.stringify(students), DATA_CACHE_TTL);
+  } catch (e) { }
+  return students;
+}
+
+function invalidateDataCache_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove('signups_v1');
+    cache.remove('students_v1');
+  } catch (e) { }
+}
+
+function apellidoDe_(nombre) {
+  var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
+  if (!n) return '';
+  var parts = n.split(' ');
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : n.toLowerCase();
+}
+
+function sortBySurname_(list) {
+  return list.sort(function (a, b) {
+    var ka = apellidoDe_(a.nombre);
+    var kb = apellidoDe_(b.nombre);
+    if (ka === kb) return String(a.nombre).localeCompare(String(b.nombre));
+    return ka < kb ? -1 : 1;
+  });
 }
 
 function countByTalk_(signups) {
@@ -581,7 +676,9 @@ function apiLookup(email) {
       ok: true,
       rosterLoaded: roster.length > 0,
       needsNombre: !nombre,
-      needsCurso: !pc
+      needsCurso: !pc,
+      nombre: nombre,
+      curso: pc || ''
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -696,6 +793,7 @@ function registerLocked_(email, nombre, curso, talkId) {
     }
 
     var fresh = readSignups_();
+    invalidateDataCache_();
     rebuildReport_();
     return {
       ok: true,
@@ -721,6 +819,10 @@ function getAdminPin_() {
   return String(PropertiesService.getScriptProperties().getProperty(ADMIN_PIN_PROP) || '').trim();
 }
 
+function getGuidePin_() {
+  return String(PropertiesService.getScriptProperties().getProperty(GUIDE_PIN_PROP) || '').trim();
+}
+
 function adminAuth_(cred) {
   var given = String(cred == null ? '' : cred).trim();
   if (given.indexOf(ADMIN_TOKEN_PREFIX) === 0) {
@@ -732,13 +834,16 @@ function adminAuth_(cred) {
   if (blockedUntil > now) {
     return { ok: false, message: 'Demasiados intentos. Esperá un minuto.' };
   }
-  var expected = getAdminPin_();
-  if (!expected) {
+  if (!getAdminPin_() && !getGuidePin_()) {
     return { ok: false, message: 'Clave no configurada. Ejecutá setup().' };
   }
-  if (given && given === expected) {
+  if (given && given === getAdminPin_()) {
     resetAdminFailures_();
-    return { ok: true };
+    return { ok: true, role: ROLE_ADMIN };
+  }
+  if (given && given === getGuidePin_()) {
+    resetAdminFailures_();
+    return { ok: true, role: ROLE_GUIDE };
   }
   noteAdminFailure_(now);
   return { ok: false, message: 'Clave incorrecta.' };
@@ -747,7 +852,9 @@ function adminAuth_(cred) {
 function adminTokenAuth_(token) {
   try {
     var hit = CacheService.getScriptCache().get(tokenCacheKey_(token));
-    if (hit) return { ok: true };
+    if (hit === ROLE_ADMIN || hit === ROLE_GUIDE) {
+      return { ok: true, role: hit };
+    }
   } catch (e) { }
   return { ok: false, message: 'Sesión vencida. Entrá de nuevo.' };
 }
@@ -759,15 +866,27 @@ function tokenCacheKey_(token) {
     }).join('');
 }
 
-function adminIssueToken_() {
+function adminIssueToken_(role) {
   try {
     var raw = Utilities.getUuid() + Utilities.getUuid();
     var token = ADMIN_TOKEN_PREFIX + raw.replace(/-/g, '');
-    CacheService.getScriptCache().put(tokenCacheKey_(token), '1', ADMIN_TOKEN_TTL);
+    CacheService.getScriptCache().put(tokenCacheKey_(token), role || ROLE_ADMIN, ADMIN_TOKEN_TTL);
     return token;
   } catch (e) {
     return '';
   }
+}
+
+function isAdmin_(auth) {
+  return !!(auth && auth.ok && auth.role === ROLE_ADMIN);
+}
+
+function requireAdmin_(auth) {
+  if (!auth || !auth.ok) return { ok: false, message: auth && auth.message ? auth.message : 'Clave incorrecta.' };
+  if (auth.role !== ROLE_ADMIN) {
+    return { ok: false, message: 'Tu clave no permite esta acción.' };
+  }
+  return { ok: true };
 }
 
 function noteAdminFailure_(now) {
@@ -797,8 +916,8 @@ function apiAdminLogin(pin) {
   try {
     var auth = adminAuth_(pin);
     if (!auth.ok) return { ok: false, message: auth.message };
-    var token = adminIssueToken_();
-    return token ? { ok: true, token: token } : { ok: true };
+    var token = adminIssueToken_(auth.role);
+    return token ? { ok: true, role: auth.role, token: token } : { ok: true, role: auth.role };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
@@ -808,17 +927,19 @@ function apiAdminGetData(cred) {
   try {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
+    var admin = isAdmin_(auth);
     var cfg = readConfig_();
     var slots = readSlots_();
     var talks = readTalks_();
     var students = readStudents_();
-    var counts = countByTalk_(readSignups_());
+    var signupsRaw = readSignupsCached_();
+    var counts = countByTalk_(signupsRaw);
     var titulos = {};
     for (var t = 0; t < talks.length; t++) {
       titulos[talks[t].id] = talks[t].titulo;
     }
     var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
-    var signups = readSignups_().map(function (s) {
+    var signups = admin ? signupsRaw.map(function (s) {
       return {
         id: s.id,
         cuando: s.ts ? Utilities.formatDate(s.ts, tz, 'dd/MM HH:mm') : '',
@@ -829,7 +950,7 @@ function apiAdminGetData(cred) {
         slotLabel: slotLabelFor_(slots, s.slot_id),
         talkTitulo: titulos[s.talk_id] || s.talk_id
       };
-    });
+    }) : [];
     var porCiclo = { basico: 0, orientado: 0 };
     for (var c = 0; c < signups.length; c++) {
       if (porCiclo[signups[c].ciclo] != null) porCiclo[signups[c].ciclo]++;
@@ -847,11 +968,12 @@ function apiAdminGetData(cred) {
     });
     return {
       ok: true,
+      role: auth.role,
       evento_abierto: isOpen_(cfg),
       rosterLoaded: students.length > 0,
       rosterCount: students.length,
       slots: slots.map(function (s) {
-        return { id: Number(s.id), label: s.inicio + ' a ' + s.fin };
+        return { id: Number(s.id), label: s.inicio + ' a ' + s.fin, nombre: s.nombre };
       }),
       talks: talksOut,
       signups: signups,
@@ -865,7 +987,8 @@ function apiAdminGetData(cred) {
 
 function apiAdminSetOpen(cred, open) {
   var auth = adminAuth_(cred);
-  if (!auth.ok) return { ok: false, message: auth.message };
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -880,13 +1003,15 @@ function apiAdminSetOpen(cred, open) {
 
 function apiAdminDeleteSignup(cred, signupId) {
   var auth = adminAuth_(cred);
-  if (!auth.ok) return { ok: false, message: auth.message };
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     var row = findSignupRow_(signupId);
     if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
     sheet_(SIGNUPS_SHEET).deleteRow(row);
+    invalidateDataCache_();
     rebuildReport_();
     return { ok: true };
   } catch (err) {
@@ -898,7 +1023,8 @@ function apiAdminDeleteSignup(cred, signupId) {
 
 function apiAdminImportRoster(cred, text, mode) {
   var auth = adminAuth_(cred);
-  if (!auth.ok) return { ok: false, message: auth.message };
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
   var lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
@@ -944,6 +1070,7 @@ function apiAdminImportRoster(cred, text, mode) {
     var last = sh.getLastRow();
     if (last > 1) sh.getRange(2, 1, last - 1, Math.max(3, sh.getLastColumn())).clearContent();
     sh.getRange(2, 1, outRows.length, 3).setValues(outRows);
+    invalidateDataCache_();
     return {
       ok: true,
       total: outRows.length,
@@ -957,6 +1084,124 @@ function apiAdminImportRoster(cred, text, mode) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   } finally {
     lock.releaseLock();
+  }
+}
+
+function apiAdminTalkRoster(cred, talkId) {
+  try {
+    var auth = adminAuth_(cred);
+    if (!auth.ok) return { ok: false, message: auth.message };
+    var admin = isAdmin_(auth);
+    var talks = readTalks_();
+    var slots = readSlots_();
+    var talk = null;
+    for (var i = 0; i < talks.length; i++) {
+      if (String(talks[i].id) === String(talkId)) { talk = talks[i]; break; }
+    }
+    if (!talk) return { ok: false, message: 'No encontramos esa charla.' };
+    var signups = readSignupsCached_();
+    var rows = [];
+    for (var j = 0; j < signups.length; j++) {
+      if (String(signups[j].talk_id) !== String(talk.id)) continue;
+      var row = {
+        id: signups[j].id,
+        nombre: signups[j].nombre,
+        curso: signups[j].curso,
+        slotLabel: slotLabelFor_(slots, signups[j].slot_id),
+        presente: !!signups[j].presente
+      };
+      if (admin) row.email = signups[j].email;
+      rows.push(row);
+    }
+    sortBySurname_(rows);
+    var presentes = 0;
+    for (var p = 0; p < rows.length; p++) {
+      if (rows[p].presente) presentes++;
+    }
+    return {
+      ok: true,
+      role: auth.role,
+      talk: {
+        id: talk.id,
+        titulo: talk.titulo,
+        ciclo: talk.ciclo,
+        slot_id: talk.slot_id,
+        slotLabel: slotLabelFor_(slots, talk.slot_id),
+        lugar: talk.lugar,
+        cupo: Number(talk.cupo)
+      },
+      count: rows.length,
+      presentes: presentes,
+      students: rows
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function apiAdminSetPresent(cred, signupId, present) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = sheet_(SIGNUPS_SHEET);
+    var row = findSignupRow_(signupId);
+    if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
+    var col = presenteCol_(sh);
+    sh.getRange(row, col).setValue(present ? 'si' : 'no');
+    invalidateDataCache_();
+    return { ok: true, presente: !!present };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function apiAdminPending(cred) {
+  try {
+    var auth = adminAuth_(cred);
+    if (!auth.ok) return { ok: false, message: auth.message };
+    var admin = isAdmin_(auth);
+    var students = readStudentsCached_();
+    var signups = readSignupsCached_();
+    var slots = readSlots_();
+    var byEmail = {};
+    for (var i = 0; i < signups.length; i++) {
+      var key = signups[i].emailKey;
+      if (!byEmail[key]) byEmail[key] = {};
+      byEmail[key][signups[i].slot_id] = true;
+    }
+    var rows = [];
+    for (var j = 0; j < students.length; j++) {
+      var st = students[j];
+      var done = byEmail[st.email] || {};
+      var faltan = [];
+      for (var s = 0; s < slots.length; s++) {
+        if (!done[Number(slots[s].id)]) {
+          faltan.push(slots[s].nombre || String(slots[s].id));
+        }
+      }
+      if (!faltan.length) continue;
+      var row = {
+        nombre: st.nombre || '',
+        curso: st.curso || '',
+        faltan: faltan
+      };
+      if (admin) row.email = st.email;
+      rows.push(row);
+    }
+    sortBySurname_(rows);
+    return {
+      ok: true,
+      role: auth.role,
+      total: students.length,
+      pending: rows.length,
+      students: rows
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
 }
 
