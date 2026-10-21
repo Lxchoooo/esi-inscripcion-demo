@@ -1324,7 +1324,7 @@ t('Panel renders the total report with a summary line', () => {
 t('Panel prints A4 reports with a signature column and page breaks', () => {
   for (const needle of ['@page { size: A4 portrait;', 'window.print()', 'id="print-area"',
     'Firma o presente', 'break-after: page', 'btn-print', 'SCHOOL_NAME', 'EVENT_NAME',
-    'Jornada ESI 2026']) {
+    'Jornada ESI 2026', 'display: table-header-group']) {
     if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
   }
   if (!/var SCHOOL_NAME = 'Instituto Secundario Salsipuedes \(ISS\)';/.test(panelSrc)) throw new Error('SCHOOL_NAME is not the ISS name');
