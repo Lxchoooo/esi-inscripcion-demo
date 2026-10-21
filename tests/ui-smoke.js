@@ -46,14 +46,26 @@ function makeEl(id) {
 }
 
 const els = new Map();
-const store = {};
+const store = {
+  esi_demo: '1',
+  esi_demo_roster: JSON.stringify([
+    { email: 'ana@esc.edu.ar', nombre: 'Ana Gomez', curso: '2°B' },
+    { email: 'beto@esc.edu.ar', nombre: 'Beto Sanchez', curso: '5°Turismo' }
+  ])
+};
 const document = {
   getElementById(id) {
     if (!els.has(id)) els.set(id, makeEl(id));
     return els.get(id);
   },
   createElement() { return makeEl(null); },
-  querySelectorAll() { return []; },
+  querySelectorAll(sel) {
+    if (sel === '.admin-only') {
+      return ['tab-inscriptos', 'tab-mails', 'btn-copiar-link', 'btn-csv']
+        .map((id) => document.getElementById(id));
+    }
+    return [];
+  },
   addEventListener() { },
   body: Object.assign(makeEl('body'), { classList: makeEl('body').classList }),
   visibilityState: 'visible'
@@ -78,7 +90,14 @@ const ui = new Function('window', 'document', src + `
 return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
+  sLookup: sLookup, sHelloYes: sHelloYes, sHelloNo: sHelloNo, sForgotMail: sForgotMail,
+  aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
+  aOnPresent: aOnPresent,
+  setCred: function (v) { adminCred = v; },
   sState: sState, setA: function (v) { aData = v; },
+  setTalk: function (v) { aTalkData = v; },
+  setPending: function (v) { aPendingData = v; },
+  setRole: function (r) { aRole = r; },
   DEMO_TALKS: DEMO_TALKS, DEMO_SLOTS: DEMO_SLOTS
 };`)(window, document);
 
@@ -198,5 +217,86 @@ assert(document.getElementById('pane-mails').hidden === false, 'tab mails visibl
 assert(document.getElementById('pane-inscriptos').hidden === true, 'tab inscriptos oculto');
 ui.aTab('inscriptos');
 assert(document.getElementById('pane-mails').hidden === true, 'tab mails oculto');
+
+
+function tick() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+(async function () {
+  document.getElementById('input-mail').value = 'ana@esc.edu.ar';
+  ui.sLookup();
+  await tick();
+  assert(document.getElementById('hello-text').textContent === 'Hola, Ana. ¿Sos de 2°B?', 'saludo de identidad');
+  assert(document.body.getAttribute('data-screen') === 's-screen-hello', 'pantalla de identidad');
+
+  ui.sHelloNo();
+  assert(document.getElementById('input-mail').value === '', 'mail borrado');
+  assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'vuelve al mail');
+  assert(document.getElementById('s-banner').textContent === 'Escribí tu mail de nuevo.', 'aviso no soy yo');
+
+  document.getElementById('input-mail').value = 'ana@esc.edu.ar';
+  ui.sLookup();
+  await tick();
+  ui.sHelloYes();
+  await tick();
+  assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'saltea el paso de datos');
+  assert(ui.sState.email === 'ana@esc.edu.ar', 'mail guardado');
+
+  ui.sForgotMail();
+  assert(document.getElementById('sheet-title').textContent === 'No te acordás tu mail?', 'titulo del sheet');
+  assert(document.getElementById('sheet-body').innerHTML.includes('preceptor'), 'texto del sheet');
+
+  ui.setTalk({
+    ok: true, role: 'admin', talk: { id: 'B1', titulo: 'Ansiedad', cupo: 40 },
+    count: 1, presentes: 0,
+    students: [{ id: 's1', nombre: 'Ana Gomez', curso: '2°B', presente: false }]
+  });
+  ui.setCred('demo');
+  ui.aOnPresent('s1');
+  await tick();
+  assert(document.getElementById('charla-list').innerHTML.includes('is-present'), 'presente marcado');
+  assert(document.getElementById('charla-presentes').textContent === 'presentes 1 de 1', 'contador de presentes');
+
+  ui.setRole('guide');
+  ui.aApplyRole();
+  assert(document.getElementById('hdr-sub').textContent === 'ESI 2026 · Guía', 'subtitulo de guia');
+  assert(document.getElementById('btn-csv').style.display === 'none', 'csv oculto para guia');
+  assert(document.getElementById('tab-mails').style.display === 'none', 'tab de mails oculto');
+  ui.setRole('admin');
+  ui.aApplyRole();
+  assert(document.getElementById('btn-csv').style.display === '', 'csv visible para profe');
+
+  ui.setTalk({
+    ok: true, role: 'guide', talk: { id: 'B1', titulo: 'Ansiedad', cupo: 40 },
+    count: 2,
+    students: [
+      { nombre: 'Beto Sanchez', curso: '5°Turismo' },
+      { nombre: 'Ana Gomez', curso: '2°B' }
+    ]
+  });
+  ui.aRenderTalk();
+  assert(document.getElementById('charla-count').textContent === '2 de 40', 'contador por charla');
+  const lista = document.getElementById('charla-list').innerHTML;
+  assert(lista.includes('Ana Gomez'), 'lista por charla');
+  assert(!lista.includes('@'), 'la vista por charla no muestra mails');
+  document.getElementById('input-buscar-charla').value = 'beto';
+  ui.aRenderTalk();
+  assert(document.getElementById('charla-list').innerHTML.includes('Beto'), 'busqueda por nombre');
+  assert(!document.getElementById('charla-list').innerHTML.includes('Ana'), 'busqueda excluye');
+  document.getElementById('input-buscar-charla').value = '';
+
+  ui.setPending({
+    ok: true, total: 10, pending: 1,
+    students: [{ nombre: 'Ana Gomez', curso: '2°B', faltan: ['2da', '3ra'] }]
+  });
+  ui.aRenderPending();
+  assert(document.getElementById('pend-count').textContent === '1 sin completar', 'contador sin anotar');
+  assert(document.getElementById('pend-list').innerHTML.includes('Falta 2da y 3ra'), 'horarios que faltan');
+
+})().catch((e) => {
+  console.error(e.message);
+  process.exit(1);
+});
 
 console.log('UI smoke: OK');
