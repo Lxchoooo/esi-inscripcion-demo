@@ -21,6 +21,7 @@
       --muted: #6B6B6B;
       --line: #ECE8E1;
       --line-strong: #DDD6CB;
+      --line-ui: #8E8A80;
       --accent: #4F6B4A;
       --accent-strong: #3C5538;
       --accent-fill: #A8BFA3;
@@ -51,6 +52,7 @@
         --muted: #A5A79F;
         --line: #2C2F29;
         --line-strong: #3A3E35;
+        --line-ui: #787C71;
         --accent: #B7CDB0;
         --accent-strong: #CBDCC5;
         --accent-fill: #3E5139;
@@ -222,7 +224,7 @@
     .btn:active { transform: translateY(0) scale(.985); box-shadow: 0 3px 10px rgba(31, 31, 31, .16); }
     .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent); }
     .btn:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
-    .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: none; }
+    .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-ui); box-shadow: none; }
     .btn.secondary:hover { border-color: var(--ink); box-shadow: none; }
     .btn.ghost { background: transparent; color: var(--muted); box-shadow: none; padding-left: 8px; padding-right: 8px; }
     .btn.ghost:hover { color: var(--ink); transform: none; box-shadow: none; }
@@ -244,7 +246,7 @@
       padding: 12px 14px;
       font-family: inherit; font-size: 16px; color: var(--ink);
       background: var(--surface);
-      border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+      border: 1px solid var(--line-ui); border-radius: var(--radius-sm);
       appearance: none; -webkit-appearance: none;
       transition: border-color .16s ease, box-shadow .16s ease;
     }
@@ -286,7 +288,7 @@
       border-radius: var(--radius-sm); padding: 14px 16px; margin: 4px 0 10px;
       font-size: 14.5px; box-shadow: var(--shadow);
     }
-    .summary .who { font-weight: 700; font-size: 15px; }
+    .summary .who { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
     .summary b { color: var(--ink); }
     .summary .row { display: flex; gap: 8px; width: 100%; font-size: 13px; padding: 2px 0; }
     .summary .time { flex: 0 0 100px; font-weight: 600; color: var(--muted); }
@@ -309,7 +311,7 @@
       margin: 3px 6px 3px 0;
       max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .chip.miss { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); font-weight: 500; }
+    .chip.miss { background: transparent; border: 1px dashed var(--line-ui); color: var(--muted); font-weight: 500; }
 
     .slot h2 {
       display: flex; align-items: center; gap: 10px;
@@ -327,15 +329,15 @@
       display: flex; align-items: center; gap: 12px; width: 100%;
       text-align: left; font-family: inherit; font-size: 15.5px; line-height: 1.35;
       color: var(--ink); background: var(--surface);
-      border: 1px solid var(--line); border-radius: 14px;
+      border: 1px solid var(--line-ui); border-radius: 14px;
       padding: 15px 16px; margin: 8px 0; min-height: 64px;
       cursor: pointer;
       box-shadow: 0 1px 1px rgba(31, 31, 31, .02);
       transition: border-color .16s ease, background .16s ease, transform .16s ease, box-shadow .16s ease;
       animation: rise .26s ease both;
     }
-    .talk:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: var(--shadow); }
-    .talk:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-fill); }
+    .talk:hover { border-color: var(--muted); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .talk:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .talk.selected { border-color: var(--accent); background: var(--accent-soft); }
     .talk.selected:hover { border-color: var(--accent); }
     .talk .t-body { flex: 1; min-width: 0; }
@@ -383,7 +385,7 @@
     .toolbar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
     .toolbar > div { flex: 1; min-width: 220px; }
     details summary { cursor: pointer; font-weight: 600; color: var(--accent-strong); padding: 8px 0; }
-    details summary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); border-radius: 6px; }
+    details summary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); border-radius: 6px; }
     code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; }
 
     .section { padding: 54px 0 6px; margin-top: 52px; border-top: 1px solid var(--line); }
@@ -500,7 +502,7 @@
     .panel-head .btn.link { min-height: 0; padding: 6px 0; font-size: 13px; white-space: nowrap; }
     .summary { display: block; padding: 12px 14px; margin: 12px 0 2px; }
     .summary .who { font-size: 14.5px; }
-    .summary .email { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+    .summary .email { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--muted); overflow-wrap: anywhere; }
     .chips { display: none; }
     .slot { margin: 0 0 30px; }
     .slot h2 { margin: 24px 0 10px; font-size: 15px; font-weight: 700; }
@@ -519,7 +521,7 @@
     .talk .talk-seats.none { color: var(--danger); }
     .talk-check {
       display: grid; place-items: center; flex: 0 0 auto;
-      width: 18px; height: 18px; border: 1px solid var(--line-strong); border-radius: 50%;
+      width: 18px; height: 18px; border: 1px solid var(--line-ui); border-radius: 50%;
       color: transparent; font-size: 11px; line-height: 1;
       transition: background .16s ease, border-color .16s ease, color .16s ease;
     }
@@ -589,7 +591,7 @@
     }
     .tab:hover { color: var(--ink); }
     .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
-    .tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--accent-soft); }
+    .tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--accent); }
     .tabpanel { padding-top: 4px; }
     .filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
     @media (min-width: 720px) { .filters { grid-template-columns: 1.4fr 1fr 1fr 1.4fr; } }
