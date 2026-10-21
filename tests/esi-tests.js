@@ -1,5 +1,7 @@
 'use strict';
 
+global.Logger = { log: function () { } };
+
 const fs = require('fs');
 const path = require('path');
 
@@ -1057,17 +1059,48 @@ t('apiLookup returns surname and full name from separate columns', () => {
   assertEq(r.needsCurso, false);
 });
 
-t('apiAdminImportRoster writes separate surname and name columns', () => {
+t('apiAdminImportRoster writes surname, name and the optional DNI', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   const api = backendApi(services, 'apiAdminImportRoster, readStudents_');
-  const r = api.apiAdminImportRoster('1111', 'mail;apellido;nombre;curso\nd@esc.edu.ar;Díaz;Dora;3A', 'agregar');
+  const r = api.apiAdminImportRoster('1111', 'mail;apellido;nombre;curso;dni\nd@esc.edu.ar;Díaz;Dora;3A;12.345.678', 'agregar');
   assertEq(r.ok, true);
   const head = services.sheets.Students.data[0];
-  assertEq(head.join(','), 'email,apellido,nombre,curso');
+  assertEq(head.join(','), 'email,apellido,nombre,curso,dni');
   const saved = api.readStudents_().filter((s) => s.email === 'd@esc.edu.ar')[0];
   assertEq(saved.apellido, 'Díaz');
   assertEq(saved.nombre, 'Dora');
   assertEq(saved.nombreCompleto, 'Dora Díaz');
+  assertEq(saved.dni, '12345678');
+});
+
+t('apiAdminImportRoster drops duplicate DNIs and reports them', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminImportRoster, readStudents_');
+  const r = api.apiAdminImportRoster('1111',
+    'ana@esc.edu.ar;Gómez;Ana;2B;12345678\nbeto@esc.edu.ar;Díaz;Beto;2B;12345678', 'agregar');
+  assertEq(r.dnisDuplicados, 1);
+  const rows = api.readStudents_();
+  assertEq(rows[0].dni, '12345678');
+  assertEq(rows[1].dni, '', 'duplicate dni cleared');
+});
+
+t('parseRoster reads an optional DNI column and rejects duplicates', () => {
+  const r = Core.parseRoster('mail;apellido;nombre;curso;dni\n'
+    + 'ana@esc.edu.ar;Gómez;Ana;2°B;12.345.678\n'
+    + 'beto@esc.edu.ar;Díaz;Beto;2°B;12345678\n'
+    + 'caro@esc.edu.ar;Paz;Caro;2°B;999\n');
+  assertEq(r.rows.length, 3);
+  assertEq(r.rows[0].dni, '12345678');
+  assertEq(r.rows[1].dni, '', 'duplicate dni dropped');
+  assertEq(r.dnisDuplicados, 1);
+  assertEq(r.rows[2].dni, '', 'invalid dni dropped');
+});
+
+t('parseRoster accepts a documento header in any order', () => {
+  const r = Core.parseRoster('Curso;DNI;Mail;Apellido;Nombre\n2B;30111222;ana@esc.edu.ar;Gómez;Ana');
+  assertEq(r.rows[0].dni, '30111222');
+  assertEq(r.rows[0].curso, '2°B');
+  assertEq(r.rows[0].apellido, 'Gómez');
 });
 
 t('CSV keeps the mail last and includes the attendance columns', () => {
@@ -1294,6 +1327,198 @@ t('Report tables turn into cards on narrow screens', () => {
   if (!block.includes('.report-table thead { display: none; }')) throw new Error('report head not hidden');
   if (!block.includes('.report-table td::before')) throw new Error('report labels missing');
   if (!/\.report-table \.present-mini \{[^}]*min-height: 40px/.test(block)) throw new Error('touch size missing');
+});
+
+
+t('Cached reads are invalidated by writes', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.cache.set('signups_v1', JSON.stringify([]));
+  const api = backendApi(services, 'apiGetData, apiRegister, apiAdminSetOpen');
+  let r = api.apiGetData('ana@esc.edu.ar', '', '');
+  assertEq(r.ok, true, 'getData ok');
+  assertEq(r.data.mine[1], undefined, 'stale cache hides the row');
+  const reg = api.apiRegister('ana@esc.edu.ar', '', '', 'B1');
+  assertEq(reg.ok, true, 'register ok');
+  r = api.apiGetData('ana@esc.edu.ar', '', '');
+  assertEq(r.data.mine[1], 'B1', 'write invalidates the signups cache');
+  if (!services.cache.has('signups_v1')) throw new Error('cache not repopulated');
+  if (!services.cache.has('talks_v1') || !services.cache.has('slots_v1')) {
+    throw new Error('talks or slots not cached');
+  }
+  api.apiAdminSetOpen('1111', false);
+  if (services.cache.has('config_v1')) throw new Error('config cache not invalidated');
+  const blocked = api.apiRegister('beto@esc.edu.ar', '', '', 'O1');
+  assertEq(blocked.ok, false, 'closed signup rejected');
+});
+
+
+t('Registering the same student and talk twice keeps one row', () => {
+  const services = backendStub({}, {
+    students: [['nueva@esc.edu.ar', 'Nueva Alumna', '1°A']],
+    signups: []
+  });
+  const api = backendApi(services, 'apiRegister');
+  const first = api.apiRegister('nueva@esc.edu.ar', '', '', 'B1');
+  const second = api.apiRegister('nueva@esc.edu.ar', '', '', 'B1');
+  assertEq(first.ok, true, 'first insert');
+  assertEq(second.ok, true, 'second is accepted as already registered');
+  if (!/Ya estabas anotado/.test(second.message)) throw new Error('message: ' + second.message);
+  const rows = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@esc.edu.ar');
+  assertEq(rows.length, 1, 'one row');
+});
+
+t('Concurrent registrations never exceed the cap or duplicate rows', () => {
+  const students = [];
+  for (let i = 0; i < 50; i++) {
+    students.push(['s' + i + '@esc.edu.ar', 'Alumno ' + i, '2°B']);
+  }
+  const services = backendStub({}, { students: students, signups: [] });
+  const api = backendApi(services, 'apiRegister');
+  const order = [];
+  for (let i = 0; i < 50; i++) {
+    order.push(i);
+    if (i < 10) order.push(i);
+  }
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = (i * 37 + 11) % (i + 1);
+    const tmp = order[i];
+    order[i] = order[j];
+    order[j] = tmp;
+  }
+  let ok = 0;
+  let full = 0;
+  let busy = 0;
+  for (let n = 0; n < order.length; n++) {
+    const student = students[order[n]];
+    const r = api.apiRegister(student[0], '', '', 'B1');
+    if (r.busy) busy++;
+    else if (r.ok) ok++;
+    else if (/Sin lugares/.test(r.message)) full++;
+    else throw new Error('unexpected: ' + r.message);
+  }
+  assertEq(busy, 0, 'no lock failures in the simulation');
+  const rows = services.sheets.Signups.data.slice(1);
+  const seats = rows.filter((r) => r[7] === 'B1');
+  assertEq(seats.length, 40, 'cap respected');
+  assertEq(ok + full, order.length, 'all attempts answered');
+  assertEq(ok, 50, '40 seats plus 10 already-registered answers');
+  assertEq(full, 10, 'ten attempts without a seat');
+  const keys = seats.map((r) => r[2] + '|' + r[7]);
+  assertEq(new Set(keys).size, keys.length, 'no duplicate rows');
+});
+
+t('A lock timeout returns the busy message and writes nothing', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  let released = 0;
+  services.LockService = {
+    getScriptLock: () => ({
+      waitLock: function () { throw new Error('timeout'); },
+      releaseLock: function () { released++; }
+    })
+  };
+  const api = backendApi(services, 'apiRegister, apiAdminSetPresent, apiAdminDeleteSignup, apiAdminSetOpen');
+  const r = api.apiRegister('ana@esc.edu.ar', '', '', 'B2');
+  assertEq(r.ok, false, 'busy is not ok');
+  assertEq(r.busy, true, 'busy flag');
+  assertEq(r.message, 'El servidor está ocupado. Probá de nuevo.', 'busy message');
+  assertEq(services.sheets.Signups.data.length, 4, 'no row added');
+  assertEq(released, 0, 'nothing to release when the lock is not acquired');
+  const present = api.apiAdminSetPresent('1111', 's1', true);
+  assertEq(present.busy, true, 'present is busy too');
+  const del = api.apiAdminDeleteSignup('1111', 's1');
+  assertEq(del.busy, true, 'delete is busy too');
+  const open = api.apiAdminSetOpen('1111', false);
+  assertEq(open.busy, true, 'setOpen is busy too');
+});
+
+
+function dniRosterStub() {
+  const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso', 'dni'], [
+    ['ana@esc.edu.ar', 'Gómez', 'Ana', '2°B', '12.345.678']
+  ]);
+  return services;
+}
+
+t('apiLookupDni accepts dots and a case-insensitive surname', () => {
+  const services = dniRosterStub();
+  const api = backendApi(services, 'apiLookupDni, apiGetData');
+  const r = api.apiLookupDni('12.345.678', ' gomez ');
+  assertEq(r.ok, true);
+  assertEq(r.email, 'ana@esc.edu.ar');
+  assertEq(r.apellido, 'Gómez');
+  assertEq(r.nombreCompleto, 'Ana Gómez');
+  assertEq(r.curso, '2°B');
+  assertEq(r.needsNombre, false);
+  assertEq(r.needsCurso, false);
+  if ('dni' in r) throw new Error('lookup leaks dni');
+  const data = api.apiGetData(r.email, r.nombre, r.curso);
+  assertEq(data.ok, true);
+  if ('dni' in data.student) throw new Error('student leaks dni');
+});
+
+t('apiLookupDni gives the same shape and message for misses', () => {
+  const services = dniRosterStub();
+  const api = backendApi(services, 'apiLookupDni');
+  const hit = api.apiLookupDni('12345678', 'Gómez');
+  const wrong = api.apiLookupDni('12345678', 'Pérez');
+  const unknown = api.apiLookupDni('99999999', 'Gómez');
+  const invalid = api.apiLookupDni('abc', 'Gómez');
+  const shape = (o) => Object.keys(o).sort().join(',');
+  assertEq(shape(hit), shape(wrong), 'hit and miss shape');
+  assertEq(shape(hit), shape(unknown), 'hit and unknown shape');
+  assertEq(shape(hit), shape(invalid), 'hit and invalid shape');
+  assertEq(wrong.message, 'No pudimos entrar. Revisá el DNI y el apellido.');
+  assertEq(unknown.message, wrong.message);
+  assertEq(invalid.message, wrong.message);
+  assertEq(wrong.email, '');
+  if (JSON.stringify([wrong, unknown, invalid]).indexOf('@') >= 0) throw new Error('miss leaks a mail');
+});
+
+t('apiLookupDni blocks after five failures', () => {
+  const services = dniRosterStub();
+  const api = backendApi(services, 'apiLookupDni');
+  for (let i = 0; i < 5; i++) assertEq(api.apiLookupDni('12345678', 'nadie').ok, false);
+  const blocked = api.apiLookupDni('12345678', 'Gómez');
+  assertEq(blocked.ok, false);
+  assertEq(blocked.message, 'Demasiados intentos. Esperá un minuto.');
+});
+
+t('Panel logs in with DNI and apellido against the public endpoint', () => {
+  if (!/call\('apiLookupDni', \[dni, apellido\]\)/.test(panelSrc)) throw new Error('dni call missing');
+  if (!/id="input-dni"/.test(panelHtml) || !/id="input-apellido"/.test(panelHtml)) throw new Error('dni inputs missing');
+  if (!/id="login-dni"/.test(panelHtml) || !/id="login-mail"/.test(panelHtml)) throw new Error('login toggle missing');
+  if (!/function sLookupDni\(/.test(panelSrc)) throw new Error('sLookupDni missing');
+});
+
+t('Panel keeps the student session on the device and never stores the DNI', () => {
+  if (!/lsSet\('esi_student'/.test(panelSrc)) throw new Error('session not persisted in localStorage');
+  if (/ssSet\('esi_student'/.test(panelSrc)) throw new Error('session still in sessionStorage');
+  if (!/lsGet\('esi_student'\)/.test(panelSrc)) throw new Error('session not restored');
+  if (!/lsDel\('esi_student'\)/.test(panelSrc)) throw new Error('session not cleared');
+  if (!/id="btn-alumno-salir"/.test(panelHtml)) throw new Error('student logout missing');
+  if (!/function sSalir\(/.test(panelSrc)) throw new Error('sSalir missing');
+  if (/lsSet\('esi_student'[\s\S]{0,300}dni/.test(panelSrc)) throw new Error('dni stored on device');
+  if (/TRANSPORT !== 'demo'\) lsDel\('esi_student'\)/.test(panelSrc)) throw new Error('real session purged on boot');
+});
+
+t('Lookup answers have the same shape for known and unknown mails', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiLookup');
+  const hit = api.apiLookup('ana@esc.edu.ar');
+  const miss = api.apiLookup('nadie@esc.edu.ar');
+  const bad = api.apiLookup('no-es-mail');
+  const shape = (o) => Object.keys(o).sort().join(',');
+  assertEq(shape(hit), shape(miss), 'hit and miss shape');
+  assertEq(shape(hit), shape(bad), 'hit and invalid shape');
+  assertEq(hit.ok, true, 'hit ok');
+  assertEq(miss.ok, false, 'miss not ok');
+  assertEq(miss.message, 'Ese mail no está en la lista.', 'miss message');
+  assertEq(miss.nombre, '', 'miss has no name');
+  assertEq(miss.curso, '', 'miss has no course');
+  assertEq(miss.apellido, '', 'miss has no surname');
+  assertEq(bad.message, 'Escribí tu mail institucional.', 'invalid message');
+  if (JSON.stringify(miss).indexOf('@') >= 0) throw new Error('miss leaks a mail');
 });
 
 summary();
