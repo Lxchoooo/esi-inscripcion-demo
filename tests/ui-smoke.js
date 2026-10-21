@@ -270,6 +270,7 @@ function tick() {
   assert(document.getElementById('input-dni').value === '', 'salir limpia el dni');
   assert(document.getElementById('input-apellido').value === '', 'salir limpia el apellido');
   assert(document.getElementById('summary').innerHTML === '', 'salir limpia el resumen');
+  assert(document.getElementById('hello-text').textContent === 'Hola. ¿Sos vos?', 'salir limpia el saludo');
   assert(document.getElementById('login-mail-box').hidden === false, 'salir vuelve al mail');
   assert(document.getElementById('login-dni-box').hidden === true, 'salir oculta el dni');
   assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'salir vuelve al ingreso');

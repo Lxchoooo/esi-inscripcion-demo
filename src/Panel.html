@@ -819,6 +819,7 @@
       .print-date { margin: 1mm 0 0; font-size: 9pt; }
       .print-summary { margin: 3mm 0; font-size: 9.5pt; }
       .print-table { width: 100%; border-collapse: collapse; }
+      .print-table thead { display: table-header-group; }
       .print-table th, .print-table td { border: 1px solid #000; padding: 4px 5px; text-align: left; vertical-align: top; }
       .print-table th { background: #fff !important; font-size: 9pt; }
       .print-table td { font-size: 10pt; }
@@ -2738,6 +2739,7 @@
       $('chips').innerHTML = '';
       $('chips').hidden = true;
       $('slots-container').innerHTML = '';
+      $('hello-text').textContent = 'Hola. ¿Sos vos?';
       $('sel-count').textContent = '0 de 3 elegidas';
       $('sel-hint').hidden = true;
       showScreen(S_SCREENS, 's-screen-mail');
