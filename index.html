@@ -1943,7 +1943,7 @@
 
     var aData = null;
     var aBusy = false;
-    var adminPin = '';
+    var adminCred = '';
 
     function aBanner(text, type) {
       var el = $('a-msg');
@@ -1959,7 +1959,7 @@
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
-            adminPin = TRANSPORT === 'demo' ? 'demo' : pin;
+            adminCred = resp.token ? resp.token : (TRANSPORT === 'demo' ? 'demo' : pin);
             $('gate-msg').style.display = 'none';
             showScreen(A_SCREENS, 'a-screen-panel');
             aLoad(true);
@@ -1975,24 +1975,32 @@
         });
     }
 
+    function aAuthLost(resp) {
+      var msg = String(resp && resp.message ? resp.message : '');
+      if (msg.indexOf('Sesión') < 0 && msg.indexOf('Sesion') < 0 && msg.indexOf('Clave') < 0) {
+        return false;
+      }
+      adminCred = '';
+      aData = null;
+      $('gate-msg').textContent = msg || 'Sesión vencida. Entrá de nuevo.';
+      $('gate-msg').style.display = 'block';
+      showScreen(A_SCREENS, 'a-screen-gate');
+      return true;
+    }
+
     function aLoad(silent) {
       if (aBusy) return;
-      if (!adminPin) {
+      if (!adminCred) {
         showScreen(A_SCREENS, 'a-screen-gate');
         return;
       }
       aBusy = true;
       if (!silent) aBanner('Actualizando', 'ok');
-      call('apiAdminGetData', [adminPin])
+      call('apiAdminGetData', [adminCred])
         .then(function (resp) {
           aBusy = false;
           if (!resp.ok) {
-            if (String(resp.message).indexOf('Clave') >= 0) {
-              adminPin = '';
-              aData = null;
-              showScreen(A_SCREENS, 'a-screen-gate');
-              return;
-            }
+            if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo cargar.', 'err');
             return;
           }
@@ -2180,7 +2188,7 @@
       if (aBusy) return;
       aBusy = true;
       aImportMsg('Importando...', 'ok');
-      call('apiAdminImportRoster', [adminPin, text, mode])
+      call('apiAdminImportRoster', [adminCred, text, mode])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
@@ -2188,6 +2196,7 @@
             $('ta-roster').value = '';
             aLoad(true);
           } else {
+            if (aAuthLost(resp)) return;
             aImportMsg(resp.message || 'No se pudo importar.', 'err');
           }
         })
@@ -2211,13 +2220,14 @@
     function aDeleteConfirmed(signupId) {
       if (aBusy) return;
       aBusy = true;
-      call('apiAdminDeleteSignup', [adminPin, signupId])
+      call('apiAdminDeleteSignup', [adminCred, signupId])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
             aBanner('Inscripción borrada.', 'ok');
             aLoad(true);
           } else {
+            if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo borrar.', 'err');
           }
         })
@@ -2244,13 +2254,14 @@
       if (aBusy) return;
       var open = aData && aData.evento_abierto;
       aBusy = true;
-      call('apiAdminSetOpen', [adminPin, !open])
+      call('apiAdminSetOpen', [adminCred, !open])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
             aBanner(resp.evento_abierto ? 'Inscripción abierta.' : 'Inscripción cerrada.', 'ok');
             aLoad(true);
           } else {
+            if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo cambiar.', 'err');
           }
         })
@@ -2307,7 +2318,7 @@
     }
 
     function aLogout() {
-      adminPin = '';
+      adminCred = '';
       aData = null;
       $('input-pin').value = '';
       $('gate-msg').textContent = '';
@@ -2348,7 +2359,7 @@
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
 
-      if (adminPin) {
+      if (adminCred) {
         showScreen(A_SCREENS, 'a-screen-panel');
         aLoad(true);
       } else {
@@ -2357,7 +2368,7 @@
       }
 
       window.setInterval(function () {
-        if (document.visibilityState === 'visible' && adminPin && aData && !aBusy) {
+        if (document.visibilityState === 'visible' && adminCred && aData && !aBusy) {
           aLoad(true);
         }
       }, 30000);
