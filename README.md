@@ -1,25 +1,50 @@
-# Panel de inscripción a charlas ESI - demo
+# Panel ESI
 
-Demo publica del panel: guarda inscripciones solo en tu navegador
-(localStorage) y usa datos de ejemplo. Nada viaja a ningun servidor.
+- Alumnos: https://lxchoooo.github.io/esi-inscripcion-demo/
+- Profes: https://lxchoooo.github.io/esi-inscripcion-demo/?admin=1&demo=1
+- Demo explícita: https://lxchoooo.github.io/esi-inscripcion-demo/?demo=1
 
-- Version alumno: la URL principal.
-- Version profes: agregá `?admin=1` a la URL. Clave demo: `1234`.
-- Borra los datos de prueba: limpiá los datos del sitio en el navegador
-  (o clic en el candado de la barra de direcciones -> borrar datos).
+Sin `?api=` y sin `?demo=1`, la página muestra un aviso y no guarda datos.
+En demo, todo queda en el navegador y no hay clave real.
 
-## Modo real
+## Desplegar Code.gs
 
-El mismo `index.html` funciona con un backend de Google Apps Script y
-una Google Sheet. El script esta en el repositorio de origen
-(carpeta `esi-panel`, archivos `Code.gs` + `Panel.html` + `README.md`
-con la guia de instalacion).
+1. Crear una planilla de Google Sheets.
+2. Extensiones > Apps Script. Pegar `Code.gs`.
+3. Agregar un archivo HTML llamado `Panel` con el contenido de `Panel.html`.
+4. Ejecutar `setup()` y autorizar.
+5. Implementar > Nueva implementación > Aplicación web.
+   - Ejecutar como: yo.
+   - Acceso: cualquiera.
+6. Copiar la URL `/exec`.
 
-Para conectar esta web al backend real, se abre el link asi:
+## Configurar la clave
+
+- La clave vive en Script Properties con el nombre `ADMIN_PIN`.
+- `setup()` la genera si no existe. Para cambiarla, editá `ADMIN_PIN` en
+  Project Settings > Script Properties.
+- No está en el código ni en la planilla. Se valida solo en el backend.
+- Tras 5 intentos fallidos hay un bloqueo de 60 segundos.
+- El navegador no guarda la clave: al recargar el panel se vuelve a pedir.
+
+## Conectar esta web
+
+Abrir una vez:
 
 ```
 https://<usuario>.github.io/<repo>/index.html?api=<URL-del-Apps-Script>
 ```
 
-La primera vez guarda la URL del backend y de ahi en adelante funciona
-contra la Sheet (JSONP contra el Apps Script desplegado).
+Queda guardada en ese navegador. Para cambiar de backend, abrir con el nuevo
+`?api=`. Para desconectar, borrar los datos del sitio.
+
+Panel de profes: la misma URL con `?admin=1`. No hay links de acceso en la
+vista de alumnos.
+
+## Privacidad
+
+- En modo real no se guardan mails, nombres ni listas en `localStorage`.
+- El alumno se mantiene en `sessionStorage` y se borra al cerrar la pestaña.
+- La API pública devuelve charlas, horarios, cupos y las elecciones propias.
+- La lista de inscriptos y los mails solo salen con clave válida.
+- No versionar listas, CSV ni exportaciones: ver `.gitignore`.
