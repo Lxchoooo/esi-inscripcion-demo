@@ -1,4 +1,4 @@
-# Panel ESI
+# Panel ESI · Instituto Secundario Salsipuedes (ISS)
 
 - Alumnos: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Profes: https://lxchoooo.github.io/esi-inscripcion-demo/?admin=1&demo=1
@@ -74,6 +74,20 @@ fallidos hay un bloqueo de 60 segundos.
 En la demo, la clave `guia` entra con el rol de guía y cualquier otra entra
 como profe.
 
+## Interfaz
+
+- La marca ISS usa un logo SVG inline y una paleta verde con contraste
+  verificado en modo claro y oscuro.
+- En escritorio (1024 px o más), el panel de profes usa todo el ancho, tablas
+  densas con encabezado fijo y los filtros de curso, división, charla y
+  búsqueda en una sola barra.
+- Atajos del panel: `1` a `5` cambian de pestaña y `/` enfoca la búsqueda.
+  `Esc` sale del campo. Las guías solo llegan a las tres primeras pestañas.
+- En celular de 360 px, todo va en una columna, los botones miden 40 px o más
+  y la barra de confirmación queda fija abajo.
+- Bajo el login hay un aviso para celulares compartidos. "Salir" borra mail,
+  nombre, curso y ciclo guardados, y vuelve al ingreso con mail.
+
 ## Reportes
 
 La pestaña Reportes calcula todo en memoria desde la caché de la planilla; no
@@ -92,11 +106,13 @@ En el celular las tablas se muestran como tarjetas.
 
 "Imprimir" abre el diálogo del navegador y genera un A4 vertical con una
 página por curso (o por charla, según la pestaña activa), tabla numerada A-Z,
-columna "Firma o presente" y fecha de emisión. En Chrome de Android:
+columna "Firma o presente" y fecha y hora de emisión. En Chrome de Android:
 Imprimir > Guardar como PDF.
 
 El encabezado usa `SCHOOL_NAME` y `EVENT_NAME`, al principio del script de
-`src/Panel.html`: cambiar `SCHOOL_NAME` por el nombre real del colegio.
+`src/Panel.html`, ya configurados como "Instituto Secundario Salsipuedes (ISS)"
+y "Jornada ESI 2026". La impresión fuerza blanco y negro, sin la navegación ni
+los botones del panel.
 
 ## Conectar esta web
 
@@ -116,10 +132,10 @@ vista de alumnos.
 
 Antes de abrir:
 
-- Cambiar `SCHOOL_NAME` por el nombre real del colegio.
+- Confirmar en el encabezado impreso el nombre del instituto y la jornada.
 - Probar el circuito con 10 o 20 alumnos de prueba: entrar con mail, entrar
   con DNI y apellido, anotarse en las tres franjas, marcar presente, imprimir
-  un curso y mirar el panel a 360 px.
+  un curso, mirar el panel a 360 px y probar "Salir" en un equipo compartido.
 - Descargar una copia de la planilla (Archivo > Hacer una copia) y un CSV
   desde Inscriptos. Si algo sale mal, la copia es el respaldo.
 - Revisar que la lista tenga apellido y curso. Sin apellido no funciona el
@@ -173,6 +189,8 @@ node tests/esi-tests.js src
 node tests/ui-smoke.js src
 ```
 
-Sin dependencias. Los tests de lógica cubren el backend, los roles y la
-paridad con el panel; el smoke de interfaz corre el panel con un DOM
-simulado. En GitHub Actions los dos archivos corren en cada push a `main`.
+Sin dependencias. Los tests de lógica cubren el backend, los roles, la
+identidad ISS, el contraste de la paleta, el layout de escritorio y celular,
+la limpieza de sesión y la impresión; el smoke de interfaz corre el panel con
+un DOM simulado. En GitHub Actions los dos archivos corren en cada push a
+`main`.
