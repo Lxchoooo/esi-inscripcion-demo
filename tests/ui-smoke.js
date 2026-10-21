@@ -49,7 +49,7 @@ const els = new Map();
 const store = {
   esi_demo: '1',
   esi_demo_roster: JSON.stringify([
-    { email: 'ana@esc.edu.ar', nombre: 'Ana Gomez', curso: '2°B' },
+    { email: 'ana@esc.edu.ar', nombre: 'Ana Gomez', curso: '2°B', apellido: 'Gomez', dni: '30111222' },
     { email: 'beto@esc.edu.ar', nombre: 'Beto Sanchez', curso: '5°Turismo' }
   ])
 };
@@ -91,9 +91,11 @@ const ui = new Function('window', 'document', src + `
 return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
-  sLookup: sLookup, sHelloYes: sHelloYes, sHelloNo: sHelloNo, sForgotMail: sForgotMail,
+  sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir,
+  sHelloYes: sHelloYes, sHelloNo: sHelloNo, sForgotMail: sForgotMail,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
   aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
+  retryTransient_: retryTransient_,
   setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
   sState: sState, setA: function (v) { aData = v; },
@@ -244,6 +246,25 @@ function tick() {
   await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'saltea el paso de datos');
   assert(ui.sState.email === 'ana@esc.edu.ar', 'mail guardado');
+
+  ui.sSetLoginMode('dni');
+  assert(document.getElementById('login-dni-box').hidden === false, 'pane dni visible');
+  assert(document.getElementById('login-mail-box').hidden === true, 'pane mail oculto');
+  document.getElementById('input-dni').value = '30.111.222';
+  document.getElementById('input-apellido').value = 'gomez';
+  ui.sLookupDni();
+  await tick();
+  assert(document.getElementById('hello-text').textContent === 'Hola, Ana. ¿Sos de 2°B?', 'saludo por dni');
+  ui.sHelloYes();
+  await tick();
+  assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'entra con dni');
+  const savedSession = JSON.parse(store.esi_student);
+  assert(savedSession.email === 'ana@esc.edu.ar', 'sesion guardada en el dispositivo');
+  assert(!JSON.stringify(savedSession).includes('30111222'), 'el dni no se guarda');
+  ui.sSalir();
+  assert(!('esi_student' in store), 'salir borra la sesion');
+  assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'salir vuelve al ingreso');
+  ui.sSetLoginMode('mail');
 
   ui.sForgotMail();
   assert(document.getElementById('sheet-title').textContent === 'No te acordás tu mail?', 'titulo del sheet');
@@ -469,6 +490,39 @@ function tick() {
   assert(printHtml.includes('Reporte total'), 'encabezado del total');
   assert(printHtml.includes('Inscriptos'), 'tabla total en el PDF');
   ui.aRepSetType('curso');
+
+  let tries = 0;
+  const retried = await ui.retryTransient_(function () {
+    tries++;
+    if (tries < 3) return Promise.reject(new Error('Sin conexión.'));
+    return Promise.resolve({ ok: true });
+  }, function () { return Promise.resolve(); });
+  assert(retried.ok && tries === 3, 'network errors retry up to three attempts');
+
+  let busyTries = 0;
+  const busyRetried = await ui.retryTransient_(function () {
+    busyTries++;
+    if (busyTries === 1) return Promise.resolve({ ok: false, busy: true });
+    return Promise.resolve({ ok: true });
+  }, function () { return Promise.resolve(); });
+  assert(busyRetried.ok && busyTries === 2, 'busy responses are retried with backoff');
+
+  let valueTries = 0;
+  const rejected = await ui.retryTransient_(function () {
+    valueTries++;
+    return Promise.resolve({ ok: false, message: 'Clave incorrecta.' });
+  }, function () { return Promise.resolve(); });
+  assert(!rejected.ok && valueTries === 1, 'validation errors are not retried');
+
+  let netTries = 0;
+  let gaveUp = false;
+  try {
+    await ui.retryTransient_(function () {
+      netTries++;
+      return Promise.reject(new Error('Sin conexión.'));
+    }, function () { return Promise.resolve(); });
+  } catch (e) { gaveUp = true; }
+  assert(gaveUp && netTries === 3, 'network errors give up after three attempts');
 
   console.log('UI smoke: OK');
 })().catch((e) => {
