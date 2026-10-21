@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF8F5">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141513">
-  <meta name="description" content="Inscripción a las charlas ESI 2026: elegí una por horario.">
-  <title>ESI · Charlas 2026</title>
+  <meta name="description" content="Instituto Secundario Salsipuedes (ISS). Inscripción a las charlas de la Jornada ESI 2026: elegí una por horario.">
+  <title>ISS · Jornada ESI 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -21,12 +21,12 @@
       --muted: #6B6B6B;
       --line: #ECE8E1;
       --line-strong: #DDD6CB;
-      --line-ui: #8E8A80;
-      --accent: #4F6B4A;
-      --accent-strong: #3C5538;
+      --line-ui: #7F7C72;
+      --accent: #1F6B3F;
+      --accent-strong: #14502D;
       --accent-fill: #A8BFA3;
-      --accent-soft: #EEF3EA;
-      --accent-line: #CFDDC8;
+      --accent-soft: #E7F1E4;
+      --accent-line: #BFD9BE;
       --danger: #A6402F;
       --danger-soft: #FBEDE9;
       --danger-line: #EED2CA;
@@ -52,12 +52,12 @@
         --muted: #A5A79F;
         --line: #2C2F29;
         --line-strong: #3A3E35;
-        --line-ui: #787C71;
-        --accent: #B7CDB0;
-        --accent-strong: #CBDCC5;
-        --accent-fill: #3E5139;
-        --accent-soft: #212C1E;
-        --accent-line: #35452F;
+        --line-ui: #7C8075;
+        --accent: #9BD3A6;
+        --accent-strong: #C6E8CC;
+        --accent-fill: #356B3F;
+        --accent-soft: #1F3324;
+        --accent-line: #33543A;
         --danger: #E3A196;
         --danger-soft: #32201C;
         --danger-line: #4A2E27;
@@ -87,7 +87,7 @@
       touch-action: manipulation;
     }
     body.sheet-open { overflow: hidden; }
-    ::selection { background: var(--accent-fill); color: #1F1F1F; }
+    ::selection { background: var(--accent-fill); color: var(--ink); }
     .demo-strip {
       display: none; padding: 8px 16px; text-align: center;
       background: var(--warn-soft); color: var(--warn);
@@ -119,13 +119,21 @@
     }
     .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; min-width: 0; }
     .brand-mark {
-      width: 32px; height: 32px; flex: 0 0 auto; border-radius: 10px;
-      background: var(--accent-fill); color: #26331F;
+      width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px;
+      background: var(--accent-soft); color: var(--accent-strong);
+      border: 1px solid var(--accent-line);
       display: grid; place-items: center;
-      font-size: 14px; font-weight: 700;
     }
-    @media (prefers-color-scheme: dark) { .brand-mark { color: #E9F0E5; } }
-    .brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+    .brand-logo { width: 30px; height: 30px; display: block; }
+    .brand-logo .logo-body { fill: var(--accent-fill); }
+    .brand-logo .logo-line { fill: none; stroke: var(--accent-strong); stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+    .brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.12; }
+    .brand-school {
+      font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 46vw; margin-bottom: 1px;
+    }
+    .brand-iss { font-weight: 800; color: var(--accent-strong); }
     #hdr-title {
       margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -149,7 +157,11 @@
       body[data-screen="s-screen-mail"] .nav-links { display: flex; }
     }
     body.admin #nav { background: #1F1F1F; border-bottom-color: #1F1F1F; color: #F5F2EB; }
-    body.admin .brand-mark { background: #313B2E; color: #D8E5D3; }
+    body.admin .brand-mark { background: #26352A; border-color: #3F5C44; }
+    body.admin .brand-logo .logo-body { fill: #3E7048; }
+    body.admin .brand-logo .logo-line { stroke: #D8E5D3; }
+    body.admin .brand-school { color: #C9D8C5; }
+    body.admin .brand-iss { color: #F2F0EA; }
     body.admin #hdr-sub { color: #B9B6AC; }
     body.admin #hdr-sub.alert { color: #F0B5AA; }
     body.admin .nav-links { display: none !important; }
@@ -548,31 +560,40 @@
       padding: 9px 0; border-bottom: 1px solid var(--line);
       font-size: 14.5px;
     }
+    .roster-who { display: block; flex: 1 1 100%; min-width: 0; }
+    .roster-name, .row-name, .t-title { min-width: 0; overflow-wrap: anywhere; }
     .roster-name { font-weight: 600; }
-    .roster-mail, .row-mail { display: block; width: 100%; color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
-    .row-name { display: block; font-weight: 600; }
+    .roster-mail, .row-mail {
+      display: block; width: 100%; color: var(--muted); font-size: 11.5px;
+      overflow-wrap: anywhere; text-overflow: ellipsis;
+    }
+    .row-name { display: block; font-weight: 600; text-overflow: ellipsis; }
     .roster-curso { color: var(--muted); font-size: 13px; }
     .roster-faltan { margin-left: auto; color: var(--danger); font-size: 12.5px; font-weight: 700; }
     .present-btn {
       font-family: inherit; font-size: 11.5px; font-weight: 700;
       color: var(--muted); background: transparent;
       border: 1px solid var(--line-ui); border-radius: 999px;
-      padding: 4px 9px; cursor: pointer; min-height: 30px;
+      padding: 8px 12px; cursor: pointer; min-height: 40px;
     }
     .present-btn.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
     .present-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .roster-row.is-present .roster-name { text-decoration: line-through; opacity: .75; }
+    .roster-row { transition: background .12s ease; }
+    .roster-row:hover { background: var(--surface-2); }
+    .roster-row:focus-within { background: var(--accent-soft); }
     .admin-actions.top { margin: 0 0 12px; }
     .sel-bar {
-      display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+      display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
       padding: 11px 20px calc(11px + env(safe-area-inset-bottom));
       background: var(--nav-bg);
       -webkit-backdrop-filter: blur(14px) saturate(1.3);
       backdrop-filter: blur(14px) saturate(1.3);
       border-top: 1px solid var(--line);
+      box-shadow: 0 -8px 24px rgba(0, 0, 0, .12);
     }
     body[data-screen="s-screen-panel"] .sel-bar { display: block; }
-    body[data-screen="s-screen-panel"] .wrap { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+    body[data-screen="s-screen-panel"] .wrap { padding-bottom: calc(128px + env(safe-area-inset-bottom)); }
     body[data-screen="s-screen-panel"] footer.site { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
     .sel-bar-inner { display: flex; align-items: center; gap: 14px; max-width: 760px; margin: 0 auto; }
     .sel-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -627,7 +648,7 @@
     .rep-place { display: block; color: var(--muted); font-size: 11.5px; }
     .rep-missing { color: var(--muted); font-size: 12px; }
     .present-mini {
-      margin-top: 4px; min-height: 32px; padding: 4px 9px;
+      margin-top: 4px; min-height: 40px; padding: 8px 12px;
       font-family: inherit; font-size: 11px; font-weight: 700;
       color: var(--muted); background: transparent;
       border: 1px solid var(--line-ui); border-radius: 999px; cursor: pointer;
@@ -654,6 +675,13 @@
     .icon { width: 16px; height: 16px; flex: 0 0 auto; }
     #ta-roster { min-height: 128px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; }
     .hint-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+    .login-note { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .kbd-hint { display: none; align-items: center; gap: 5px; margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+    .kbd-hint kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px;
+      padding: 1px 5px; border: 1px solid var(--line-ui); border-radius: 5px;
+      background: var(--surface-2); color: var(--ink);
+    }
     #a-table table { font-size: 13.5px; }
     #a-table th { padding: 10px; }
     #a-table td { padding: 12px 10px; }
@@ -714,39 +742,93 @@
       .stat { padding: 10px; }
       .stat-num { font-size: 21px; }
       .slot-missing { width: 100%; margin-left: 0; }
+      .brand-school { max-width: 52vw; font-size: 9px; }
+      .sel-hint { overflow-wrap: anywhere; }
+      .login-note { font-size: 12px; }
+    }
+
+    @media (min-width: 1024px) {
+      .nav { max-width: 1240px; }
+      body.admin .wrap { max-width: 1240px; padding: 24px 28px 36px; }
+      body.admin .tabs {
+        position: sticky; top: 62px; z-index: 30;
+        background: var(--paper); padding-top: 4px;
+      }
+      body.admin .tab { min-height: 46px; padding: 12px 18px; }
+      body.admin .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      body.admin .filters > * { flex: 0 1 220px; min-width: 160px; }
+      body.admin .filters > input[type="text"] { flex: 1 1 320px; }
+      body.admin .view-head { margin-top: 0; }
+      body.admin .view-head .btn { margin-left: auto; }
+      body.admin .table-wrap {
+        max-height: calc(100vh - 280px); overflow: auto;
+        border: 1px solid var(--line); border-radius: 12px;
+      }
+      body.admin #a-table table { font-size: 13px; }
+      body.admin #a-table th, body.admin #a-table td { padding: 8px 10px; }
+      body.admin #a-table thead th {
+        position: sticky; top: 0; z-index: 5;
+        background: var(--surface);
+        box-shadow: inset 0 -1px 0 var(--line-strong);
+      }
+      body.admin .roster-row { flex-wrap: nowrap; gap: 12px; padding: 8px 12px; }
+      body.admin #charla-list, body.admin #pend-list {
+        border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      }
+      body.admin #charla-list .roster-row:last-child,
+      body.admin #pend-list .roster-row:last-child { border-bottom: 0; }
+      body.admin .roster-who { display: flex; align-items: baseline; gap: 10px; flex: 1 1 auto; }
+      body.admin .roster-name { flex: 0 1 auto; }
+      body.admin .roster-mail {
+        display: inline; width: auto; flex: 1 1 34%;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      body.admin .roster-curso { flex: 0 0 90px; }
+      body.admin .present-btn { order: 3; flex: 0 0 auto; }
+      body.admin .roster-faltan { margin-left: 0; flex: 0 0 auto; }
+      body.admin .report-table th, body.admin .report-table td { padding: 8px 10px; }
+      body.admin .kbd-hint { display: inline-flex; }
     }
 
     #print-area { display: none; }
 
     @media print {
       @page { size: A4 portrait; margin: 14mm 12mm; }
-      html, body { background: #fff !important; color: #000 !important; }
+      html, body { background: #fff !important; color: #000 !important; color-scheme: light; }
       body > * { display: none !important; }
       body > #print-area { display: block !important; }
+      #nav, .sel-bar, .tabs, .admin-actions, .filters, button { display: none !important; }
+      #print-area, #print-area * {
+        color: #000 !important; background: transparent !important;
+        box-shadow: none !important; text-shadow: none !important;
+      }
       #print-area {
         font-family: Georgia, 'Times New Roman', serif;
         font-size: 10.5pt;
         color: #000;
       }
-      .print-page { break-after: page; page-break-after: always; }
+      .print-page { break-after: page; page-break-after: always; orphans: 3; widows: 3; }
       .print-page:last-child { break-after: auto; page-break-after: auto; }
-      .print-head { margin-bottom: 5mm; }
-      .print-school { margin: 0; font-size: 9pt; letter-spacing: .12em; text-transform: uppercase; }
-      .print-event { margin: 1mm 0 0; font-size: 16pt; }
+      .print-head { margin-bottom: 5mm; border-bottom: 1.5pt solid #000; padding-bottom: 2.5mm; }
+      .print-school {
+        margin: 0; font-size: 10.5pt; font-weight: bold;
+        letter-spacing: .08em; text-transform: uppercase;
+      }
+      .print-event { margin: 1mm 0 0; font-size: 15pt; font-weight: bold; }
       .print-title { margin: 1mm 0 0; font-size: 12pt; font-weight: bold; }
-      .print-date { margin: 1mm 0 0; font-size: 9pt; color: #333; }
+      .print-date { margin: 1mm 0 0; font-size: 9pt; }
       .print-summary { margin: 3mm 0; font-size: 9.5pt; }
       .print-table { width: 100%; border-collapse: collapse; }
       .print-table th, .print-table td { border: 1px solid #000; padding: 4px 5px; text-align: left; vertical-align: top; }
-      .print-table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9pt; }
+      .print-table th { background: #fff !important; font-size: 9pt; }
       .print-table td { font-size: 10pt; }
       .print-table tr { break-inside: avoid; page-break-inside: avoid; }
       .print-table .num { width: 9mm; text-align: right; }
       .print-table .sign { width: 32mm; }
       .print-talk { font-weight: bold; }
-      .print-place { display: block; font-size: 8.5pt; color: #333; }
-      .print-missing { color: #555; }
-      .print-note { margin-top: 3mm; font-size: 8.5pt; color: #333; }
+      .print-place { display: block; font-size: 8.5pt; }
+      .print-missing { font-style: italic; }
+      .print-note { margin-top: 3mm; font-size: 8.5pt; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -764,12 +846,18 @@
 <body>
   <header id="nav">
     <div class="nav">
-      <a class="brand" href="#top" aria-label="Inicio">
-        <span class="brand-mark" aria-hidden="true">E</span>
-        <span class="brand-text">
+      <a class="brand" href="#top" aria-label="Inicio, Instituto Secundario Salsipuedes (ISS)">
+        <span class="brand-mark" aria-hidden="true">
+          <svg class="brand-logo" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+            <path class="logo-body" d="M20 4.5 33.5 9v9.6c0 7.6-5.3 13.7-13.5 16.9C11.8 32.3 6.5 26.2 6.5 18.6V9z"/>
+            <path class="logo-line" d="M20 13.2c-2.4-1.5-5.2-2-8-1.7v11c2.8-.3 5.6.2 8 1.7 2.4-1.5 5.2-2 8-1.7v-11c-2.8-.3-5.6.2-8 1.7zm0 0v11"/>
+          </svg>
+        </span>
+        <div class="brand-text">
+          <span class="brand-school"><span class="brand-iss">ISS</span> · Instituto Secundario Salsipuedes</span>
           <h1 id="hdr-title">ESI</h1>
           <span id="hdr-sub"></span>
-        </span>
+        </div>
       </a>
       <nav class="nav-links" aria-label="Secciones">
         <a href="#faq">Dudas</a>
@@ -779,7 +867,7 @@
   </header>
   <div class="wrap" id="top">
     <section class="hero landing" aria-labelledby="hero-title">
-      <p class="hero-eyebrow">ESI 2026</p>
+      <p class="hero-eyebrow">Jornada ESI 2026</p>
       <h2 id="hero-title">Inscripción a las charlas</h2>
       <p>Elegí una charla por horario.</p>
     </section>
@@ -816,6 +904,7 @@
         <button id="btn-dni" class="btn full" type="button">Continuar</button>
         <p class="hint-line">Si no estás en la lista con DNI, entrá con tu mail.</p>
       </div>
+      <p class="hint-line login-note" id="login-note">Si el celular es compartido, tocá "Salir" al terminar.</p>
     </section>
 
     <section id="s-screen-hello" class="screen card">
@@ -903,6 +992,7 @@
         <button id="btn-csv" class="btn secondary small admin-only" type="button">CSV</button>
         <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
         <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
+        <span class="kbd-hint" id="kbd-hint" aria-hidden="true">Atajos <kbd>1-5</kbd> pestañas <kbd>/</kbd> buscar</span>
       </div>
 
       <div class="tabs" role="tablist" aria-label="Panel">
@@ -1011,7 +1101,7 @@
 
   <footer class="site">
     <div class="footer-inner">
-      <span>ESI 2026</span>
+      <span>ISS · Jornada ESI 2026</span>
     </div>
   </footer>
 
@@ -1030,8 +1120,8 @@
 
   <script>
     var IS_ADMIN = /(^|[?&])admin=1(&|$)/.test(window.location.search);
-    var SCHOOL_NAME = 'Colegio';
-    var EVENT_NAME = 'ESI 2026';
+    var SCHOOL_NAME = 'Instituto Secundario Salsipuedes (ISS)';
+    var EVENT_NAME = 'Jornada ESI 2026';
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
     function $(id) { return document.getElementById(id); }
@@ -1061,6 +1151,33 @@
     }
     function ssDel(key) {
       try { window.sessionStorage.removeItem(key); } catch (e) { }
+    }
+
+    function sClearStudentSession_() {
+      var keys = ['esi_student', 'esi_student_data'];
+      for (var i = 0; i < keys.length; i++) {
+        lsDel(keys[i]);
+        ssDel(keys[i]);
+      }
+    }
+
+    function sClearLoginFields_() {
+      var ids = ['input-mail', 'input-dni', 'input-apellido', 'input-nombre'];
+      for (var i = 0; i < ids.length; i++) {
+        if ($(ids[i])) $(ids[i]).value = '';
+      }
+      if ($('select-anio')) $('select-anio').value = '';
+      if ($('select-division')) $('select-division').innerHTML = '<option value="">Elegí...</option>';
+      if ($('mail-hint')) $('mail-hint').hidden = true;
+    }
+
+    function sEmptyState_() {
+      return {
+        email: '', nombre: '', curso: '',
+        needsNombre: false, needsCurso: false,
+        data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
+        student: { email: '', nombre: '', curso: '', ciclo: '' }
+      };
     }
 
     var EsiClient = (function () {
@@ -2108,7 +2225,7 @@
 
     function showSetupWarning() {
       document.body.setAttribute('data-screen', 'setup');
-      $('hdr-title').textContent = 'ESI';
+      $('hdr-title').textContent = EVENT_NAME;
       $('hdr-sub').textContent = 'Sin conexión';
       $('s-banner').style.display = 'none';
       $('setup-warning').hidden = false;
@@ -2602,33 +2719,30 @@
     }
 
     function sHelloNo() {
-      lsDel('esi_student');
+      sClearStudentSession_();
       sState.email = '';
       sState.nombre = '';
       sState.curso = '';
       sState.lookup = null;
-      $('input-mail').value = '';
-      $('input-dni').value = '';
-      $('input-apellido').value = '';
+      sClearLoginFields_();
       sBanner(sLoginMode === 'dni' ? 'Probá de nuevo con tu DNI.' : 'Escribí tu mail de nuevo.', 'err');
       showScreen(S_SCREENS, 's-screen-mail');
       if (sLoginMode === 'dni') $('input-dni').focus(); else $('input-mail').focus();
     }
 
     function sSalir() {
-      lsDel('esi_student');
-      sState = {
-        email: '', nombre: '', curso: '',
-        needsNombre: false, needsCurso: false,
-        data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
-        student: { email: '', nombre: '', curso: '', ciclo: '' }
-      };
-      $('input-mail').value = '';
-      $('input-dni').value = '';
-      $('input-apellido').value = '';
+      sClearStudentSession_();
+      sState = sEmptyState_();
+      sClearLoginFields_();
+      $('summary').innerHTML = '';
+      $('chips').innerHTML = '';
+      $('chips').hidden = true;
+      $('slots-container').innerHTML = '';
+      $('sel-count').textContent = '0 de 3 elegidas';
+      $('sel-hint').hidden = true;
+      showScreen(S_SCREENS, 's-screen-mail');
       sSetLoginMode('mail');
       sBanner('');
-      showScreen(S_SCREENS, 's-screen-mail');
       $('input-mail').focus();
     }
 
@@ -2701,7 +2815,7 @@
     function sInit() {
       document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
       $('hdr-title').textContent = 'Inscripción a las charlas';
-      $('hdr-sub').textContent = 'ESI 2026';
+      $('hdr-sub').textContent = EVENT_NAME;
       $('btn-mail').addEventListener('click', sLookup);
       $('btn-no-mail').addEventListener('click', sForgotMail);
       $('login-mail').addEventListener('click', function () { sSetLoginMode('mail'); });
@@ -2733,14 +2847,9 @@
           ? window.confirm('Tus charlas quedan guardadas. ¿Cambiar tus datos?')
           : true;
         if (!ok) return;
-        lsDel('esi_student');
-        sState = {
-          email: '', nombre: '', curso: '',
-          needsNombre: false, needsCurso: false,
-          data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
-          student: { email: '', nombre: '', curso: '', ciclo: '' }
-        };
-        $('input-mail').value = '';
+        sClearStudentSession_();
+        sState = sEmptyState_();
+        sClearLoginFields_();
         sBanner('');
         showScreen(S_SCREENS, 's-screen-mail');
       });
@@ -2986,8 +3095,8 @@
           + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
           + ' data-id="' + esc(st.id) + '" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
           + ' aria-label="Marcar presente a ' + esc(aDisplay_(st, false)) + '">Presente</button>'
-          + '<span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
-          + stMail
+          + '<span class="roster-who"><span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
+          + stMail + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '</div>';
       }
@@ -3044,8 +3153,8 @@
         shown++;
         var pendMail = aRole === 'admin' && st.email ? '<span class="roster-mail">' + esc(st.email) + '</span>' : '';
         rows += '<div class="roster-row">'
-          + '<span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
-          + pendMail
+          + '<span class="roster-who"><span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
+          + pendMail + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '<span class="roster-faltan">Falta ' + esc(st.faltan.join(' y ')) + '</span>'
           + '</div>';
@@ -3466,13 +3575,19 @@
       for (var i = 0; i < nodes.length; i++) {
         nodes[i].style.display = admin ? '' : 'none';
       }
-      $('hdr-sub').textContent = admin ? 'ESI 2026' : 'ESI 2026 · Guía';
+      $('hdr-sub').textContent = admin ? EVENT_NAME : EVENT_NAME + ' · Guía';
+      var hint = $('kbd-hint');
+      if (hint) {
+        hint.innerHTML = admin
+          ? 'Atajos <kbd>1-5</kbd> pestañas <kbd>/</kbd> buscar'
+          : 'Atajos <kbd>1-3</kbd> pestañas <kbd>/</kbd> buscar';
+      }
     }
 
     function aRender() {
       var d = aData;
       if (!d) return;
-      $('hdr-sub').textContent = 'ESI 2026';
+      $('hdr-sub').textContent = EVENT_NAME;
 
       $('a-roster-info').textContent = d.rosterLoaded
         ? d.rosterCount + ' mails'
@@ -3586,6 +3701,47 @@
         tab.setAttribute('aria-selected', tabs[j][1] ? 'true' : 'false');
       }
       aRefreshView();
+    }
+
+    function aIsTyping_(el) {
+      if (!el) return false;
+      var tag = String(el.tagName || '').toLowerCase();
+      return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable === true;
+    }
+
+    function aFocusSearch_() {
+      var ids = { charla: 'input-buscar-charla', pend: 'input-buscar-pend', inscriptos: 'input-buscar' };
+      var id = ids[aTabName];
+      if (!id) {
+        aTab('charla');
+        id = ids.charla;
+      }
+      var el = $(id);
+      if (el) {
+        el.focus();
+        if (el.select) el.select();
+      }
+    }
+
+    function aOnKey_(ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (aIsTyping_(ev.target)) {
+        if (ev.key === 'Escape') ev.target.blur();
+        return;
+      }
+      if (document.body.getAttribute('data-screen') !== 'a-screen-panel') return;
+      if (document.body.classList && document.body.classList.contains('sheet-open')) return;
+      if (ev.key === '/') {
+        ev.preventDefault();
+        aFocusSearch_();
+        return;
+      }
+      var names = { '1': 'charla', '2': 'pend', '3': 'reportes', '4': 'inscriptos', '5': 'mails' };
+      var name = names[ev.key];
+      if (!name) return;
+      if ((name === 'inscriptos' || name === 'mails') && aRole !== 'admin') return;
+      ev.preventDefault();
+      aTab(name);
     }
 
     function aRenderTable() {
@@ -3820,7 +3976,7 @@
     function aInit() {
       document.body.className = 'admin';
       $('hdr-title').textContent = 'Panel de profes';
-      $('hdr-sub').textContent = 'ESI 2026';
+      $('hdr-sub').textContent = EVENT_NAME;
       $('btn-pin').addEventListener('click', function () {
         var pin = $('input-pin').value;
         if (!pin) return;
@@ -3870,6 +4026,7 @@
       $('btn-refresh-pend').addEventListener('click', function () { aLoadPending(); });
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
+      document.addEventListener('keydown', aOnKey_);
 
       if (adminCred) {
         showScreen(A_SCREENS, 'a-screen-panel');
