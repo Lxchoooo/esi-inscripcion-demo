@@ -57,6 +57,9 @@ vista de alumnos.
 - El alumno se mantiene en `sessionStorage` y se borra al cerrar la pestaña.
 - La API pública devuelve charlas, horarios, cupos y las elecciones propias.
 - La lista de inscriptos y los mails solo salen con clave válida.
+- La identidad del alumno es el mail: con ese mail se recuperan las
+  elecciones propias. Si hace falta más, se puede sumar un código por alumno
+  en la lista importada.
 - No versionar listas, CSV ni exportaciones: ver `.gitignore`.
 
 ## Tests
@@ -68,3 +71,4 @@ node tests/ui-smoke.js src
 
 Sin dependencias. Los tests de lógica cubren el backend y la paridad con el
 panel; el smoke de interfaz corre el panel con un DOM simulado.
+En GitHub Actions los dos archivos corren en cada push a `main`.
