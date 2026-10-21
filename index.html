@@ -86,6 +86,16 @@
     }
     body.sheet-open { overflow: hidden; }
     ::selection { background: var(--accent-fill); color: #1F1F1F; }
+    .demo-strip {
+      display: none; padding: 8px 16px; text-align: center;
+      background: var(--warn-soft); color: var(--warn);
+      border-bottom: 1px solid var(--warn-line);
+      font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    }
+    body.demo .demo-strip { display: block; }
+    body[data-screen="setup"] .landing { display: none; }
+    .setup-warning { margin-top: 40px; }
+    .setup-warning .hint { margin-bottom: 18px; }
 
     #nav {
       position: sticky; top: 0; z-index: 40;
@@ -210,7 +220,7 @@
     }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(31, 31, 31, .18); }
     .btn:active { transform: translateY(0) scale(.985); box-shadow: 0 3px 10px rgba(31, 31, 31, .16); }
-    .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent-fill); }
+    .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent); }
     .btn:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
     .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: none; }
     .btn.secondary:hover { border-color: var(--ink); box-shadow: none; }
@@ -536,8 +546,29 @@
     body[data-screen="s-screen-panel"] .wrap { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
     body[data-screen="s-screen-panel"] footer.site { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
     .sel-bar-inner { display: flex; align-items: center; gap: 14px; max-width: 760px; margin: 0 auto; }
+    .sel-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .sel-count { font-size: 14px; font-weight: 600; }
-    .sel-bar .btn { margin-left: auto; min-height: 46px; }
+    .sel-hint { margin-top: 2px; font-size: 12.5px; font-weight: 700; color: var(--danger); }
+    .sel-bar .btn { margin-left: auto; min-height: 46px; flex: 0 0 auto; }
+
+    .slot.is-missing {
+      margin: 16px -10px 0; padding: 10px;
+      border: 1px solid var(--danger-line); border-radius: 14px;
+      background: var(--danger-soft);
+    }
+    .slot.is-missing h2 { margin-top: 0; flex-wrap: wrap; }
+    .slot-missing { margin-left: auto; color: var(--danger); font-size: 12px; font-weight: 700; }
+    .talk .t-title { overflow-wrap: anywhere; }
+    #a-table td { overflow-wrap: anywhere; }
+    .talk { animation: none; transition: opacity .16s ease, transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }
+    .talk:hover { transition: opacity .16s ease, transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }
+    .talk:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+    .talk.leaving { opacity: 0; transform: translateY(2px) scale(.99); }
+    .talk.entering { animation: talkIn .2s ease both; }
+    @keyframes talkIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
     body.admin .sel-bar { display: none !important; }
 
     /* Panel de profes */
@@ -583,6 +614,7 @@
     @media (max-width: 640px) {
       .wrap { padding-left: 16px; padding-right: 16px; }
       .hero { padding-top: 40px; }
+      .demo-strip { font-size: 11.5px; }
       .card { padding: 18px; }
       #a-table table, #a-table tbody { display: block; }
       #a-table thead { display: none; }
@@ -599,6 +631,19 @@
       #a-table td[data-label=""] { padding-top: 10px; }
       #a-table td[data-label=""]::before { display: none; }
       #a-table td[data-label=""] .btn { width: 100%; }
+    }
+
+    @media (max-width: 380px) {
+      .nav { padding-left: 14px; padding-right: 14px; gap: 12px; }
+      .wrap { padding-left: 14px; padding-right: 14px; }
+      .card { padding: 16px; }
+      .sel-bar { padding-left: 14px; padding-right: 14px; }
+      .sel-bar-inner { gap: 8px; }
+      .sel-count { font-size: 13px; }
+      .sel-bar .btn { padding: 10px 14px; }
+      .stat { padding: 10px; }
+      .stat-num { font-size: 21px; }
+      .slot-missing { width: 100%; margin-left: 0; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -625,9 +670,9 @@
       </a>
       <nav class="nav-links" aria-label="Secciones">
         <a href="#faq">Dudas</a>
-        <a href="?admin=1" id="nav-profes">Profes</a>
       </nav>
     </div>
+    <div id="demo-strip" class="demo-strip" role="status">MODO PRUEBA · Los datos quedan en este navegador.</div>
   </header>
   <div class="wrap" id="top">
     <section class="hero landing" aria-labelledby="hero-title">
@@ -637,6 +682,13 @@
     </section>
 
     <div id="s-banner" class="banner"></div>
+
+    <section id="setup-warning" class="card setup-warning" hidden>
+      <div class="steps">Configuración</div>
+      <h2 class="intro">Sin servidor configurado</h2>
+      <p class="hint">Esta copia no está conectada. No se guardan datos.</p>
+      <button id="btn-demo" class="btn full" type="button">Usar modo prueba</button>
+    </section>
 
     <section id="s-screen-mail" class="screen card">
       <div class="steps">1 de 3</div>
@@ -691,7 +743,10 @@
     </section>
     <div class="sel-bar">
       <div class="sel-bar-inner">
-        <span class="sel-count" id="sel-count" aria-live="polite">0 de 3 elegidas</span>
+        <div class="sel-info">
+          <span class="sel-count" id="sel-count" aria-live="polite">0 de 3 elegidas</span>
+          <span class="sel-hint" id="sel-hint" role="status" hidden></span>
+        </div>
         <button id="btn-confirmar" class="btn" type="button">Confirmar</button>
       </div>
     </div>
@@ -786,7 +841,6 @@
   <footer class="site">
     <div class="footer-inner">
       <span>ESI 2026</span>
-      <span><a href="?admin=1" id="footer-admin">Panel de profes</a></span>
     </div>
   </footer>
 
@@ -825,14 +879,14 @@
     function lsDel(key) {
       try { window.localStorage.removeItem(key); } catch (e) { }
     }
-    function sessGet() {
-      try { return window.sessionStorage.getItem('esi_admin_pin'); } catch (e) { return null; }
+    function ssGet(key) {
+      try { return window.sessionStorage.getItem(key); } catch (e) { return null; }
     }
-    function sessSet(v) {
-      try { window.sessionStorage.setItem('esi_admin_pin', v); } catch (e) { }
+    function ssSet(key, value) {
+      try { window.sessionStorage.setItem(key, value); } catch (e) { }
     }
-    function sessDel() {
-      try { window.sessionStorage.removeItem('esi_admin_pin'); } catch (e) { }
+    function ssDel(key) {
+      try { window.sessionStorage.removeItem(key); } catch (e) { }
     }
 
     var EsiClient = (function () {
@@ -1027,7 +1081,6 @@
       };
     })();
 
-    var DEMO_PIN = '1234';
     var STUDENT_MSG = {
       email: 'Escribí tu mail institucional.',
       nombre: 'Escribí nombre y apellido.',
@@ -1062,11 +1115,17 @@
       { id: 'O9', titulo: 'ITS: adolescentes expuestos, sífilis y otras infecciones', ciclo: 'orientado', slot_id: 3, lugar: 'Biblioteca', cupo: 40, activa: true }
     ];
 
-    var TRANSPORT = 'demo';
+    var DEMO_PARAM = /(^|[?&])demo=1(&|$)/.test(window.location.search || '');
+    var TRANSPORT = 'unconfigured';
     if (typeof google !== 'undefined' && google.script && google.script.run) {
       TRANSPORT = 'gscript';
+    } else if (DEMO_PARAM) {
+      lsSet('esi_demo', '1');
+      TRANSPORT = 'demo';
     } else if (getApiUrl()) {
       TRANSPORT = 'jsonp';
+    } else if (lsGet('esi_demo') === '1') {
+      TRANSPORT = 'demo';
     }
 
     function getApiUrl() {
@@ -1260,8 +1319,7 @@
         data: demoPublicData(s.ciclo, demoMine(s.email))
       });
     }
-    function demoAdminData(pin) {
-      if (pin !== DEMO_PIN) return { ok: false, message: 'Clave incorrecta.' };
+    function demoAdminData() {
       var signups = demoSignups();
       var counts = {};
       for (var i = 0; i < signups.length; i++) {
@@ -1320,15 +1378,11 @@
       return {
         ok: true,
         rosterLoaded: roster.length > 0,
-        nombre: nombre,
-        curso: entry ? (entry.curso || '') : '',
-        cursoParsed: pc || '',
         needsNombre: !nombre,
         needsCurso: !pc
       };
     }
-    function demoImportRoster(pinRaw, textRaw, mode) {
-      if (pinRaw !== DEMO_PIN) return { ok: false, message: 'Clave incorrecta.' };
+    function demoImportRoster(textRaw, mode) {
       var parsed = EsiClient.parseRoster(String(textRaw == null ? '' : textRaw));
       if (!parsed.rows.length) {
         return {
@@ -1390,21 +1444,29 @@
         });
       }
       if (fn === 'apiRegister') return demoRegister(a[0], a[1], a[2], a[3]);
-      if (fn === 'apiAdminLogin') return Promise.resolve({ ok: a[0] === DEMO_PIN });
-      if (fn === 'apiAdminGetData') return Promise.resolve(demoAdminData(a[0]));
+      if (fn === 'apiAdminLogin') return Promise.resolve({ ok: true });
+      if (fn === 'apiAdminGetData') return Promise.resolve(demoAdminData());
       if (fn === 'apiAdminSetOpen') {
-        if (a[0] !== DEMO_PIN) return Promise.resolve({ ok: false, message: 'Clave incorrecta.' });
         demoWrite('esi_demo_abierto', !!a[1]);
         return Promise.resolve({ ok: true, evento_abierto: !!a[1] });
       }
       if (fn === 'apiAdminDeleteSignup') {
-        if (a[0] !== DEMO_PIN) return Promise.resolve({ ok: false, message: 'Clave incorrecta.' });
         var remain = demoSignups().filter(function (x) { return x.id !== String(a[1]); });
         demoWrite('esi_demo_signups', remain);
         return Promise.resolve({ ok: true });
       }
-      if (fn === 'apiAdminImportRoster') return Promise.resolve(demoImportRoster(a[0], a[1], a[2]));
+      if (fn === 'apiAdminImportRoster') return Promise.resolve(demoImportRoster(a[1], a[2]));
       return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
+    }
+
+    function showSetupWarning() {
+      document.body.setAttribute('data-screen', 'setup');
+      $('hdr-title').textContent = 'ESI';
+      $('hdr-sub').textContent = 'Sin conexión';
+      $('s-banner').style.display = 'none';
+      $('setup-warning').hidden = false;
+      var ids = S_SCREENS.concat(A_SCREENS);
+      for (var i = 0; i < ids.length; i++) $(ids[i]).className = 'screen';
     }
 
     function showScreen(ids, activeId) {
@@ -1461,7 +1523,7 @@
     var sState = {
       email: '', nombre: '', curso: '',
       needsNombre: false, needsCurso: false,
-      data: null, busy: false, lookup: null,
+      data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
       student: { email: '', nombre: '', curso: '', ciclo: '' }
     };
 
@@ -1488,35 +1550,70 @@
       return null;
     }
 
+    function sReduceMotion() {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    function sMissingSlots() {
+      var d = sState.data || {};
+      var slots = d.slots || [];
+      var mine = d.mine || {};
+      var out = [];
+      for (var i = 0; i < slots.length; i++) {
+        var id = mine[Number(slots[i].id)];
+        if (!id || !sTalkById(id)) {
+          out.push({ index: i + 1, id: slots[i].id, label: slots[i].label });
+        }
+      }
+      return out;
+    }
+
     function sRender() {
       var d = sState.data;
       if (!d) return;
       var sub = $('hdr-sub');
       sub.textContent = (d.evento_abierto ? 'Inscripción abierta' : 'Inscripción cerrada')
-        + ' · ' + CICLO_LABELS[sState.student.ciclo]
-        + (TRANSPORT === 'demo' ? ' · Prueba' : '');
+        + ' · ' + CICLO_LABELS[sState.student.ciclo];
       sub.className = d.evento_abierto ? '' : 'alert';
 
       var st = sState.student;
+      var slots = d.slots || [];
+      var mine = d.mine || {};
       var chosenCount = 0;
-      for (var k in (d.mine || {})) {
-        if (Object.prototype.hasOwnProperty.call(d.mine, k)) chosenCount++;
+      for (var i = 0; i < slots.length; i++) {
+        var chosenId = mine[Number(slots[i].id)];
+        if (chosenId && sTalkById(chosenId)) chosenCount++;
+      }
+      var missing = sMissingSlots();
+      var hint = $('sel-hint');
+      if (hint) {
+        if (sState.showMissing && missing.length) {
+          hint.textContent = 'Falta elegir el horario ' + missing[0].index;
+          hint.hidden = false;
+        } else {
+          hint.textContent = '';
+          hint.hidden = true;
+        }
       }
       $('summary').innerHTML = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
         + '<div class="email">' + esc(st.email) + '</div>';
       var countEl = $('sel-count');
-      if (countEl) countEl.textContent = chosenCount + ' de 3 elegidas';
+      if (countEl) countEl.textContent = chosenCount + ' de ' + slots.length + ' elegidas';
 
       var cont = $('slots-container');
       cont.innerHTML = '';
-      var slots = d.slots || [];
+      var missingMap = {};
+      for (var m = 0; m < missing.length; m++) missingMap[Number(missing[m].id)] = true;
       for (var s = 0; s < slots.length; s++) {
         var section = document.createElement('div');
-        section.className = 'slot';
+        var isMissing = sState.showMissing && missingMap[Number(slots[s].id)];
+        section.className = 'slot' + (isMissing ? ' is-missing' : '');
+        section.setAttribute('data-slot-id', slots[s].id);
         var h2 = document.createElement('h2');
         h2.className = 'slot-title';
         h2.innerHTML = '<span class="time-pill">Horario ' + (s + 1) + '</span>'
-          + '<span class="slot-time">· ' + esc(slots[s].label) + '</span>';
+          + '<span class="slot-time">· ' + esc(slots[s].label) + '</span>'
+          + (isMissing ? '<span class="slot-missing">Falta elegir</span>' : '');
         section.appendChild(h2);
         var grid = document.createElement('div');
         grid.className = 'slot-grid';
@@ -1539,9 +1636,15 @@
       var seats = chosen ? 'Elegida'
         : (full ? 'Completa'
           : (low ? 'Últimos ' + talk.restantes : talk.restantes + ' lugares'));
+      var entering = sState.enterTalk
+        && Number(sState.enterTalk.slotId) === Number(slot.id)
+        && String(sState.enterTalk.id) === String(talk.id);
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'talk' + (chosen ? ' selected' : '') + (full ? ' full' : '') + (low ? ' low' : '');
+      btn.className = 'talk' + (chosen ? ' selected' : '') + (full ? ' full' : '') + (low ? ' low' : '')
+        + (entering ? ' entering' : '');
+      btn.setAttribute('data-talk-id', talk.id);
+      btn.setAttribute('data-slot-id', slot.id);
       btn.setAttribute('aria-pressed', chosen ? 'true' : 'false');
       btn.setAttribute('aria-label', talk.titulo + ', ' + talk.lugar + ', ' + seats);
       var barClass = full ? 'is-full' : (low ? 'is-low' : '');
@@ -1563,32 +1666,34 @@
       var d = sState.data || { slots: [], mine: {} };
       var slots = d.slots || [];
       var mine = d.mine || {};
-      var lines = '';
-      var count = 0;
-      for (var i = 0; i < slots.length; i++) {
-        var chosen = mine[Number(slots[i].id)] ? sTalkById(mine[Number(slots[i].id)]) : null;
-        if (chosen) {
-          count++;
-          lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
-            + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
-        } else {
-          lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
-            + '<span class="sheet-meta">Sin elegir.</span></p>';
+      if (!slots.length) return;
+      var missing = sMissingSlots();
+      if (missing.length) {
+        sState.showMissing = true;
+        sRender();
+        var target = null;
+        try { target = document.querySelector('.slot[data-slot-id="' + missing[0].id + '"]'); } catch (e) { }
+        if (target && target.scrollIntoView) {
+          try {
+            target.scrollIntoView({ behavior: sReduceMotion() ? 'auto' : 'smooth', block: 'center' });
+          } catch (e) {
+            target.scrollIntoView();
+          }
         }
+        return;
       }
-      var body = lines;
-      var missing = 3 - count;
-      if (count === 0) {
-        body += '<p class="sheet-warn">Todavía no elegiste ninguna.</p>';
-      } else if (missing > 0) {
-        body += '<p class="sheet-warn">Te ' + (missing === 1 ? 'falta 1 horario' : 'faltan ' + missing + ' horarios') + '.</p>';
+      sState.showMissing = false;
+      var lines = '';
+      for (var i = 0; i < slots.length; i++) {
+        var chosen = sTalkById(mine[Number(slots[i].id)]);
+        lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
+          + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
       }
       openSheet({
-        title: count ? 'Tus charlas' : 'Sin charlas',
-        body: body,
-        confirm: count ? 'Confirmar' : 'Cerrar',
+        title: 'Tus charlas',
+        body: lines,
+        confirm: 'Confirmar',
         onConfirm: function () {
-          if (!count) return;
           toast('Listo, quedaste anotado.', 'ok');
         }
       });
@@ -1617,6 +1722,9 @@
 
     function sRegister(talkId) {
       if (sState.busy) return;
+      var target = sTalkById(talkId);
+      var slotId = target ? target.slot_id : null;
+      var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
       sState.busy = true;
       call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId])
         .then(function (resp) {
@@ -1624,12 +1732,40 @@
           if (resp.data) sState.data = resp.data;
           if (resp.student) sState.student = resp.student;
           toast(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
-          sRender();
+          if (resp.ok) sRenderChange(slotId, prevId, talkId);
+          else sRender();
         })
         .catch(function () {
           sState.busy = false;
           toast('Sin conexión. Probá de nuevo.', 'err');
         });
+    }
+
+    function sRenderChange(slotId, prevId, nextId) {
+      if (!slotId || sReduceMotion()) {
+        sRender();
+        return;
+      }
+      var oldBtn = null;
+      try {
+        oldBtn = document.querySelector ? document.querySelector(
+          '.talk[data-slot-id="' + slotId + '"][data-talk-id="' + prevId + '"]'
+        ) : null;
+      } catch (e) { }
+      if (!oldBtn || String(prevId) === String(nextId)) {
+        sState.enterTalk = { slotId: slotId, id: nextId };
+        sRender();
+        sState.enterTalk = null;
+        return;
+      }
+      oldBtn.classList.add('leaving');
+      sState.busy = true;
+      window.setTimeout(function () {
+        sState.enterTalk = { slotId: slotId, id: nextId };
+        sRender();
+        sState.enterTalk = null;
+        sState.busy = false;
+      }, 150);
     }
 
     function sEnterPanel(nombre, curso) {
@@ -1644,7 +1780,7 @@
             sState.nombre = resp.student.nombre;
             sState.curso = resp.student.curso;
             sState.data = resp.data;
-            lsSet('esi_student', JSON.stringify({
+            ssSet('esi_student', JSON.stringify({
               email: sState.email, nombre: sState.nombre, curso: sState.curso, ciclo: resp.student.ciclo
             }));
             sBanner('');
@@ -1653,7 +1789,7 @@
           } else {
             sBanner(resp.message || 'No se pudo cargar.', 'err');
             if (resp.message && String(resp.message).indexOf('no está en la lista') >= 0) {
-              lsDel('esi_student');
+              ssDel('esi_student');
               sState.email = '';
               showScreen(S_SCREENS, 's-screen-mail');
             }
@@ -1680,8 +1816,8 @@
           sBanner('');
           sState.email = email.replace(/\s/g, '').toLowerCase();
           sState.lookup = resp;
-          sState.nombre = resp.nombre || '';
-          sState.curso = resp.curso || '';
+          sState.nombre = '';
+          sState.curso = '';
           if (!resp.needsNombre && !resp.needsCurso) {
             sEnterPanel(sState.nombre, sState.curso);
             return;
@@ -1708,7 +1844,7 @@
     function sShowDatos() {
       var needsNombre = sState.lookup.needsNombre;
       var needsCurso = sState.lookup.needsCurso;
-      document.body.className = '';
+      document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
       $('fieldset-nombre').style.display = needsNombre ? 'block' : 'none';
       $('select-anio').value = '';
       var pc = EsiClient.parseCurso(sState.curso || '');
@@ -1751,7 +1887,7 @@
     }
 
     function sInit() {
-      document.body.className = '';
+      document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
       $('hdr-title').textContent = 'Inscripción a las charlas';
       $('hdr-sub').textContent = 'ESI 2026';
       $('btn-mail').addEventListener('click', sLookup);
@@ -1772,11 +1908,11 @@
           ? window.confirm('Tus charlas quedan guardadas. ¿Cambiar tus datos?')
           : true;
         if (!ok) return;
-        lsDel('esi_student');
+        ssDel('esi_student');
         sState = {
           email: '', nombre: '', curso: '',
           needsNombre: false, needsCurso: false,
-          data: null, busy: false, lookup: null,
+          data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
           student: { email: '', nombre: '', curso: '', ciclo: '' }
         };
         $('input-mail').value = '';
@@ -1791,7 +1927,7 @@
         }
       });
 
-      var saved = lsGet('esi_student');
+      var saved = ssGet('esi_student');
       if (saved) {
         try {
           var st = JSON.parse(saved);
@@ -1807,6 +1943,7 @@
 
     var aData = null;
     var aBusy = false;
+    var adminPin = '';
 
     function aBanner(text, type) {
       var el = $('a-msg');
@@ -1822,7 +1959,8 @@
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
-            sessSet(pin);
+            adminPin = TRANSPORT === 'demo' ? 'demo' : pin;
+            $('gate-msg').style.display = 'none';
             showScreen(A_SCREENS, 'a-screen-panel');
             aLoad(true);
           } else {
@@ -1839,19 +1977,18 @@
 
     function aLoad(silent) {
       if (aBusy) return;
-      var pin = sessGet();
-      if (!pin) {
+      if (!adminPin) {
         showScreen(A_SCREENS, 'a-screen-gate');
         return;
       }
       aBusy = true;
       if (!silent) aBanner('Actualizando', 'ok');
-      call('apiAdminGetData', [pin])
+      call('apiAdminGetData', [adminPin])
         .then(function (resp) {
           aBusy = false;
           if (!resp.ok) {
             if (String(resp.message).indexOf('Clave') >= 0) {
-              sessDel();
+              adminPin = '';
               aData = null;
               showScreen(A_SCREENS, 'a-screen-gate');
               return;
@@ -1872,7 +2009,7 @@
     function aRender() {
       var d = aData;
       if (!d) return;
-      $('hdr-sub').textContent = 'ESI 2026' + (TRANSPORT === 'demo' ? ' · Prueba' : '');
+      $('hdr-sub').textContent = 'ESI 2026';
 
       $('a-roster-info').textContent = d.rosterLoaded
         ? d.rosterCount + ' mails'
@@ -2005,10 +2142,9 @@
       if (!d.signups.length) {
         rows = '<div class="empty-state">'
           + '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".5"/><circle cx="3.5" cy="12" r=".5"/><circle cx="3.5" cy="18" r=".5"/></svg>'
-          + '<p class="es-title">Todavía no hay inscriptos.</p>'
-          + '<p>Cuando alguien se anote, aparece acá.</p></div>';
+          + '<p class="es-title">Todavía no hay inscriptos.</p></div>';
       } else if (!shown) {
-        rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p><p>Probá con otros filtros.</p></div>';
+        rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
       $('a-table').innerHTML = rows;
     }
@@ -2044,7 +2180,7 @@
       if (aBusy) return;
       aBusy = true;
       aImportMsg('Importando...', 'ok');
-      call('apiAdminImportRoster', [sessGet(), text, mode])
+      call('apiAdminImportRoster', [adminPin, text, mode])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
@@ -2075,7 +2211,7 @@
     function aDeleteConfirmed(signupId) {
       if (aBusy) return;
       aBusy = true;
-      call('apiAdminDeleteSignup', [sessGet(), signupId])
+      call('apiAdminDeleteSignup', [adminPin, signupId])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
@@ -2097,7 +2233,7 @@
       openSheet({
         title: open ? 'Cerrar inscripción' : 'Abrir inscripción',
         body: '<p class="footer-note" style="margin:0;text-align:left">'
-          + (open ? 'Los alumnos no van a poder anotarse.' : 'Los alumnos van a poder anotarse.') + '</p>',
+          + (open ? 'No van a poder anotarse.' : 'Van a poder anotarse.') + '</p>',
         confirm: open ? 'Cerrar' : 'Abrir',
         danger: open,
         onConfirm: aToggleConfirmed
@@ -2108,7 +2244,7 @@
       if (aBusy) return;
       var open = aData && aData.evento_abierto;
       aBusy = true;
-      call('apiAdminSetOpen', [sessGet(), !open])
+      call('apiAdminSetOpen', [adminPin, !open])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
@@ -2133,7 +2269,13 @@
     }
 
     function aCopyLink() {
-      var url = window.location.href.split('?')[0];
+      var url = window.location.origin + window.location.pathname;
+      if (TRANSPORT === 'demo') {
+        url += '?demo=1';
+      } else if (TRANSPORT === 'jsonp') {
+        var api = getApiUrl();
+        if (api) url += '?api=' + encodeURIComponent(api);
+      }
       var done = function () { aBanner('Link copiado.', 'ok'); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done, function () {
@@ -2165,11 +2307,20 @@
     }
 
     function aLogout() {
-      sessDel();
+      adminPin = '';
       aData = null;
       $('input-pin').value = '';
       $('gate-msg').textContent = '';
+      $('gate-msg').style.display = 'none';
+      aDemoHint();
       showScreen(A_SCREENS, 'a-screen-gate');
+    }
+
+    function aDemoHint() {
+      if (TRANSPORT !== 'demo') return;
+      $('gate-msg').textContent = 'Modo prueba: cualquier clave.';
+      $('gate-msg').className = 'banner ok';
+      $('gate-msg').style.display = 'block';
     }
 
     function aInit() {
@@ -2197,15 +2348,16 @@
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
 
-      if (sessGet()) {
+      if (adminPin) {
         showScreen(A_SCREENS, 'a-screen-panel');
         aLoad(true);
       } else {
+        aDemoHint();
         showScreen(A_SCREENS, 'a-screen-gate');
       }
 
       window.setInterval(function () {
-        if (document.visibilityState === 'visible' && sessGet() && aData && !aBusy) {
+        if (document.visibilityState === 'visible' && adminPin && aData && !aBusy) {
           aLoad(true);
         }
       }, 30000);
@@ -2242,29 +2394,37 @@
         window.addEventListener('scroll', onScroll, { passive: true });
         onScroll();
       }
-      var m = String(window.location.search || '').match(/[?&]api=([^&]+)/);
-      var adminHref = '?admin=1' + (m ? '&api=' + m[1] : '');
-      var np = $('nav-profes');
-      if (np) np.href = adminHref;
-      var fa = $('footer-admin');
-      if (fa) fa.href = adminHref;
       initReveal();
     }
 
+    function purgeLegacyStorage() {
+      ssDel('esi_admin_pin');
+      if (TRANSPORT !== 'demo') lsDel('esi_student');
+    }
+
     function boot() {
+      purgeLegacyStorage();
       sheetInit();
       initShell();
-      if (TRANSPORT === 'demo') {
-        document.body.classList.add('demo');
-        var hint = $('hint-mail');
-        if (hint) {
-          hint.textContent = 'MODO PRUEBA: usá cualquier mail válido.';
-        }
+      if (TRANSPORT === 'unconfigured') {
+        $('btn-demo').addEventListener('click', function () {
+          lsSet('esi_demo', '1');
+          window.location.reload();
+        });
+        showSetupWarning();
+        return;
       }
       if (IS_ADMIN) {
         aInit();
       } else {
         sInit();
+      }
+      if (TRANSPORT === 'demo') {
+        document.body.classList.add('demo');
+        var hint = $('hint-mail');
+        if (hint) {
+          hint.textContent = 'Modo prueba: cualquier mail válido.';
+        }
       }
     }
 
