@@ -673,5 +673,16 @@ t('Panel keeps the session token in memory and not the pin in storage', () => {
   if (!/aAuthLost/.test(panelSrc)) throw new Error('no session expiry handling');
 });
 
+t('Panel keeps control borders and focus rings above the contrast minimum', () => {
+  if (!/--line-ui:\s*#8E8A80/.test(panelHtml)) throw new Error('line-ui claro missing');
+  if (!/--line-ui:\s*#787C71/.test(panelHtml)) throw new Error('line-ui oscuro missing');
+  if (!/\.talk \{[^}]*border:\s*1px solid var\(--line-ui\)/.test(panelHtml)) throw new Error('talk border not using line-ui');
+  if (!/border:\s*1px solid var\(--line-ui\); border-radius: var\(--radius-sm\)/.test(panelHtml)) throw new Error('inputs not using line-ui');
+  if (/focus-visible[^}]*var\(--accent-soft\)/.test(panelHtml)) throw new Error('weak focus ring');
+  if (/focus-visible[^}]*var\(--accent-fill\)/.test(panelHtml)) throw new Error('weak focus ring');
+  if (!/focus-visible[^}]*var\(--accent\)/.test(panelHtml)) throw new Error('focus ring missing');
+  if (!/overflow-wrap:\s*anywhere/.test(panelHtml)) throw new Error('long text can overflow on narrow screens');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
