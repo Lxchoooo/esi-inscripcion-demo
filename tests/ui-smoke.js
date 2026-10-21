@@ -82,6 +82,7 @@ const window = {
   addEventListener() { },
   scrollY: 0,
   confirm: () => true,
+  print() { },
   prompt() { },
   matchMedia: () => ({ matches: false })
 };
@@ -92,7 +93,8 @@ return {
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
   sLookup: sLookup, sHelloYes: sHelloYes, sHelloNo: sHelloNo, sForgotMail: sForgotMail,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
-  aOnPresent: aOnPresent,
+  aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
+  setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
   sState: sState, setA: function (v) { aData = v; },
   setTalk: function (v) { aTalkData = v; },
@@ -258,8 +260,22 @@ function tick() {
   assert(document.getElementById('charla-list').innerHTML.includes('is-present'), 'presente marcado');
   assert(document.getElementById('charla-presentes').textContent === 'presentes 1 de 1', 'contador de presentes');
 
+  ui.setRole('admin');
+  ui.aApplyRole();
+  ui.setTalk({
+    ok: true, role: 'admin', talk: { id: 'B1', titulo: 'Ansiedad', cupo: 40 },
+    count: 1, presentes: 0,
+    students: [{ id: 's1', apellido: 'Gómez', nombre: 'Ana', curso: '2°B', email: 'ana@esc.edu.ar', presente: false }]
+  });
+  ui.aRenderTalk();
+  const conMail = document.getElementById('charla-list').innerHTML;
+  assert(conMail.includes('Gómez, Ana'), 'apellido primero');
+  assert(conMail.includes('ana@esc.edu.ar'), 'mail secundario para profe');
   ui.setRole('guide');
   ui.aApplyRole();
+  ui.aRenderTalk();
+  assert(!document.getElementById('charla-list').innerHTML.includes('@'), 'la guia no ve el mail');
+
   assert(document.getElementById('hdr-sub').textContent === 'ESI 2026 · Guía', 'subtitulo de guia');
   assert(document.getElementById('btn-csv').style.display === 'none', 'csv oculto para guia');
   assert(document.getElementById('tab-mails').style.display === 'none', 'tab de mails oculto');
@@ -294,9 +310,169 @@ function tick() {
   assert(document.getElementById('pend-count').textContent === '1 sin completar', 'contador sin anotar');
   assert(document.getElementById('pend-list').innerHTML.includes('Falta 2da y 3ra'), 'horarios que faltan');
 
+  const repCourses = [{
+    curso: '2°B', roster: 2, complete: 1, incomplete: 1, missing: 0,
+    presentBySlot: [
+      { slot: '1ra', presentes: 1 },
+      { slot: '2da', presentes: 0 },
+      { slot: '3ra', presentes: 1 }
+    ],
+    students: [
+      {
+        apellido: 'Díaz', nombre: 'Beto', curso: '2°B', email: 'beto@esc.edu.ar',
+        talks: [
+          { slot: '1ra', titulo: 'Charla uno', lugar: 'Aula 1', signup_id: 's1', presente: true },
+          { slot: '2da', titulo: '', lugar: '', signup_id: '', presente: false },
+          { slot: '3ra', titulo: 'Charla tres', lugar: 'Aula 3', signup_id: 's2', presente: false }
+        ]
+      },
+      {
+        apellido: 'Gómez', nombre: 'Ana', curso: '2°B', email: 'ana@esc.edu.ar',
+        talks: [
+          { slot: '1ra', titulo: 'Charla uno', lugar: 'Aula 1', signup_id: 's3', presente: false },
+          { slot: '2da', titulo: 'Charla dos', lugar: 'Aula 2', signup_id: 's4', presente: false },
+          { slot: '3ra', titulo: 'Charla tres', lugar: 'Aula 3', signup_id: 's5', presente: false }
+        ]
+      }
+    ]
+  }];
+  ui.setReports({
+    ok: true, role: 'admin',
+    slots: [{ id: 1, nombre: '1ra' }, { id: 2, nombre: '2da' }, { id: 3, nombre: '3ra' }],
+    totals: { roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [] },
+    courses: repCourses,
+    talks: []
+  });
+  ui.aRepSetType('curso');
+  let rep = document.getElementById('rep-out').innerHTML;
+  assert(rep.includes('Díaz, Beto'), 'apellido primero en el reporte');
+  assert(rep.includes('Completos'), 'totales del curso');
+  assert(rep.includes('Presentes por franja'), 'presentes por franja');
+  assert(rep.includes('Sin anotar'), 'charla sin anotar en el reporte');
+  assert(rep.includes('beto@esc.edu.ar'), 'mail secundario para profe');
+  ui.setRole('guide');
+  ui.setReports({
+    ok: true, role: 'guide',
+    slots: [{ id: 1, nombre: '1ra' }, { id: 2, nombre: '2da' }, { id: 3, nombre: '3ra' }],
+    totals: { roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [] },
+    courses: [{
+      curso: '2°B', roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [],
+      students: [{ apellido: 'Díaz', nombre: 'Beto', curso: '2°B', email: 'beto@esc.edu.ar', talks: [] },
+        { apellido: 'Gómez', nombre: 'Ana', curso: '2°B', email: 'ana@esc.edu.ar', talks: [] }]
+    }],
+    talks: []
+  });
+  ui.aRepSetType('curso');
+  rep = document.getElementById('rep-out').innerHTML;
+  assert(rep.includes('Díaz, Beto'), 'la guia ve el apellido');
+  assert(!rep.includes('@'), 'la guia no ve mails en el reporte');
+  ui.setRole('admin');
+
+  ui.setReports({
+    ok: true, role: 'admin',
+    slots: [{ id: 1, nombre: '1ra' }],
+    totals: { roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [] },
+    courses: [],
+    talks: [{
+      id: 'B1', titulo: 'Charla uno', slotLabel: '10:30 a 11:20', lugar: 'Aula 1',
+      ciclo: 'basico', cupo: 40, anotados: 3, presentes: 1, ausentes: 2,
+      porCurso: [{ curso: '2°B', anotados: 3 }],
+      students: [{ id: 's1', apellido: 'Díaz', nombre: 'Beto', curso: '2°B', presente: true, email: 'beto@esc.edu.ar' }]
+    }]
+  });
+  ui.aRepSetType('charla');
+  let repTalk = document.getElementById('rep-out').innerHTML;
+  assert(repTalk.includes('Inscriptos'), 'stat de inscriptos');
+  assert(repTalk.includes('Ausentes'), 'stat de ausentes');
+  assert(repTalk.includes('Por curso: 2°B 3'), 'desglose por curso');
+  assert(repTalk.includes('Díaz, Beto'), 'alumno en la charla');
+  assert(repTalk.includes('beto@esc.edu.ar'), 'mail solo para profe en la charla');
+  ui.setRole('guide');
+  ui.setReports({
+    ok: true, role: 'guide',
+    slots: [{ id: 1, nombre: '1ra' }],
+    totals: { roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [] },
+    courses: [],
+    talks: [{
+      id: 'B1', titulo: 'Charla uno', slotLabel: '10:30 a 11:20', lugar: 'Aula 1',
+      ciclo: 'basico', cupo: 40, anotados: 1, presentes: 0, ausentes: 1,
+      porCurso: [{ curso: '2°B', anotados: 1 }],
+      students: [{ id: 's1', apellido: 'Díaz', nombre: 'Beto', curso: '2°B', presente: false, email: 'beto@esc.edu.ar' }]
+    }]
+  });
+  ui.aRepSetType('charla');
+  repTalk = document.getElementById('rep-out').innerHTML;
+  assert(repTalk.includes('Díaz, Beto'), 'la guia ve la charla');
+  assert(!repTalk.includes('@'), 'la guia no ve mails en la charla');
+  ui.setRole('admin');
+
+  ui.setReports({
+    ok: true, role: 'admin',
+    slots: [{ id: 1, nombre: '1ra' }],
+    totals: {
+      roster: 4, complete: 1, incomplete: 2, missing: 1, signups: 6,
+      presentBySlot: [{ slot: '1ra', label: '10:30 a 11:20', presentes: 1 }]
+    },
+    courses: [],
+    talks: [{
+      id: 'B1', titulo: 'Charla uno', slotLabel: '10:30 a 11:20', lugar: 'Aula 1',
+      ciclo: 'basico', cupo: 40, anotados: 3, presentes: 1, ausentes: 2, porCurso: [], students: []
+    }]
+  });
+  ui.aRepSetType('total');
+  let repTotal = document.getElementById('rep-out').innerHTML;
+  assert(repTotal.includes('En la lista'), 'totales generales');
+  assert(repTotal.includes('Presentes por franja'), 'presentes por franja en el total');
+  assert(repTotal.includes('Total: 3 inscriptos, 1 presentes'), 'resumen del total');
+  assert(repTotal.includes('Básico'), 'ciclo en la tabla total');
+
+  ui.setReports({
+    ok: true, role: 'admin',
+    slots: [
+      { id: 1, nombre: '1ra' }, { id: 2, nombre: '2da' }, { id: 3, nombre: '3ra' }
+    ],
+    totals: { roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [] },
+    courses: [{
+      curso: '2°B', roster: 2, complete: 1, incomplete: 1, missing: 0,
+      presentBySlot: [{ slot: '1ra', presentes: 1 }],
+      students: [{
+        apellido: 'Gómez', nombre: 'Ana', curso: '2°B',
+        talks: [
+          { slot: '1ra', titulo: 'Charla uno', lugar: 'Aula 1', signup_id: 's1', presente: true },
+          { slot: '2da', titulo: 'Charla dos', lugar: 'Aula 2', signup_id: 's2', presente: false },
+          { slot: '3ra', titulo: '', lugar: '', signup_id: '', presente: false }
+        ]
+      }]
+    }],
+    talks: [{
+      id: 'B1', titulo: 'Charla uno', slotLabel: '10:30 a 11:20', lugar: 'Aula 1',
+      ciclo: 'basico', cupo: 40, anotados: 1, presentes: 1, ausentes: 0, porCurso: [], students: []
+    }]
+  });
+  ui.aRepSetType('curso');
+  ui.aBuildPrint();
+  let printHtml = document.getElementById('print-area').innerHTML;
+  assert(printHtml.includes('Firma o presente'), 'columna de firma en el PDF');
+  assert(printHtml.includes('Reporte por curso: 2°B'), 'encabezado del curso');
+  assert(printHtml.includes('Emitido el'), 'fecha de emision');
+  assert(printHtml.includes('Gómez, Ana'), 'apellido primero en el PDF');
+  assert(printHtml.includes('Sin anotar'), 'charla vacia en el PDF');
+  assert(printHtml.includes('print-page'), 'pagina de impresion');
+  ui.aRepSetType('charla');
+  ui.aBuildPrint();
+  printHtml = document.getElementById('print-area').innerHTML;
+  assert(printHtml.includes('Reporte por charla: Charla uno'), 'encabezado de la charla');
+  assert(!printHtml.includes('@'), 'el PDF no lleva mails');
+  ui.aRepSetType('total');
+  ui.aBuildPrint();
+  printHtml = document.getElementById('print-area').innerHTML;
+  assert(printHtml.includes('Reporte total'), 'encabezado del total');
+  assert(printHtml.includes('Inscriptos'), 'tabla total en el PDF');
+  ui.aRepSetType('curso');
+
+  console.log('UI smoke: OK');
 })().catch((e) => {
   console.error(e.message);
   process.exit(1);
 });
 
-console.log('UI smoke: OK');

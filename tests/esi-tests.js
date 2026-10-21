@@ -282,8 +282,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 11) throw new Error('expected 11 api fns, got ' + names.length);
-  const want = ['apiLookup', 'apiGetData', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent'];
+  if (names.length !== 12) throw new Error('expected 12 api fns, got ' + names.length);
+  const want = ['apiLookup', 'apiGetData', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -709,6 +709,7 @@ function fakeSheet(name, headers, rows) {
         setValue: (v) => { sh.data[r - 1][c - 1] = v; },
         setValues: (vals) => {
           for (let i = 0; i < vals.length; i++) {
+            if (!sh.data[r - 1 + i]) sh.data[r - 1 + i] = [];
             for (let j = 0; j < vals[i].length; j++) sh.data[r - 1 + i][j] = vals[i][j];
           }
         },
@@ -975,6 +976,324 @@ t('Code.gs exposes the attendance column and the attendance api', () => {
   if (!/apiAdminSetPresent: apiAdminSetPresent/.test(codeSrc)) throw new Error('api not in map');
   if (!/'presente'/.test(codeSrc)) throw new Error('presente column missing');
   if (!/presentes: presentes/.test(codeSrc)) throw new Error('present counter missing');
+});
+
+
+t('parseRoster accepts separate surname and name columns', () => {
+  const txt = [
+    'mail;apellido;nombre;curso',
+    'ana@esc.edu.ar;Gómez;Ana;2B',
+    'beto@esc.edu.ar;Díaz;Beto;5Turismo'
+  ].join('\n');
+  const r = Core.parseRoster(txt);
+  assertEq(r.rows.length, 2);
+  assertEq(r.rows[0].apellido, 'Gómez');
+  assertEq(r.rows[0].nombre, 'Ana');
+  assertEq(r.rows[0].nombreCompleto, 'Ana Gómez');
+  assertEq(r.rows[0].curso, '2°B');
+  assertEq(r.rows[1].apellido, 'Díaz');
+});
+
+t('parseRoster keeps a full name as is and never guesses the surname', () => {
+  const txt = 'mail;nombre;curso\nana@esc.edu.ar;Ana María Gómez;2B';
+  const r = Core.parseRoster(txt);
+  assertEq(r.rows[0].apellido, '');
+  assertEq(r.rows[0].nombre, 'Ana María Gómez');
+  assertEq(r.rows[0].nombreCompleto, 'Ana María Gómez');
+});
+
+t('parseRoster accepts positional separate columns without header', () => {
+  const r = Core.parseRoster('ana@esc.edu.ar;Gómez;Ana;2B');
+  assertEq(r.rows[0].apellido, 'Gómez');
+  assertEq(r.rows[0].nombre, 'Ana');
+  assertEq(r.rows[0].nombreCompleto, 'Ana Gómez');
+});
+
+t('parseRoster leaves the name empty when the line only has a mail', () => {
+  const r = Core.parseRoster('ana@esc.edu.ar');
+  assertEq(r.rows[0].nombre, '');
+  assertEq(r.rows[0].apellido, '');
+  assertEq(r.rows[0].nombreCompleto, '');
+});
+
+t('sortBySurname_ orders by surname and then by name', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'sortBySurname_');
+  const list = [
+    { apellido: 'Gómez', nombre: 'Beto', email: 'b@e.co' },
+    { apellido: 'Díaz', nombre: 'Carla', email: 'c@e.co' },
+    { apellido: 'Gómez', nombre: 'Ana', email: 'a@e.co' }
+  ];
+  const out = api.sortBySurname_(list);
+  assertEq(out[0].nombre, 'Carla');
+  assertEq(out[1].nombre, 'Ana');
+  assertEq(out[2].nombre, 'Beto');
+});
+
+t('sortBySurname_ keeps a legacy full name untouched but sorts by its last word', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'sortBySurname_');
+  const list = [
+    { nombre: 'Ana Gómez', email: 'a@e.co' },
+    { nombre: 'Beto Díaz', email: 'b@e.co' }
+  ];
+  const out = api.sortBySurname_(list);
+  assertEq(out[0].nombre, 'Beto Díaz');
+  assertEq(out[0].apellido === undefined || out[0].apellido === '', true);
+});
+
+t('apiLookup returns surname and full name from separate columns', () => {
+  const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso'], [
+    ['ana@esc.edu.ar', 'Gómez', 'Ana', '2°B']
+  ]);
+  const api = backendApi(services, 'apiLookup');
+  const r = api.apiLookup('ana@esc.edu.ar');
+  assertEq(r.ok, true);
+  assertEq(r.apellido, 'Gómez');
+  assertEq(r.nombre, 'Ana');
+  assertEq(r.nombreCompleto, 'Ana Gómez');
+  assertEq(r.needsNombre, false);
+  assertEq(r.needsCurso, false);
+});
+
+t('apiAdminImportRoster writes separate surname and name columns', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminImportRoster, readStudents_');
+  const r = api.apiAdminImportRoster('1111', 'mail;apellido;nombre;curso\nd@esc.edu.ar;Díaz;Dora;3A', 'agregar');
+  assertEq(r.ok, true);
+  const head = services.sheets.Students.data[0];
+  assertEq(head.join(','), 'email,apellido,nombre,curso');
+  const saved = api.readStudents_().filter((s) => s.email === 'd@esc.edu.ar')[0];
+  assertEq(saved.apellido, 'Díaz');
+  assertEq(saved.nombre, 'Dora');
+  assertEq(saved.nombreCompleto, 'Dora Díaz');
+});
+
+t('CSV keeps the mail last and includes the attendance columns', () => {
+  if (!/\[\['Apellido', 'Nombre', 'Curso', 'Horario', 'Charla', 'Lugar', 'Presente', 'Mail'\]\]/.test(panelSrc)) {
+    throw new Error('csv header changed');
+  }
+  if (!/s\.presente \? 'si' : 'no'/.test(panelSrc)) throw new Error('csv present column missing');
+});
+
+
+function reportSeed(services) {
+  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso'], [
+    ['ana@esc.edu.ar', 'Gómez', 'Ana', '2°B'],
+    ['beto@esc.edu.ar', 'Díaz', 'Beto', '2°B'],
+    ['carla@esc.edu.ar', 'Sosa', 'Carla', '2°B'],
+    ['dora@esc.edu.ar', 'Paz', 'Dora', '5°Turismo']
+  ]);
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'], [
+    ['s1', new Date(), 'ana@esc.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si'],
+    ['s2', new Date(), 'ana@esc.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no'],
+    ['s3', new Date(), 'ana@esc.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si'],
+    ['s4', new Date(), 'beto@esc.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no'],
+    ['s5', new Date(), 'beto@esc.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si'],
+    ['s6', new Date(), 'carla@esc.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no']
+  ]);
+}
+
+t('apiAdminReports computes course totals from the cached roster', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const r = api.apiAdminReports('1111');
+  assertEq(r.ok, true);
+  assertEq(r.rosterLoaded, true);
+  assertEq(r.totals.roster, 4);
+  assertEq(r.totals.complete, 1);
+  assertEq(r.totals.incomplete, 2);
+  assertEq(r.totals.missing, 1);
+  assertEq(r.totals.presentBySlot[0].presentes, 1);
+  assertEq(r.courses.length, 2);
+  const curso = r.courses.filter((c) => c.curso === '2°B')[0];
+  assertEq(curso.roster, 3);
+  assertEq(curso.complete, 1);
+  assertEq(curso.incomplete, 2);
+  assertEq(curso.missing, 0);
+  assertEq(curso.presentBySlot[1].presentes, 1);
+});
+
+t('apiAdminReports sorts each course by surname and lists the three slots', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const curso = api.apiAdminReports('1111').courses.filter((c) => c.curso === '2°B')[0];
+  assertEq(curso.students[0].apellido, 'Díaz');
+  assertEq(curso.students[1].apellido, 'Gómez');
+  assertEq(curso.students[2].apellido, 'Sosa');
+  const ana = curso.students.filter((st) => st.email === 'ana@esc.edu.ar')[0];
+  assertEq(ana.talks.length, 3);
+  assertEq(ana.talks[0].titulo, 'Charla uno');
+  assertEq(ana.talks[0].presente, true);
+  assertEq(ana.talks[1].presente, false);
+  assertEq(ana.talks[2].titulo, 'Charla tres');
+  assertEq(ana.count, 3);
+});
+
+t('apiAdminReports rejects requests without a key or token', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const r = api.apiAdminReports('');
+  assertEq(r.ok, false);
+  assertEq(/Clave incorrecta/.test(r.message), true);
+});
+
+t('apiAdminReports never sends mails to the guide role', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const admin = api.apiAdminReports('1111');
+  assertEq(admin.courses[0].students[0].email, 'beto@esc.edu.ar');
+  const guide = api.apiAdminReports('2222');
+  assertEq(guide.ok, true);
+  assertEq(guide.role, 'guide');
+  if (JSON.stringify(guide).indexOf('@') >= 0) throw new Error('guide report leaks a mail');
+  if (guide.courses[0].students[0].email) throw new Error('guide report has email field');
+  assertEq(guide.courses[0].students[0].apellido, 'Díaz');
+});
+
+t('Panel exposes the reports tab and the print button', () => {
+  for (const needle of ['tab-reportes', 'pane-reportes', 'rep-tab-curso', 'rep-tab-charla', 'rep-tab-total', 'rep-curso', 'rep-out', 'btn-print']) {
+    if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/apiAdminReports/.test(panelSrc)) throw new Error('panel does not call the report api');
+});
+
+
+t('apiAdminReports computes per-talk seats, attendance and course breakdown', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const r = api.apiAdminReports('1111');
+  assertEq(r.talks.length, 3);
+  const b1 = r.talks.filter((t) => t.id === 'B1')[0];
+  assertEq(b1.anotados, 3);
+  assertEq(b1.presentes, 1);
+  assertEq(b1.ausentes, 2);
+  assertEq(b1.cupo, 40);
+  assertEq(b1.slotLabel, '10:30 a 11:20');
+  assertEq(b1.porCurso.length, 1);
+  assertEq(b1.porCurso[0].curso, '2°B');
+  assertEq(b1.porCurso[0].anotados, 3);
+  assertEq(b1.students[0].apellido, 'Díaz');
+  assertEq(b1.students[1].apellido, 'Gómez');
+  const b2 = r.talks.filter((t) => t.id === 'B2')[0];
+  assertEq(b2.anotados, 2);
+  assertEq(b2.presentes, 1);
+  assertEq(b2.ausentes, 1);
+});
+
+t('apiAdminReports talk rows respect the guide role', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const guide = api.apiAdminReports('2222');
+  if (JSON.stringify(guide.talks).indexOf('@') >= 0) throw new Error('guide talk report leaks a mail');
+  if (guide.talks[0].students[0].email) throw new Error('guide talk student has email');
+  assertEq(guide.talks[0].students[0].apellido, 'Díaz');
+});
+
+
+t('apiAdminReports keeps overall totals for the total report', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminReports');
+  const r = api.apiAdminReports('1111');
+  assertEq(r.totals.roster, 4);
+  assertEq(r.totals.signups, 6);
+  assertEq(r.totals.presentBySlot.length, 3);
+  assertEq(r.totals.presentBySlot[0].slot, '1ra');
+  assertEq(r.totals.presentBySlot[0].label, '10:30 a 11:20');
+  const sum = r.talks.reduce((acc, t) => acc + t.anotados, 0);
+  assertEq(sum, 6);
+  const present = r.talks.reduce((acc, t) => acc + t.presentes, 0);
+  assertEq(present, 3);
+});
+
+t('Panel renders the total report with a summary line', () => {
+  for (const needle of ['aRenderTotalReport', 'sumAnotados', 'sumPresentes', 'sumCupo', 'Total: ']) {
+    if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+});
+
+
+t('Panel prints A4 reports with a signature column and page breaks', () => {
+  for (const needle of ['@page { size: A4 portrait;', 'window.print()', 'id="print-area"',
+    'Firma o presente', 'break-after: page', 'btn-print', 'SCHOOL_NAME', 'EVENT_NAME']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/var SCHOOL_NAME = '[^']+';/.test(panelSrc)) throw new Error('SCHOOL_NAME is not a constant');
+});
+
+
+t('Panel demo backend: reports for admin and guide', () => {
+  const store = {};
+  const ls = {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v); },
+    removeItem: (k) => { delete store[k]; }
+  };
+  const win = { location: { search: '' }, localStorage: ls };
+  const doc = {
+    addEventListener: function () { },
+    body: { appendChild: function () { }, classList: { add: function () { } } }
+  };
+  const api = new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
+  const roster = [
+    'ana1@instituto.edu.ar; Diaz; Ana; 2b',
+    'bea2@x.edu.ar; Sanchez; Bea; 5Turismo',
+    'caro3@x.edu.ar; Diaz; Caro; 2b',
+    'lup4@x.edu.ar; Perez; Lulu; 1°A'
+  ].join('\n');
+  const signups = [
+    { id: 'u1', ts: 0, email: 'ana1@instituto.edu.ar', nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: true },
+    { id: 'u2', ts: 0, email: 'ana1@instituto.edu.ar', nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 2, talk_id: 'B5', presente: false },
+    { id: 'u3', ts: 0, email: 'bea2@x.edu.ar', nombre: 'Bea', curso: '5°Turismo', ciclo: 'orientado', slot_id: 1, talk_id: 'O1', presente: true },
+    { id: 'u4', ts: 0, email: 'caro3@x.edu.ar', nombre: 'Caro', curso: '2°B', ciclo: 'basico', slot_id: 3, talk_id: 'B8', presente: false }
+  ];
+  return api.call('apiAdminImportRoster', ['demo', roster, 'reemplazar']).then((r0) => {
+    assertEq(r0.ok, true, 'roster import');
+    ls.setItem('esi_demo_signups', JSON.stringify(signups));
+    return api.call('apiAdminReports', ['demo']);
+  }).then((r1) => {
+    assertEq(r1.ok, true, 'reports ok');
+    assertEq(r1.totals.roster, 4, 'roster total');
+    assertEq(r1.totals.complete, 0, 'nobody complete');
+    assertEq(r1.totals.incomplete, 3, 'three with partial picks');
+    assertEq(r1.totals.missing, 1, 'lulu without picks');
+    assertEq(r1.totals.signups, 4, 'signups total');
+    assertEq(r1.totals.presentBySlot[0].slot, '1ra');
+    assertEq(r1.totals.presentBySlot[0].presentes, 2, 'two present in slot 1');
+    const b1 = r1.talks.filter((x) => x.id === 'B1')[0];
+    assertEq(b1.anotados, 1, 'B1 anotados');
+    assertEq(b1.presentes, 1, 'B1 presentes');
+    assertEq(b1.students[0].apellido, 'Diaz', 'talk student surname');
+    return api.call('apiAdminReports', ['guide']);
+  }).then((r2) => {
+    if (JSON.stringify(r2).includes('@')) throw new Error('guide demo report leaks a mail');
+    const first = r2.courses[0].students[0];
+    assertEq(first.apellido, 'Diaz', 'guide demo surname');
+  });
+});
+
+
+t('Reports hide mails for guides even if the payload leaks one', () => {
+  if (!/showMail = aRole === 'admin'/.test(panelSrc)) throw new Error('course report is not role aware');
+  if (!/showMailTalk = aRole === 'admin'/.test(panelSrc)) throw new Error('talk report is not role aware');
+  if (!/showMail && st\.email/.test(panelSrc)) throw new Error('course mail is not gated');
+  if (!/showMailTalk && st\.email/.test(panelSrc)) throw new Error('talk mail is not gated');
+});
+
+t('Report tables turn into cards on narrow screens', () => {
+  const block = panelHtml.slice(panelHtml.indexOf('@media (max-width: 640px)'));
+  if (!/\.report-table tr \{[^}]*display: block/.test(block)) throw new Error('report rows are not cards');
+  if (!block.includes('.report-table thead { display: none; }')) throw new Error('report head not hidden');
+  if (!block.includes('.report-table td::before')) throw new Error('report labels missing');
+  if (!/\.report-table \.present-mini \{[^}]*min-height: 40px/.test(block)) throw new Error('touch size missing');
 });
 
 summary();
