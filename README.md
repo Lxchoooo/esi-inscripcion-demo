@@ -30,11 +30,18 @@ En demo, todo queda en el navegador y no hay clave real.
 claves si no existen. La lista de alumnos no se crea sola: se carga con
 "Importar lista" en el panel o se pega en la hoja `Students`.
 
-La hoja `Students` se lee por encabezado: `email, apellido, nombre, curso`.
-Si no hay encabezado `apellido`, se acepta el formato viejo `mail;nombre;curso`
-y el nombre se muestra tal cual. La importación escribe siempre las cuatro
-columnas y acepta `mail;apellido;nombre;curso`; con tres columnas, la segunda
-es el nombre completo.
+La hoja `Students` se lee por encabezado: `email, apellido, nombre, curso, dni`.
+El DNI es opcional. Si no hay encabezado `apellido`, se acepta el formato viejo
+`mail;nombre;curso` y el nombre se muestra tal cual. La importación escribe
+siempre las cinco columnas y acepta:
+
+- `mail;apellido;nombre;curso;dni`
+- `mail;apellido;nombre;curso`
+- `mail;nombre completo;curso`
+
+El DNI se guarda solo con dígitos (7 u 8): si viene con puntos o espacios, se
+normaliza. Un DNI inválido se descarta y, si se repite, el segundo alumno queda
+sin acceso por DNI; la importación informa cuántos quedaron así.
 
 ## Roles y claves
 
@@ -105,15 +112,58 @@ Queda guardada en ese navegador. Para cambiar de backend, abrir con el nuevo
 Panel de profes: la misma URL con `?admin=1`. No hay links de acceso en la
 vista de alumnos.
 
+## Día del evento
+
+Antes de abrir:
+
+- Cambiar `SCHOOL_NAME` por el nombre real del colegio.
+- Probar el circuito con 10 o 20 alumnos de prueba: entrar con mail, entrar
+  con DNI y apellido, anotarse en las tres franjas, marcar presente, imprimir
+  un curso y mirar el panel a 360 px.
+- Descargar una copia de la planilla (Archivo > Hacer una copia) y un CSV
+  desde Inscriptos. Si algo sale mal, la copia es el respaldo.
+- Revisar que la lista tenga apellido y curso. Sin apellido no funciona el
+  login por DNI; sin curso, el alumno lo elige al entrar.
+- Confirmar que `ADMIN_PIN` y `GUIDE_PIN` sean las claves del día y que solo
+  las tengan profes y guías. Se cambian en Script Properties; el próximo
+  ingreso usa la nueva y no hace falta redesplegar.
+- Al terminar el evento, rotar las claves o borrarlas.
+
+Durante el evento:
+
+- Si aparece "El servidor está ocupado. Probá de nuevo.", la operación no se
+  guardó. Esperar un segundo y reintentar; el panel reintenta solo hasta tres
+  veces. No hace falta volver a anotarse: un envío repetido no duplica filas.
+- Si una guía no ve los datos, pedirle que vuelva a entrar: el token dura dos
+  horas.
+- Las inscripciones se pueden cerrar desde el panel de profes; los reportes y
+  la asistencia siguen funcionando.
+- Para imprimir, usar Chrome > Imprimir > Guardar como PDF. Verificar el A4 y
+  la fecha antes de repartir.
+
+Después:
+
+- Descargar el CSV final y guardar una copia de la planilla.
+- Rotar las claves si se compartieron por mensaje.
+
 ## Privacidad
 
-- En modo real no se guardan mails, nombres ni listas en `localStorage`.
-- El alumno se mantiene en `sessionStorage` y se borra al cerrar la pestaña.
+- La identidad del alumno (mail, nombre, curso y ciclo) queda en
+  `localStorage` del dispositivo hasta que toque "Salir" o borre los datos del
+  sitio. No vence sola. En un celular compartido, usar "Salir" al terminar.
+- El DNI nunca se guarda en el dispositivo, ni en reportes, ni en el CSV.
+  Solo se usa en el servidor para validar DNI + apellido.
 - La API pública devuelve charlas, horarios, cupos y las elecciones propias.
-- Para los mails de la lista, la API pública devuelve nombre y curso, para
-  que el alumno reconozca su cuenta.
-- La lista de inscriptos y los mails solo salen con clave válida, y las
-  guías los ven sin mail.
+  Para cualquier mail cargado en la lista, devuelve nombre y curso, para que
+  el alumno reconozca su cuenta. Cualquiera que sepa o adivine un mail
+  institucional puede ver ese nombre y curso.
+- El login por DNI devuelve el mail solo cuando el DNI y el apellido coinciden
+  con un único alumno. Después de cinco fallos por DNI hay un bloqueo de un
+  minuto. El DNI no es un dato secreto: el apellido es una barrera débil.
+- La lista de inscriptos y los mails solo salen con clave válida, y las guías
+  los ven sin mail.
+- En modo demo, la lista importada (incluido el DNI) se guarda en
+  `localStorage` del navegador. Usar datos de prueba, no la lista real.
 - No versionar listas, CSV ni exportaciones: ver `.gitignore`.
 
 ## Tests
