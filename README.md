@@ -27,7 +27,14 @@ En demo, todo queda en el navegador y no hay clave real.
 6. Copiar la URL `/exec`.
 
 `setup()` deja la hoja `Signups` con la columna `presente` y genera las dos
-claves si no existen.
+claves si no existen. La lista de alumnos no se crea sola: se carga con
+"Importar lista" en el panel o se pega en la hoja `Students`.
+
+La hoja `Students` se lee por encabezado: `email, apellido, nombre, curso`.
+Si no hay encabezado `apellido`, se acepta el formato viejo `mail;nombre;curso`
+y el nombre se muestra tal cual. La importación escribe siempre las cuatro
+columnas y acepta `mail;apellido;nombre;curso`; con tres columnas, la segunda
+es el nombre completo.
 
 ## Roles y claves
 
@@ -47,6 +54,9 @@ En el login hay un solo campo: la clave decide el rol.
 | Importar la lista de mails | sí | no |
 | Descargar CSV | sí | no |
 | Marcar presente | sí | sí |
+| Ver reportes | sí | sí |
+| Mails en los reportes | sí | no |
+| Imprimir reportes | sí | sí |
 
 El filtro por rol lo hace el backend, no la interfaz.
 
@@ -56,6 +66,30 @@ fallidos hay un bloqueo de 60 segundos.
 
 En la demo, la clave `guia` entra con el rol de guía y cualquier otra entra
 como profe.
+
+## Reportes
+
+La pestaña Reportes calcula todo en memoria desde la caché de la planilla; no
+escribe hojas nuevas.
+
+- Por curso: elegís el curso y ves la lista A-Z con los totales (en la lista,
+  completos, incompletos, sin anotar), los presentes por franja y las tres
+  charlas de cada alumno. El botón "Presente" marca la asistencia.
+- Por charla: elegís la charla y ves inscriptos, presentes, ausentes, cupo y
+  el desglose por curso.
+- Total: totales generales, presentes por franja y la tabla de todas las
+  charlas con inscriptos y presentes.
+
+Los guías ven los reportes sin mails; los profes ven el mail debajo del nombre.
+En el celular las tablas se muestran como tarjetas.
+
+"Imprimir" abre el diálogo del navegador y genera un A4 vertical con una
+página por curso (o por charla, según la pestaña activa), tabla numerada A-Z,
+columna "Firma o presente" y fecha de emisión. En Chrome de Android:
+Imprimir > Guardar como PDF.
+
+El encabezado usa `SCHOOL_NAME` y `EVENT_NAME`, al principio del script de
+`src/Panel.html`: cambiar `SCHOOL_NAME` por el nombre real del colegio.
 
 ## Conectar esta web
 
