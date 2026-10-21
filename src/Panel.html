@@ -1,0 +1,2445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF8F5">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141513">
+  <meta name="description" content="Inscripción a las charlas ESI 2026: elegí una por horario.">
+  <title>ESI · Charlas 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #FAF8F5;
+      --surface: #FFFFFF;
+      --surface-2: #F4F1EB;
+      --surface-3: #EDE9E1;
+      --ink: #1F1F1F;
+      --muted: #6B6B6B;
+      --line: #ECE8E1;
+      --line-strong: #DDD6CB;
+      --accent: #4F6B4A;
+      --accent-strong: #3C5538;
+      --accent-fill: #A8BFA3;
+      --accent-soft: #EEF3EA;
+      --accent-line: #CFDDC8;
+      --danger: #A6402F;
+      --danger-soft: #FBEDE9;
+      --danger-line: #EED2CA;
+      --warn: #8A5A00;
+      --warn-soft: #FBF3E2;
+      --warn-line: #EBDDBD;
+      --nav-bg: rgba(250, 248, 245, .84);
+      --scrim: rgba(31, 25, 17, .42);
+      --shadow: 0 1px 2px rgba(31, 31, 31, .04), 0 8px 24px rgba(31, 31, 31, .05);
+      --shadow-lg: 0 18px 50px rgba(31, 31, 31, .13);
+      --toast-bg: #1F1F1F;
+      --toast-ink: #FAF8F5;
+      --radius: 16px;
+      --radius-sm: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #141513;
+        --surface: #1B1D19;
+        --surface-2: #22251F;
+        --surface-3: #2A2D26;
+        --ink: #F2F0EA;
+        --muted: #A5A79F;
+        --line: #2C2F29;
+        --line-strong: #3A3E35;
+        --accent: #B7CDB0;
+        --accent-strong: #CBDCC5;
+        --accent-fill: #3E5139;
+        --accent-soft: #212C1E;
+        --accent-line: #35452F;
+        --danger: #E3A196;
+        --danger-soft: #32201C;
+        --danger-line: #4A2E27;
+        --warn: #D9B26A;
+        --warn-soft: #2B2417;
+        --warn-line: #453A24;
+        --nav-bg: rgba(20, 21, 19, .8);
+        --scrim: rgba(0, 0, 0, .6);
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
+        --shadow-lg: 0 18px 50px rgba(0, 0, 0, .45);
+        --toast-bg: #F2F0EA;
+        --toast-ink: #1B1D19;
+      }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      padding-bottom: env(safe-area-inset-bottom);
+      touch-action: manipulation;
+    }
+    body.sheet-open { overflow: hidden; }
+    ::selection { background: var(--accent-fill); color: #1F1F1F; }
+    .demo-strip {
+      display: none; padding: 8px 16px; text-align: center;
+      background: var(--warn-soft); color: var(--warn);
+      border-bottom: 1px solid var(--warn-line);
+      font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    }
+    body.demo .demo-strip { display: block; }
+    body[data-screen="setup"] .landing { display: none; }
+    .setup-warning { margin-top: 40px; }
+    .setup-warning .hint { margin-bottom: 18px; }
+
+    #nav {
+      position: sticky; top: 0; z-index: 40;
+      background: transparent;
+      border-bottom: 1px solid transparent;
+      transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    #nav.scrolled {
+      background: var(--nav-bg);
+      -webkit-backdrop-filter: blur(14px) saturate(1.3);
+      backdrop-filter: blur(14px) saturate(1.3);
+      border-bottom-color: var(--line);
+    }
+    .nav {
+      max-width: 1020px; margin: 0 auto;
+      display: flex; align-items: center; gap: 18px;
+      padding: calc(11px + env(safe-area-inset-top)) 20px 11px;
+      min-height: 62px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; min-width: 0; }
+    .brand-mark {
+      width: 32px; height: 32px; flex: 0 0 auto; border-radius: 10px;
+      background: var(--accent-fill); color: #26331F;
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 700;
+    }
+    @media (prefers-color-scheme: dark) { .brand-mark { color: #E9F0E5; } }
+    .brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+    #hdr-title {
+      margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #hdr-sub {
+      font-size: 11.5px; font-weight: 500; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 54vw;
+    }
+    #hdr-sub.alert { color: var(--danger); font-weight: 700; }
+    .nav-links { display: none; align-items: center; gap: 24px; margin-left: auto; }
+    .nav-links a {
+      font-size: 14px; font-weight: 500; color: var(--muted);
+      text-decoration: none; padding: 6px 0;
+      border-bottom: 1px solid transparent;
+      transition: color .16s ease, border-color .16s ease;
+    }
+    .nav-links a:hover { color: var(--ink); border-bottom-color: var(--accent-fill); }
+    .nav-links a:focus-visible { outline: none; color: var(--ink); border-bottom-color: var(--accent); }
+    @media (min-width: 720px) {
+      body[data-screen="s-screen-mail"] .nav-links { display: flex; }
+    }
+    body.admin #nav { background: #1F1F1F; border-bottom-color: #1F1F1F; color: #F5F2EB; }
+    body.admin .brand-mark { background: #313B2E; color: #D8E5D3; }
+    body.admin #hdr-sub { color: #B9B6AC; }
+    body.admin #hdr-sub.alert { color: #F0B5AA; }
+    body.admin .nav-links { display: none !important; }
+
+    .wrap {
+      max-width: 660px; margin: 0 auto;
+      padding: 0 20px calc(20px + env(safe-area-inset-bottom));
+    }
+    body.admin .wrap { max-width: 960px; padding-top: 24px; }
+
+    .screen { display: none; }
+    .screen.active { display: block; animation: rise .28s ease both; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin: 14px 0;
+      box-shadow: var(--shadow);
+    }
+    .screen.card { margin-top: 6px; }
+
+    .hero { padding: 56px 0 10px; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-size: 11.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 20px;
+    }
+    .hero-eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--accent-fill); }
+    .hero h2 {
+      font-size: clamp(36px, 8.4vw, 56px);
+      line-height: 1.03; letter-spacing: -.038em; font-weight: 600;
+      margin: 0 0 16px; max-width: 12ch;
+    }
+    .hero > p:not(.hero-eyebrow) {
+      font-size: 17px; line-height: 1.65; color: var(--muted);
+      max-width: 52ch; margin: 0 0 22px;
+    }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); margin: 0 0 26px; }
+    .hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-meta span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-fill); }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+    .steps {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 10px;
+    }
+    .steps::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-fill); flex: 0 0 auto; }
+    h2.intro {
+      font-size: clamp(24px, 5vw, 30px); font-weight: 600;
+      letter-spacing: -.025em; line-height: 1.2; margin: 0 0 8px;
+    }
+    p.hint { font-size: 15px; color: var(--muted); margin: 0 0 18px; max-width: 58ch; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: inherit; font-size: 15px; font-weight: 700;
+      min-height: 50px; padding: 13px 20px;
+      border: 1px solid transparent; border-radius: var(--radius-sm);
+      background: var(--ink); color: var(--paper);
+      text-decoration: none; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(31, 31, 31, .14);
+      transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(31, 31, 31, .18); }
+    .btn:active { transform: translateY(0) scale(.985); box-shadow: 0 3px 10px rgba(31, 31, 31, .16); }
+    .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent); }
+    .btn:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
+    .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); box-shadow: none; }
+    .btn.secondary:hover { border-color: var(--ink); box-shadow: none; }
+    .btn.ghost { background: transparent; color: var(--muted); box-shadow: none; padding-left: 8px; padding-right: 8px; }
+    .btn.ghost:hover { color: var(--ink); transform: none; box-shadow: none; }
+    .btn.link:hover { color: var(--ink); box-shadow: none; }
+    .btn.link {
+      background: transparent; color: var(--muted); box-shadow: none;
+      text-decoration: underline; text-underline-offset: 3px;
+      font-size: 14px; font-weight: 600; min-height: 44px;
+    }
+    .btn.link:active { transform: none; }
+    .btn.red { background: var(--danger); color: var(--paper); }
+    .btn.full { display: flex; width: 100%; }
+    .btn.small { min-height: 42px; padding: 9px 15px; font-size: 13.5px; border-radius: 10px; box-shadow: none; }
+    .btn.full + .btn.secondary.full { margin-top: 8px; }
+
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin: 16px 0 7px; }
+    input[type=text], input[type=password], input[type=email], select, textarea {
+      width: 100%; min-height: 50px;
+      padding: 12px 14px;
+      font-family: inherit; font-size: 16px; color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+      appearance: none; -webkit-appearance: none;
+      transition: border-color .16s ease, box-shadow .16s ease;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A8A82' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 15px center;
+      padding-right: 40px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
+
+    .banner {
+      display: none; padding: 12px 14px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; margin: 12px 0;
+      border: 1px solid transparent;
+    }
+    .banner.ok { display: block; background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent-line); }
+    .banner.err { display: block; background: var(--danger-soft); color: var(--danger); border-color: var(--danger-line); }
+
+    .toast {
+      position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 90;
+      transform: translate(-50%, -16px); opacity: 0; pointer-events: none;
+      width: min(92vw, 430px);
+      background: var(--toast-bg); color: var(--toast-ink);
+      border-radius: 12px; padding: 13px 16px;
+      font-size: 14px; font-weight: 600; text-align: center;
+      box-shadow: var(--shadow-lg);
+      transition: transform .2s ease, opacity .2s ease;
+    }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+    .toast.err { background: var(--danger); color: var(--paper); }
+
+    .summary {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius-sm); padding: 14px 16px; margin: 4px 0 10px;
+      font-size: 14.5px; box-shadow: var(--shadow);
+    }
+    .summary .who { font-weight: 700; font-size: 15px; }
+    .summary b { color: var(--ink); }
+    .summary .row { display: flex; gap: 8px; width: 100%; font-size: 13px; padding: 2px 0; }
+    .summary .time { flex: 0 0 100px; font-weight: 600; color: var(--muted); }
+    .summary .none { color: var(--muted); }
+    .progress {
+      margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+      background: var(--accent-soft); color: var(--accent-strong);
+      border: 1px solid var(--accent-line);
+      border-radius: 999px; padding: 4px 11px; white-space: nowrap;
+    }
+    .progress.zero { background: var(--surface-2); color: var(--muted); border-color: var(--line); }
+
+    .chips { margin: 4px 0 2px; }
+    .chip {
+      display: inline-block; vertical-align: top;
+      background: var(--accent-soft); color: var(--accent-strong);
+      border: 1px solid var(--accent-line);
+      border-radius: 999px; padding: 5px 11px;
+      font-size: 12px; font-weight: 600;
+      margin: 3px 6px 3px 0;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .chip.miss { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); font-weight: 500; }
+
+    .slot h2 {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; font-weight: 600; margin: 28px 0 10px;
+    }
+    .slot h2 .time-pill {
+      background: var(--surface-2); color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px; padding: 4px 11px;
+      font-size: 12px; font-weight: 700; letter-spacing: .02em;
+    }
+    .slot h2 .pick-note { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
+
+    .talk {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+      text-align: left; font-family: inherit; font-size: 15.5px; line-height: 1.35;
+      color: var(--ink); background: var(--surface);
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 15px 16px; margin: 8px 0; min-height: 64px;
+      cursor: pointer;
+      box-shadow: 0 1px 1px rgba(31, 31, 31, .02);
+      transition: border-color .16s ease, background .16s ease, transform .16s ease, box-shadow .16s ease;
+      animation: rise .26s ease both;
+    }
+    .talk:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .talk:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-fill); }
+    .talk.selected { border-color: var(--accent); background: var(--accent-soft); }
+    .talk.selected:hover { border-color: var(--accent); }
+    .talk .t-body { flex: 1; min-width: 0; }
+    .talk .t-title { font-weight: 600; }
+    .talk .t-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 5px; }
+    .talk .seats { font-weight: 600; color: var(--muted); }
+    .talk .seats.low { color: var(--warn); }
+    .talk .seats.none { color: var(--danger); }
+    .talk .chev { flex: 0 0 auto; color: var(--line-strong); font-size: 20px; line-height: 1; }
+    .talk.selected .chev { color: var(--accent); }
+    .talk.selected .t-meta::before {
+      content: "\2713 Anotado";
+      color: var(--accent); font-size: 10.5px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+    }
+    .talk:disabled { opacity: .5; cursor: default; transform: none; }
+
+    .actions { display: grid; gap: 8px; margin-top: 16px; }
+    .footer-note { font-size: 12.5px; color: var(--muted); margin-top: 18px; text-align: center; }
+
+    .totals { font-size: 14px; margin: 4px 0; color: var(--ink); }
+    .status-pill {
+      display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      border-radius: 999px; padding: 4px 12px;
+    }
+    .status-pill.open { background: var(--accent-soft); color: var(--accent-strong); border: 1px solid var(--accent-line); }
+    .status-pill.closed { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger-line); }
+
+    .talk-row { margin: 14px 0; }
+    .talk-row .t { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+    .talk-row .t .num { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .talk-row .bar { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-top: 7px; }
+    .talk-row .bar span { display: block; height: 100%; background: var(--accent-fill); border-radius: 999px; }
+    .talk-row .bar span.high { background: var(--warn); }
+    .talk-row .bar span.full { background: var(--danger); }
+
+    h3 { margin: 22px 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+    h4 { margin: 16px 0 4px; color: var(--muted); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-sm); }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { background: var(--surface-2); color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    td { font-variant-numeric: tabular-nums; }
+    td.narrow { white-space: nowrap; }
+    .toolbar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .toolbar > div { flex: 1; min-width: 220px; }
+    details summary { cursor: pointer; font-weight: 600; color: var(--accent-strong); padding: 8px 0; }
+    details summary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); border-radius: 6px; }
+    code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; }
+
+    .section { padding: 54px 0 6px; margin-top: 52px; border-top: 1px solid var(--line); }
+    .section .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 12px;
+    }
+    .section h2 { font-size: clamp(24px, 4.6vw, 30px); font-weight: 600; letter-spacing: -.025em; line-height: 1.2; margin: 0 0 8px; }
+    .section .lead { font-size: 15px; color: var(--muted); max-width: 56ch; margin: 0 0 22px; }
+    .how-grid { display: grid; gap: 10px; }
+    .how-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+      padding: 20px; box-shadow: 0 1px 2px rgba(31, 31, 31, .03);
+    }
+    .how-num { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .how-card h3 { margin: 9px 0 6px; font-size: 16px; }
+    .how-card p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+    @media (min-width: 720px) { .how-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+
+    .faq { border-top: 1px solid var(--line); }
+    .faq:last-of-type { border-bottom: 1px solid var(--line); }
+    .faq summary {
+      position: relative; list-style: none;
+      padding: 16px 32px 16px 0; font-size: 15px; font-weight: 600; color: var(--ink);
+      cursor: pointer;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after {
+      content: "+"; position: absolute; right: 2px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px; font-weight: 400; color: var(--muted);
+      transition: transform .2s ease, color .2s ease;
+    }
+    .faq summary:hover::after { color: var(--ink); }
+    .faq[open] summary::after { transform: translateY(-50%) rotate(45deg); }
+    .faq p { margin: 0 0 16px; font-size: 14px; line-height: 1.65; color: var(--muted); max-width: 60ch; }
+
+    footer.site {
+      border-top: 1px solid var(--line);
+      margin-top: 56px;
+      padding: 26px 20px calc(36px + env(safe-area-inset-bottom));
+    }
+    .footer-inner {
+      max-width: 660px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; gap: 8px 18px;
+      align-items: center; justify-content: space-between;
+      font-size: 12.5px; color: var(--muted);
+    }
+    .footer-inner a {
+      color: var(--muted); text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color .16s ease, border-color .16s ease;
+    }
+    .footer-inner a:hover { color: var(--ink); border-bottom-color: var(--line-strong); }
+    body.admin footer.site { display: none; }
+
+    .landing { display: none; }
+    body[data-screen="s-screen-mail"] .landing { display: block; }
+    body.admin .landing { display: none !important; }
+    #faq { scroll-margin-top: 86px; }
+
+    .reveal.reveal-armed { opacity: 0; transform: translateY(14px); }
+    .reveal.reveal-in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
+
+    .sheet-backdrop {
+      position: fixed; inset: 0; z-index: 60;
+      background: var(--scrim);
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s ease;
+      -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    }
+    .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+    .sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+      background: var(--surface);
+      border: 1px solid var(--line); border-bottom: 0;
+      border-radius: 20px 20px 0 0;
+      padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+      max-width: 560px; margin: 0 auto;
+      max-height: 86dvh; overflow-y: auto;
+      transform: translateY(105%);
+      transition: transform .26s cubic-bezier(.32, .72, .25, 1);
+      box-shadow: 0 -12px 44px rgba(31, 31, 31, .16);
+    }
+    .sheet.show { transform: translateY(0); }
+    .sheet-handle { width: 42px; height: 4px; border-radius: 999px; background: var(--line-strong); margin: 2px auto 16px; }
+    .sheet h3 { margin: 0 0 10px; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+    .sheet-line { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+    .sheet-line:last-of-type { border-bottom: 0; }
+    .sheet-line .h { min-width: 92px; font-weight: 700; color: var(--accent-strong); }
+    .sheet-meta { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
+    .sheet-talk { margin: 6px 0 4px; font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; }
+    .sheet-seats { margin: 0 0 12px; color: var(--accent-strong); font-size: 13px; font-weight: 600; }
+    .sheet-warn {
+      margin: 12px 0 2px; padding: 11px 13px;
+      background: var(--warn-soft); border: 1px solid var(--warn-line);
+      color: var(--warn); border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+    }
+    .sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 16px; }
+    .sheet-actions .btn { margin: 0; }
+
+    #a-screen-gate .card { max-width: 420px; margin: 48px auto; }
+
+    /* Selección de charlas y ajustes */
+    .wrap { max-width: 760px; }
+    .footer-inner { max-width: 760px; }
+    .hero { padding: 48px 0 6px; }
+    .hero h2 { font-size: clamp(30px, 6.4vw, 44px); max-width: 18ch; }
+    .hero > p:not(.hero-eyebrow) { margin-bottom: 4px; }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 10px 0 2px; }
+    .panel-head .steps { margin-bottom: 6px; }
+    .panel-head .hint { margin-bottom: 0; }
+    .panel-head .btn.link { min-height: 0; padding: 6px 0; font-size: 13px; white-space: nowrap; }
+    .summary { display: block; padding: 12px 14px; margin: 12px 0 2px; }
+    .summary .who { font-size: 14.5px; }
+    .summary .email { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+    .chips { display: none; }
+    .slot { margin: 0 0 30px; }
+    .slot h2 { margin: 24px 0 10px; font-size: 15px; font-weight: 700; }
+    .slot h2 .time-pill { padding: 0; border: 0; background: transparent; font-size: 15px; font-weight: 700; color: var(--ink); }
+    .slot h2 .slot-time { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .slot-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 640px) { .slot-grid { grid-template-columns: 1fr 1fr; } }
+    .talk { display: block; margin: 0; padding: 15px 16px; min-height: 0; border-radius: 14px; animation: none; }
+    .talk:not(:disabled):hover { transform: translateY(-1px); }
+    .talk-top { display: flex; align-items: flex-start; gap: 10px; }
+    .talk .t-title { flex: 1; font-size: 14.5px; line-height: 1.4; }
+    .talk .t-meta { justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 12px; }
+    .talk .talk-room { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .talk .talk-seats { font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .talk .talk-seats.low { color: var(--warn); }
+    .talk .talk-seats.none { color: var(--danger); }
+    .talk-check {
+      display: grid; place-items: center; flex: 0 0 auto;
+      width: 18px; height: 18px; border: 1px solid var(--line-strong); border-radius: 50%;
+      color: transparent; font-size: 11px; line-height: 1;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .talk.selected .talk-check { border-color: var(--accent); background: var(--accent); color: var(--paper); }
+    .talk.selected .t-meta::before { content: none; }
+    .seatbar { display: block; height: 4px; margin-top: 9px; overflow: hidden; background: var(--surface-2); border-radius: 999px; }
+    .seatbar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent-fill); transition: width .3s ease; }
+    .seatbar > span.is-low { background: var(--warn); }
+    .seatbar > span.is-full { background: var(--line-strong); }
+    .talk.selected .seatbar > span { background: var(--accent); }
+    .talk.full { background: var(--surface-2); border-color: var(--line); }
+    .talk.full:disabled { opacity: .7; }
+    .talk.selected:disabled { opacity: 1; cursor: default; }
+    .talk.full .talk-seats.none { color: var(--muted); }
+    .sel-bar {
+      display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+      padding: 11px 20px calc(11px + env(safe-area-inset-bottom));
+      background: var(--nav-bg);
+      -webkit-backdrop-filter: blur(14px) saturate(1.3);
+      backdrop-filter: blur(14px) saturate(1.3);
+      border-top: 1px solid var(--line);
+    }
+    body[data-screen="s-screen-panel"] .sel-bar { display: block; }
+    body[data-screen="s-screen-panel"] .wrap { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+    body[data-screen="s-screen-panel"] footer.site { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    .sel-bar-inner { display: flex; align-items: center; gap: 14px; max-width: 760px; margin: 0 auto; }
+    .sel-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .sel-count { font-size: 14px; font-weight: 600; }
+    .sel-hint { margin-top: 2px; font-size: 12.5px; font-weight: 700; color: var(--danger); }
+    .sel-bar .btn { margin-left: auto; min-height: 46px; flex: 0 0 auto; }
+
+    .slot.is-missing {
+      margin: 16px -10px 0; padding: 10px;
+      border: 1px solid var(--danger-line); border-radius: 14px;
+      background: var(--danger-soft);
+    }
+    .slot.is-missing h2 { margin-top: 0; flex-wrap: wrap; }
+    .slot-missing { margin-left: auto; color: var(--danger); font-size: 12px; font-weight: 700; }
+    .talk .t-title { overflow-wrap: anywhere; }
+    #a-table td { overflow-wrap: anywhere; }
+    .talk { animation: none; transition: opacity .16s ease, transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }
+    .talk:hover { transition: opacity .16s ease, transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }
+    .talk:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+    .talk.leaving { opacity: 0; transform: translateY(2px) scale(.99); }
+    .talk.entering { animation: talkIn .2s ease both; }
+    @keyframes talkIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+    body.admin .sel-bar { display: none !important; }
+
+    /* Panel de profes */
+    #a-screen-gate .card { margin: 64px auto; }
+    #a-screen-gate .intro { margin-bottom: 16px; }
+    #a-cupos h3:first-child { margin-top: 0; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+    .stat-num { display: block; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .stat-label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    #a-toggle-box { margin-top: 12px; }
+    .tabs { display: flex; gap: 2px; margin: 18px 0 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .tab {
+      margin-bottom: -1px; padding: 12px 14px; border: 0; border-bottom: 2px solid transparent;
+      background: none; font-family: inherit; font-size: 14px; font-weight: 600;
+      color: var(--muted); cursor: pointer; white-space: nowrap;
+      transition: color .16s ease, border-color .16s ease;
+    }
+    .tab:hover { color: var(--ink); }
+    .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+    .tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--accent-soft); }
+    .tabpanel { padding-top: 4px; }
+    .filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
+    @media (min-width: 720px) { .filters { grid-template-columns: 1.4fr 1fr 1fr 1.4fr; } }
+    .filters input, .filters select { min-height: 44px; padding: 9px 12px; font-size: 14px; }
+    .filters select { padding-right: 34px; background-position: right 12px center; }
+    .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+    .admin-actions .btn { gap: 6px; }
+    .icon { width: 16px; height: 16px; flex: 0 0 auto; }
+    #ta-roster { min-height: 128px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; }
+    .hint-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+    #a-table table { font-size: 13.5px; }
+    #a-table th { padding: 10px; }
+    #a-table td { padding: 12px 10px; }
+    #a-table tbody tr { transition: background .12s ease; }
+    #a-table tbody tr:hover { background: var(--surface-2); }
+    .empty-state { padding: 34px 16px; text-align: center; color: var(--muted); }
+    .empty-state svg { margin-bottom: 10px; color: var(--line-strong); }
+    .empty-state .es-title { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--ink); }
+    .empty-state p { margin: 0; font-size: 13px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 640px) {
+      .wrap { padding-left: 16px; padding-right: 16px; }
+      .hero { padding-top: 40px; }
+      .demo-strip { font-size: 11.5px; }
+      .card { padding: 18px; }
+      #a-table table, #a-table tbody { display: block; }
+      #a-table thead { display: none; }
+      #a-table tr {
+        display: block; border: 1px solid var(--line); border-radius: 12px;
+        background: var(--surface); margin: 10px 0; padding: 6px 14px;
+      }
+      #a-table td { display: block; border: 0; padding: 4px 0; }
+      #a-table td::before {
+        content: attr(data-label); display: inline-block; min-width: 90px;
+        color: var(--muted); font-size: 10.5px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .05em;
+      }
+      #a-table td[data-label=""] { padding-top: 10px; }
+      #a-table td[data-label=""]::before { display: none; }
+      #a-table td[data-label=""] .btn { width: 100%; }
+    }
+
+    @media (max-width: 380px) {
+      .nav { padding-left: 14px; padding-right: 14px; gap: 12px; }
+      .wrap { padding-left: 14px; padding-right: 14px; }
+      .card { padding: 16px; }
+      .sel-bar { padding-left: 14px; padding-right: 14px; }
+      .sel-bar-inner { gap: 8px; }
+      .sel-count { font-size: 13px; }
+      .sel-bar .btn { padding: 10px 14px; }
+      .stat { padding: 10px; }
+      .stat-num { font-size: 21px; }
+      .slot-missing { width: 100%; margin-left: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
+      .reveal.reveal-armed { opacity: 1; transform: none; }
+      .sheet { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header id="nav">
+    <div class="nav">
+      <a class="brand" href="#top" aria-label="Inicio">
+        <span class="brand-mark" aria-hidden="true">E</span>
+        <span class="brand-text">
+          <h1 id="hdr-title">ESI</h1>
+          <span id="hdr-sub"></span>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Secciones">
+        <a href="#faq">Dudas</a>
+      </nav>
+    </div>
+    <div id="demo-strip" class="demo-strip" role="status">MODO PRUEBA · Los datos quedan en este navegador.</div>
+  </header>
+  <div class="wrap" id="top">
+    <section class="hero landing" aria-labelledby="hero-title">
+      <p class="hero-eyebrow">ESI 2026</p>
+      <h2 id="hero-title">Inscripción a las charlas</h2>
+      <p>Elegí una charla por horario.</p>
+    </section>
+
+    <div id="s-banner" class="banner"></div>
+
+    <section id="setup-warning" class="card setup-warning" hidden>
+      <div class="steps">Configuración</div>
+      <h2 class="intro">Sin servidor configurado</h2>
+      <p class="hint">Esta copia no está conectada. No se guardan datos.</p>
+      <button id="btn-demo" class="btn full" type="button">Usar modo prueba</button>
+    </section>
+
+    <section id="s-screen-mail" class="screen card">
+      <div class="steps">1 de 3</div>
+      <h2 class="intro">Tu mail</h2>
+      <p class="hint" id="hint-mail">Usá el mail del colegio.</p>
+      <label for="input-mail">Mail institucional</label>
+      <input id="input-mail" type="email" autocomplete="off" maxlength="120">
+      <button id="btn-mail" class="btn full" type="button">Continuar</button>
+    </section>
+
+    <section id="s-screen-datos" class="screen card">
+      <div class="steps">2 de 3</div>
+      <h2 class="intro">Tus datos</h2>
+      <div id="fieldset-nombre">
+        <label for="input-nombre">Nombre y apellido</label>
+        <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
+      </div>
+      <div id="fieldset-anio" style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label for="select-anio">Año</label>
+          <select id="select-anio">
+            <option value="">Elegí...</option>
+            <option value="1">1°</option>
+            <option value="2">2°</option>
+            <option value="3">3°</option>
+            <option value="4">4°</option>
+            <option value="5">5°</option>
+            <option value="6">6°</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label for="select-division">División</label>
+          <select id="select-division"></select>
+        </div>
+      </div>
+      <button id="btn-datos" class="btn full" type="button">Ver las charlas</button>
+      <button id="btn-datos-volver" class="btn secondary small full" type="button">Volver</button>
+    </section>
+
+    <section id="s-screen-panel" class="screen">
+      <div class="panel-head">
+        <div>
+          <div class="steps">3 de 3</div>
+          <h2 class="intro">Elegí tus charlas</h2>
+          <p class="hint">Una por horario.</p>
+        </div>
+        <button id="btn-cambiar-datos" class="btn link" type="button">Cambiar datos</button>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="chips" id="chips" hidden></div>
+      <div id="slots-container"></div>
+    </section>
+    <div class="sel-bar">
+      <div class="sel-bar-inner">
+        <div class="sel-info">
+          <span class="sel-count" id="sel-count" aria-live="polite">0 de 3 elegidas</span>
+          <span class="sel-hint" id="sel-hint" role="status" hidden></span>
+        </div>
+        <button id="btn-confirmar" class="btn" type="button">Confirmar</button>
+      </div>
+    </div>
+
+    <section id="a-screen-gate" class="screen">
+      <div class="card">
+        <h2 class="intro">Panel de profes</h2>
+        <label for="input-pin">Clave</label>
+        <input id="input-pin" type="password" inputmode="numeric" autocomplete="off">
+        <div id="gate-msg" class="banner err"></div>
+        <button id="btn-pin" class="btn full" type="button">Entrar</button>
+      </div>
+    </section>
+
+    <section id="a-screen-panel" class="screen">
+      <div class="card">
+        <div id="a-totals"></div>
+        <div id="a-toggle-box"></div>
+        <div id="a-msg" class="banner"></div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Panel">
+        <button id="tab-inscriptos" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-inscriptos">Inscriptos</button>
+        <button id="tab-mails" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Lista de mails</button>
+      </div>
+
+      <div id="pane-inscriptos" class="tabpanel" role="tabpanel" aria-labelledby="tab-inscriptos">
+        <div class="card" id="a-cupos"></div>
+        <div class="card">
+          <div class="filters">
+            <input id="input-buscar" type="text" autocomplete="off" placeholder="Buscar" aria-label="Buscar">
+            <select id="filter-curso" aria-label="Curso"></select>
+            <select id="filter-division" aria-label="División"></select>
+            <select id="filter-charla" aria-label="Charla"></select>
+          </div>
+          <div class="admin-actions">
+            <button id="btn-copiar-link" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              Copiar link
+            </button>
+            <button id="btn-csv" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>
+              CSV
+            </button>
+            <button id="btn-arefresh" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+              Actualizar
+            </button>
+            <button id="btn-salir" class="btn secondary small" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
+              Salir
+            </button>
+          </div>
+          <div id="a-table"></div>
+        </div>
+      </div>
+
+      <div id="pane-mails" class="tabpanel" role="tabpanel" aria-labelledby="tab-mails" hidden>
+        <div class="card">
+          <h3>Lista de mails</h3>
+          <div class="totals" id="a-roster-info"></div>
+          <label class="sr-only" for="ta-roster">Lista de mails</label>
+          <textarea id="ta-roster" rows="6" placeholder="mail;nombre;curso"></textarea>
+          <p class="hint-line">Una línea por alumno.</p>
+          <div class="toolbar" style="margin-top:10px">
+            <button id="btn-import-add" class="btn small" type="button">Agregar</button>
+            <button id="btn-import-rep" class="btn red small" type="button">Reemplazar</button>
+          </div>
+          <div id="a-import-msg" class="banner"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section landing" id="faq" aria-labelledby="faq-title">
+      <p class="eyebrow">Dudas</p>
+      <h2 id="faq-title">Preguntas frecuentes.</h2>
+      <details class="faq">
+        <summary>¿Cuántas charlas puedo elegir?</summary>
+        <p>Tres, una por horario.</p>
+      </details>
+      <details class="faq">
+        <summary>¿Puedo cambiar una charla?</summary>
+        <p>Sí, mientras la inscripción esté abierta.</p>
+      </details>
+      <details class="faq">
+        <summary>¿Qué pasa si se llena?</summary>
+        <p>No vas a poder elegirla. Probá con otra del mismo horario.</p>
+      </details>
+    </section>
+  </div>
+
+  <footer class="site">
+    <div class="footer-inner">
+      <span>ESI 2026</span>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="sheet-backdrop" class="sheet-backdrop"></div>
+  <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-handle"></div>
+    <h3 id="sheet-title"></h3>
+    <div id="sheet-body"></div>
+    <div class="sheet-actions">
+      <button id="sheet-cancel" class="btn secondary" type="button">Cancelar</button>
+      <button id="sheet-confirm" class="btn" type="button">Confirmar</button>
+    </div>
+  </div>
+
+  <script>
+    var IS_ADMIN = /(^|[?&])admin=1(&|$)/.test(window.location.search);
+    var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
+
+    function $(id) { return document.getElementById(id); }
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function lsGet(key) {
+      try { return window.localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function lsSet(key, value) {
+      try { window.localStorage.setItem(key, value); } catch (e) { }
+    }
+    function lsDel(key) {
+      try { window.localStorage.removeItem(key); } catch (e) { }
+    }
+    function ssGet(key) {
+      try { return window.sessionStorage.getItem(key); } catch (e) { return null; }
+    }
+    function ssSet(key, value) {
+      try { window.sessionStorage.setItem(key, value); } catch (e) { }
+    }
+    function ssDel(key) {
+      try { window.sessionStorage.removeItem(key); } catch (e) { }
+    }
+
+    var EsiClient = (function () {
+      'use strict';
+      function normalizeText(value) {
+        return String(value == null ? '' : value)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+      }
+      function normalizeEmail(value) {
+        return String(value == null ? '' : value).replace(/\s+/g, '').trim().toLowerCase();
+      }
+      function isValidEmail(email) {
+        var e = String(email == null ? '' : email);
+        if (!e || e.length > 120) return false;
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+      }
+      function cicloFromCurso(curso) {
+        var m = String(curso == null ? '' : curso).match(/\d/);
+        if (!m) return null;
+        var year = Number(m[0]);
+        if (year >= 1 && year <= 3) return 'basico';
+        if (year >= 4 && year <= 6) return 'orientado';
+        return null;
+      }
+      function validateStudentInput(email, nombre, curso) {
+        var e = normalizeEmail(email);
+        if (!isValidEmail(e)) return { ok: false, error: 'email' };
+        var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
+        if (n.length < 3 || n.length > 60) return { ok: false, error: 'nombre' };
+        var ciclo = cicloFromCurso(curso);
+        if (!ciclo) return { ok: false, error: 'curso' };
+        var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
+        return {
+          ok: true,
+          email: e,
+          nombre: n,
+          curso: c,
+          ciclo: ciclo,
+          nombreKey: normalizeText(n),
+          emailKey: e
+        };
+      }
+      function divisionsForYear(year) {
+    var y = Number(year);
+    if (y >= 1 && y <= 3) return ['A', 'B'];
+    if (y >= 4 && y <= 6) return ['Turismo', 'Econom\u00EDa'];
+    return [];
+  }
+
+  function cursoFromParts(year, division) {
+    var y = Number(year);
+    if (!(y >= 1 && y <= 6)) return null;
+    var raw = String(division == null ? '' : division).replace(/\s+/g, ' ').trim();
+    if (!raw) return y + '\u00B0';
+    if (y <= 3) {
+      var d = raw.charAt(0).toUpperCase();
+      if (d !== 'A' && d !== 'B') return null;
+      return y + '\u00B0' + d;
+    }
+    var first = raw.charAt(0).toLowerCase();
+    if (first !== 't' && first !== 'e') return null;
+    return y + '\u00B0' + (first === 't' ? 'Turismo' : 'Econom\u00EDa');
+  }
+
+  function parseCurso(value) {
+    var s = normalizeText(value).replace(/\u00B0/g, '').replace(/\s+/g, '');
+    var m = s.match(/^([1-6])(a|b|t|tur|turismo|e|eco|econ|econom|economia)?$/);
+    if (!m) return null;
+    var y = Number(m[1]);
+    var d = m[2] || '';
+    if (!d) return y + '\u00B0';
+    if (y <= 3) {
+      if (d !== 'a' && d !== 'b') return null;
+      return y + '\u00B0' + d.toUpperCase();
+    }
+    if (d.charAt(0) !== 't' && d.charAt(0) !== 'e') return null;
+    return y + '\u00B0' + (d.charAt(0) === 't' ? 'Turismo' : 'Econom\u00EDa');
+  }
+
+  function parseRoster(text) {
+    var raw = String(text == null ? '' : text).split(/\r?\n/);
+    var rows = [];
+    var invalidos = [];
+    var seen = {};
+    var duplicados = 0;
+    var firstIdx = -1;
+    for (var p = 0; p < raw.length; p++) {
+      if (raw[p].replace(/[^A-Za-z0-9@.]/g, '').trim()) {
+        if (firstIdx < 0) firstIdx = p;
+        break;
+      }
+    }
+    for (var i = 0; i < raw.length; i++) {
+      var line = raw[i].replace(/\t/g, ';').replace(/,/g, ';').replace(/\s*;\s*/g, ';');
+      var parts = line.split(';');
+      var email = normalizeEmail(parts[0]);
+      if (!email) continue;
+      if (i === firstIdx && /mail|correo/.test(normalizeText(email)) && !isValidEmail(email)) continue;
+      if (parts.length > 1) {
+        var nombre = String(parts[1] || '').replace(/\s+/g, ' ').trim();
+        var cursoRaw = parts[2] || '';
+        if (seen[email]) { duplicados++; continue; }
+        if (!isValidEmail(email)) {
+          invalidos.push({ linea: i + 1, texto: line.trim().slice(0, 80) });
+          continue;
+        }
+        seen[email] = true;
+        rows.push({ email: email, nombre: nombre, curso: parseCurso(cursoRaw) || '' });
+      } else {
+        if (seen[email]) { duplicados++; continue; }
+        if (!isValidEmail(email)) {
+          invalidos.push({ linea: i + 1, texto: email.slice(0, 80) });
+          continue;
+        }
+        seen[email] = true;
+        rows.push({ email: email, nombre: '', curso: '' });
+      }
+    }
+    return { rows: rows, invalidos: invalidos, duplicados: duplicados };
+  }
+
+  function aggregateTalks(signups, talks) {
+    var counts = {};
+    var porCiclo = { basico: 0, orientado: 0 };
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      counts[s.talk_id] = (counts[s.talk_id] || 0) + 1;
+      if (porCiclo[s.ciclo] != null) porCiclo[s.ciclo]++;
+    }
+    var rows = talks.map(function (t) {
+      var anotados = counts[t.id] || 0;
+      var cupo = Number(t.cupo);
+      return {
+        id: t.id,
+        titulo: t.titulo,
+        ciclo: t.ciclo,
+        slot_id: t.slot_id,
+        lugar: t.lugar,
+        cupo: cupo,
+        activa: !!t.activa,
+        anotados: anotados,
+        restantes: Math.max(0, cupo - anotados)
+      };
+    });
+    return { counts: counts, porCiclo: porCiclo, rows: rows, total: signups.length };
+  }
+
+  function planRegistration(signups, talksById, student, talkId) {
+        var talk = talksById[talkId];
+        if (!talk) return { error: 'talkNotFound' };
+        if (!talk.activa) return { error: 'talkInactive' };
+        if (talk.ciclo !== student.ciclo) return { error: 'talkWrongCycle' };
+        var counts = {};
+        var mine = [];
+        for (var i = 0; i < signups.length; i++) {
+          var s = signups[i];
+          counts[s.talk_id] = (counts[s.talk_id] || 0) + 1;
+          if (s.emailKey === student.emailKey) mine.push(s);
+        }
+        var sameSlot = null;
+        for (var j = 0; j < mine.length; j++) {
+          if (Number(mine[j].slot_id) === Number(talk.slot_id)) {
+            sameSlot = mine[j];
+            break;
+          }
+        }
+        var full = (counts[talkId] || 0) >= Number(talk.cupo);
+        if (sameSlot) {
+          if (sameSlot.talk_id === String(talkId)) return { action: 'none' };
+          if (full) return { error: 'full' };
+          return { action: 'change', signupId: sameSlot.id, previousTalkId: sameSlot.talk_id };
+        }
+        if (full) return { error: 'full' };
+        return { action: 'insert' };
+      }
+      return {
+        normalizeText: normalizeText,
+        normalizeEmail: normalizeEmail,
+        isValidEmail: isValidEmail,
+        cicloFromCurso: cicloFromCurso,
+        validateStudentInput: validateStudentInput,
+        planRegistration: planRegistration,
+        cursoFromParts: cursoFromParts,
+        parseCurso: parseCurso,
+        divisionsForYear: divisionsForYear,
+        parseRoster: parseRoster,
+        aggregateTalks: aggregateTalks
+      };
+    })();
+
+    var STUDENT_MSG = {
+      email: 'Escribí tu mail institucional.',
+      nombre: 'Escribí nombre y apellido.',
+      curso: 'Elegí año y división.',
+      notInRoster: 'Ese mail no está en la lista.'
+    };
+
+    var DEMO_SLOTS = [
+      { id: 1, label: '10:30 a 11:20' },
+      { id: 2, label: '11:30 a 12:20' },
+      { id: 3, label: '12:30 a 13:30' }
+    ];
+    var DEMO_TALKS = [
+      { id: 'B1', titulo: 'Salud Mental: Ansiedad', ciclo: 'basico', slot_id: 1, lugar: 'Aula 5', cupo: 40, activa: true },
+      { id: 'B2', titulo: 'Consumos Problemáticos: Alcohol', ciclo: 'basico', slot_id: 1, lugar: 'Aula 6', cupo: 40, activa: true },
+      { id: 'B3', titulo: 'Deportes y Alimentación saludable', ciclo: 'basico', slot_id: 1, lugar: 'Gimnasio', cupo: 40, activa: true },
+      { id: 'B4', titulo: 'Ciberbullying y grooming', ciclo: 'basico', slot_id: 1, lugar: 'Biblioteca', cupo: 40, activa: true },
+      { id: 'B5', titulo: 'Salud Mental: Autolesiones', ciclo: 'basico', slot_id: 2, lugar: 'Aula 7', cupo: 40, activa: true },
+      { id: 'B6', titulo: 'Consumos Problemáticos: Cigarrillo/Vapeo', ciclo: 'basico', slot_id: 2, lugar: 'Laboratorio', cupo: 40, activa: true },
+      { id: 'B7', titulo: 'Masculinidades', ciclo: 'basico', slot_id: 2, lugar: 'Aula 8', cupo: 40, activa: true },
+      { id: 'B8', titulo: 'Consumos Problemáticos: Juegos/Ludopatía', ciclo: 'basico', slot_id: 3, lugar: 'Aula 9', cupo: 40, activa: true },
+      { id: 'B9', titulo: 'Relaciones sexuales, cuidado y prevención', ciclo: 'basico', slot_id: 3, lugar: 'Biblioteca', cupo: 40, activa: true },
+      { id: 'B10', titulo: 'Nueva ley penal juvenil / Delitos informáticos', ciclo: 'basico', slot_id: 3, lugar: 'Aula 10', cupo: 40, activa: true },
+      { id: 'O1', titulo: 'Salud Mental: Ansiedad', ciclo: 'orientado', slot_id: 1, lugar: 'Aula 12', cupo: 40, activa: true },
+      { id: 'O2', titulo: 'Consumos Problemáticos: Alcohol', ciclo: 'orientado', slot_id: 1, lugar: 'Aula 13', cupo: 40, activa: true },
+      { id: 'O3', titulo: 'Deportes y Alimentación saludable', ciclo: 'orientado', slot_id: 1, lugar: 'Gimnasio', cupo: 40, activa: true },
+      { id: 'O4', titulo: 'Ciberbullying y grooming', ciclo: 'orientado', slot_id: 1, lugar: 'Biblioteca', cupo: 40, activa: true },
+      { id: 'O5', titulo: 'Salud Mental: Autolesiones', ciclo: 'orientado', slot_id: 2, lugar: 'Aula 14', cupo: 40, activa: true },
+      { id: 'O6', titulo: 'Consumos Problemáticos: Cigarrillo/Vapeo', ciclo: 'orientado', slot_id: 2, lugar: 'Laboratorio', cupo: 40, activa: true },
+      { id: 'O7', titulo: 'Masculinidades', ciclo: 'orientado', slot_id: 2, lugar: 'Aula 15', cupo: 40, activa: true },
+      { id: 'O8', titulo: 'Consumos Problemáticos: Juegos/Ludopatía', ciclo: 'orientado', slot_id: 3, lugar: 'Aula 16', cupo: 40, activa: true },
+      { id: 'O9', titulo: 'ITS: adolescentes expuestos, sífilis y otras infecciones', ciclo: 'orientado', slot_id: 3, lugar: 'Biblioteca', cupo: 40, activa: true }
+    ];
+
+    var DEMO_PARAM = /(^|[?&])demo=1(&|$)/.test(window.location.search || '');
+    var TRANSPORT = 'unconfigured';
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      TRANSPORT = 'gscript';
+    } else if (DEMO_PARAM) {
+      lsSet('esi_demo', '1');
+      TRANSPORT = 'demo';
+    } else if (getApiUrl()) {
+      TRANSPORT = 'jsonp';
+    } else if (lsGet('esi_demo') === '1') {
+      TRANSPORT = 'demo';
+    }
+
+    function getApiUrl() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var v = params.get('api');
+        if (v) {
+          lsSet('esi_api', v);
+          return v;
+        }
+        return lsGet('esi_api');
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function call(fn, args) {
+      if (TRANSPORT === 'gscript') {
+        return new Promise(function (resolve, reject) {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)[fn].apply(null, args);
+        });
+      }
+      if (TRANSPORT === 'jsonp') return jsonpCall(fn, args);
+      return demoCall(fn, args || []);
+    }
+
+    function jsonpCall(fn, args) {
+      return new Promise(function (resolve, reject) {
+        var cb = 'esi_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+        var url = getApiUrl() + (getApiUrl().indexOf('?') >= 0 ? '&' : '?')
+          + 'fn=' + encodeURIComponent(fn)
+          + '&args=' + encodeURIComponent(JSON.stringify(args))
+          + '&callback=' + cb;
+        var s = document.createElement('script');
+        var done = false;
+        function cleanup() {
+          if (done) return;
+          done = true;
+          try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+          if (s.parentNode) s.parentNode.removeChild(s);
+        }
+        window[cb] = function (r) {
+          cleanup();
+          resolve(r);
+        };
+        s.onload = cleanup;
+        s.onerror = function () {
+          cleanup();
+          reject(new Error('No se pudo conectar con el servidor.'));
+        };
+        window.setTimeout(function () {
+          if (!done) {
+            cleanup();
+            reject(new Error('Tiempo de espera agotado.'));
+          }
+        }, 30000);
+        s.src = url;
+        document.body.appendChild(s);
+      });
+    }
+
+    function demoRead(key, def) {
+      try {
+        var v = window.localStorage.getItem(key);
+        return v == null ? def : JSON.parse(v);
+      } catch (e) {
+        return def;
+      }
+    }
+    function demoWrite(key, value) {
+      lsSet(key, JSON.stringify(value));
+    }
+    function demoOpen() {
+      return demoRead('esi_demo_abierto', true);
+    }
+    function demoSignups() {
+      return demoRead('esi_demo_signups', []);
+    }
+    function demoTs(millis) {
+      var d = new Date(millis);
+      var p = function (n) { return (n < 10 ? '0' : '') + n; };
+      return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function demoPublicData(ciclo, mine) {
+      var counts = {};
+      var signups = demoSignups();
+      for (var i = 0; i < signups.length; i++) {
+        counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
+      }
+      var talks = DEMO_TALKS
+        .filter(function (t) { return t.ciclo === ciclo && t.activa; })
+        .map(function (t) {
+          return {
+            id: t.id,
+            titulo: t.titulo,
+            slot_id: t.slot_id,
+            lugar: t.lugar,
+            cupo: t.cupo,
+            restantes: Math.max(0, t.cupo - (counts[t.id] || 0))
+          };
+        });
+      return {
+        evento_abierto: demoOpen(),
+        slots: DEMO_SLOTS,
+        talks: talks,
+        mine: mine || {}
+      };
+    }
+    function demoRoster() {
+      return demoRead('esi_demo_roster', []);
+    }
+    function demoStudent(email, nombre, curso) {
+      var norm = EsiClient.normalizeEmail(email);
+      if (!EsiClient.isValidEmail(norm)) return { ok: false, error: 'email' };
+      var roster = demoRoster();
+      var entry = null;
+      for (var i = 0; i < roster.length; i++) {
+        if (roster[i].email === norm) { entry = roster[i]; break; }
+      }
+      if (roster.length && !entry) return { ok: false, error: 'notInRoster' };
+      var pc = entry ? EsiClient.parseCurso(entry.curso || '') : null;
+      var v = EsiClient.validateStudentInput(norm, entry && entry.nombre ? entry.nombre : (nombre || ''), pc || curso || '');
+      if (!v.ok) return v;
+      v.rosterLoaded = roster.length > 0;
+      return v;
+    }
+    function demoMine(email) {
+      var key = EsiClient.normalizeEmail(email);
+      var m = {};
+      var signups = demoSignups();
+      for (var i = 0; i < signups.length; i++) {
+        if (signups[i].emailKey === key) {
+          m[Number(signups[i].slot_id)] = signups[i].talk_id;
+        }
+      }
+      return m;
+    }
+    function demoRegister(email, nombre, curso, talkId) {
+      var s = demoStudent(email, nombre, curso);
+      if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
+      if (!demoOpen()) return Promise.resolve({ ok: false, message: 'La inscripción está cerrada.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      var talksById = {};
+      for (var i = 0; i < DEMO_TALKS.length; i++) talksById[DEMO_TALKS[i].id] = DEMO_TALKS[i];
+      var talk = talksById[String(talkId || '')];
+      var signups = demoSignups();
+      if (!talk) return Promise.resolve({ ok: false, message: 'No encontramos esa charla.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (!talk.activa) return Promise.resolve({ ok: false, message: 'Esa charla no está disponible.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (talk.ciclo !== s.ciclo) return Promise.resolve({ ok: false, message: 'Esa charla no es de tu ciclo.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      var plan = EsiClient.planRegistration(signups, talksById, { emailKey: s.emailKey, ciclo: s.ciclo }, talkId);
+      if (plan.error) {
+        return Promise.resolve({
+          ok: false,
+          message: plan.error === 'full' ? 'Sin lugares.' : 'No se pudo anotar.',
+          data: demoPublicData(s.ciclo, demoMine(s.email))
+        });
+      }
+      var message = '';
+      if (plan.action === 'insert') {
+        var slot = DEMO_SLOTS.filter(function (x) { return x.id === Number(talk.slot_id); })[0];
+        signups.push({
+          id: 'd' + Date.now() + '_' + Math.floor(Math.random() * 100000),
+          ts: Date.now(),
+          email: s.email,
+          nombre: s.nombre,
+          curso: s.curso,
+          ciclo: s.ciclo,
+          slot_id: Number(talk.slot_id),
+          talk_id: String(talkId),
+          emailKey: s.emailKey
+        });
+        message = 'Listo, quedaste anotado.';
+        demoWrite('esi_demo_signups', signups);
+      } else if (plan.action === 'change') {
+        for (var k = 0; k < signups.length; k++) {
+          if (signups[k].id === plan.signupId) {
+            signups[k].talk_id = String(talkId);
+            signups[k].ts = Date.now();
+          }
+        }
+        message = 'Listo, cambiaste de charla.';
+        demoWrite('esi_demo_signups', signups);
+      } else {
+        message = 'Ya estabas anotado.';
+      }
+      return Promise.resolve({
+        ok: true,
+        message: message,
+        student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+        data: demoPublicData(s.ciclo, demoMine(s.email))
+      });
+    }
+    function demoAdminData() {
+      var signups = demoSignups();
+      var counts = {};
+      for (var i = 0; i < signups.length; i++) {
+        counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
+      }
+      var titulos = {};
+      for (var t = 0; t < DEMO_TALKS.length; t++) {
+        titulos[DEMO_TALKS[t].id] = DEMO_TALKS[t].titulo;
+      }
+      var out = signups.map(function (s) {
+        return {
+          id: s.id,
+          cuando: s.ts ? demoTs(s.ts) : '',
+          email: s.email,
+          nombre: s.nombre,
+          curso: s.curso,
+          ciclo: s.ciclo,
+          slotLabel: (DEMO_SLOTS.filter(function (x) { return x.id === Number(s.slot_id); })[0] || {}).label || '',
+          talkTitulo: titulos[s.talk_id] || s.talk_id
+        };
+      });
+      var porCiclo = { basico: 0, orientado: 0 };
+      for (var c = 0; c < out.length; c++) {
+        if (porCiclo[out[c].ciclo] != null) porCiclo[out[c].ciclo]++;
+      }
+      var roster = demoRoster();
+      return {
+        ok: true,
+        evento_abierto: demoOpen(),
+        rosterLoaded: roster.length > 0,
+        rosterCount: roster.length,
+        slots: DEMO_SLOTS,
+        talks: DEMO_TALKS.map(function (t) {
+          return { id: t.id, titulo: t.titulo, ciclo: t.ciclo, slot_id: t.slot_id, cupo: t.cupo, activa: !!t.activa, anotados: counts[t.id] || 0 };
+        }),
+        signups: out,
+        total: out.length,
+        porCiclo: porCiclo
+      };
+    }
+    function demoLookup(emailRaw) {
+      var email = EsiClient.normalizeEmail(emailRaw);
+      if (!EsiClient.isValidEmail(email)) {
+        return { ok: false, message: STUDENT_MSG.email };
+      }
+      var roster = demoRoster();
+      var entry = null;
+      for (var i = 0; i < roster.length; i++) {
+        if (roster[i].email === email) { entry = roster[i]; break; }
+      }
+      if (roster.length && !entry) {
+        return { ok: false, message: STUDENT_MSG.notInRoster };
+      }
+      var nombre = entry && entry.nombre ? entry.nombre : '';
+      var pc = EsiClient.parseCurso(entry ? entry.curso : '');
+      return {
+        ok: true,
+        rosterLoaded: roster.length > 0,
+        needsNombre: !nombre,
+        needsCurso: !pc
+      };
+    }
+    function demoImportRoster(textRaw, mode) {
+      var parsed = EsiClient.parseRoster(String(textRaw == null ? '' : textRaw));
+      if (!parsed.rows.length) {
+        return {
+          ok: false,
+          message: 'No hay mails válidos.',
+          invalidos: parsed.invalidos.length,
+          duplicados: parsed.duplicados
+        };
+      }
+      var replace = String(mode || 'agregar') === 'reemplazar';
+      var byEmail = {};
+      var ordered = [];
+      if (!replace) {
+        var existing = demoRoster();
+        for (var i = 0; i < existing.length; i++) {
+          byEmail[existing[i].email] = existing[i];
+          ordered.push(existing[i].email);
+        }
+      }
+      var nuevos = 0;
+      var actualizados = 0;
+      for (var j = 0; j < parsed.rows.length; j++) {
+        var r = parsed.rows[j];
+        if (byEmail[r.email]) {
+          if (byEmail[r.email].nombre !== r.nombre || byEmail[r.email].curso !== r.curso) actualizados++;
+          byEmail[r.email] = r;
+        } else {
+          byEmail[r.email] = r;
+          ordered.push(r.email);
+          nuevos++;
+        }
+      }
+      var outRows = [];
+      for (var k = 0; k < ordered.length; k++) {
+        var s = byEmail[ordered[k]];
+        outRows.push({ email: s.email, nombre: s.nombre || '', curso: s.curso || '' });
+      }
+      demoWrite('esi_demo_roster', outRows);
+      return {
+        ok: true,
+        total: outRows.length,
+        nuevos: nuevos,
+        actualizados: actualizados,
+        invalidos: parsed.invalidos.length,
+        duplicados: parsed.duplicados,
+        modo: replace ? 'reemplazar' : 'agregar'
+      };
+    }
+    function demoCall(fn, args) {
+      var a = args || [];
+      if (fn === 'apiLookup') return Promise.resolve(demoLookup(a[0]));
+      if (fn === 'apiGetData') {
+        var s = demoStudent(a[0], a[1], a[2]);
+        if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
+        return Promise.resolve({
+          ok: true,
+          student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+          data: demoPublicData(s.ciclo, demoMine(s.email))
+        });
+      }
+      if (fn === 'apiRegister') return demoRegister(a[0], a[1], a[2], a[3]);
+      if (fn === 'apiAdminLogin') return Promise.resolve({ ok: true });
+      if (fn === 'apiAdminGetData') return Promise.resolve(demoAdminData());
+      if (fn === 'apiAdminSetOpen') {
+        demoWrite('esi_demo_abierto', !!a[1]);
+        return Promise.resolve({ ok: true, evento_abierto: !!a[1] });
+      }
+      if (fn === 'apiAdminDeleteSignup') {
+        var remain = demoSignups().filter(function (x) { return x.id !== String(a[1]); });
+        demoWrite('esi_demo_signups', remain);
+        return Promise.resolve({ ok: true });
+      }
+      if (fn === 'apiAdminImportRoster') return Promise.resolve(demoImportRoster(a[1], a[2]));
+      return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
+    }
+
+    function showSetupWarning() {
+      document.body.setAttribute('data-screen', 'setup');
+      $('hdr-title').textContent = 'ESI';
+      $('hdr-sub').textContent = 'Sin conexión';
+      $('s-banner').style.display = 'none';
+      $('setup-warning').hidden = false;
+      var ids = S_SCREENS.concat(A_SCREENS);
+      for (var i = 0; i < ids.length; i++) $(ids[i]).className = 'screen';
+    }
+
+    function showScreen(ids, activeId) {
+      for (var i = 0; i < ids.length; i++) {
+        $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' : '');
+      }
+      document.body.setAttribute('data-screen', activeId || '');
+    }
+
+    var toastTimer = null;
+    function toast(text, type) {
+      var el = $('toast');
+      el.textContent = text || '';
+      el.className = 'toast show' + (type === 'err' ? ' err' : '');
+      if (toastTimer) window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(function () { el.className = 'toast'; }, 3400);
+    }
+
+    var sheetCb = null;
+    function openSheet(opts) {
+      $('sheet-title').textContent = opts.title || '';
+      $('sheet-body').innerHTML = opts.body || '';
+      var ok = $('sheet-confirm');
+      ok.textContent = opts.confirm || 'Confirmar';
+      ok.className = 'btn' + (opts.danger ? ' red' : '');
+      $('sheet-cancel').textContent = opts.cancel || 'Cancelar';
+      sheetCb = opts.onConfirm || null;
+      $('sheet-backdrop').classList.add('show');
+      $('sheet').classList.add('show');
+      document.body.classList.add('sheet-open');
+    }
+    function closeSheet() {
+      $('sheet-backdrop').classList.remove('show');
+      $('sheet').classList.remove('show');
+      document.body.classList.remove('sheet-open');
+      sheetCb = null;
+    }
+    function sheetInit() {
+      $('sheet-cancel').addEventListener('click', closeSheet);
+      $('sheet-backdrop').addEventListener('click', closeSheet);
+      $('sheet-confirm').addEventListener('click', function () {
+        var cb = sheetCb;
+        closeSheet();
+        if (cb) cb();
+      });
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') closeSheet();
+      });
+    }
+
+    var S_SCREENS = ['s-screen-mail', 's-screen-datos', 's-screen-panel'];
+    var A_SCREENS = ['a-screen-gate', 'a-screen-panel'];
+
+    var sState = {
+      email: '', nombre: '', curso: '',
+      needsNombre: false, needsCurso: false,
+      data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
+      student: { email: '', nombre: '', curso: '', ciclo: '' }
+    };
+
+    function sBanner(text, type) {
+      var el = $('s-banner');
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function sSlotsLabel(id) {
+      var slots = sState.data && sState.data.slots ? sState.data.slots : [];
+      for (var i = 0; i < slots.length; i++) {
+        if (Number(slots[i].id) === Number(id)) return slots[i].label;
+      }
+      return '';
+    }
+
+    function sTalkById(id) {
+      var talks = sState.data && sState.data.talks ? sState.data.talks : [];
+      for (var i = 0; i < talks.length; i++) {
+        if (talks[i].id === id) return talks[i];
+      }
+      return null;
+    }
+
+    function sReduceMotion() {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    function sMissingSlots() {
+      var d = sState.data || {};
+      var slots = d.slots || [];
+      var mine = d.mine || {};
+      var out = [];
+      for (var i = 0; i < slots.length; i++) {
+        var id = mine[Number(slots[i].id)];
+        if (!id || !sTalkById(id)) {
+          out.push({ index: i + 1, id: slots[i].id, label: slots[i].label });
+        }
+      }
+      return out;
+    }
+
+    function sRender() {
+      var d = sState.data;
+      if (!d) return;
+      var sub = $('hdr-sub');
+      sub.textContent = (d.evento_abierto ? 'Inscripción abierta' : 'Inscripción cerrada')
+        + ' · ' + CICLO_LABELS[sState.student.ciclo];
+      sub.className = d.evento_abierto ? '' : 'alert';
+
+      var st = sState.student;
+      var slots = d.slots || [];
+      var mine = d.mine || {};
+      var chosenCount = 0;
+      for (var i = 0; i < slots.length; i++) {
+        var chosenId = mine[Number(slots[i].id)];
+        if (chosenId && sTalkById(chosenId)) chosenCount++;
+      }
+      var missing = sMissingSlots();
+      var hint = $('sel-hint');
+      if (hint) {
+        if (sState.showMissing && missing.length) {
+          hint.textContent = 'Falta elegir el horario ' + missing[0].index;
+          hint.hidden = false;
+        } else {
+          hint.textContent = '';
+          hint.hidden = true;
+        }
+      }
+      $('summary').innerHTML = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
+        + '<div class="email">' + esc(st.email) + '</div>';
+      var countEl = $('sel-count');
+      if (countEl) countEl.textContent = chosenCount + ' de ' + slots.length + ' elegidas';
+
+      var cont = $('slots-container');
+      cont.innerHTML = '';
+      var missingMap = {};
+      for (var m = 0; m < missing.length; m++) missingMap[Number(missing[m].id)] = true;
+      for (var s = 0; s < slots.length; s++) {
+        var section = document.createElement('div');
+        var isMissing = sState.showMissing && missingMap[Number(slots[s].id)];
+        section.className = 'slot' + (isMissing ? ' is-missing' : '');
+        section.setAttribute('data-slot-id', slots[s].id);
+        var h2 = document.createElement('h2');
+        h2.className = 'slot-title';
+        h2.innerHTML = '<span class="time-pill">Horario ' + (s + 1) + '</span>'
+          + '<span class="slot-time">· ' + esc(slots[s].label) + '</span>'
+          + (isMissing ? '<span class="slot-missing">Falta elegir</span>' : '');
+        section.appendChild(h2);
+        var grid = document.createElement('div');
+        grid.className = 'slot-grid';
+        for (var t = 0; t < d.talks.length; t++) {
+          if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
+          grid.appendChild(sBuildTalk(d.talks[t], slots[s]));
+        }
+        section.appendChild(grid);
+        cont.appendChild(section);
+      }
+    }
+
+    function sBuildTalk(talk, slot) {
+      var mine = sState.data.mine || {};
+      var chosen = mine[slot.id] === talk.id;
+      var full = talk.restantes <= 0 && !chosen;
+      var low = talk.restantes > 0 && talk.restantes <= 5;
+      var anotados = Math.max(0, talk.cupo - talk.restantes);
+      var pct = talk.cupo > 0 ? Math.min(100, Math.round(anotados * 100 / talk.cupo)) : 0;
+      var seats = chosen ? 'Elegida'
+        : (full ? 'Completa'
+          : (low ? 'Últimos ' + talk.restantes : talk.restantes + ' lugares'));
+      var entering = sState.enterTalk
+        && Number(sState.enterTalk.slotId) === Number(slot.id)
+        && String(sState.enterTalk.id) === String(talk.id);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'talk' + (chosen ? ' selected' : '') + (full ? ' full' : '') + (low ? ' low' : '')
+        + (entering ? ' entering' : '');
+      btn.setAttribute('data-talk-id', talk.id);
+      btn.setAttribute('data-slot-id', slot.id);
+      btn.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+      btn.setAttribute('aria-label', talk.titulo + ', ' + talk.lugar + ', ' + seats);
+      var barClass = full ? 'is-full' : (low ? 'is-low' : '');
+      btn.innerHTML = '<span class="talk-top">'
+        + '<span class="t-title">' + esc(talk.titulo) + '</span>'
+        + '<span class="talk-check" aria-hidden="true">\u2713</span></span>'
+        + '<span class="t-meta"><span class="talk-room">' + esc(talk.lugar) + '</span>'
+        + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span></span>'
+        + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + '" style="width:' + pct + '%"></span></span>';
+      if (chosen || full) {
+        btn.disabled = true;
+      } else {
+        btn.addEventListener('click', function () { sOnTalk(talk); });
+      }
+      return btn;
+    }
+
+    function sConfirmar() {
+      var d = sState.data || { slots: [], mine: {} };
+      var slots = d.slots || [];
+      var mine = d.mine || {};
+      if (!slots.length) return;
+      var missing = sMissingSlots();
+      if (missing.length) {
+        sState.showMissing = true;
+        sRender();
+        var target = null;
+        try { target = document.querySelector('.slot[data-slot-id="' + missing[0].id + '"]'); } catch (e) { }
+        if (target && target.scrollIntoView) {
+          try {
+            target.scrollIntoView({ behavior: sReduceMotion() ? 'auto' : 'smooth', block: 'center' });
+          } catch (e) {
+            target.scrollIntoView();
+          }
+        }
+        return;
+      }
+      sState.showMissing = false;
+      var lines = '';
+      for (var i = 0; i < slots.length; i++) {
+        var chosen = sTalkById(mine[Number(slots[i].id)]);
+        lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
+          + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
+      }
+      openSheet({
+        title: 'Tus charlas',
+        body: lines,
+        confirm: 'Confirmar',
+        onConfirm: function () {
+          toast('Listo, quedaste anotado.', 'ok');
+        }
+      });
+    }
+
+    function sOnTalk(talk) {
+      if (sState.busy) return;
+      var mine = (sState.data && sState.data.mine) || {};
+      var prevId = mine[Number(talk.slot_id)];
+      var prev = prevId ? sTalkById(prevId) : null;
+      var body = '<p class="sheet-meta">' + esc(sSlotsLabel(talk.slot_id)) + ' · ' + esc(talk.lugar) + '</p>'
+        + '<p class="sheet-talk">' + esc(talk.titulo) + '</p>'
+        + '<p class="sheet-seats">' + (talk.restantes > 0
+          ? talk.restantes + ' lugares'
+          : 'Sin lugares') + '</p>';
+      if (prev && prev.id !== talk.id) {
+        body += '<p class="sheet-warn">Dejás "' + esc(prev.titulo) + '".</p>';
+      }
+      openSheet({
+        title: prev && prev.id !== talk.id ? 'Cambiar charla' : 'Elegir charla',
+        body: body,
+        confirm: prev && prev.id !== talk.id ? 'Cambiar' : 'Anotarme',
+        onConfirm: function () { sRegister(talk.id); }
+      });
+    }
+
+    function sRegister(talkId) {
+      if (sState.busy) return;
+      var target = sTalkById(talkId);
+      var slotId = target ? target.slot_id : null;
+      var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
+      sState.busy = true;
+      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId])
+        .then(function (resp) {
+          sState.busy = false;
+          if (resp.data) sState.data = resp.data;
+          if (resp.student) sState.student = resp.student;
+          toast(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
+          if (resp.ok) sRenderChange(slotId, prevId, talkId);
+          else sRender();
+        })
+        .catch(function () {
+          sState.busy = false;
+          toast('Sin conexión. Probá de nuevo.', 'err');
+        });
+    }
+
+    function sRenderChange(slotId, prevId, nextId) {
+      if (!slotId || sReduceMotion()) {
+        sRender();
+        return;
+      }
+      var oldBtn = null;
+      try {
+        oldBtn = document.querySelector ? document.querySelector(
+          '.talk[data-slot-id="' + slotId + '"][data-talk-id="' + prevId + '"]'
+        ) : null;
+      } catch (e) { }
+      if (!oldBtn || String(prevId) === String(nextId)) {
+        sState.enterTalk = { slotId: slotId, id: nextId };
+        sRender();
+        sState.enterTalk = null;
+        return;
+      }
+      oldBtn.classList.add('leaving');
+      sState.busy = true;
+      window.setTimeout(function () {
+        sState.enterTalk = { slotId: slotId, id: nextId };
+        sRender();
+        sState.enterTalk = null;
+        sState.busy = false;
+      }, 150);
+    }
+
+    function sEnterPanel(nombre, curso) {
+      if (sState.busy) return Promise.resolve();
+      sState.busy = true;
+      sBanner('Cargando...', 'ok');
+      return call('apiGetData', [sState.email, nombre, curso])
+        .then(function (resp) {
+          sState.busy = false;
+          if (resp.ok) {
+            sState.student = resp.student;
+            sState.nombre = resp.student.nombre;
+            sState.curso = resp.student.curso;
+            sState.data = resp.data;
+            ssSet('esi_student', JSON.stringify({
+              email: sState.email, nombre: sState.nombre, curso: sState.curso, ciclo: resp.student.ciclo
+            }));
+            sBanner('');
+            showScreen(S_SCREENS, 's-screen-panel');
+            sRender();
+          } else {
+            sBanner(resp.message || 'No se pudo cargar.', 'err');
+            if (resp.message && String(resp.message).indexOf('no está en la lista') >= 0) {
+              ssDel('esi_student');
+              sState.email = '';
+              showScreen(S_SCREENS, 's-screen-mail');
+            }
+          }
+        })
+        .catch(function () {
+          sState.busy = false;
+          sBanner('Sin conexión. Probá de nuevo.', 'err');
+        });
+    }
+
+    function sLookup() {
+      if (sState.busy) return;
+      var email = $('input-mail').value;
+      sState.busy = true;
+      sBanner('Buscando...', 'ok');
+      call('apiLookup', [email])
+        .then(function (resp) {
+          sState.busy = false;
+          if (!resp.ok) {
+            sBanner(resp.message || 'No se pudo validar el mail.', 'err');
+            return;
+          }
+          sBanner('');
+          sState.email = email.replace(/\s/g, '').toLowerCase();
+          sState.lookup = resp;
+          sState.nombre = '';
+          sState.curso = '';
+          if (!resp.needsNombre && !resp.needsCurso) {
+            sEnterPanel(sState.nombre, sState.curso);
+            return;
+          }
+          sShowDatos();
+        })
+        .catch(function () {
+          sState.busy = false;
+          sBanner('Sin conexión. Probá de nuevo.', 'err');
+        });
+    }
+
+    function sFillDivisions(year, selected) {
+      var sel = $('select-division');
+      var divs = EsiClient.divisionsForYear(year);
+      var html = '<option value="">Elegí...</option>';
+      for (var i = 0; i < divs.length; i++) {
+        html += '<option value="' + esc(divs[i]) + '">' + esc(divs[i]) + '</option>';
+      }
+      sel.innerHTML = html;
+      if (selected) sel.value = selected;
+    }
+
+    function sShowDatos() {
+      var needsNombre = sState.lookup.needsNombre;
+      var needsCurso = sState.lookup.needsCurso;
+      document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
+      $('fieldset-nombre').style.display = needsNombre ? 'block' : 'none';
+      $('select-anio').value = '';
+      var pc = EsiClient.parseCurso(sState.curso || '');
+      var yearSel = '';
+      var divSel = '';
+      if (needsCurso && pc) {
+        yearSel = String(Number(pc.match(/\d/)[0]));
+        divSel = pc.slice(2);
+      }
+      sFillDivisions(yearSel, divSel);
+      $('select-anio').value = yearSel;
+      $('fieldset-anio').style.display = needsCurso ? 'flex' : 'none';
+      $('input-nombre').value = sState.nombre;
+      $('input-nombre').readOnly = !needsNombre;
+      $('btn-datos').textContent = (needsNombre || needsCurso) ? 'Ver las charlas' : 'Continuar';
+      showScreen(S_SCREENS, 's-screen-datos');
+      if (needsNombre) {
+        $('input-nombre').focus();
+      } else if (needsCurso) {
+        $('select-anio').focus();
+      }
+    }
+
+    function sSubmitDatos() {
+      var needsNombre = sState.lookup.needsNombre;
+      var needsCurso = sState.lookup.needsCurso;
+      var nombre = needsNombre ? $('input-nombre').value : sState.nombre;
+      var curso = needsCurso
+        ? EsiClient.cursoFromParts($('select-anio').value, $('select-division').value)
+        : sState.curso;
+      if (needsNombre && String(nombre).replace(/\s/g, '').length < 3) {
+        sBanner('Escribí nombre y apellido.', 'err');
+        return;
+      }
+      if (needsCurso && !curso) {
+        sBanner('Elegí año y división.', 'err');
+        return;
+      }
+      sEnterPanel(nombre, curso);
+    }
+
+    function sInit() {
+      document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
+      $('hdr-title').textContent = 'Inscripción a las charlas';
+      $('hdr-sub').textContent = 'ESI 2026';
+      $('btn-mail').addEventListener('click', sLookup);
+      $('input-mail').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') sLookup();
+      });
+      $('select-anio').addEventListener('change', function () {
+        sFillDivisions(this.value, '');
+      });
+      $('btn-datos').addEventListener('click', sSubmitDatos);
+      $('btn-datos-volver').addEventListener('click', function () {
+        showScreen(S_SCREENS, 's-screen-mail');
+      });
+      $('btn-confirmar').addEventListener('click', sConfirmar);
+      $('btn-cambiar-datos').addEventListener('click', function () {
+        var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;
+        var ok = has
+          ? window.confirm('Tus charlas quedan guardadas. ¿Cambiar tus datos?')
+          : true;
+        if (!ok) return;
+        ssDel('esi_student');
+        sState = {
+          email: '', nombre: '', curso: '',
+          needsNombre: false, needsCurso: false,
+          data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
+          student: { email: '', nombre: '', curso: '', ciclo: '' }
+        };
+        $('input-mail').value = '';
+        sBanner('');
+        showScreen(S_SCREENS, 's-screen-mail');
+      });
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible' && sState.data && !sState.busy
+          && $('s-screen-panel').className.indexOf('active') >= 0) {
+          sEnterPanel(sState.nombre, sState.curso);
+        }
+      });
+
+      var saved = ssGet('esi_student');
+      if (saved) {
+        try {
+          var st = JSON.parse(saved);
+          if (st && st.email && st.nombre && st.curso) {
+            sState.email = st.email;
+            sEnterPanel(st.nombre, st.curso);
+            return;
+          }
+        } catch (e) { }
+      }
+      showScreen(S_SCREENS, 's-screen-mail');
+    }
+
+    var aData = null;
+    var aBusy = false;
+    var adminCred = '';
+
+    function aBanner(text, type) {
+      var el = $('a-msg');
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function aLogin(pin) {
+      if (aBusy) return;
+      aBusy = true;
+      call('apiAdminLogin', [pin])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            adminCred = resp.token ? resp.token : (TRANSPORT === 'demo' ? 'demo' : pin);
+            $('gate-msg').style.display = 'none';
+            showScreen(A_SCREENS, 'a-screen-panel');
+            aLoad(true);
+          } else {
+            $('gate-msg').textContent = resp.message || 'Clave incorrecta.';
+            $('gate-msg').style.display = 'block';
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          $('gate-msg').textContent = 'Sin conexión.';
+          $('gate-msg').style.display = 'block';
+        });
+    }
+
+    function aAuthLost(resp) {
+      var msg = String(resp && resp.message ? resp.message : '');
+      if (msg.indexOf('Sesión') < 0 && msg.indexOf('Sesion') < 0 && msg.indexOf('Clave') < 0) {
+        return false;
+      }
+      adminCred = '';
+      aData = null;
+      $('gate-msg').textContent = msg || 'Sesión vencida. Entrá de nuevo.';
+      $('gate-msg').style.display = 'block';
+      showScreen(A_SCREENS, 'a-screen-gate');
+      return true;
+    }
+
+    function aLoad(silent) {
+      if (aBusy) return;
+      if (!adminCred) {
+        showScreen(A_SCREENS, 'a-screen-gate');
+        return;
+      }
+      aBusy = true;
+      if (!silent) aBanner('Actualizando', 'ok');
+      call('apiAdminGetData', [adminCred])
+        .then(function (resp) {
+          aBusy = false;
+          if (!resp.ok) {
+            if (aAuthLost(resp)) return;
+            aBanner(resp.message || 'No se pudo cargar.', 'err');
+            return;
+          }
+          aData = resp;
+          aRender();
+          if (!silent) aBanner('Actualizado.', 'ok');
+        })
+        .catch(function () {
+          aBusy = false;
+          aBanner('Sin conexión.', 'err');
+        });
+    }
+
+    function aRender() {
+      var d = aData;
+      if (!d) return;
+      $('hdr-sub').textContent = 'ESI 2026';
+
+      $('a-roster-info').textContent = d.rosterLoaded
+        ? d.rosterCount + ' mails'
+        : 'Sin lista cargada';
+
+      $('a-totals').innerHTML = '<div class="stat-grid">'
+        + '<div class="stat"><span class="stat-num">' + d.total + '</span><span class="stat-label">Inscriptos</span></div>'
+        + '<div class="stat"><span class="stat-num">' + d.porCiclo.basico + '</span><span class="stat-label">Básico</span></div>'
+        + '<div class="stat"><span class="stat-num">' + d.porCiclo.orientado + '</span><span class="stat-label">Orientado</span></div>'
+        + '</div>'
+        + '<div class="admin-status"><span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
+        + (d.evento_abierto ? 'Abierta' : 'Cerrada') + '</span></div>';
+
+      var tb = $('a-toggle-box');
+      tb.innerHTML = '';
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'btn small' + (d.evento_abierto ? ' red' : '');
+      toggle.textContent = d.evento_abierto ? 'Cerrar inscripción' : 'Abrir inscripción';
+      toggle.addEventListener('click', aOnToggle);
+      tb.appendChild(toggle);
+
+      var html = '<h3>Cupos por charla</h3>';
+      var ciclos = ['basico', 'orientado'];
+      for (var c = 0; c < ciclos.length; c++) {
+        html += '<h4>' + esc(CICLO_LABELS[ciclos[c]]) + '</h4>';
+        for (var s = 0; s < d.slots.length; s++) {
+          html += '<h4>' + esc(d.slots[s].label) + '</h4>';
+          for (var t = 0; t < d.talks.length; t++) {
+            var talk = d.talks[t];
+            if (talk.ciclo !== ciclos[c] || Number(talk.slot_id) !== Number(d.slots[s].id)) continue;
+            var pct = talk.cupo > 0 ? Math.min(100, Math.round(talk.anotados * 100 / talk.cupo)) : 0;
+            var full = talk.anotados >= talk.cupo;
+            html += '<div class="talk-row">'
+              + '<div class="t"><span>' + esc(talk.titulo) + (talk.activa ? '' : ' (inactiva)') + '</span>'
+              + '<span><b>' + talk.anotados + '/' + talk.cupo + '</b></span></div>'
+              + '<div class="bar"><span class="' + (full ? 'full' : '') + '" style="width:' + pct + '%"></span></div>'
+              + '</div>';
+          }
+        }
+      }
+      $('a-cupos').innerHTML = html;
+      aFillFilters();
+      aRenderTable();
+    }
+
+    function fillFilter(id, values, allLabel) {
+      var el = $(id);
+      if (!el) return;
+      var current = el.value;
+      var keys = Object.keys(values).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+      var html = '<option value="">' + esc(allLabel || 'Todos') + '</option>';
+      for (var i = 0; i < keys.length; i++) {
+        html += '<option value="' + esc(keys[i]) + '">' + esc(keys[i]) + '</option>';
+      }
+      el.innerHTML = html;
+      if (current && keys.indexOf(current) >= 0) el.value = current;
+    }
+
+    function aFillFilters() {
+      var d = aData;
+      if (!d) return;
+      var cursos = {};
+      var divs = {};
+      var charlas = {};
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        if (s.curso) cursos[s.curso] = 1;
+        var pc = EsiClient.parseCurso(s.curso);
+        if (pc) {
+          var div = pc.slice(2);
+          if (div) divs[div] = 1;
+        }
+        if (s.talkTitulo) charlas[s.talkTitulo] = 1;
+      }
+      fillFilter('filter-curso', cursos, 'Todos los cursos');
+      fillFilter('filter-division', divs, 'Todas las divisiones');
+      fillFilter('filter-charla', charlas, 'Todas las charlas');
+    }
+
+    function aTab(name) {
+      var mails = name === 'mails';
+      var panes = [['pane-inscriptos', !mails], ['pane-mails', mails]];
+      for (var i = 0; i < panes.length; i++) {
+        var pane = $(panes[i][0]);
+        if (pane) pane.hidden = !panes[i][1];
+      }
+      var tabs = [['tab-inscriptos', !mails], ['tab-mails', mails]];
+      for (var j = 0; j < tabs.length; j++) {
+        var tab = $(tabs[j][0]);
+        if (!tab) continue;
+        tab.classList.toggle('active', tabs[j][1]);
+        tab.setAttribute('aria-selected', tabs[j][1] ? 'true' : 'false');
+      }
+    }
+
+    function aRenderTable() {
+      var d = aData;
+      if (!d) return;
+      var q = $('input-buscar').value.replace(/\s+/g, ' ').trim().toLowerCase();
+      var fCurso = $('filter-curso') ? $('filter-curso').value : '';
+      var fDiv = $('filter-division') ? $('filter-division').value : '';
+      var fCharla = $('filter-charla') ? $('filter-charla').value : '';
+      var rows = '<div class="table-wrap"><table><thead><tr>'
+        + '<th>Fecha</th><th>Nombre</th><th>Mail</th><th>Curso</th><th>Horario</th><th>Charla</th><th></th>'
+        + '</tr></thead><tbody>';
+      var shown = 0;
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        if (fCurso && s.curso !== fCurso) continue;
+        if (fDiv) {
+          var pc = EsiClient.parseCurso(s.curso);
+          if (!pc || pc.slice(2) !== fDiv) continue;
+        }
+        if (fCharla && s.talkTitulo !== fCharla) continue;
+        var hay = (s.nombre + ' ' + s.email + ' ' + s.curso + ' ' + s.slotLabel + ' ' + s.talkTitulo).toLowerCase();
+        if (q && hay.indexOf(q) < 0) continue;
+        shown++;
+        rows += '<tr>'
+          + '<td class="narrow" data-label="Fecha">' + esc(s.cuando) + '</td>'
+          + '<td data-label="Nombre">' + esc(s.nombre) + '</td>'
+          + '<td data-label="Mail">' + esc(s.email) + '</td>'
+          + '<td data-label="Curso">' + esc(s.curso) + '</td>'
+          + '<td data-label="Horario">' + esc(s.slotLabel) + '</td>'
+          + '<td data-label="Charla">' + esc(s.talkTitulo) + '</td>'
+          + '<td data-label=""><button class="btn red small" type="button" onclick="aOnDelete(\'' + esc(s.id) + '\')">Borrar</button></td>'
+          + '</tr>';
+      }
+      rows += '</tbody></table></div>';
+      if (!d.signups.length) {
+        rows = '<div class="empty-state">'
+          + '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".5"/><circle cx="3.5" cy="12" r=".5"/><circle cx="3.5" cy="18" r=".5"/></svg>'
+          + '<p class="es-title">Todavía no hay inscriptos.</p></div>';
+      } else if (!shown) {
+        rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
+      }
+      $('a-table').innerHTML = rows;
+    }
+
+    function aImportMsg(text, type) {
+      var el = $('a-import-msg');
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function aImport(mode) {
+      if (aBusy) return;
+      var text = $('ta-roster').value;
+      if (!text) {
+        aImportMsg('Pegá la lista.', 'err');
+        return;
+      }
+      if (mode === 'reemplazar') {
+        openSheet({
+          title: 'Reemplazar la lista',
+          body: '<p class="sheet-warn">Se reemplaza la lista actual.</p>',
+          confirm: 'Reemplazar',
+          danger: true,
+          onConfirm: function () { aImportConfirmed(text, mode); }
+        });
+        return;
+      }
+      aImportConfirmed(text, mode);
+    }
+
+    function aImportConfirmed(text, mode) {
+      if (aBusy) return;
+      aBusy = true;
+      aImportMsg('Importando...', 'ok');
+      call('apiAdminImportRoster', [adminCred, text, mode])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            aImportMsg('Listo: ' + resp.total + ' mails.', 'ok');
+            $('ta-roster').value = '';
+            aLoad(true);
+          } else {
+            if (aAuthLost(resp)) return;
+            aImportMsg(resp.message || 'No se pudo importar.', 'err');
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          aImportMsg('Sin conexión.', 'err');
+        });
+    }
+
+    window.aOnDelete = function (signupId) {
+      if (aBusy) return;
+      openSheet({
+        title: '¿Borrar esta inscripción?',
+        body: '<p class="sheet-warn">El lugar queda libre.</p>',
+        confirm: 'Borrar',
+        danger: true,
+        onConfirm: function () { aDeleteConfirmed(signupId); }
+      });
+    };
+
+    function aDeleteConfirmed(signupId) {
+      if (aBusy) return;
+      aBusy = true;
+      call('apiAdminDeleteSignup', [adminCred, signupId])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            aBanner('Inscripción borrada.', 'ok');
+            aLoad(true);
+          } else {
+            if (aAuthLost(resp)) return;
+            aBanner(resp.message || 'No se pudo borrar.', 'err');
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          aBanner('Sin conexión.', 'err');
+        });
+    }
+
+    function aOnToggle() {
+      if (aBusy) return;
+      var open = aData && aData.evento_abierto;
+      openSheet({
+        title: open ? 'Cerrar inscripción' : 'Abrir inscripción',
+        body: '<p class="footer-note" style="margin:0;text-align:left">'
+          + (open ? 'No van a poder anotarse.' : 'Van a poder anotarse.') + '</p>',
+        confirm: open ? 'Cerrar' : 'Abrir',
+        danger: open,
+        onConfirm: aToggleConfirmed
+      });
+    }
+
+    function aToggleConfirmed() {
+      if (aBusy) return;
+      var open = aData && aData.evento_abierto;
+      aBusy = true;
+      call('apiAdminSetOpen', [adminCred, !open])
+        .then(function (resp) {
+          aBusy = false;
+          if (resp.ok) {
+            aBanner(resp.evento_abierto ? 'Inscripción abierta.' : 'Inscripción cerrada.', 'ok');
+            aLoad(true);
+          } else {
+            if (aAuthLost(resp)) return;
+            aBanner(resp.message || 'No se pudo cambiar.', 'err');
+          }
+        })
+        .catch(function () {
+          aBusy = false;
+          aBanner('Error de conexión.', 'err');
+        });
+    }
+
+    function aCsvCell(v) {
+      var s = String(v == null ? '' : v);
+      if (s.indexOf(';') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    function aCopyLink() {
+      var url = window.location.origin + window.location.pathname;
+      if (TRANSPORT === 'demo') {
+        url += '?demo=1';
+      } else if (TRANSPORT === 'jsonp') {
+        var api = getApiUrl();
+        if (api) url += '?api=' + encodeURIComponent(api);
+      }
+      var done = function () { aBanner('Link copiado.', 'ok'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () {
+          window.prompt('Copiá el link:', url);
+        });
+      } else {
+        window.prompt('Copiá el link:', url);
+      }
+    }
+
+    function aDownloadCsv() {
+      var d = aData;
+      if (!d) return;
+      var rows = [['Fecha', 'Mail', 'Nombre', 'Curso', 'Ciclo', 'Horario', 'Charla']];
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        rows.push([s.cuando, s.email, s.nombre, s.curso, s.ciclo, s.slotLabel, s.talkTitulo]);
+      }
+      var csv = '\uFEFF' + rows.map(function (r) {
+        return r.map(aCsvCell).join(';');
+      }).join('\r\n');
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'inscripciones-esi.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function aLogout() {
+      adminCred = '';
+      aData = null;
+      $('input-pin').value = '';
+      $('gate-msg').textContent = '';
+      $('gate-msg').style.display = 'none';
+      aDemoHint();
+      showScreen(A_SCREENS, 'a-screen-gate');
+    }
+
+    function aDemoHint() {
+      if (TRANSPORT !== 'demo') return;
+      $('gate-msg').textContent = 'Modo prueba: cualquier clave.';
+      $('gate-msg').className = 'banner ok';
+      $('gate-msg').style.display = 'block';
+    }
+
+    function aInit() {
+      document.body.className = 'admin';
+      $('hdr-title').textContent = 'Panel de profes';
+      $('hdr-sub').textContent = 'ESI 2026';
+      $('btn-pin').addEventListener('click', function () {
+        var pin = $('input-pin').value;
+        if (!pin) return;
+        aLogin(pin);
+      });
+      $('input-pin').addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') $('btn-pin').click();
+      });
+      $('btn-copiar-link').addEventListener('click', aCopyLink);
+      $('btn-csv').addEventListener('click', aDownloadCsv);
+      $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
+      $('btn-salir').addEventListener('click', aLogout);
+      $('input-buscar').addEventListener('input', aRenderTable);
+      $('filter-curso').addEventListener('change', aRenderTable);
+      $('filter-division').addEventListener('change', aRenderTable);
+      $('filter-charla').addEventListener('change', aRenderTable);
+      $('tab-inscriptos').addEventListener('click', function () { aTab('inscriptos'); });
+      $('tab-mails').addEventListener('click', function () { aTab('mails'); });
+      $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
+      $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
+
+      if (adminCred) {
+        showScreen(A_SCREENS, 'a-screen-panel');
+        aLoad(true);
+      } else {
+        aDemoHint();
+        showScreen(A_SCREENS, 'a-screen-gate');
+      }
+
+      window.setInterval(function () {
+        if (document.visibilityState === 'visible' && adminCred && aData && !aBusy) {
+          aLoad(true);
+        }
+      }, 30000);
+    }
+
+    function initReveal() {
+      var nodes = document.querySelectorAll('.reveal:not([data-rv])');
+      if (!nodes.length) return;
+      var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced || !('IntersectionObserver' in window)) {
+        for (var i = 0; i < nodes.length; i++) nodes[i].classList.add('reveal-in');
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        for (var j = 0; j < entries.length; j++) {
+          if (!entries[j].isIntersecting) continue;
+          entries[j].target.classList.add('reveal-in');
+          io.unobserve(entries[j].target);
+        }
+      }, { rootMargin: '0px 0px -8% 0px', threshold: .08 });
+      for (var k = 0; k < nodes.length; k++) {
+        nodes[k].setAttribute('data-rv', '1');
+        nodes[k].classList.add('reveal-armed');
+        io.observe(nodes[k]);
+      }
+    }
+
+    function initShell() {
+      var nav = $('nav');
+      if (nav) {
+        var onScroll = function () {
+          nav.classList.toggle('scrolled', window.scrollY > 8);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      }
+      initReveal();
+    }
+
+    function purgeLegacyStorage() {
+      ssDel('esi_admin_pin');
+      if (TRANSPORT !== 'demo') lsDel('esi_student');
+    }
+
+    function boot() {
+      purgeLegacyStorage();
+      sheetInit();
+      initShell();
+      if (TRANSPORT === 'unconfigured') {
+        $('btn-demo').addEventListener('click', function () {
+          lsSet('esi_demo', '1');
+          window.location.reload();
+        });
+        showSetupWarning();
+        return;
+      }
+      if (IS_ADMIN) {
+        aInit();
+      } else {
+        sInit();
+      }
+      if (TRANSPORT === 'demo') {
+        document.body.classList.add('demo');
+        var hint = $('hint-mail');
+        if (hint) {
+          hint.textContent = 'Modo prueba: cualquier mail válido.';
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', boot);
+  </script>
+</body>
+</html>
