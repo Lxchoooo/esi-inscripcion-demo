@@ -92,7 +92,8 @@ return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
   sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir,
-  sHelloYes: sHelloYes, sHelloNo: sHelloNo, sForgotMail: sForgotMail,
+  sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall,
+  sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
   aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
   retryTransient_: retryTransient_,
@@ -258,12 +259,22 @@ function tick() {
   ui.sHelloYes();
   await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'entra con dni');
-  const savedSession = JSON.parse(store.esi_student);
-  assert(savedSession.email === 'ana@esc.edu.ar', 'sesion guardada en el dispositivo');
-  assert(!JSON.stringify(savedSession).includes('30111222'), 'el dni no se guarda');
+  const token = store.esi_session;
+  assert(typeof token === 'string' && token.indexOf('s_demo_') === 0, 'solo se guarda el token opaco');
+  assert(!('esi_student' in store), 'no se guarda la identidad');
+  assert(!token.includes('30111222'), 'el dni no se guarda');
+  const resumed = await ui.demoCall('apiResumeSession', [token]);
+  assert(resumed.ok, 'la sesion se reanuda');
+  assert(resumed.student.email === 'ana@esc.edu.ar', 'la sesion reanuda al mismo alumno');
+  const mismatch = await ui.demoCall('apiGetData', ['beto@esc.edu.ar', '', '', token]);
+  assert(!mismatch.ok && mismatch.expired, 'el token no lee datos de otro alumno');
   ui.sSalir();
-  assert(!('esi_student' in store), 'salir borra la sesion');
-  assert(!('esi_student_data' in store), 'salir borra la copia de sesion');
+  await tick();
+  assert(!('esi_session' in store), 'salir borra el token');
+  assert(!('esi_student' in store), 'salir no deja identidad');
+  assert(!('esi_student_data' in store), 'salir borra la copia vieja');
+  const revoked = await ui.demoCall('apiResumeSession', [token]);
+  assert(!revoked.ok, 'salir invalida el token en el backend');
   assert(ui.getState().email === '' && ui.getState().nombre === '' && ui.getState().curso === '', 'salir limpia el estado');
   assert(ui.getState().data === null && ui.getState().lookup === null, 'salir limpia los datos');
   assert(document.getElementById('input-mail').value === '', 'salir limpia el mail');
@@ -275,10 +286,12 @@ function tick() {
   assert(document.getElementById('login-dni-box').hidden === true, 'salir oculta el dni');
   assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'salir vuelve al ingreso');
   ui.sSetLoginMode('mail');
-
-  ui.sForgotMail();
-  assert(document.getElementById('sheet-title').textContent === 'No te acordás tu mail?', 'titulo del sheet');
-  assert(document.getElementById('sheet-body').innerHTML.includes('preceptor'), 'texto del sheet');
+  ui.sSetLoginMode('dni');
+  assert(document.getElementById('login-title').textContent === 'Entrá', 'titulo generico');
+  assert(document.getElementById('hint-mail').textContent === 'Usá tu mail del colegio o tu DNI.', 'ayuda corta');
+  assert(document.getElementById('login-dni').getAttribute('aria-pressed') === 'true', 'selector dni activo');
+  ui.sSetLoginMode('mail');
+  assert(document.getElementById('login-mail').getAttribute('aria-pressed') === 'true', 'selector mail activo');
 
   ui.setTalk({
     ok: true, role: 'admin', talk: { id: 'B1', titulo: 'Ansiedad', cupo: 40 },

@@ -3,6 +3,7 @@ var SLOTS_SHEET = 'Slots';
 var TALKS_SHEET = 'Talks';
 var SIGNUPS_SHEET = 'Signups';
 var STUDENTS_SHEET = 'Students';
+var SESSIONS_SHEET = 'Sessions';
 var MAX_EMAIL_ = 120;
 var ADMIN_PIN_PROP = 'ADMIN_PIN';
 var GUIDE_PIN_PROP = 'GUIDE_PIN';
@@ -12,6 +13,11 @@ var ADMIN_MAX_FAILS = 5;
 var ADMIN_BLOCK_MS = 60000;
 var ADMIN_TOKEN_PREFIX = 't_';
 var ADMIN_TOKEN_TTL = 7200;
+var STUDENT_TOKEN_PREFIX = 's_';
+var STUDENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+var STUDENT_SESSION_GRACE_MS = 24 * 60 * 60 * 1000;
+// 2026-11-04 23:59:59 -03. Sessions can live 24 h past the event.
+var EVENT_DAY_END_MS = Date.UTC(2026, 10, 5, 2, 59, 59);
 var ROLE_ADMIN = 'admin';
 var ROLE_GUIDE = 'guide';
 var DATA_CACHE_TTL = 12;
@@ -317,6 +323,8 @@ var EsiCore = (function () {
 var API_FN_MAP_ = {
   apiLookup: apiLookup,
   apiGetData: apiGetData,
+  apiResumeSession: apiResumeSession,
+  apiStudentLogout: apiStudentLogout,
   apiRegister: apiRegister,
   apiAdminLogin: apiAdminLogin,
   apiAdminGetData: apiAdminGetData,
@@ -383,6 +391,7 @@ function setup() {
   ]);
   ensureSheet_(ss, TALKS_SHEET, ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], seedTalks_());
   ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
+  ensureSheet_(ss, SESSIONS_SHEET, ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
   ensureColumn_(sheet_(SIGNUPS_SHEET), 'presente');
   ensureAdminPin_();
@@ -958,7 +967,7 @@ function apiLookupDni(dni, apellido) {
   }
 }
 
-function apiGetData(email, nombre, curso) {
+function apiGetData(email, nombre, curso, sessionToken) {
   try {
     var bs = buildStudent_(email, nombre, curso);
     if (!bs.ok) {
@@ -966,11 +975,137 @@ function apiGetData(email, nombre, curso) {
     }
     var s = bs.student;
     var mine = mineMap_(readSignupsCached_(), s.email);
+    var current = sessionToken ? studentSession_(sessionToken) : null;
+    if (sessionToken && (!current || current.email !== s.email)) return studentSessionExpired_();
+    var session = current ? '' : issueStudentSession_(s);
     return {
       ok: true,
       student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
-      data: publicData_(s.ciclo, mine)
+      data: publicData_(s.ciclo, mine),
+      session: session
     };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function studentSessionExpiry_(now) {
+  var base = Number(now) || Date.now();
+  return Math.min(base + STUDENT_SESSION_TTL_MS, EVENT_DAY_END_MS + STUDENT_SESSION_GRACE_MS);
+}
+
+function studentTokenHash_(token) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token || ''))
+    .map(function (b) {
+      return (b < 0 ? b + 256 : b).toString(16).padStart(2, '0');
+    }).join('');
+}
+
+function sessionsSheet_() {
+  var ss = SpreadsheetApp.getActive();
+  return ensureSheet_(ss, SESSIONS_SHEET,
+    ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
+}
+
+function sessionDateMs_(value) {
+  if (value instanceof Date) return value.getTime();
+  var n = Number(value);
+  if (n) return n;
+  var t = new Date(value).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+function readSessions_() {
+  var vals = sessionsSheet_().getDataRange().getValues();
+  var rows = [];
+  for (var i = 1; i < vals.length; i++) {
+    if (!String(vals[i][0] || '').trim()) continue;
+    rows.push({
+      row: i + 1,
+      hash: String(vals[i][0]).trim(),
+      email: EsiCore.normalizeEmail(vals[i][1]),
+      nombre: String(vals[i][2] == null ? '' : vals[i][2]).replace(/\s+/g, ' ').trim(),
+      curso: EsiCore.parseCurso(vals[i][3]) || String(vals[i][3] == null ? '' : vals[i][3]).trim(),
+      ciclo: String(vals[i][4] == null ? '' : vals[i][4]).trim().toLowerCase(),
+      created: sessionDateMs_(vals[i][5]),
+      expires: sessionDateMs_(vals[i][6]),
+      revoked: convertBool_(vals[i][7])
+    });
+  }
+  return rows;
+}
+
+function studentSession_(token) {
+  var raw = String(token == null ? '' : token).trim();
+  if (raw.indexOf(STUDENT_TOKEN_PREFIX) !== 0 || raw.length < 8) return null;
+  var hash = studentTokenHash_(raw);
+  var rows = readSessions_();
+  var now = Date.now();
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].hash !== hash) continue;
+    if (rows[i].revoked || rows[i].expires <= now) return null;
+    return rows[i];
+  }
+  return null;
+}
+
+function issueStudentSession_(student) {
+  if (!student || !EsiCore.isValidEmail(student.email)) return '';
+  var now = Date.now();
+  var expires = studentSessionExpiry_(now);
+  if (!(expires > now)) return '';
+  var raw = STUDENT_TOKEN_PREFIX + (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+  sessionsSheet_().appendRow([
+    studentTokenHash_(raw),
+    EsiCore.normalizeEmail(student.email),
+    String(student.nombre || '').trim(),
+    String(student.curso || '').trim(),
+    String(student.ciclo || '').trim(),
+    new Date(now),
+    new Date(expires),
+    false
+  ]);
+  return raw;
+}
+
+function revokeStudentSession_(token) {
+  var raw = String(token == null ? '' : token).trim();
+  if (raw.indexOf(STUDENT_TOKEN_PREFIX) !== 0) return false;
+  var hash = studentTokenHash_(raw);
+  var rows = readSessions_();
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].hash !== hash) continue;
+    sessionsSheet_().getRange(rows[i].row, 8).setValue(true);
+    return true;
+  }
+  return false;
+}
+
+function studentSessionExpired_() {
+  return { ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' };
+}
+
+function apiResumeSession(token) {
+  try {
+    var sess = studentSession_(token);
+    if (!sess) return studentSessionExpired_();
+    var out = apiGetData(sess.email, sess.nombre, sess.curso, token);
+    if (!out.ok) return studentSessionExpired_();
+    return {
+      ok: true,
+      email: out.student.email,
+      student: out.student,
+      data: out.data
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function apiStudentLogout(token) {
+  try {
+    revokeStudentSession_(token);
+    return { ok: true };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
