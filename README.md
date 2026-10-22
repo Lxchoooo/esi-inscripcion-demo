@@ -10,7 +10,7 @@ En demo, todo queda en el navegador y no hay clave real.
 ## Estructura
 
 - `index.html`: el sitio publicado.
-- `assets/logo.png`: logo del encabezado. Si falta, el panel usa una copia embebida.
+- `assets/logo.png`: logo oficial del encabezado. No hay copia base64 embebida.
 - `src/Code.gs`: backend de Apps Script.
 - `src/Panel.html`: el panel completo, se pega como archivo HTML en Apps Script.
 - `src/appsscript.json`: manifiesto de Apps Script.
@@ -27,15 +27,16 @@ En demo, todo queda en el navegador y no hay clave real.
    - Acceso: cualquiera.
 6. Copiar la URL `/exec`.
 
-`setup()` deja la hoja `Signups` con la columna `presente`, crea la hoja
-`Sessions` y genera las dos claves si no existen. La lista de alumnos no se
-crea sola: se carga con "Importar lista" en el panel o se pega en la hoja
-`Students`.
+`setup()` deja la hoja `Signups` con las columnas `presente` y `apellido`,
+crea la hoja `Sessions` y genera las dos claves si no existen. También deja en
+`Config` la fecha y la zona del evento (`2026-11-04` y
+`America/Argentina/Cordoba`). La lista de alumnos es opcional: sin padrón se
+entra con el mail institucional y los datos se autodeclaran.
 
-La hoja `Students` se lee por encabezado: `email, apellido, nombre, curso, dni`.
-El DNI es opcional. Si no hay encabezado `apellido`, se acepta el formato viejo
-`mail;nombre;curso` y el nombre se muestra tal cual. La importación escribe
-siempre las cinco columnas y acepta:
+La hoja `Students` queda como legado y se lee por encabezado:
+`email, apellido, nombre, curso, dni`. El DNI es opcional. Si no hay encabezado
+`apellido`, se acepta el formato viejo `mail;nombre;curso` y el nombre se
+muestra tal cual. La importación escribe siempre las cinco columnas y acepta:
 
 - `mail;apellido;nombre;curso;dni`
 - `mail;apellido;nombre;curso`
@@ -44,6 +45,18 @@ siempre las cinco columnas y acepta:
 El DNI se guarda solo con dígitos (7 u 8): si viene con puntos o espacios, se
 normaliza. Un DNI inválido se descarta y, si se repite, el segundo alumno queda
 sin acceso por DNI; la importación informa cuántos quedaron así.
+
+## Acceso sin padrón
+
+El camino principal es el mail institucional
+`@secundariosalsipuedes.edu.ar`. No se verifica que el mail exista ni que
+pertenezca a un alumno de la lista: el alumno escribe apellido, nombre, año y
+división, y el panel arma el curso. En este modo el DNI no sirve para validar
+identidad y queda oculto.
+
+Si se carga `Students`, el panel también ofrece DNI + apellido como respaldo y
+`rosterLoaded` pasa a verdadero. Los reportes y los recordatorios se calculan
+desde `Signups`, no desde el padrón.
 
 ## Roles y claves
 
@@ -56,11 +69,12 @@ En el login hay un solo campo: la clave decide el rol.
 
 | | Profe | Guía |
 |---|---|---|
-| Por charla y sin anotar | sí | sí |
+| Por charla e incompletos | sí | sí |
 | Ver mails | sí | no |
 | Cerrar o abrir la inscripción | sí | no |
 | Borrar inscripciones | sí | no |
 | Importar la lista de mails | sí | no |
+| Preparar y enviar recordatorios | sí | no |
 | Descargar CSV | sí | no |
 | Marcar presente | sí | sí |
 | Ver reportes | sí | sí |
@@ -79,8 +93,7 @@ como profe.
 ## Interfaz
 
 - La marca ISS usa `assets/logo.png` y una paleta verde con contraste
-  verificado en modo claro y oscuro. Si la imagen no carga, queda un escudo
-  embebido como respaldo.
+  verificado en modo claro y oscuro.
 - La pantalla de acceso usa una escala de 4/8/12/16/24 px, targets de 44 px,
   inputs de 16 px y `100dvh` para que el teclado no tape el formulario.
 - En escritorio (1024 px o más), el panel de profes usa todo el ancho, tablas
@@ -95,12 +108,13 @@ como profe.
 
 ## Sesión del alumno
 
-Al identificarse, el panel guarda en `localStorage` solo `esi_session`, un
-token opaco que empieza con `s_`. No guarda mail, DNI, nombre ni curso.
+Al identificarse con el mail institucional o con DNI (si hay padrón), el panel
+guarda en `localStorage` solo `esi_session`, un token opaco que empieza con
+`s_`. No guarda mail, DNI, nombre ni curso.
 
 El backend guarda en la hoja `Sessions` el hash SHA-256 del token, el mail, el
-nombre, el curso, el ciclo, la fecha de emisión, el vencimiento y si fue
-revocado. El token crudo no se guarda. Esa hoja tiene datos personales: no se
+nombre, el apellido, el curso, el ciclo, la fecha de emisión, el vencimiento y
+si fue revocado. El token crudo no se guarda. Esa hoja tiene datos personales: no se
 comparte ni se descarga.
 
 La sesión vence a los 7 días o 24 horas después del día del evento, lo que
@@ -119,13 +133,16 @@ entrar. No usar la lista real en demo.
 La pestaña Reportes calcula todo en memoria desde la caché de la planilla; no
 escribe hojas nuevas.
 
-- Por curso: elegís el curso y ves la lista A-Z con los totales (en la lista,
-  completos, incompletos, sin anotar), los presentes por franja y las tres
-  charlas de cada alumno. El botón "Presente" marca la asistencia.
+- Por curso: elegís el curso y ves la lista A-Z con inscriptos, completos,
+  incompletos y presentes por franja, más las tres charlas de cada alumno.
 - Por charla: elegís la charla y ves inscriptos, presentes, ausentes, cupo y
   el desglose por curso.
-- Total: totales generales, presentes por franja y la tabla de todas las
-  charlas con inscriptos y presentes.
+- Total: inscriptos, completos, incompletos, reservas, presentes y ausentes,
+  más las tablas por franja y por ciclo.
+- Los gráficos son SVG/CSS propios, con números visibles y tabla alternativa
+  para lectores de pantalla.
+- "Incompletos" reemplaza a "Sin anotar": lista solo a quienes tienen una o
+  dos elecciones, calculado desde `Signups`.
 
 Los guías ven los reportes sin mails; los profes ven el mail debajo del nombre.
 En el celular las tablas se muestran como tarjetas.
@@ -139,6 +156,18 @@ El encabezado usa `SCHOOL_NAME` y `EVENT_NAME`, al principio del script de
 `src/Panel.html`, ya configurados como "Instituto Secundario Salsipuedes (ISS)"
 y "Jornada ESI 2026". La impresión fuerza blanco y negro, sin la navegación ni
 los botones del panel.
+
+## Calendario y recordatorios
+
+Cada alumno con las tres charlas elegidas puede descargar un `.ics` desde el
+resumen o desde la confirmación. Incluye zona horaria de Córdoba, un evento por
+franja y un aviso 10 minutos antes.
+
+En "Lista de mails", el profe puede ver la vista previa del recordatorio y
+enviarlo por tandas de 20. Se manda solo a mails con al menos una elección,
+desde `MailApp`, y se muestra la cuota disponible. Sin autorización de
+`MailApp` el envío queda deshabilitado con un mensaje claro. No se registran
+mails ni cuerpos en logs.
 
 ## Conectar esta web
 
@@ -160,12 +189,15 @@ Antes de abrir:
 
 - Confirmar en el encabezado impreso el nombre del instituto y la jornada.
 - Probar el circuito con 10 o 20 alumnos de prueba: entrar con mail, entrar
-  con DNI y apellido, anotarse en las tres franjas, marcar presente, imprimir
-  un curso, mirar el panel a 360 px y probar "Salir" en un equipo compartido.
+  con DNI si hay padrón, anotarse en las tres franjas, descargar el `.ics`,
+  marcar presente, imprimir un curso, mirar el panel a 360 px y probar "Salir"
+  en un equipo compartido.
+- Revisar la cuota de `MailApp` antes de enviar recordatorios y hacer una
+  prueba a un mail propio.
 - Descargar una copia de la planilla (Archivo > Hacer una copia) y un CSV
   desde Inscriptos. Si algo sale mal, la copia es el respaldo.
-- Revisar que la lista tenga apellido y curso. Sin apellido no funciona el
-  login por DNI; sin curso, el alumno lo elige al entrar.
+- Revisar que la lista, si se usa, tenga apellido y curso. Sin apellido no
+  funciona el login por DNI; sin padrón, el alumno elige curso al entrar.
 - Confirmar que `ADMIN_PIN` y `GUIDE_PIN` sean las claves del día y que solo
   las tengan profes y guías. Se cambian en Script Properties; el próximo
   ingreso usa la nueva y no hace falta redesplegar.
@@ -195,12 +227,14 @@ Después:
   solo y "Salir" lo revoca. En un celular compartido, usar "Salir" al
   terminar.
 - En producción, el DNI no se guarda en el dispositivo, ni en reportes, ni en
-  el CSV. Solo se usa en el servidor para validar DNI + apellido. En demo, la
-  lista importada puede incluir DNI en `localStorage`.
+  el CSV. Solo se usa en el servidor para validar DNI + apellido cuando hay
+  padrón. En demo, la lista importada puede incluir DNI en `localStorage`.
+- El recordatorio se envía a los mails declarados en `Signups`; no se muestran
+  en la vista de guía ni en la descarga pública.
 - La API pública devuelve charlas, horarios, cupos y las elecciones propias.
-  Para cualquier mail cargado en la lista, devuelve nombre y curso, para que
-  el alumno reconozca su cuenta. Cualquiera que sepa o adivine un mail
-  institucional puede ver ese nombre y curso.
+  Con padrón, para cualquier mail cargado en la lista devuelve nombre y curso,
+  para que el alumno reconozca su cuenta. Sin padrón, el mail solo se usa como
+  identificador declarado y no se valida contra una lista.
 - El login por DNI devuelve el mail solo cuando el DNI y el apellido coinciden
   con un único alumno. Después de cinco fallos por DNI hay un bloqueo de un
   minuto. El DNI no es un dato secreto: el apellido es una barrera débil.
