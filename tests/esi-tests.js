@@ -90,6 +90,11 @@ function assertEq(a, b, msg) {
 
 const codeSrc = read('Code.gs');
 const panelHtml = read('Panel.html');
+const publishedIndex = path.join(ROOT, '..', 'index.html');
+if (fs.existsSync(publishedIndex) && fs.readFileSync(publishedIndex, 'utf8') !== panelHtml) {
+  console.error('FAIL index.html is stale; copy src/Panel.html to index.html');
+  process.exit(1);
+}
 const apps = read('appsscript.json');
 
 compile('Code.gs', codeSrc);
@@ -284,8 +289,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 12) throw new Error('expected 12 api fns, got ' + names.length);
-  const want = ['apiLookup', 'apiGetData', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports'];
+  if (names.length !== 14) throw new Error('expected 14 api fns, got ' + names.length);
+  const want = ['apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -726,10 +731,15 @@ t('Panel carries the ISS identity and an accessible green palette', () => {
   if (!/var EVENT_NAME = 'Jornada ESI 2026';/.test(panelSrc)) throw new Error('EVENT_NAME');
   for (const needle of ['brand-logo', 'Instituto Secundario Salsipuedes (ISS)',
     'ISS · Jornada ESI 2026', '<title>ISS · Jornada ESI 2026</title>',
-    'aria-label="Inicio, Instituto Secundario Salsipuedes (ISS)"']) {
+    'aria-label="Inicio, Instituto Secundario Salsipuedes"',
+    'src="assets/logo.png"', 'data:image/png;base64,',
+    '<span class="brand-school">Instituto Secundario Salsipuedes</span>']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/viewBox="0 0 40 40"/.test(panelHtml)) throw new Error('logo viewBox');
+  if (/brand-iss/.test(panelHtml)) throw new Error('header still carries the ISS prefix');
+  const logo = fs.readFileSync(path.join(ROOT, '..', 'assets', 'logo.png'));
+  if (logo.slice(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('logo.png is not a PNG');
+  if (logo.length < 500) throw new Error('logo.png is suspiciously small');
   if (!/@media \(prefers-color-scheme: dark\)[\s\S]*?--accent: #9BD3A6/.test(panelHtml)) throw new Error('dark accent');
 });
 
@@ -742,15 +752,36 @@ t('Panel uses a dense desktop admin layout with keyboard shortcuts', () => {
   }
 });
 
-t('Panel stays usable at 360px with 40px targets and safe overflow', () => {
+t('Panel stays usable at 360px with 44px targets and safe overflow', () => {
   for (const needle of ['@media (max-width: 380px)', 'overflow-wrap: anywhere',
-    'text-overflow: ellipsis', 'min-height: 40px', 'z-index: 50',
-    'box-shadow: 0 -8px 24px', 'padding-bottom: calc(128px']) {
+    'text-overflow: ellipsis', 'min-height: 44px', 'z-index: 50',
+    'box-shadow: 0 -8px 24px', 'padding-bottom: calc(128px',
+    '100dvh', 'interactive-widget=resizes-content', 'font-size: 16px']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/\.present-btn \{[^}]*min-height: 40px/s.test(panelHtml)) throw new Error('present button target');
-  if (!/\.present-mini \{[^}]*min-height: 40px/s.test(panelHtml)) throw new Error('present mini target');
+  if (!/\.present-btn \{[^}]*min-height: 44px/s.test(panelHtml)) throw new Error('present button target');
+  if (!/\.present-mini \{[^}]*min-height: 44px/s.test(panelHtml)) throw new Error('present mini target');
   if (!/\.sel-bar \{[^}]*z-index: 50/s.test(panelHtml)) throw new Error('sel bar stacking');
+});
+
+t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
+  for (const needle of ['class="login-fields"', 'class="field"', 'id="btn-use-dni"',
+    'placeholder="usuario@secundariosalsipuedes.edu.ar"', 'placeholder="Solo números"',
+    '<h2 class="intro" id="login-title">Entrá</h2>',
+    'Usá tu mail del colegio o tu DNI.',
+    '.login-fields { display: grid; gap: 16px; }',
+    '.login-fields[hidden] { display: none; }',
+    '.field { display: grid; gap: 8px; }',
+    'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/\.steps \{[^}]*margin: 0 0 8px/s.test(panelHtml)) throw new Error('steps gap');
+  if (!/h2\.intro \{[^}]*margin: 0 0 12px/s.test(panelHtml)) throw new Error('title gap');
+  if (!/p\.hint \{[^}]*margin: 0 0 24px/s.test(panelHtml)) throw new Error('hint gap');
+  if (contrast('#0E7A2F', '#FFFFFF') < 4.5) throw new Error('active segment contrast');
+  if (/No te acordás tu mail\?/.test(panelHtml)) throw new Error('old mail help link remains');
+  if (!/\-webkit\-line\-clamp: 2/.test(panelHtml)) throw new Error('school name not clamped');
+  if (!/\.panel-head \{ flex-wrap: wrap; \}/.test(panelHtml)) throw new Error('panel head does not wrap');
 });
 
 function fakeSheet(name, headers, rows) {
@@ -856,8 +887,12 @@ function backendStub(props, seed) {
       computeDigest: (algo, value) => {
         let h = 7;
         const s = String(value);
-        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 255;
-        return [h, (h + 17) & 255, (h + 91) & 255, 250, 255];
+        const out = [];
+        for (let i = 0; i < 32; i++) {
+          for (let j = 0; j < s.length; j++) h = (h * 31 + s.charCodeAt(j) + i) & 255;
+          out.push(h);
+        }
+        return out;
       }
     }
   };
@@ -1341,10 +1376,10 @@ t('Panel prints A4 reports with a signature column and page breaks', () => {
 });
 
 t('Panel wipes student data on Salir and warns about shared phones', () => {
-  if (!/function sClearStudentSession_\(\)[\s\S]*?lsDel\('esi_student'\)[\s\S]*?ssDel\('esi_student'\)/.test(panelSrc)) {
+  if (!/function sClearStudentSession_\(\)[\s\S]*?'esi_session'[\s\S]*?'esi_student'[\s\S]*?ssDel/.test(panelSrc)) {
     throw new Error('session wipe helper');
   }
-  if (!/function sSalir\(\) \{[\s\S]*?sClearStudentSession_\(\)[\s\S]*?sEmptyState_\(\)[\s\S]*?sClearLoginFields_\(\)[\s\S]*?sSetLoginMode\('mail'\)/.test(panelSrc)) {
+  if (!/function sSalir\(\) \{[\s\S]*?sRevokeSession_\(\)[\s\S]*?sClearStudentSession_\(\)[\s\S]*?sEmptyState_\(\)[\s\S]*?sClearLoginFields_\(\)[\s\S]*?sSetLoginMode\('mail'\)/.test(panelSrc)) {
     throw new Error('Salir does not reset the login');
   }
   for (const needle of ['id="login-note"', 'Si el celular es compartido',
@@ -1417,7 +1452,7 @@ t('Report tables turn into cards on narrow screens', () => {
   if (!/\.report-table tr \{[^}]*display: block/.test(block)) throw new Error('report rows are not cards');
   if (!block.includes('.report-table thead { display: none; }')) throw new Error('report head not hidden');
   if (!block.includes('.report-table td::before')) throw new Error('report labels missing');
-  if (!/\.report-table \.present-mini \{[^}]*min-height: 40px/.test(block)) throw new Error('touch size missing');
+  if (!/\.report-table \.present-mini \{[^}]*min-height: 44px/.test(block)) throw new Error('touch size missing');
 });
 
 
@@ -1582,15 +1617,74 @@ t('Panel logs in with DNI and apellido against the public endpoint', () => {
   if (!/function sLookupDni\(/.test(panelSrc)) throw new Error('sLookupDni missing');
 });
 
-t('Panel keeps the student session on the device and never stores the DNI', () => {
-  if (!/lsSet\('esi_student'/.test(panelSrc)) throw new Error('session not persisted in localStorage');
-  if (/ssSet\('esi_student'/.test(panelSrc)) throw new Error('session still in sessionStorage');
-  if (!/lsGet\('esi_student'\)/.test(panelSrc)) throw new Error('session not restored');
-  if (!/lsDel\('esi_student'\)/.test(panelSrc)) throw new Error('session not cleared');
+t('Panel stores only an opaque student token and resumes or revokes it', () => {
+  if (!/lsSet\('esi_session', token\)/.test(panelSrc)) throw new Error('token not persisted');
+  if (/lsSet\('esi_student'/.test(panelSrc)) throw new Error('identity persisted');
+  if (!/call\('apiResumeSession', \[token\]\)/.test(panelSrc)) throw new Error('session not resumed');
+  if (!/function sRevokeSession_[\s\S]*?call\('apiStudentLogout', \[token\]\)/.test(panelSrc)) {
+    throw new Error('logout does not revoke the token');
+  }
   if (!/id="btn-alumno-salir"/.test(panelHtml)) throw new Error('student logout missing');
-  if (!/function sSalir\(/.test(panelSrc)) throw new Error('sSalir missing');
-  if (/lsSet\('esi_student'[\s\S]{0,300}dni/.test(panelSrc)) throw new Error('dni stored on device');
-  if (/TRANSPORT !== 'demo'\) lsDel\('esi_student'\)/.test(panelSrc)) throw new Error('real session purged on boot');
+  if (!/function sInit\(\)[\s\S]*?sSessionToken_\(\)[\s\S]*?apiResumeSession/.test(panelSrc)) {
+    throw new Error('boot does not resume the session');
+  }
+  if (/lsSet\([^)]*(dni|input-dni)/i.test(panelSrc)) throw new Error('dni stored on device');
+  if (!/function sClearStudentSession_\(\)[\s\S]*?'esi_session'/.test(panelSrc)) throw new Error('token not cleared');
+});
+
+t('Code.gs issues opaque sessions that resume only their own data', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiGetData, apiResumeSession, apiStudentLogout, apiAdminGetData');
+  const first = api.apiGetData('ana@esc.edu.ar', '', '');
+  assertEq(first.ok, true, 'getData ok');
+  if (typeof first.session !== 'string' || first.session.indexOf('s_') !== 0) {
+    throw new Error('student token not issued');
+  }
+  const sheet = services.sheets.Sessions;
+  if (!sheet || sheet.data.length !== 2) throw new Error('session row missing');
+  const serialized = JSON.stringify(sheet.data);
+  if (serialized.includes(first.session)) throw new Error('raw token stored in the sheet');
+  if (!/^[0-9a-f]{40,}$/.test(String(sheet.data[1][0]))) throw new Error('token is not hashed');
+  if (sheet.data[1][1] !== 'ana@esc.edu.ar') throw new Error('session not bound to the student');
+
+  const resumed = api.apiResumeSession(first.session);
+  assertEq(resumed.ok, true, 'resume ok');
+  assertEq(resumed.student.email, 'ana@esc.edu.ar', 'resume email');
+  assertEq(resumed.data.mine[1], 'B1', 'resume own choices');
+  if (JSON.stringify(resumed).includes('beto@')) throw new Error('resume leaks another student');
+
+  const other = api.apiGetData('beto@esc.edu.ar', '', '', first.session);
+  assertEq(other.ok, false, 'token cannot read another email');
+  if (other.student || other.data) throw new Error('mismatched token leaked data');
+
+  const admin = api.apiAdminGetData(first.session);
+  assertEq(admin.ok, false, 'student token is not an admin credential');
+  if (admin.signups || admin.students) throw new Error('student token reached admin data');
+
+  const out = api.apiStudentLogout(first.session);
+  assertEq(out.ok, true, 'logout responds');
+  const revoked = api.apiResumeSession(first.session);
+  assertEq(revoked.ok, false, 'revoked token rejected');
+  if (!/sesión venció/i.test(revoked.message)) throw new Error('revoked message: ' + revoked.message);
+});
+
+t('Code.gs expires student sessions at seven days or after the event', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiGetData, apiResumeSession, studentSessionExpiry_');
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const early = Date.UTC(2026, 9, 1, 12, 0, 0);
+  assertEq(api.studentSessionExpiry_(early), early + week, 'seven day cap');
+  const eventLimit = Date.UTC(2026, 10, 6, 2, 59, 59);
+  assertEq(api.studentSessionExpiry_(Date.UTC(2026, 10, 5, 12, 0, 0)), eventLimit, 'event cap');
+  const after = api.studentSessionExpiry_(Date.UTC(2026, 10, 7, 12, 0, 0));
+  if (after > Date.UTC(2026, 10, 7, 12, 0, 0)) throw new Error('session outlives the event');
+
+  const issued = api.apiGetData('ana@esc.edu.ar', '', '');
+  const row = services.sheets.Sessions.data[1];
+  row[6] = new Date(Date.now() - 1000);
+  const expired = api.apiResumeSession(issued.session);
+  assertEq(expired.ok, false, 'expired token rejected');
+  if (expired.student || expired.data) throw new Error('expired token leaked data');
 });
 
 t('Lookup answers have the same shape for known and unknown mails', () => {
