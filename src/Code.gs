@@ -5,6 +5,7 @@ var SIGNUPS_SHEET = 'Signups';
 var STUDENTS_SHEET = 'Students';
 var SESSIONS_SHEET = 'Sessions';
 var MAX_EMAIL_ = 120;
+var INSTITUTIONAL_DOMAIN = '@secundariosalsipuedes.edu.ar';
 var ADMIN_PIN_PROP = 'ADMIN_PIN';
 var GUIDE_PIN_PROP = 'GUIDE_PIN';
 var ADMIN_FAIL_PROP = 'ADMIN_FAIL_COUNT';
@@ -35,9 +36,11 @@ var ERROR_MESSAGES_ = {
 
 var STUDENT_ERRORS_ = {
   email: 'Escribí tu mail institucional.',
-  nombre: 'Escribí nombre y apellido.',
+  nombre: 'Escribí tu nombre.',
+  apellido: 'Escribí tu apellido.',
   curso: 'Elegí año y división.',
-  notInRoster: 'Ese mail no está en la lista.'
+  notInRoster: 'Ese mail no está en la lista.',
+  domain: 'Usá tu mail institucional @secundariosalsipuedes.edu.ar.'
 };
 
 var EsiCore = (function () {
@@ -61,6 +64,12 @@ var EsiCore = (function () {
     if (!e || e.length > MAX_EMAIL_) return false;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   }
+
+  function isInstitutionalEmail(email) {
+    var e = normalizeEmail(email);
+    if (!isValidEmail(e)) return false;
+    return e.slice(e.indexOf('@')) === INSTITUTIONAL_DOMAIN;
+  }
   function normalizeDni(value) {
     return String(value == null ? '' : value).replace(/\D/g, '');
   }
@@ -78,21 +87,26 @@ var EsiCore = (function () {
     return null;
   }
 
-  function validateStudentInput(email, nombre, curso) {
+  function validateStudentInput(email, nombre, curso, apellido) {
     var e = normalizeEmail(email);
     if (!isValidEmail(e)) return { ok: false, error: 'email' };
     var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
-    if (n.length < 3 || n.length > 60) return { ok: false, error: 'nombre' };
+    var ap = String(apellido == null ? '' : apellido).replace(/\s+/g, ' ').trim();
+    if (n.length < 2 || n.length > 60) return { ok: false, error: 'nombre' };
+    if (ap && (ap.length < 2 || ap.length > 60)) return { ok: false, error: 'apellido' };
     var ciclo = cicloFromCurso(curso);
     if (!ciclo) return { ok: false, error: 'curso' };
     var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
+    var completa = n;
+    if (ap && normalizeText(n).slice(-normalizeText(ap).length) !== normalizeText(ap)) completa = n + ' ' + ap;
     return {
       ok: true,
       email: e,
-      nombre: n,
+      nombre: completa,
+      apellido: ap,
       curso: c,
       ciclo: ciclo,
-      nombreKey: normalizeText(n),
+      nombreKey: normalizeText(completa),
       emailKey: e
     };
   }
@@ -307,6 +321,7 @@ var EsiCore = (function () {
     normalizeText: normalizeText,
     normalizeEmail: normalizeEmail,
     isValidEmail: isValidEmail,
+    isInstitutionalEmail: isInstitutionalEmail,
     normalizeDni: normalizeDni,
     isValidDni: isValidDni,
     cicloFromCurso: cicloFromCurso,
@@ -321,6 +336,7 @@ var EsiCore = (function () {
 })();
 
 var API_FN_MAP_ = {
+  apiBootstrap: apiBootstrap,
   apiLookup: apiLookup,
   apiGetData: apiGetData,
   apiResumeSession: apiResumeSession,
@@ -393,7 +409,9 @@ function setup() {
   ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
   ensureSheet_(ss, SESSIONS_SHEET, ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
-  ensureColumn_(sheet_(SIGNUPS_SHEET), 'presente');
+  var signupsSh = sheet_(SIGNUPS_SHEET);
+  ensureColumn_(signupsSh, 'presente');
+  ensureColumn_(signupsSh, 'apellido');
   ensureAdminPin_();
   ensureGuidePin_();
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
@@ -566,12 +584,19 @@ function readTalks_() {
   return talks;
 }
 
+function signupsHeaderMap_(head) {
+  var map = { presente: -1, apellido: -1 };
+  for (var i = 0; i < (head || []).length; i++) {
+    var h = EsiCore.normalizeText(head[i]);
+    if (h === 'presente') map.presente = i;
+    else if (h === 'apellido') map.apellido = i;
+  }
+  return map;
+}
+
 function readSignups_() {
   var vals = sheet_(SIGNUPS_SHEET).getDataRange().getValues();
-  var col = -1;
-  for (var h = 0; h < (vals[0] || []).length; h++) {
-    if (String(vals[0][h]).trim() === 'presente') { col = h; break; }
-  }
+  var map = signupsHeaderMap_(vals[0]);
   var signups = [];
   for (var i = 1; i < vals.length; i++) {
     if (vals[i][0] === '') continue;
@@ -580,15 +605,37 @@ function readSignups_() {
       ts: vals[i][1],
       email: String(vals[i][2]),
       nombre: String(vals[i][3]),
+      apellido: map.apellido >= 0 ? String(vals[i][map.apellido] == null ? '' : vals[i][map.apellido]).replace(/\s+/g, ' ').trim() : '',
       curso: String(vals[i][4]),
       ciclo: String(vals[i][5]).trim().toLowerCase(),
       slot_id: Number(vals[i][6]),
       talk_id: String(vals[i][7]),
-      presente: col >= 0 ? convertBool_(vals[i][col]) : false,
+      presente: map.presente >= 0 ? convertBool_(vals[i][map.presente]) : false,
       emailKey: EsiCore.normalizeEmail(vals[i][2])
     });
   }
   return signups;
+}
+
+function appendSignupRow_(student, talk) {
+  var sh = sheet_(SIGNUPS_SHEET);
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  var row = [];
+  for (var i = 0; i < head.length; i++) {
+    var key = EsiCore.normalizeText(head[i]);
+    if (key === 'id') row.push(Utilities.getUuid());
+    else if (key === 'ts') row.push(new Date());
+    else if (key === 'email' || key === 'mail') row.push(student.email);
+    else if (key === 'nombre') row.push(student.nombre);
+    else if (key === 'apellido') row.push(student.apellido || '');
+    else if (key === 'curso') row.push(student.curso);
+    else if (key === 'ciclo') row.push(student.ciclo);
+    else if (key === 'slot_id') row.push(Number(talk.slot_id));
+    else if (key === 'talk_id') row.push(String(talk.id));
+    else if (key === 'presente') row.push('');
+    else row.push('');
+  }
+  sh.appendRow(row);
 }
 
 function presenteCol_(sh) {
@@ -670,12 +717,12 @@ function findStudent_(students, email) {
 
 function readSignupsCached_() {
   try {
-    var hit = CacheService.getScriptCache().get('signups_v1');
+    var hit = CacheService.getScriptCache().get('signups_v2');
     if (hit) return JSON.parse(hit);
   } catch (e) { }
   var signups = readSignups_();
   try {
-    CacheService.getScriptCache().put('signups_v1', JSON.stringify(signups), DATA_CACHE_TTL);
+    CacheService.getScriptCache().put('signups_v2', JSON.stringify(signups), DATA_CACHE_TTL);
   } catch (e) { }
   return signups;
 }
@@ -732,6 +779,7 @@ function invalidateDataCache_() {
   try {
     var cache = CacheService.getScriptCache();
     cache.remove('signups_v1');
+    cache.remove('signups_v2');
     cache.remove('students_v1');
     cache.remove('talks_v1');
     cache.remove('slots_v1');
@@ -833,50 +881,63 @@ function publicData_(ciclo, mine, signupsNow) {
   };
 }
 
-function buildStudent_(email, nombre, curso) {
+function rosterLoaded_() {
+  try {
+    var sh = SpreadsheetApp.getActive().getSheetByName(STUDENTS_SHEET);
+    return !!(sh && sh.getLastRow() > 1);
+  } catch (e) {
+    return false;
+  }
+}
+
+function apiBootstrap() {
+  try {
+    return {
+      ok: true,
+      evento_abierto: isOpen_(readConfigCached_()),
+      rosterLoaded: rosterLoaded_()
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function buildStudent_(email, nombre, curso, apellido) {
   var norm = EsiCore.normalizeEmail(email);
-  if (!EsiCore.isValidEmail(norm)) return { ok: false, error: 'email' };
-  var roster = readStudentsCached_();
-  var entry = findStudent_(roster, norm);
-  if (roster.length && !entry) return { ok: false, error: 'notInRoster' };
-  var n = entry ? (entry.nombreCompleto || entry.nombre) : nombre;
-  var pc = entry ? EsiCore.parseCurso(entry.curso) : null;
-  var c = pc || curso;
-  var v = EsiCore.validateStudentInput(norm, n, c);
+  if (!EsiCore.isInstitutionalEmail(norm)) return { ok: false, error: 'email' };
+  var v = EsiCore.validateStudentInput(norm, nombre, curso, apellido);
   if (!v.ok) return v;
-  return { ok: true, student: v, rosterLoaded: roster.length > 0 };
+  return { ok: true, student: v };
 }
 
 function apiLookup(email) {
   try {
     var norm = EsiCore.normalizeEmail(email);
-    var valid = EsiCore.isValidEmail(norm);
-    var roster = readStudentsCached_();
-    var entry = valid ? findStudent_(roster, norm) : null;
-    var ok = true;
-    var message = '';
-    if (!valid) {
-      ok = false;
-      message = STUDENT_ERRORS_.email;
-    } else if (roster.length && !entry) {
-      ok = false;
-      message = STUDENT_ERRORS_.notInRoster;
+    if (!EsiCore.isInstitutionalEmail(norm)) {
+      return {
+        ok: false,
+        message: STUDENT_ERRORS_.email,
+        rosterLoaded: rosterLoaded_(),
+        needsNombre: true,
+        needsApellido: true,
+        needsCurso: true,
+        apellido: '',
+        nombreCompleto: '',
+        nombre: '',
+        curso: ''
+      };
     }
-    var nombre = entry && entry.nombre ? entry.nombre : '';
-    var nombreCompleto = entry ? (entry.nombreCompleto || entry.nombre || '') : '';
-    var apellido = entry && entry.apellido ? entry.apellido : '';
-    var curso = entry && entry.curso ? entry.curso : '';
-    var pc = EsiCore.parseCurso(curso);
     return {
-      ok: ok,
-      message: message,
-      rosterLoaded: roster.length > 0,
-      needsNombre: !nombreCompleto,
-      needsCurso: !pc,
-      apellido: apellido,
-      nombreCompleto: nombreCompleto,
-      nombre: nombre,
-      curso: pc || ''
+      ok: true,
+      message: '',
+      rosterLoaded: rosterLoaded_(),
+      needsNombre: true,
+      needsApellido: true,
+      needsCurso: true,
+      apellido: '',
+      nombreCompleto: '',
+      nombre: '',
+      curso: ''
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -967,9 +1028,9 @@ function apiLookupDni(dni, apellido) {
   }
 }
 
-function apiGetData(email, nombre, curso, sessionToken) {
+function apiGetData(email, nombre, curso, sessionToken, apellido) {
   try {
-    var bs = buildStudent_(email, nombre, curso);
+    var bs = buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
@@ -980,7 +1041,7 @@ function apiGetData(email, nombre, curso, sessionToken) {
     var session = current ? '' : issueStudentSession_(s);
     return {
       ok: true,
-      student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+      student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
       data: publicData_(s.ciclo, mine),
       session: session
     };
@@ -1003,8 +1064,10 @@ function studentTokenHash_(token) {
 
 function sessionsSheet_() {
   var ss = SpreadsheetApp.getActive();
-  return ensureSheet_(ss, SESSIONS_SHEET,
+  var sh = ensureSheet_(ss, SESSIONS_SHEET,
     ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
+  ensureColumn_(sh, 'apellido');
+  return sh;
 }
 
 function sessionDateMs_(value) {
@@ -1027,6 +1090,7 @@ function readSessions_() {
       nombre: String(vals[i][2] == null ? '' : vals[i][2]).replace(/\s+/g, ' ').trim(),
       curso: EsiCore.parseCurso(vals[i][3]) || String(vals[i][3] == null ? '' : vals[i][3]).trim(),
       ciclo: String(vals[i][4] == null ? '' : vals[i][4]).trim().toLowerCase(),
+      apellido: String(vals[i][8] == null ? '' : vals[i][8]).replace(/\s+/g, ' ').trim(),
       created: sessionDateMs_(vals[i][5]),
       expires: sessionDateMs_(vals[i][6]),
       revoked: convertBool_(vals[i][7])
@@ -1063,7 +1127,8 @@ function issueStudentSession_(student) {
     String(student.ciclo || '').trim(),
     new Date(now),
     new Date(expires),
-    false
+    false,
+    String(student.apellido || '').trim()
   ]);
   return raw;
 }
@@ -1089,7 +1154,7 @@ function apiResumeSession(token) {
   try {
     var sess = studentSession_(token);
     if (!sess) return studentSessionExpired_();
-    var out = apiGetData(sess.email, sess.nombre, sess.curso, token);
+    var out = apiGetData(sess.email, sess.nombre, sess.curso, token, sess.apellido);
     if (!out.ok) return studentSessionExpired_();
     return {
       ok: true,
@@ -1111,9 +1176,9 @@ function apiStudentLogout(token) {
   }
 }
 
-function apiRegister(email, nombre, curso, talkId) {
+function apiRegister(email, nombre, curso, talkId, apellido) {
   var resp = withScriptLock_(REGISTER_LOCK_MS, function () {
-    return registerLocked_(email, nombre, curso, talkId);
+    return registerLocked_(email, nombre, curso, talkId, apellido);
   });
   if (resp && resp.busy) return resp;
   if (resp && resp.ok) {
@@ -1122,9 +1187,9 @@ function apiRegister(email, nombre, curso, talkId) {
   return resp;
 }
 
-function registerLocked_(email, nombre, curso, talkId) {
+function registerLocked_(email, nombre, curso, talkId, apellido) {
   try {
-    var bs = buildStudent_(email, nombre, curso);
+    var bs = buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
@@ -1192,16 +1257,7 @@ function registerLocked_(email, nombre, curso, talkId) {
     var message = '';
     if (plan.action === 'insert') {
       var slot = slotLabelFor_(slots, talk.slot_id);
-      sheet_(SIGNUPS_SHEET).appendRow([
-        Utilities.getUuid(),
-        new Date(),
-        s.email,
-        s.nombre,
-        s.curso,
-        s.ciclo,
-        Number(talk.slot_id),
-        talkId
-      ]);
+      appendSignupRow_(s, talk);
       message = 'Listo, quedaste anotado.';
     } else if (plan.action === 'change') {
       var row = findSignupRow_(plan.signupId);
@@ -1219,7 +1275,7 @@ function registerLocked_(email, nombre, curso, talkId) {
     return {
       ok: true,
       message: message,
-      student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+      student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
       data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh)
     };
   } catch (err) {
@@ -1371,7 +1427,7 @@ function apiAdminGetData(cred) {
         id: s.id,
         cuando: s.ts ? Utilities.formatDate(s.ts, tz, 'dd/MM HH:mm') : '',
         email: s.email,
-        apellido: apellidos[s.emailKey] || '',
+        apellido: s.apellido || apellidos[s.emailKey] || '',
         nombre: s.nombre,
         curso: s.curso,
         ciclo: s.ciclo,
@@ -1544,7 +1600,7 @@ function apiAdminTalkRoster(cred, talkId) {
       if (String(signups[j].talk_id) !== String(talk.id)) continue;
       var row = {
         id: signups[j].id,
-        apellido: apellidos[signups[j].emailKey] || '',
+        apellido: signups[j].apellido || apellidos[signups[j].emailKey] || '',
         nombre: signups[j].nombre,
         curso: signups[j].curso,
         slotLabel: slotLabelFor_(slots, signups[j].slot_id),
