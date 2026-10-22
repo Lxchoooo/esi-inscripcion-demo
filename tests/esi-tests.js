@@ -90,10 +90,12 @@ function assertEq(a, b, msg) {
 
 const codeSrc = read('Code.gs');
 const panelHtml = read('Panel.html');
-const publishedIndex = path.join(ROOT, '..', 'index.html');
-if (fs.existsSync(publishedIndex) && fs.readFileSync(publishedIndex, 'utf8') !== panelHtml) {
-  console.error('FAIL index.html is stale; copy src/Panel.html to index.html');
-  process.exit(1);
+const publishedCandidates = [path.join(ROOT, '..', 'index.html'), path.join(ROOT, 'web', 'index.html')];
+for (const file of publishedCandidates) {
+  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') !== panelHtml) {
+    console.error('FAIL published index.html is stale: ' + file);
+    process.exit(1);
+  }
 }
 const apps = read('appsscript.json');
 
@@ -737,7 +739,11 @@ t('Panel carries the ISS identity and an accessible green palette', () => {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
   if (/brand-iss/.test(panelHtml)) throw new Error('header still carries the ISS prefix');
-  const logo = fs.readFileSync(path.join(ROOT, '..', 'assets', 'logo.png'));
+  const logoPath = [path.join(ROOT, '..', 'assets', 'logo.png'),
+    path.join(ROOT, 'web', 'assets', 'logo.png'), path.join(ROOT, 'assets', 'logo.png')]
+    .find((file) => fs.existsSync(file));
+  if (!logoPath) throw new Error('logo.png missing');
+  const logo = fs.readFileSync(logoPath);
   if (logo.slice(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('logo.png is not a PNG');
   if (logo.length < 500) throw new Error('logo.png is suspiciously small');
   if (!/@media \(prefers-color-scheme: dark\)[\s\S]*?--accent: #9BD3A6/.test(panelHtml)) throw new Error('dark accent');
