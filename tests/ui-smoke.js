@@ -92,7 +92,7 @@ return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
   sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir, sSubmitDatos: sSubmitDatos, sSetDniAvailable_: sSetDniAvailable_,
-  sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall,
+  sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
   aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
@@ -100,7 +100,7 @@ return {
   setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
   sState: sState, getState: function () { return sState; }, setA: function (v) { aData = v; },
-  setTalk: function (v) { aTalkData = v; },
+  setTalk: function (v) { aTalkData = v; }, setTalkFilter: function (v) { aTalkFilter = v; aRenderTalk(); },
   setPending: function (v) { aPendingData = v; },
   setRole: function (r) { aRole = r; },
   DEMO_TALKS: DEMO_TALKS, DEMO_SLOTS: DEMO_SLOTS
@@ -300,7 +300,8 @@ function tick() {
   ui.aOnPresent('s1');
   await tick();
   assert(document.getElementById('charla-list').innerHTML.includes('is-present'), 'presente marcado');
-  assert(document.getElementById('charla-presentes').textContent === 'presentes 1 de 1', 'contador de presentes');
+  assert(document.getElementById('a-msg').innerHTML.includes('Deshacer'), 'aviso con deshacer');
+  assert(document.getElementById('charla-presentes').textContent === 'Presentes 1 de 1', 'contador de presentes');
 
   ui.setRole('admin');
   ui.aApplyRole();
@@ -349,7 +350,7 @@ function tick() {
     students: [{ nombre: 'Ana Gomez', curso: '2°B', faltan: ['2da', '3ra'] }]
   });
   ui.aRenderPending();
-  assert(document.getElementById('pend-count').textContent === '1 sin completar', 'contador sin anotar');
+  assert(document.getElementById('pend-count').textContent === '1 incompletos de 10', 'contador incompletos');
   assert(document.getElementById('pend-list').innerHTML.includes('Falta 2da y 3ra'), 'horarios que faltan');
 
   const repCourses = [{
@@ -463,7 +464,7 @@ function tick() {
   });
   ui.aRepSetType('total');
   let repTotal = document.getElementById('rep-out').innerHTML;
-  assert(repTotal.includes('En la lista'), 'totales generales');
+  assert(repTotal.includes('Inscriptos'), 'totales generales');
   assert(repTotal.includes('Presentes por franja'), 'presentes por franja en el total');
   assert(repTotal.includes('Total: 3 inscriptos, 1 presentes'), 'resumen del total');
   assert(repTotal.includes('Básico'), 'ciclo en la tabla total');
@@ -547,6 +548,32 @@ function tick() {
     }, function () { return Promise.resolve(); });
   } catch (e) { gaveUp = true; }
   assert(gaveUp && netTries === 3, 'network errors give up after three attempts');
+
+  await ui.demoCall('apiRegister', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba']);
+  const demoPreview = await ui.demoCall('apiAdminMailPreview', ['demo']);
+  assert(demoPreview.ok && demoPreview.total >= 1, 'demo mail preview');
+  assert(demoPreview.sample.body.includes('Tus charlas:'), 'demo mail body');
+  const demoSent = await ui.demoCall('apiAdminSendReminders', ['demo', 0, 20]);
+  assert(demoSent.ok && demoSent.done, 'demo reminders send');
+
+  const icsState = ui.getState();
+  icsState.data = {
+    slots: [
+      { id: 1, nombre: '1ra', label: '10:30 a 11:20' },
+      { id: 2, nombre: '2da', label: '11:30 a 12:20' },
+      { id: 3, nombre: '3ra', label: '12:30 a 13:30' }
+    ],
+    talks: ui.DEMO_TALKS.slice(),
+    mine: { 1: 'B1', 2: 'B5', 3: 'B9' }
+  };
+  const ics = ui.sBuildIcs_();
+  assert(ics.startsWith('BEGIN:VCALENDAR') && ics.trim().endsWith('END:VCALENDAR'), 'ics envelope');
+  assert((ics.match(/BEGIN:VEVENT/g) || []).length === 3, 'ics has three events');
+  assert(ics.includes('DTSTART:20261104T133000Z'), 'ics timezone offset');
+  assert(ics.includes('TRIGGER:-PT10M'), 'ics reminder');
+  assert(!ics.includes('ana@'), 'ics has no mail');
+  ui.sConfirmar();
+  assert(document.getElementById('btn-ics-confirm'), 'ics button in confirmation');
 
   console.log('UI smoke: OK');
 })().catch((e) => {

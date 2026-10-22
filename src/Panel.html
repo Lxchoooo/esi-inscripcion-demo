@@ -562,9 +562,30 @@
     .view-count { font-size: 19px; font-weight: 700; }
     .view-head .hint-line { margin: 0; flex: 1; }
     .roster-row {
-      display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-      padding: 9px 0; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      min-height: 56px; padding: 9px 0; border-bottom: 1px solid var(--line);
       font-size: 14.5px;
+    }
+    .status-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .status-chips button {
+      min-height: 40px; padding: 7px 12px; border-radius: 999px;
+      border: 1px solid var(--line-ui); background: transparent; color: var(--muted);
+      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .status-chips button.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    .status-chips button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .mail-preview {
+      white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 12px;
+      padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--surface-2); font: inherit; font-size: 13px; max-height: 260px; overflow: auto;
+    }
+    .undo-btn {
+      margin-left: 8px; min-height: 36px; padding: 4px 12px; border-radius: 999px;
+      border: 1px solid currentColor; background: transparent; color: inherit;
+      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    @media (max-width: 719px) {
+      body.admin #pane-charla .filters { position: sticky; top: 0; z-index: 20; background: var(--paper); padding: 8px 0; }
     }
     .roster-who { display: block; flex: 1 1 100%; min-width: 0; }
     .roster-name, .row-name, .t-title { min-width: 0; overflow-wrap: anywhere; }
@@ -852,6 +873,35 @@
       .reveal.reveal-armed { opacity: 1; transform: none; }
       .sheet { transition: none; }
     }
+
+    .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 14px 0 18px; }
+    .chart { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+    .chart figcaption { font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+    .donut-wrap { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .donut { width: 96px; height: 96px; flex: 0 0 96px; }
+    .donut text { font: 700 9px/1 var(--font, sans-serif); fill: var(--ink); text-anchor: middle; }
+    .chart-note { font-size: 12.5px; color: var(--muted); }
+    .bars { display: grid; gap: 8px; }
+    .bar-row { display: grid; grid-template-columns: minmax(90px, 1.4fr) minmax(80px, 2fr) auto; gap: 8px; align-items: center; font-size: 12.5px; }
+    .bar-name { overflow-wrap: anywhere; }
+    .bar-track { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+    .bar-fill { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+    .bar-value { font-variant-numeric: tabular-nums; color: var(--muted); }
+    .next-talk { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--card); }
+    .next-talk b { display: block; margin-bottom: 4px; }
+    .next-talk .hint-line { margin: 2px 0 0; }
+    .panel-tools { margin: 0 0 12px; }
+    .mail-help { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+    .mail-help summary { cursor: pointer; font-weight: 600; color: var(--brand-dark); min-height: 44px; display: flex; align-items: center; }
+    .mail-help p { margin: 8px 0; font-size: 14px; line-height: 1.5; }
+    .mail-year { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+    .mail-year label { font-size: 13px; font-weight: 600; }
+    .mail-year select { max-width: 120px; }
+    .esi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; }
+    .esi-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+    .esi-card h3 { font-size: 16px; margin: 0 0 8px; }
+    .esi-card p { margin: 0; line-height: 1.55; font-size: 14.5px; }
+    .esi-card a { color: var(--brand-dark); font-weight: 700; }
   </style>
 </head>
 <body>
@@ -859,8 +909,7 @@
     <div class="nav">
       <a class="brand" href="#top" aria-label="Inicio, Instituto Secundario Salsipuedes">
         <span class="brand-mark" aria-hidden="true">
-          <img class="brand-logo" src="assets/logo.png" width="30" height="30" alt=""
-            onerror="this.onerror=null;this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAFwElEQVR42u3d3U2bSxSGUReReyqgBlqgD8rihi6oCiniJpEiRbIQlm3mm5n9sx7pLeB89l6HGEhOJ0mSJEmSJEmSJEmSJEmSJEmSJEmSJEmSJEmSJEnS6h5env58naciNTv6S/O0pGZHDwPJ0cNAcvQwkBw9DCRHDwPJ0cNAcvggkBw9DCRHDwPJ0cNAcvQwkBw9DOToDQZy9AYDOXoDgRy+wUCO3mAgR28wkKM3GMjRGwzk6A0GcvQGAzl6g4EcvoFAjt5gIEdvMHD0ZjBw9GYwcPRmMHD0ZjBw9GYwcPRmIACAGQAAYAYAAJgBAABmAACAGQAAYAYAAJgBAABmAACAGQAAYAYAAJgBAABmAACAGQAAYAYAAJgBAABmAACAGQAAYAYAAJgBAABmAACAGQC86GYAMDMAmAEAAGYAAIAZAABgBgAAmAEAAGYAAIAZAABgBgAAmAEAAGYAAIAZAABgBgAAmAEAAGYAAIAZAABgBgAAmAEAAGYAAIAZAABgBgAAmAEAAGYAAIAZAABgBoBGAHz+/vh23qzxl/F1A0ASAKCQ83UCAACmAQCG+K8HAACwHAAoxHn2AABACACg4BkDAADtYPAsAQCAQG/kmYdR+bkBAABp3+C/nh//7ajjqPZ8AACAtABce9P/P/6fAlDpWQAAAC0AON+tAFT77wYAAAAAAAAAAAAAAAAAbtjb++u3A0COXXr9AACAIQAyw1ARgHtfJwAAYBoC0VHIDsDo6+GPAAAY/gxg9E24E4YsAMx6xgAAwLQPATOgEBGAlc8NABBY+l2AaCjsBmD38wAAAEJ8G3DXIawCIOpXQwAAQNifA1hxNDMAyPR5CAAAkOoHgY7+MGwEgMwffgIAAKV+EnD0EK8BUO3bnwAAQPkfBR490so/AJUBgFPnALAehnsB8LsAAACAXwYCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDjr4UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjr8qAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADj+qggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADg+KsiAAAAAKApABX/gYxOAFx6/QAAgCEAMsNQEYB7XycAAGAaAtFRyA7A6OvhjwAAGP4MIPM/k50FgFnPGAAAmPYhYAYUIgKw8rk5fggs/S5ANBR2A7D7eQAAAiG+DbjrEFYBEPWrIccPgLA/B7DiaGYAkOnzEABAINUPAh39YdgIAJk//IwCgGsGQAgYrgFQ7dufAIBA+R8FHj3Syj8AFQEAVwyAUDDcC4DfBQBAOwT8MpBfBnL8AAAAAADQEQEAAMDxAwAAAABARwQAAADHDwAAAAAAHREAAAAcv88CysDQCQA/9QcBKDQBwF/3DYCwA0Dtf90XABBIg0ImALK+tq4SAGFRiAhApdcQABAIDcNuAKq/Vq4RAKFRWAlAx9fFNUIgNAwzAPDcHT8AkqAwCoDnCQAIJN6tAJjjB0BxBM7/T++5AAACZo4fAGYAgICZ4weAGQAgYOb4AWAGAAiY4xcADACCgDl+AcAcv0Bgjl8QMMcvCJjjFwTM8QsC5vgFAXP8goA5fkHAHL8gYI5fEDDHLwiY4xcEVv414ed/W7DjFwSaHX4nCLzD1Q6CW46+Awbe1WqFwMjhV4PAu1ktEDjy6Ktg4F2s8gisOPyMEHj3qiwCO44+EwTetWrxlYDjd/zyxwGH7/jlM4Gn1n/u9+4UBCYh4Pilht8d8Gm/lBiBn0Lg+/xSUwQcv1QQgWsQOHyp4VcEDl9q/FWBw5dg4OglEDh8CQaOXgKBw5dA4PAlGDh6CQQOX4KBo5dA4PClrhh4FaSGEHjqUkMIPGWpGQaeptQQAk9PaoaBpyQ1hMBTkSRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJkiRJOq6/WIkAsKRWhykAAAAASUVORK5CYII='">
+          <img class="brand-logo" src="assets/logo.png" width="30" height="30" alt="">
         </span>
         <div class="brand-text">
           <span class="brand-school">Instituto Secundario Salsipuedes</span>
@@ -869,6 +918,7 @@
         </div>
       </a>
       <nav class="nav-links" aria-label="Secciones">
+        <a href="#esi">ESI</a>
         <a href="#faq">Dudas</a>
       </nav>
     </div>
@@ -905,6 +955,24 @@
             placeholder="usuario@secundariosalsipuedes.edu.ar">
         </div>
         <button id="btn-mail" class="btn full" type="button">Continuar</button>
+        <details class="mail-help" id="mail-help">
+          <summary>¿No te acordás tu mail?</summary>
+          <p>Tu mail es tu apellido, tu nombre y tu año de egreso, todo junto, en minúsculas, sin tildes y sin ñ, y termina en @secundariosalsipuedes.edu.ar.</p>
+          <p>Ejemplo: <strong>gomezperezmaria2029@secundariosalsipuedes.edu.ar</strong></p>
+          <p>Tu año de egreso: 6° 2026, 5° 2027, 4° 2028, 3° 2029, 2° 2030, 1° 2031.</p>
+          <p>Si repetiste o tu caso es distinto, preguntale a un preceptor.</p>
+          <div class="mail-year">
+            <label for="select-mail-year">¿En qué año estás?</label>
+            <select id="select-mail-year">
+              <option value="">Elegí...</option>
+              <option value="6">6°</option><option value="5">5°</option>
+              <option value="4">4°</option><option value="3">3°</option>
+              <option value="2">2°</option><option value="1">1°</option>
+            </select>
+            <span id="mail-year-out" class="hint-line"></span>
+          </div>
+          <button id="btn-prefer-dni" class="btn link" type="button" hidden>Prefiero usar mi DNI</button>
+        </details>
         <button id="btn-use-dni" class="btn link login-alt" type="button" hidden>Usar mi DNI</button>
         <p class="hint-line" id="mail-hint" hidden>Revisá el mail institucional.</p>
       </div>
@@ -979,6 +1047,8 @@
         </div>
       </div>
       <div class="summary" id="summary"></div>
+      <div class="next-talk" id="next-talk" hidden></div>
+      <div class="panel-tools"><button id="btn-ics" class="btn secondary small" type="button" disabled>Agregar a mi calendario</button></div>
       <div class="chips" id="chips" hidden></div>
       <div id="slots-container"></div>
     </section>
@@ -1024,7 +1094,7 @@
 
       <div class="tabs" role="tablist" aria-label="Panel">
         <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">Por charla</button>
-        <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend">Sin anotar</button>
+        <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend">Incompletos</button>
         <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes">Reportes</button>
         <button id="tab-inscriptos" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos">Inscriptos</button>
         <button id="tab-mails" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Lista de mails</button>
@@ -1039,7 +1109,12 @@
           </div>
           <div class="view-head">
             <span class="view-count" id="charla-count">0 de 40</span>
-            <span class="hint-line" id="charla-presentes">presentes 0 de 0</span>
+            <span class="hint-line" id="charla-presentes">Presentes 0 de 0</span>
+            <div class="status-chips" id="charla-filtro" role="group" aria-label="Filtrar por asistencia">
+              <button type="button" data-filter="all" class="active" aria-pressed="true">Todos</button>
+              <button type="button" data-filter="present" aria-pressed="false">Presentes</button>
+              <button type="button" data-filter="absent" aria-pressed="false">Faltan</button>
+            </div>
             <span class="hint-line" id="charla-updated">Actualizado hace 0s</span>
             <button id="btn-refresh-charla" class="btn secondary small" type="button">Actualizar</button>
           </div>
@@ -1105,6 +1180,47 @@
           </div>
           <div id="a-import-msg" class="banner"></div>
         </div>
+        <div class="card">
+          <h3>Recordatorio por mail</h3>
+          <p class="hint-line" id="mail-preview-meta">Cargá la vista previa para ver el texto y la cuota.</p>
+          <pre class="mail-preview" id="mail-preview-body" hidden></pre>
+          <div class="toolbar">
+            <button id="btn-mail-preview" class="btn secondary small" type="button">Vista previa</button>
+            <button id="btn-mail-send" class="btn small" type="button">Enviar recordatorios</button>
+          </div>
+          <div id="mail-send-msg" class="banner"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section landing" id="esi" aria-labelledby="esi-title">
+      <p class="eyebrow">Educación Sexual Integral</p>
+      <h2 id="esi-title">Sobre la ESI.</h2>
+      <div class="esi-grid">
+        <article class="esi-card">
+          <h3>Qué es</h3>
+          <p>La Educación Sexual Integral (ESI) es el espacio de la escuela donde se trabajan cuerpo, afectos, género, diversidad y derechos, con información cuidada y sin prejuicios. Integral quiere decir que mira lo biológico, lo psicológico, lo social, lo afectivo y lo ético.</p>
+        </article>
+        <article class="esi-card">
+          <h3>Es un derecho</h3>
+          <p>La Ley 26.150, de 2006, establece que todos los alumnos tienen derecho a recibirla, en escuelas públicas y privadas.</p>
+        </article>
+        <article class="esi-card">
+          <h3>Cinco ejes</h3>
+          <p>Cuidar el cuerpo y la salud. Valorar la afectividad. Garantizar la equidad de género. Respetar la diversidad. Ejercer nuestros derechos.</p>
+        </article>
+        <article class="esi-card" id="esi-direccion" hidden>
+          <h3>Por qué esta jornada</h3>
+          <p id="esi-direccion-texto"></p>
+        </article>
+        <article class="esi-card">
+          <h3>La jornada</h3>
+          <p>El <strong>4 de noviembre de 2026</strong> hay tres horarios: 10:30 a 11:20, 11:30 a 12:20 y 12:30 a 13:30. Elegís una charla por horario. Tenés que estar presente en las que elegiste.</p>
+        </article>
+        <article class="esi-card">
+          <h3>Si necesitás ayuda</h3>
+          <p>Línea 102: niñez y adolescencia. Línea 144: violencia de género. <a href="tel:08002223444">0800-222-3444</a>: salud sexual, gratuita y confidencial. También podés hablar con un docente o preceptor de confianza.</p>
+        </article>
       </div>
     </section>
 
@@ -1149,6 +1265,9 @@
     var IS_ADMIN = /(^|[?&])admin=1(&|$)/.test(window.location.search);
     var SCHOOL_NAME = 'Instituto Secundario Salsipuedes (ISS)';
     var EVENT_NAME = 'Jornada ESI 2026';
+    var TEXTO_DIRECCION = '';
+    var EVENT_DATE = '2026-11-04';
+    var EVENT_TZ = 'America/Argentina/Cordoba';
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
     function $(id) { return document.getElementById(id); }
@@ -1691,6 +1810,9 @@
       var p = function (n) { return (n < 10 ? '0' : '') + n; };
       return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
+    function demoEvent() {
+      return { fecha: EVENT_DATE, zona: EVENT_TZ };
+    }
     function demoPublicData(ciclo, mine) {
       var counts = {};
       var signups = demoSignups();
@@ -1711,6 +1833,7 @@
         });
       return {
         evento_abierto: demoOpen(),
+        event: demoEvent(),
         slots: DEMO_SLOTS,
         talks: talks,
         mine: mine || {}
@@ -1724,6 +1847,15 @@
       if (st.nombreCompleto) return st.nombreCompleto;
       if (st.apellido && st.nombre) return st.nombre + ' ' + st.apellido;
       return st.nombre || st.apellido || '';
+    }
+    function demoGiven_(full, apellido) {
+      var n = String(full == null ? '' : full).replace(/\s+/g, ' ').trim();
+      var ap = String(apellido == null ? '' : apellido).replace(/\s+/g, ' ').trim();
+      if (!n || !ap) return n;
+      var nn = EsiClient.normalizeText(n);
+      var na = EsiClient.normalizeText(ap);
+      if (nn.length > na.length && nn.slice(-na.length) === na) return n.slice(0, n.length - ap.length).trim();
+      return n;
     }
     function demoStudent(email, nombre, curso, apellido) {
       var norm = EsiClient.normalizeEmail(email);
@@ -1961,21 +2093,36 @@
     }
     function demoReports(role) {
       var admin = role === 'admin';
-      var slots = DEMO_SLOTS.map(function (s) {
-        return { id: Number(s.id), nombre: s.nombre, label: s.label };
+      var slots = DEMO_SLOTS.map(function (x) {
+        return { id: Number(x.id), nombre: x.nombre, label: x.label };
       });
-      var slotName = {};
-      for (var si = 0; si < slots.length; si++) slotName[slots[si].id] = slots[si].nombre;
-      var roster = demoSort_(demoRoster().slice());
+      var talkMap = {};
+      for (var tm = 0; tm < DEMO_TALKS.length; tm++) talkMap[DEMO_TALKS[tm].id] = DEMO_TALKS[tm];
       var signups = demoSignups();
+      var rosterAps = {};
+      var rosterNow = demoRoster();
+      for (var ra = 0; ra < rosterNow.length; ra++) rosterAps[EsiClient.normalizeEmail(rosterNow[ra].email)] = rosterNow[ra].apellido || '';
       var byEmail = {};
+      var meta = {};
+      var order = [];
       for (var gi = 0; gi < signups.length; gi++) {
-        var key = signups[gi].email;
-        if (!byEmail[key]) byEmail[key] = [];
-        byEmail[key].push(signups[gi]);
+        var sg = signups[gi];
+        var key = EsiClient.normalizeEmail(sg.email);
+        if (!byEmail[key]) {
+          byEmail[key] = {};
+          meta[key] = {
+            email: sg.email,
+            apellido: sg.apellido || rosterAps[key] || '',
+            nombre: demoGiven_(sg.nombre, sg.apellido || rosterAps[key] || ''),
+            nombreCompleto: sg.nombre || '',
+            curso: sg.curso || 'Sin curso',
+            ciclo: sg.ciclo || 'basico'
+          };
+          order.push(key);
+        }
+        if (!meta[key].apellido && (sg.apellido || rosterAps[key])) meta[key].apellido = sg.apellido || rosterAps[key];
+        if (!byEmail[key][Number(sg.slot_id)]) byEmail[key][Number(sg.slot_id)] = sg;
       }
-      var apellidosBy = {};
-      for (var ri = 0; ri < roster.length; ri++) apellidosBy[roster[ri].email] = roster[ri].apellido || '';
       var talksOut = DEMO_TALKS.map(function (t) {
         return {
           id: t.id, titulo: t.titulo, ciclo: t.ciclo,
@@ -1986,139 +2133,110 @@
       });
       var talkIndex = {};
       for (var ti = 0; ti < talksOut.length; ti++) talkIndex[talksOut[ti].id] = talksOut[ti];
-      var courseStats = {};
-      var totalPresentes = {};
-      for (var kj = 0; kj < signups.length; kj++) {
-        var sg = signups[kj];
-        var talkRow = talkIndex[sg.talk_id];
-        if (talkRow) {
-          talkRow.anotados++;
-          if (sg.presente) talkRow.presentes++;
-          var cursoKey = sg.curso || 'Sin curso';
-          talkRow.porCurso[cursoKey] = (talkRow.porCurso[cursoKey] || 0) + 1;
-          var st = {
-            id: sg.id,
-            apellido: apellidosBy[sg.email] || '',
-            nombre: sg.nombre,
-            curso: sg.curso,
-            presente: !!sg.presente
-          };
-          if (admin) st.email = sg.email;
-          talkRow.students.push(st);
-        }
-        if (sg.curso) {
-          if (!courseStats[sg.curso]) courseStats[sg.curso] = { roster: 0, complete: 0, incomplete: 0, missing: 0, presentes: {} };
-          if (sg.presente) courseStats[sg.curso].presentes[sg.slot_id] = (courseStats[sg.curso].presentes[sg.slot_id] || 0) + 1;
-        }
-        if (sg.presente) totalPresentes[sg.slot_id] = (totalPresentes[sg.slot_id] || 0) + 1;
-      }
-      for (var tk = 0; tk < talksOut.length; tk++) {
-        var rowOut = talksOut[tk];
-        rowOut.ausentes = Math.max(0, rowOut.anotados - rowOut.presentes);
-        demoSort_(rowOut.students);
-        var porCurso = [];
-        for (var ck = 0; ck < Object.keys(rowOut.porCurso).length; ck++) {
-          var key2 = Object.keys(rowOut.porCurso)[ck];
-          porCurso.push({ curso: key2, anotados: rowOut.porCurso[key2] });
-        }
-        porCurso.sort(function (a, b) {
-          return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true });
-        });
-        rowOut.porCurso = porCurso;
-      }
-      var courses = [];
-      var seenCurso = {};
-      for (var ci = 0; ci < roster.length; ci++) {
-        var student = roster[ci];
-        var curso = student.curso || 'Sin curso';
-        if (!seenCurso[curso]) {
-          seenCurso[curso] = true;
-          var stat = courseStats[curso] || { roster: 0, complete: 0, incomplete: 0, missing: 0, presentes: {} };
-          var bySlot = [];
-          for (var sl = 0; sl < slots.length; sl++) {
-            bySlot.push({ slot: slots[sl].nombre, presentes: stat.presentes[slots[sl].id] || 0 });
-          }
-          courses.push({
-            curso: curso,
-            roster: 0, complete: 0, incomplete: 0, missing: 0,
-            presentBySlot: bySlot,
-            students: []
-          });
-        }
-        var course = courses[courses.length - 1];
-        course.roster++;
-        var count = (byEmail[student.email] || []).length;
-        if (count === 3) course.complete++;
-        else if (count > 0) course.incomplete++;
-        else course.missing++;
-        var rowStudent = {
-          apellido: student.apellido || '',
-          nombre: student.nombre || '',
-          nombreCompleto: student.nombreCompleto || student.nombre || '',
-          curso: student.curso || '',
-          count: count,
-          presentes: (byEmail[student.email] || []).filter(function (x) { return x.presente; }).length,
-          talks: []
+      for (var si = 0; si < signups.length; si++) {
+        var row = talkIndex[signups[si].talk_id];
+        if (!row) continue;
+        row.anotados++;
+        if (signups[si].presente) row.presentes++;
+        var ck = signups[si].curso || 'Sin curso';
+        row.porCurso[ck] = (row.porCurso[ck] || 0) + 1;
+        var st = {
+          id: signups[si].id,
+          apellido: signups[si].apellido || rosterAps[EsiClient.normalizeEmail(signups[si].email)] || '',
+          nombre: demoGiven_(signups[si].nombre, signups[si].apellido || rosterAps[EsiClient.normalizeEmail(signups[si].email)] || ''),
+          nombreCompleto: signups[si].nombre || '',
+          curso: signups[si].curso || '',
+          presente: !!signups[si].presente
         };
-        for (var di = 0; di < slots.length; di++) {
-          var slotTalks = (byEmail[student.email] || []).filter(function (x) { return Number(x.slot_id) === Number(slots[di].id); });
-          if (slotTalks.length) {
-            var mapped = slotTalks.map(function (x) {
-              var talkInfo = talkIndex[x.talk_id] || {};
-              return {
-                slot: slots[di].nombre,
-                talk_id: x.talk_id,
-                titulo: talkInfo.titulo || '',
-                lugar: talkInfo.lugar || '',
-                signup_id: x.id,
-                presente: !!x.presente
-              };
-            });
-            rowStudent.talks = rowStudent.talks.concat(mapped);
-          } else {
-            rowStudent.talks.push({ slot: slots[di].nombre, talk_id: '', titulo: '', lugar: '', signup_id: '', presente: false });
-          }
-        }
-        if (admin) rowStudent.email = student.email;
-        course.students.push(rowStudent);
+        if (admin) st.email = signups[si].email;
+        row.students.push(st);
       }
-      demoSort_(courses);
-      for (var co = 0; co < courses.length; co++) {
-        var statOut = courseStats[courses[co].curso] || { presentes: {} };
-        var pl = [];
-        for (var p2 = 0; p2 < slots.length; p2++) {
-          pl.push({ slot: slots[p2].nombre, presentes: statOut.presentes[slots[p2].id] || 0 });
-        }
-        courses[co].presentBySlot = pl;
+      for (var to = 0; to < talksOut.length; to++) {
+        var outTalk = talksOut[to];
+        outTalk.ausentes = Math.max(0, outTalk.anotados - outTalk.presentes);
+        demoSort_(outTalk.students);
+        var pc = [];
+        var keys = Object.keys(outTalk.porCurso);
+        for (var ki = 0; ki < keys.length; ki++) pc.push({ curso: keys[ki], anotados: outTalk.porCurso[keys[ki]] });
+        pc.sort(function (a, b) { return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true }); });
+        outTalk.porCurso = pc;
       }
       var totals = {
-        roster: roster.length,
-        complete: 0, incomplete: 0, missing: 0,
-        presentBySlot: []
+        roster: order.length, complete: 0, incomplete: 0, missing: 0,
+        signups: signups.length, present: 0, absent: 0,
+        byCiclo: { basico: 0, orientado: 0 },
+        presentBySlot: slots.map(function (slot) {
+          return { slot_id: slot.id, slot: slot.nombre, label: slot.label, total: 0, presentes: 0, ausentes: 0 };
+        })
       };
-      for (var t3 = 0; t3 < totals.roster; t3++) {
-        var c = (byEmail[roster[t3].email] || []).length;
-        if (c === 3) totals.complete++;
-        else if (c > 0) totals.incomplete++;
-        else totals.missing++;
+      var courseMap = {};
+      for (var oj = 0; oj < order.length; oj++) {
+        var m = meta[order[oj]];
+        var cur = m.curso || 'Sin curso';
+        if (!courseMap[cur]) {
+          courseMap[cur] = {
+            curso: cur, roster: 0, complete: 0, incomplete: 0, missing: 0,
+            presentBySlot: slots.map(function (slot) {
+              return { slot_id: slot.id, slot: slot.nombre, label: slot.label, total: 0, presentes: 0, ausentes: 0 };
+            }),
+            students: []
+          };
+        }
+        var course = courseMap[cur];
+        var talksFor = [];
+        var filled = 0;
+        var presentes = 0;
+        for (var di = 0; di < slots.length; di++) {
+          var choice = byEmail[order[oj]][slots[di].id] || null;
+          var talkInfo = choice ? talkMap[choice.talk_id] : null;
+          if (choice) {
+            filled++;
+            course.presentBySlot[di].total++;
+            totals.presentBySlot[di].total++;
+          }
+          if (choice && choice.presente) {
+            presentes++;
+            totals.present++;
+            course.presentBySlot[di].presentes++;
+            totals.presentBySlot[di].presentes++;
+          }
+          talksFor.push({
+            slot_id: slots[di].id, slot: slots[di].nombre, slotLabel: slots[di].label,
+            talk_id: talkInfo ? talkInfo.id : '', titulo: talkInfo ? talkInfo.titulo : '',
+            lugar: talkInfo ? (talkInfo.lugar || '') : '', signup_id: choice ? choice.id : '',
+            presente: !!(choice && choice.presente)
+          });
+        }
+        var rs = {
+          apellido: m.apellido, nombre: m.nombre, nombreCompleto: m.nombreCompleto,
+          curso: cur, count: filled, presentes: presentes, talks: talksFor
+        };
+        if (admin) rs.email = m.email;
+        course.students.push(rs);
+        course.roster++;
+        totals.byCiclo[m.ciclo === 'orientado' ? 'orientado' : 'basico']++;
+        if (filled >= slots.length) { course.complete++; totals.complete++; }
+        else if (filled > 0) { course.incomplete++; totals.incomplete++; }
+        else { course.missing++; totals.missing++; }
       }
-      for (var t4 = 0; t4 < slots.length; t4++) {
-        totals.presentBySlot.push({
-          slot: slots[t4].nombre,
-          label: slots[t4].label,
-          presentes: totalPresentes[slots[t4].id] || 0
-        });
+      totals.absent = Math.max(0, totals.signups - totals.present);
+      for (var pb = 0; pb < totals.presentBySlot.length; pb++) {
+        totals.presentBySlot[pb].ausentes = Math.max(0, totals.presentBySlot[pb].total - totals.presentBySlot[pb].presentes);
       }
+      var courses = Object.keys(courseMap).map(function (k) {
+        demoSort_(courseMap[k].students);
+        return courseMap[k];
+      });
+      courses.sort(function (a, b) { return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true }); });
       var d = new Date();
       function two(n) { return (n < 10 ? '0' : '') + n; }
-      var generatedAt = two(d.getDate()) + '/' + two(d.getMonth() + 1) + '/' + d.getFullYear()
-        + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
-      totals.signups = signups.length;
       return {
         ok: true,
         role: role,
+        rosterLoaded: order.length > 0,
+        event: demoEvent(),
         evento_abierto: demoOpen(),
-        generatedAt: generatedAt,
+        generatedAt: two(d.getDate()) + '/' + two(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()),
         slots: slots,
         totals: totals,
         courses: courses,
@@ -2178,8 +2296,9 @@
         }
         var row = {
           id: signups[j].id,
-          apellido: apellidoT,
-          nombre: signups[j].nombre,
+          apellido: signups[j].apellido || apellidoT,
+          nombre: demoGiven_(signups[j].nombre, signups[j].apellido || apellidoT),
+          nombreCompleto: signups[j].nombre,
           curso: signups[j].curso,
           slotLabel: demoSlotLabel_(signups[j].slot_id),
           presente: !!signups[j].presente
@@ -2211,39 +2330,100 @@
     }
     function demoPending(role) {
       var admin = role === 'admin';
-      var roster = demoRoster();
       var signups = demoSignups();
       var byEmail = {};
+      var meta = {};
+      var order = [];
       for (var i = 0; i < signups.length; i++) {
         var key = EsiClient.normalizeEmail(signups[i].email);
-        if (!byEmail[key]) byEmail[key] = {};
+        if (!byEmail[key]) {
+          byEmail[key] = {};
+          meta[key] = {
+            email: signups[i].email,
+            apellido: signups[i].apellido || '',
+            nombre: demoGiven_(signups[i].nombre, signups[i].apellido),
+            nombreCompleto: signups[i].nombre || '',
+            curso: signups[i].curso || ''
+          };
+          order.push(key);
+        }
         byEmail[key][Number(signups[i].slot_id)] = true;
       }
       var rows = [];
-      for (var j = 0; j < roster.length; j++) {
-        var st = roster[j];
-        var done = byEmail[EsiClient.normalizeEmail(st.email)] || {};
+      for (var j = 0; j < order.length; j++) {
+        var done = byEmail[order[j]];
         var faltan = [];
         for (var s = 0; s < DEMO_SLOTS.length; s++) {
           if (!done[Number(DEMO_SLOTS[s].id)]) faltan.push(DEMO_SLOTS[s].nombre);
         }
         if (!faltan.length) continue;
         var row = {
-          apellido: st.apellido || '',
-          nombre: st.nombre || '',
-          nombreCompleto: demoFull_(st),
-          curso: st.curso || '',
+          apellido: meta[order[j]].apellido,
+          nombre: meta[order[j]].nombre,
+          nombreCompleto: meta[order[j]].nombreCompleto,
+          curso: meta[order[j]].curso,
           faltan: faltan
         };
-        if (admin) row.email = st.email;
+        if (admin) row.email = meta[order[j]].email;
         rows.push(row);
       }
       demoSort_(rows);
-      return { ok: true, role: role, total: roster.length, pending: rows.length, students: rows };
+      return { ok: true, role: role, total: order.length, pending: rows.length, students: rows };
+    }
+    function demoReminderRows_() {
+      var signups = demoSignups();
+      var by = {};
+      var order = [];
+      for (var i = 0; i < signups.length; i++) {
+        var key = EsiClient.normalizeEmail(signups[i].email);
+        if (!by[key]) {
+          by[key] = { email: key, nombre: '', apellido: '', curso: '', bySlot: {} };
+          order.push(key);
+        }
+        by[key].bySlot[Number(signups[i].slot_id)] = signups[i];
+        if (!by[key].nombre) by[key].nombre = signups[i].nombre || '';
+        if (!by[key].apellido) by[key].apellido = signups[i].apellido || '';
+        if (!by[key].curso) by[key].curso = signups[i].curso || '';
+      }
+      var rows = [];
+      for (var j = 0; j < order.length; j++) {
+        var r = by[order[j]];
+        rows.push({
+          email: r.email,
+          nombre: demoGiven_(r.nombre || 'Alumno', r.apellido),
+          apellido: r.apellido,
+          curso: r.curso,
+          bySlot: r.bySlot
+        });
+      }
+      demoSort_(rows);
+      return rows;
+    }
+    function demoReminderBody_(r) {
+      var lines = ['Hola ' + r.nombre + ':', '', 'Te recordamos que el ' + aDateLabel_(EVENT_DATE) + ' es la ' + EVENT_NAME + '.', '', 'Tus charlas:'];
+      for (var s = 0; s < DEMO_SLOTS.length; s++) {
+        var sg = r.bySlot[Number(DEMO_SLOTS[s].id)];
+        var talk = null;
+        for (var t = 0; t < DEMO_TALKS.length; t++) if (sg && String(DEMO_TALKS[t].id) === String(sg.talk_id)) talk = DEMO_TALKS[t];
+        var when = DEMO_SLOTS[s].nombre + ' (' + DEMO_SLOTS[s].label + ')';
+        lines.push('- ' + when + ': ' + (talk ? talk.titulo + (talk.lugar ? ' (' + talk.lugar + ')' : '') : 'todavía no elegiste.'));
+      }
+      lines.push('', 'Llegá 10 minutos antes de cada charla. Si no podés asistir, avisale a un preceptor.', '', 'Equipo ESI');
+      return lines.join('\n');
+    }
+    function demoMailPreview() {
+      var rows = demoReminderRows_();
+      var sample = rows[0] || null;
+      return {
+        ok: true, total: rows.length,
+        subject: 'Recordatorio: ' + EVENT_NAME + ' del ' + aDateLabel_(EVENT_DATE),
+        sample: sample ? { nombre: sample.nombre, curso: sample.curso, body: demoReminderBody_(sample) } : null,
+        quota: 100, batchSize: 20, event: demoEvent()
+      };
     }
     function demoCall(fn, args) {
       var a = args || [];
-      if (fn === 'apiBootstrap') return Promise.resolve({ ok: true, evento_abierto: demoOpen(), rosterLoaded: demoRoster().length > 0 });
+      if (fn === 'apiBootstrap') return Promise.resolve({ ok: true, evento_abierto: demoOpen(), rosterLoaded: demoRoster().length > 0, event: demoEvent() });
       if (fn === 'apiLookup') return Promise.resolve(demoLookup(a[0]));
       if (fn === 'apiLookupDni') return Promise.resolve(demoLookupDni(a[0], a[1]));
       if (fn === 'apiGetData') {
@@ -2309,6 +2489,18 @@
       if (fn === 'apiAdminTalkRoster') return Promise.resolve(demoTalkRoster(a[1], demoRole_(a[0])));
       if (fn === 'apiAdminPending') return Promise.resolve(demoPending(demoRole_(a[0])));
       if (fn === 'apiAdminReports') return Promise.resolve(demoReports(demoRole_(a[0])));
+      if (fn === 'apiAdminMailPreview') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        return Promise.resolve(demoMailPreview());
+      }
+      if (fn === 'apiAdminSendReminders') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        var totalR = demoReminderRows_().length;
+        var startR = Math.max(0, Number(a[1]) || 0);
+        var takeR = Math.min(20, Math.max(1, Number(a[2]) || 20));
+        var endR = Math.min(totalR, startR + takeR);
+        return Promise.resolve({ ok: true, sent: endR - startR, failed: 0, total: totalR, nextOffset: endR, done: endR >= totalR, quota: 100 });
+      }
       return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
     }
 
@@ -2416,7 +2608,20 @@
       sDniAvailable = !!available;
       $('login-dni').hidden = !sDniAvailable;
       $('btn-use-dni').hidden = !sDniAvailable;
+      if ($('btn-prefer-dni')) $('btn-prefer-dni').hidden = !sDniAvailable;
       if (!sDniAvailable && sLoginMode === 'dni') sSetLoginMode('mail');
+    }
+
+    function sMailYearHint_() {
+      var year = Number($('select-mail-year').value);
+      var out = $('mail-year-out');
+      if (!out) return;
+      if (!year) {
+        out.textContent = '';
+        return;
+      }
+      var egreso = 2026 + (6 - year);
+      out.textContent = 'Tu mail termina en ' + egreso + '.';
     }
 
     function sSetLoginMode(mode) {
@@ -2507,6 +2712,7 @@
         + '<div class="email">' + esc(st.email) + '</div>';
       var countEl = $('sel-count');
       if (countEl) countEl.textContent = chosenCount + ' de ' + slots.length + ' elegidas';
+      sRenderNextTalk_();
 
       var cont = $('slots-container');
       cont.innerHTML = '';
@@ -2571,6 +2777,125 @@
       return btn;
     }
 
+    var S_MESES_ = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    function aDateLabel_(date) {
+      var p = String(date || EVENT_DATE).split('-');
+      if (p.length !== 3) return String(date || EVENT_DATE);
+      return Number(p[2]) + ' de ' + S_MESES_[Number(p[1]) - 1] + ' de ' + p[0];
+    }
+
+    function sEventInfo_() {
+      var e = sState.data && sState.data.event;
+      return {
+        fecha: (e && e.fecha) || EVENT_DATE,
+        zona: (e && e.zona) || EVENT_TZ
+      };
+    }
+
+    function sSlotTime_(slot, which) {
+      var m = String(slot && slot.label ? slot.label : '').match(/(\d{1,2}):(\d{2})\s*a\s*(\d{1,2}):(\d{2})/);
+      if (!m) return which === 'start' ? '10:30' : '11:20';
+      return which === 'start' ? m[1] + ':' + m[2] : m[3] + ':' + m[4];
+    }
+
+    function sIcsStamp_(date, time) {
+      var d = String(date || EVENT_DATE).split('-');
+      var t = String(time || '10:30').split(':');
+      var utc = Date.UTC(Number(d[0]), Number(d[1]) - 1, Number(d[2]), Number(t[0]) + 3, Number(t[1]), 0);
+      var x = new Date(utc);
+      function two(n) { return (n < 10 ? '0' : '') + n; }
+      return x.getUTCFullYear() + two(x.getUTCMonth() + 1) + two(x.getUTCDate())
+        + 'T' + two(x.getUTCHours()) + two(x.getUTCMinutes()) + '00Z';
+    }
+
+    function sIcsEscape_(text) {
+      return String(text == null ? '' : text).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+    }
+
+    function sBuildIcs_() {
+      var d = sState.data || { slots: [], mine: {} };
+      var ev = sEventInfo_();
+      var mine = d.mine || {};
+      var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ISS//Jornada ESI 2026//ES',
+        'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + sIcsEscape_(EVENT_NAME),
+        'X-WR-TIMEZONE:' + ev.zona, 'BEGIN:VTIMEZONE', 'TZID:' + ev.zona,
+        'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:-0300', 'TZOFFSETTO:-0300',
+        'TZNAME:ART', 'END:STANDARD', 'END:VTIMEZONE'];
+      var count = 0;
+      for (var i = 0; i < (d.slots || []).length; i++) {
+        var slot = d.slots[i];
+        var talkId = mine[Number(slot.id)];
+        var talk = talkId ? sTalkById(talkId) : null;
+        if (!talk) continue;
+        var start = sIcsStamp_(ev.fecha, sSlotTime_(slot, 'start'));
+        var end = sIcsStamp_(ev.fecha, sSlotTime_(slot, 'end'));
+        lines.push('BEGIN:VEVENT');
+        lines.push('UID:jornada-esi-' + ev.fecha.replace(/-/g, '') + '-' + slot.id + '@instituto-salsipuedes');
+        lines.push('DTSTAMP:' + sIcsStamp_(ev.fecha, '10:30'));
+        lines.push('DTSTART:' + start);
+        lines.push('DTEND:' + end);
+        lines.push('SUMMARY:' + sIcsEscape_('Jornada ESI 2026 - ' + talk.titulo));
+        lines.push('LOCATION:' + sIcsEscape_(talk.lugar || 'Instituto Secundario Salsipuedes'));
+        lines.push('DESCRIPTION:' + sIcsEscape_('Horario ' + (i + 1) + ' · ' + (slot.label || '')));
+        lines.push('BEGIN:VALARM', 'TRIGGER:-PT10M', 'ACTION:DISPLAY', 'DESCRIPTION:' + sIcsEscape_('Jornada ESI 2026'), 'END:VALARM');
+        lines.push('END:VEVENT');
+        count++;
+      }
+      if (!count) return '';
+      lines.push('END:VCALENDAR');
+      return lines.join('\r\n') + '\r\n';
+    }
+
+    function sDownloadIcs_() {
+      var ics = sBuildIcs_();
+      if (!ics) return;
+      var a = document.createElement('a');
+      a.download = 'jornada-esi-2026.ics';
+      if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+        a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+      } else {
+        a.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+      }
+      if (a.click) a.click();
+    }
+
+    function sRenderNextTalk_() {
+      var el = $('next-talk');
+      if (!el) return;
+      var d = sState.data || {};
+      var ev = sEventInfo_();
+      var mine = d.mine || {};
+      var chosen = [];
+      for (var i = 0; i < (d.slots || []).length; i++) {
+        var talk = mine[Number(d.slots[i].id)] ? sTalkById(mine[Number(d.slots[i].id)]) : null;
+        if (talk) chosen.push({ slot: d.slots[i], talk: talk });
+      }
+      var btn = $('btn-ics');
+      if (btn) btn.disabled = chosen.length !== (d.slots || []).length || !chosen.length;
+      if (!chosen.length) { el.hidden = true; return; }
+      var parts = ev.fecha.split('-');
+      var day = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 0, 0, 0);
+      var now = new Date();
+      var today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      var days = Math.round((day.getTime() - today.getTime()) / 86400000);
+      var next = chosen[0];
+      if (days === 0) {
+        var mins = now.getHours() * 60 + now.getMinutes();
+        for (var j = 0; j < chosen.length; j++) {
+          var hm = sSlotTime_(chosen[j].slot, 'start').split(':');
+          if (Number(hm[0]) * 60 + Number(hm[1]) >= mins) { next = chosen[j]; break; }
+        }
+      }
+      var when = days > 0 ? 'Faltan ' + days + ' día' + (days === 1 ? '' : 's')
+        : days === 0 ? 'Hoy es la jornada' : 'La jornada ya pasó';
+      el.innerHTML = '<b>' + esc(when) + '</b>'
+        + '<span class="hint-line">' + esc(next.slot.label) + ' · ' + esc(next.talk.titulo)
+        + (next.talk.lugar ? ' · ' + esc(next.talk.lugar) : '') + '</span>';
+      el.hidden = false;
+    }
+
     function sConfirmar() {
       var d = sState.data || { slots: [], mine: {} };
       var slots = d.slots || [];
@@ -2605,6 +2930,7 @@
         lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
           + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
       }
+      lines += '<button id="btn-ics-confirm" class="btn secondary full" type="button" style="margin-top:12px">Agregar a mi calendario</button>';
       openSheet({
         title: 'Tus charlas',
         body: lines,
@@ -2613,6 +2939,8 @@
           toast('Listo, quedaste anotado.', 'ok');
         }
       });
+      var icsBtn = $('btn-ics-confirm');
+      if (icsBtn) icsBtn.addEventListener('click', sDownloadIcs_);
     }
 
     function sOnTalk(talk) {
@@ -2926,10 +3254,16 @@
 
     function sInit() {
       document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
+      if (TEXTO_DIRECCION) {
+        $('esi-direccion').hidden = false;
+        $('esi-direccion-texto').textContent = TEXTO_DIRECCION;
+      }
       $('hdr-title').textContent = 'Inscripción a las charlas';
       $('hdr-sub').textContent = EVENT_NAME;
       $('btn-mail').addEventListener('click', sLookup);
       $('btn-use-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
+      $('btn-prefer-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
+      $('select-mail-year').addEventListener('change', sMailYearHint_);
       $('login-mail').addEventListener('click', function () { sSetLoginMode('mail'); });
       $('login-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
       sSetDniAvailable_(false);
@@ -2957,6 +3291,7 @@
         showScreen(S_SCREENS, 's-screen-mail');
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
+      $('btn-ics').addEventListener('click', sDownloadIcs_);
       $('btn-cambiar-datos').addEventListener('click', function () {
         var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;
         var ok = has
@@ -3014,6 +3349,12 @@
     var adminCred = '';
     var aRole = 'admin';
     var aTalkData = null;
+    var aTalkFilter = 'all';
+    var aUndoTimer = null;
+    var aWakeLock = null;
+    var A_MARK_QUEUE = 'esi_mark_queue';
+    var aMailPreview = null;
+    var aMailBusy = false;
     var aPendingData = null;
     var aTalkId = '';
     var aReports = null;
@@ -3167,9 +3508,11 @@
             return;
           }
           aTalkData = resp;
+          aApplyQueued_(aTalkData);
           aUpdatedAt = Date.now();
           aUpdateAges();
           aRenderTalk();
+          aFlushMarks_();
         })
         .catch(function () {
           aBanner('Sin conexión.', 'err');
@@ -3184,29 +3527,113 @@
         if (String(aTalkData.students[i].id) === id) { target = aTalkData.students[i]; break; }
       }
       if (!target) return;
-      var next = !target.presente;
+      var prev = !!target.presente;
+      var next = !prev;
       target.presente = next;
       var presentes = 0;
-      for (var i = 0; i < aTalkData.students.length; i++) {
-        if (aTalkData.students[i].presente) presentes++;
+      for (var j = 0; j < aTalkData.students.length; j++) {
+        if (aTalkData.students[j].presente) presentes++;
       }
       aTalkData.presentes = presentes;
       aRenderTalk();
+      if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { } }
       call('apiAdminSetPresent', [adminCred, id, next])
         .then(function (resp) {
           if (!resp.ok) {
-            target.presente = !next;
+            target.presente = prev;
             aRenderTalk();
             aBanner(resp.message || 'No se pudo marcar.', 'err');
+            return;
           }
+          aUnqueue_(id);
+          aOfferUndo_(id, prev);
         })
         .catch(function () {
-          target.presente = !next;
-          aRenderTalk();
-          aBanner('Sin conexión.', 'err');
+          aQueueMark_(id, next);
+          aBanner('Sin conexión. Se reintentará.', 'err');
         });
     }
 
+    function aOfferUndo_(id, prev) {
+      var el = $('a-msg');
+      if (!el) return;
+      if (aUndoTimer) window.clearTimeout(aUndoTimer);
+      el.innerHTML = 'Marcado. <button type="button" class="undo-btn" id="btn-undo">Deshacer</button>';
+      el.className = 'banner ok';
+      el.style.display = 'block';
+      var btn = $('btn-undo');
+      if (btn) btn.addEventListener('click', function () {
+        if (!adminCred) return;
+        call('apiAdminSetPresent', [adminCred, id, prev])
+          .then(function (resp) {
+            if (!resp.ok) { aBanner(resp.message || 'No se pudo deshacer.', 'err'); return; }
+            aUnqueue_(id);
+            aBanner('Deshecho.', 'ok');
+            aLoadTalk();
+          })
+          .catch(function () {
+            aQueueMark_(id, prev);
+            aBanner('Sin conexión. Se reintentará.', 'err');
+          });
+      });
+      aUndoTimer = window.setTimeout(function () { aBanner('', 'ok'); }, 5000);
+    }
+
+    function aReadQueue_() {
+      try {
+        var raw = lsGet(A_MARK_QUEUE);
+        var list = raw ? JSON.parse(raw) : [];
+        return Object.prototype.toString.call(list) === '[object Array]' ? list : [];
+      } catch (e) { return []; }
+    }
+    function aWriteQueue_(list) { lsSet(A_MARK_QUEUE, JSON.stringify(list.slice(-200))); }
+    function aQueueMark_(id, presente) {
+      var list = aReadQueue_().filter(function (x) { return String(x.id) !== String(id); });
+      list.push({ id: String(id), presente: !!presente, t: Date.now() });
+      aWriteQueue_(list);
+    }
+    function aUnqueue_(id) {
+      aWriteQueue_(aReadQueue_().filter(function (x) { return String(x.id) !== String(id); }));
+    }
+    function aApplyQueued_(d) {
+      if (!d || !d.students) return;
+      var q = aReadQueue_();
+      var by = {};
+      for (var i = 0; i < q.length; i++) by[String(q[i].id)] = !!q[i].presente;
+      for (var j = 0; j < d.students.length; j++) {
+        if (Object.prototype.hasOwnProperty.call(by, String(d.students[j].id))) d.students[j].presente = by[String(d.students[j].id)];
+      }
+      var presentes = 0;
+      for (var k = 0; k < d.students.length; k++) if (d.students[k].presente) presentes++;
+      d.presentes = presentes;
+    }
+    function aFlushMarks_() {
+      if (!adminCred || !navigator.onLine) return;
+      var q = aReadQueue_();
+      if (!q.length) return;
+      var i = 0;
+      function next() {
+        if (i >= q.length || !adminCred) return;
+        var row = q[i++];
+        call('apiAdminSetPresent', [adminCred, row.id, !!row.presente])
+          .then(function (resp) {
+            if (resp.ok) aUnqueue_(row.id);
+            next();
+          })
+          .catch(function () { });
+      }
+      next();
+    }
+    function aKeepAwake_() {
+      if (!adminCred || !navigator.wakeLock || aWakeLock) return;
+      navigator.wakeLock.request('screen').then(function (lock) {
+        aWakeLock = lock;
+        lock.addEventListener('release', function () { aWakeLock = null; });
+      }).catch(function () { });
+    }
+    function aReleaseAwake_() {
+      if (aWakeLock) { try { aWakeLock.release(); } catch (e) { } aWakeLock = null; }
+    }
     function aRenderTalk() {
       var d = aTalkData;
       if (!d) return;
@@ -3214,7 +3641,7 @@
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
       $('charla-count').textContent = d.count + ' de ' + d.talk.cupo;
       var presentesEl = $('charla-presentes');
-      if (presentesEl) presentesEl.textContent = 'presentes ' + (d.presentes || 0) + ' de ' + d.count;
+      if (presentesEl) presentesEl.textContent = 'Presentes ' + (d.presentes || 0) + ' de ' + d.count;
       var rows = '';
       var shown = 0;
       var cursos = {};
@@ -3222,6 +3649,8 @@
         var st = d.students[i];
         if (st.curso) cursos[st.curso] = 1;
         if (fCurso && st.curso !== fCurso) continue;
+        if (aTalkFilter === 'present' && !st.presente) continue;
+        if (aTalkFilter === 'absent' && st.presente) continue;
         if (q && aSearch_(st).indexOf(q) < 0) continue;
         shown++;
         var stMail = aRole === 'admin' && st.email ? '<span class="roster-mail">' + esc(st.email) + '</span>' : '';
@@ -3242,6 +3671,68 @@
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
       $('charla-list').innerHTML = rows;
+    }
+
+    function aMailMsg_(text, type) {
+      var el = $('mail-send-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+    function aLoadMailPreview() {
+      if (!adminCred) return;
+      aMailMsg_('', 'ok');
+      call('apiAdminMailPreview', [adminCred])
+        .then(function (resp) {
+          if (!resp.ok) { aMailMsg_(resp.message || 'No se pudo preparar el recordatorio.', 'err'); return; }
+          aMailPreview = resp;
+          var meta = resp.total + ' destinatarios con al menos una charla. ';
+          meta += resp.quota < 0 ? 'El envío no está disponible en este entorno.' : 'Cuota disponible: ' + resp.quota + ' mails.';
+          $('mail-preview-meta').textContent = meta;
+          var body = $('mail-preview-body');
+          body.textContent = resp.sample ? resp.sample.body : 'Todavía no hay alumnos anotados.';
+          body.hidden = !resp.sample;
+        })
+        .catch(function () { aMailMsg_('Sin conexión.', 'err'); });
+    }
+    function aSendReminders() {
+      if (!adminCred || aMailBusy) return;
+      if (!aMailPreview) { aLoadMailPreview(); aMailMsg_('Cargá la vista previa antes de enviar.', 'err'); return; }
+      if (!aMailPreview.total) { aMailMsg_('No hay destinatarios.', 'err'); return; }
+      if (!window.confirm('Se enviarán ' + aMailPreview.total + ' mails. ¿Continuar?')) return;
+      aMailBusy = true;
+      $('btn-mail-send').disabled = true;
+      $('btn-mail-preview').disabled = true;
+      var sent = 0;
+      var failed = 0;
+      function send(offset) {
+        call('apiAdminSendReminders', [adminCred, offset, 20])
+          .then(function (resp) {
+            if (!resp.ok) {
+              aMailBusy = false;
+              $('btn-mail-send').disabled = false;
+              $('btn-mail-preview').disabled = false;
+              aMailMsg_(resp.message || 'No se pudo enviar.', 'err');
+              return;
+            }
+            sent += resp.sent;
+            failed += resp.failed;
+            aMailMsg_('Enviados ' + sent + ' de ' + resp.total + (failed ? ' (' + failed + ' fallaron)' : '') + '.', failed ? 'err' : 'ok');
+            if (!resp.done) { window.setTimeout(function () { send(resp.nextOffset); }, 400); return; }
+            aMailBusy = false;
+            $('btn-mail-send').disabled = false;
+            $('btn-mail-preview').disabled = false;
+            aMailMsg_('Listo: ' + sent + ' enviados' + (failed ? ', ' + failed + ' fallaron' : '') + '.', failed ? 'err' : 'ok');
+          })
+          .catch(function () {
+            aMailBusy = false;
+            $('btn-mail-send').disabled = false;
+            $('btn-mail-preview').disabled = false;
+            aMailMsg_('Sin conexión. Se enviaron ' + sent + '.', 'err');
+          });
+      }
+      send(0);
     }
 
     function aLoadPending() {
@@ -3268,7 +3759,7 @@
       var q = ($('input-buscar-pend') ? $('input-buscar-pend').value : '').replace(/\s+/g, ' ').trim().toLowerCase();
       var fCurso = $('filter-curso-pend') ? $('filter-curso-pend').value : '';
       var fDiv = $('filter-division-pend') ? $('filter-division-pend').value : '';
-      $('pend-count').textContent = d.pending + ' sin completar';
+      $('pend-count').textContent = d.pending + ' incompletos de ' + d.total;
       var rows = '';
       var shown = 0;
       var cursos = {};
@@ -3298,7 +3789,7 @@
       if (fCurso) $('filter-curso-pend').value = fCurso;
       if (fDiv) $('filter-division-pend').value = fDiv;
       if (!d.students.length) {
-        rows = '<div class="empty-state"><p class="es-title">Todos completaron los tres horarios.</p></div>';
+        rows = '<div class="empty-state"><p class="es-title">No hay inscripciones incompletas.</p></div>';
       } else if (!shown) {
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
@@ -3369,6 +3860,79 @@
       return 'Presentes por franja: ' + parts.join(' · ');
     }
 
+    function chartDonut_(present, absent, label) {
+      var total = Number(present || 0) + Number(absent || 0);
+      var pct = total ? Math.round(Number(present || 0) * 100 / total) : 0;
+      return '<figure class="chart"><figcaption>' + esc(label) + '</figcaption>'
+        + '<div class="donut-wrap"><svg class="donut" viewBox="0 0 42 42" role="img" aria-label="'
+        + esc(label + ': ' + Number(present || 0) + ' de ' + total) + '">'
+        + '<title>' + esc(label + ': ' + Number(present || 0) + ' de ' + total) + '</title>'
+        + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line-strong)" stroke-width="6"></circle>'
+        + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--accent)" stroke-width="6" pathLength="100"'
+        + ' stroke-dasharray="' + pct + ' 100" transform="rotate(-90 21 21)"></circle>'
+        + '<text x="21" y="21" dy=".35em">' + pct + '%</text></svg>'
+        + '<p class="chart-note">' + Number(present || 0) + ' presentes de ' + total
+        + (total ? ' · ' + Number(absent || 0) + ' ausentes' : ' · sin datos') + '</p></div>'
+        + '<table class="sr-only"><caption>' + esc(label) + '</caption><tr><th>Presentes</th><td>'
+        + Number(present || 0) + '</td></tr><tr><th>Ausentes</th><td>' + Number(absent || 0) + '</td></tr></table>'
+        + '</figure>';
+    }
+
+    function chartBars_(items, label) {
+      var html = '<figure class="chart"><figcaption>' + esc(label) + '</figcaption><div class="bars" role="img" aria-label="' + esc(label) + '">';
+      var table = '<table class="sr-only"><caption>' + esc(label) + '</caption><tr><th>Charla</th><th>Valor</th><th>Máximo</th></tr>';
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var max = Number(it.max || 0) || 1;
+        var pct = Math.max(0, Math.min(100, Math.round(Number(it.value || 0) * 100 / max)));
+        html += '<div class="bar-row"><span class="bar-name">' + esc(it.label) + '</span>'
+          + '<span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:' + pct + '%"></span></span>'
+          + '<span class="bar-value">' + Number(it.value || 0) + (it.max != null ? '/' + Number(it.max) : '') + '</span></div>';
+        table += '<tr><td>' + esc(it.label) + '</td><td>' + Number(it.value || 0) + '</td><td>' + Number(it.max || 0) + '</td></tr>';
+      }
+      html += '</div>' + table + '</figure>';
+      return html;
+    }
+
+    function aCharts_(kind, course) {
+      var d = aReports || {};
+      var t = d.totals || {};
+      var html = '<div class="chart-grid">';
+      if (kind === 'talk') {
+        var talk = null;
+        for (var i = 0; i < (d.talks || []).length; i++) {
+          if (String(d.talks[i].id) === String(aRepTalkId)) { talk = d.talks[i]; break; }
+        }
+        if (talk) {
+          html += chartDonut_(talk.presentes, talk.ausentes, 'Asistencia: ' + talk.titulo);
+          html += chartBars_(d.talks.map(function (x) {
+            return { label: x.titulo, value: x.anotados, max: x.cupo };
+          }), 'Reservas por charla');
+        }
+      } else if (kind === 'curso' && course) {
+        var present = 0;
+        var total = 0;
+        for (var s = 0; s < course.students.length; s++) {
+          present += Number(course.students[s].presentes || 0);
+          total += Number(course.students[s].count || 0);
+        }
+        html += chartDonut_(present, Math.max(0, total - present), 'Asistencia en ' + course.curso);
+        html += chartBars_((d.courses || []).map(function (c) {
+          return { label: c.curso, value: c.roster };
+        }), 'Inscriptos por curso');
+      } else {
+        html += chartDonut_(t.present, t.absent, 'Asistencia general');
+        html += chartBars_((t.presentBySlot || []).map(function (x) {
+          return { label: x.slot + ' · ' + x.label, value: x.presentes, max: x.total };
+        }), 'Presentes por franja');
+        html += chartDonut_((t.byCiclo || {}).basico, (t.byCiclo || {}).orientado, 'Inscriptos por ciclo');
+        html += chartBars_((d.talks || []).map(function (x) {
+          return { label: x.titulo, value: x.anotados, max: x.cupo };
+        }), 'Reservas por charla');
+      }
+      return html + '</div>';
+    }
+
     function aRenderReport() {
       var d = aReports;
       var out = $('rep-out');
@@ -3404,11 +3968,12 @@
       if ($('rep-curso')) $('rep-curso').value = course.curso;
       var showMail = aRole === 'admin';
       var html = reportStats_([
-        [course.roster, 'En la lista'],
+        [course.roster, 'Inscriptos'],
         [course.complete, 'Completos'],
         [course.incomplete, 'Incompletos'],
-        [course.missing, 'Sin anotar']
+        [course.presentBySlot.reduce(function (a, x) { return a + x.presentes; }, 0), 'Presentes']
       ]);
+      html += aCharts_('curso', course);
       html += '<p class="hint-line">' + esc(reportPresentLine_(course.presentBySlot)) + '</p>';
       html += '<div class="table-wrap report-table"><table><thead><tr>'
         + '<th>#</th><th>Alumno</th><th>Curso</th>';
@@ -3484,6 +4049,7 @@
         [talk.ausentes, 'Ausentes'],
         [talk.cupo, 'Cupo']
       ]);
+      html += aCharts_('talk');
       html += '<p class="hint-line">' + esc(talk.titulo) + ' · ' + esc(talk.slotLabel) + ' · ' + esc(talk.lugar) + '</p>';
       var parts = [];
       for (var c = 0; c < (talk.porCurso || []).length; c++) {
@@ -3520,11 +4086,13 @@
       var d = aReports;
       var t = d.totals || {};
       var html = reportStats_([
-        [t.roster || 0, 'En la lista'],
+        [t.roster || 0, 'Inscriptos'],
         [t.complete || 0, 'Completos'],
         [t.incomplete || 0, 'Incompletos'],
-        [t.missing || 0, 'Sin anotar']
+        [t.signups || 0, 'Reservas'],
+        [t.present || 0, 'Presentes']
       ]);
+      html += aCharts_('total');
       html += '<p class="hint-line">' + esc(reportPresentLine_(t.presentBySlot || [])) + '</p>';
       html += '<div class="table-wrap report-table"><table><thead><tr>'
         + '<th>Charla</th><th>Ciclo</th><th>Horario</th><th>Inscriptos</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th>'
@@ -3588,8 +4156,8 @@
       if (aRepType === 'curso') {
         for (i = 0; i < d.courses.length; i++) {
           var course = d.courses[i];
-          var summary = 'En la lista: ' + course.roster + ' · Completos: ' + course.complete
-            + ' · Incompletos: ' + course.incomplete + ' · Sin anotar: ' + course.missing
+          var summary = 'Inscriptos: ' + course.roster + ' · Completos: ' + course.complete
+            + ' · Incompletos: ' + course.incomplete
             + ' · ' + reportPresentLine_(course.presentBySlot);
           var rows = '';
           for (j = 0; j < course.students.length; j++) {
@@ -3647,8 +4215,8 @@
         }
       } else {
         var t = d.totals || {};
-        var sum = 'En la lista: ' + (t.roster || 0) + ' · Completos: ' + (t.complete || 0)
-          + ' · Incompletos: ' + (t.incomplete || 0) + ' · Sin anotar: ' + (t.missing || 0)
+        var sum = 'Inscriptos: ' + (t.roster || 0) + ' · Completos: ' + (t.complete || 0)
+          + ' · Incompletos: ' + (t.incomplete || 0) + ' · Reservas: ' + (t.signups || 0)
           + ' · ' + reportPresentLine_(t.presentBySlot || []);
         var all = d.talks || [];
         var tbody = '';
@@ -3834,6 +4402,7 @@
         tab.classList.toggle('active', tabs[j][1]);
         tab.setAttribute('aria-selected', tabs[j][1] ? 'true' : 'false');
       }
+      if (name === 'mails' && !aMailPreview) aLoadMailPreview();
       aRefreshView();
     }
 
@@ -4087,6 +4656,8 @@
 
     function aLogout() {
       aStopAutoRefresh();
+      aReleaseAwake_();
+      if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
       adminCred = '';
       aRole = 'admin';
       aTalkData = null;
@@ -4148,6 +4719,23 @@
       });
       $('input-buscar-charla').addEventListener('input', aRenderTalk);
       $('filter-curso-charla').addEventListener('change', aRenderTalk);
+      $('charla-filtro').addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.getAttribute ? ev.target : null;
+        var val = btn ? btn.getAttribute('data-filter') : '';
+        if (!val) return;
+        aTalkFilter = val;
+        var nodes = $('charla-filtro').querySelectorAll('button');
+        for (var i = 0; i < nodes.length; i++) {
+          var on = nodes[i].getAttribute('data-filter') === val;
+          nodes[i].classList.toggle('active', on);
+          nodes[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        aRenderTalk();
+      });
+      window.addEventListener('online', aFlushMarks_);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') aKeepAwake_();
+      });
       $('input-buscar-pend').addEventListener('input', aRenderPending);
       $('filter-curso-pend').addEventListener('change', aRenderPending);
       $('filter-division-pend').addEventListener('change', aRenderPending);
@@ -4158,12 +4746,15 @@
         if (btn) aOnPresent(btn.getAttribute('data-id'));
       });
       $('btn-refresh-pend').addEventListener('click', function () { aLoadPending(); });
+      $('btn-mail-preview').addEventListener('click', aLoadMailPreview);
+      $('btn-mail-send').addEventListener('click', aSendReminders);
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
       document.addEventListener('keydown', aOnKey_);
 
       if (adminCred) {
         showScreen(A_SCREENS, 'a-screen-panel');
+        aKeepAwake_();
         aLoad(true);
       } else {
         aDemoHint();
