@@ -3576,7 +3576,7 @@
       }
       aTalkData.presentes = presentes;
       aRenderTalk();
-      if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { } }
+      if (typeof navigator !== 'undefined' && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { } }
       call('apiAdminSetPresent', [adminCred, id, next])
         .then(function (resp) {
           if (!resp.ok) {
@@ -3648,7 +3648,7 @@
       d.presentes = presentes;
     }
     function aFlushMarks_() {
-      if (!adminCred || !navigator.onLine) return;
+      if (!adminCred || typeof navigator === 'undefined' || !navigator.onLine) return;
       var q = aReadQueue_();
       if (!q.length) return;
       var i = 0;
@@ -3665,7 +3665,7 @@
       next();
     }
     function aKeepAwake_() {
-      if (!adminCred || !navigator.wakeLock || aWakeLock) return;
+      if (!adminCred || typeof navigator === 'undefined' || !navigator.wakeLock || aWakeLock) return;
       navigator.wakeLock.request('screen').then(function (lock) {
         aWakeLock = lock;
         lock.addEventListener('release', function () { aWakeLock = null; });
@@ -4674,7 +4674,7 @@
         if (api) url += '?api=' + encodeURIComponent(api);
       }
       var done = function () { aBanner('Link copiado.', 'ok'); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done, function () {
           window.prompt('Copiá el link:', url);
         });
