@@ -4,6 +4,7 @@ var TALKS_SHEET = 'Talks';
 var SIGNUPS_SHEET = 'Signups';
 var STUDENTS_SHEET = 'Students';
 var SESSIONS_SHEET = 'Sessions';
+var SENT_MAILS_SHEET = 'Mails';
 var MAX_EMAIL_ = 120;
 var INSTITUTIONAL_DOMAIN = '@secundariosalsipuedes.edu.ar';
 var ADMIN_PIN_PROP = 'ADMIN_PIN';
@@ -442,6 +443,27 @@ function mailQuota_() {
   }
 }
 
+function readSentMails_(subject) {
+  try {
+    var sh = sheet_(SENT_MAILS_SHEET);
+    if (!sh) return null;
+    var vals = sh.getDataRange().getValues();
+    var out = {};
+    for (var i = 1; i < vals.length; i++) {
+      if (String(vals[i][2]) !== subject) continue;
+      var email = String(vals[i][0]).trim().toLowerCase();
+      if (email) out[email] = true;
+    }
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+function appendSentMail_(email, subject) {
+  sheet_(SENT_MAILS_SHEET).appendRow([String(email).trim().toLowerCase(), new Date(), String(subject)]);
+}
+
 function apiAdminMailPreview(cred) {
   var auth = adminAuth_(cred);
   if (!auth.ok) return { ok: false, message: auth.message };
@@ -449,11 +471,33 @@ function apiAdminMailPreview(cred) {
   try {
     var cfg = readConfigCached_();
     var rows = reminderRecipients_();
+    var subject = reminderSubject_(cfg);
+    var sent = readSentMails_(subject);
+    if (!sent) {
+      return {
+        ok: true,
+        total: rows.length,
+        pending: rows.length,
+        dedup: false,
+        subject: subject,
+        sample: null,
+        quota: mailQuota_(),
+        batchSize: REMINDER_BATCH_,
+        event: eventInfo_(cfg),
+        message: 'Falta la hoja Mails. Ejecutá setup() otra vez.'
+      };
+    }
+    var pending = 0;
+    for (var ri = 0; ri < rows.length; ri++) {
+      if (!sent[String(rows[ri].email).trim().toLowerCase()]) pending++;
+    }
     var sample = rows[0] || null;
     return {
       ok: true,
       total: rows.length,
-      subject: reminderSubject_(cfg),
+      pending: pending,
+      dedup: true,
+      subject: subject,
       sample: sample ? { nombre: sample.nombre, curso: sample.curso, body: reminderBody_(sample, cfg) } : null,
       quota: mailQuota_(),
       batchSize: REMINDER_BATCH_,
@@ -476,11 +520,17 @@ function apiAdminSendReminders(cred, offset, limit) {
     var rows = reminderRecipients_();
     var start = Math.max(0, Number(offset) || 0);
     var take = Math.min(REMINDER_MAX_BATCH_, Math.max(1, Number(limit) || REMINDER_BATCH_));
-    var end = Math.min(rows.length, start + take, start + quota);
     var subject = reminderSubject_(cfg);
+    var sentSet = readSentMails_(subject);
+    if (!sentSet) return { ok: false, message: 'Falta la hoja Mails. Ejecutá setup() otra vez.' };
+    var end = Math.min(rows.length, start + take);
     var sent = 0;
     var failed = 0;
+    var skipped = 0;
     for (var i = start; i < end; i++) {
+      var key = String(rows[i].email).trim().toLowerCase();
+      if (sentSet[key]) { skipped++; continue; }
+      var delivered = false;
       try {
         MailApp.sendEmail({
           to: rows[i].email,
@@ -488,15 +538,20 @@ function apiAdminSendReminders(cred, offset, limit) {
           body: reminderBody_(rows[i], cfg),
           name: EVENT_TITLE_
         });
-        sent++;
+        delivered = true;
       } catch (err) {
         failed++;
       }
+      if (!delivered) continue;
+      sentSet[key] = true;
+      sent++;
+      try { appendSentMail_(rows[i].email, subject); } catch (err2) { }
     }
     return {
       ok: true,
       sent: sent,
       failed: failed,
+      skipped: skipped,
       total: rows.length,
       nextOffset: end,
       done: end >= rows.length,
@@ -505,6 +560,72 @@ function apiAdminSendReminders(cred, offset, limit) {
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
+}
+
+
+function apiAdminGetConfig(cred) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  if (auth.role !== ROLE_ADMIN) return { ok: false, message: 'Tu clave no permite esta acción.' };
+  try {
+    var cfg = readConfig_();
+    return {
+      ok: true,
+      evento_abierto: isOpen_(cfg),
+      event: eventInfo_(cfg)
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function normalizeEventDate_(value) {
+  var raw = String(value == null ? '' : value).trim();
+  var m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    var y = Number(m[1]);
+    var mo = Number(m[2]);
+    var d = Number(m[3]);
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+    return y + '-' + (mo < 10 ? '0' + mo : mo) + '-' + (d < 10 ? '0' + d : d);
+  }
+  return '';
+}
+
+function apiAdminSetConfig(cred, values) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  if (auth.role !== ROLE_ADMIN) return { ok: false, message: 'Tu clave no permite esta acción.' };
+  var v = values && typeof values === 'object' ? values : {};
+  return withScriptLock_(3000, function () {
+    try {
+      if (v.evento_abierto != null) {
+        var open = v.evento_abierto === true || String(v.evento_abierto).toLowerCase() === 'abierto';
+        writeConfig_('evento_abierto', open ? 'abierto' : 'cerrado');
+      }
+      if (v.evento_fecha != null && String(v.evento_fecha).trim() !== '') {
+        var date = normalizeEventDate_(v.evento_fecha);
+        if (!date) return { ok: false, message: 'Fecha inválida. Usá AAAA-MM-DD.' };
+        writeConfig_('evento_fecha', date);
+      }
+      if (v.evento_zona != null && String(v.evento_zona).trim() !== '') {
+        var zone = String(v.evento_zona).trim();
+        if (!/^[A-Za-z0-9_+\-\/]+$/.test(zone)) {
+          return { ok: false, message: 'Zona horaria inválida. Usá algo como America/Argentina/Cordoba.' };
+        }
+        writeConfig_('evento_zona', zone);
+      }
+      invalidateDataCache_();
+      var cfg = readConfig_();
+      return {
+        ok: true,
+        evento_abierto: isOpen_(cfg),
+        event: eventInfo_(cfg)
+      };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
 }
 
 var API_FN_MAP_ = {
@@ -524,7 +645,9 @@ var API_FN_MAP_ = {
   apiAdminSetPresent: apiAdminSetPresent,
   apiAdminReports: apiAdminReports,
   apiAdminMailPreview: apiAdminMailPreview,
-  apiAdminSendReminders: apiAdminSendReminders
+  apiAdminSendReminders: apiAdminSendReminders,
+  apiAdminGetConfig: apiAdminGetConfig,
+  apiAdminSetConfig: apiAdminSetConfig
 };
 
 function doGet(e) {
@@ -585,6 +708,7 @@ function setup() {
   ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
   ensureSheet_(ss, SESSIONS_SHEET, ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
+  ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
   var signupsSh = sheet_(SIGNUPS_SHEET);
   ensureColumn_(signupsSh, 'presente');
   ensureColumn_(signupsSh, 'apellido');
@@ -1682,7 +1806,8 @@ function apiAdminGetData(cred) {
       talks: talksOut,
       signups: signups,
       total: signups.length,
-      porCiclo: porCiclo
+      porCiclo: porCiclo,
+      event: eventInfo_(cfg)
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };

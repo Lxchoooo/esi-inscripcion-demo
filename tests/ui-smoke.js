@@ -100,7 +100,7 @@ return {
   setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
   sState: sState, getState: function () { return sState; }, setA: function (v) { aData = v; },
-  setTalk: function (v) { aTalkData = v; }, setTalkFilter: function (v) { aTalkFilter = v; aRenderTalk(); },
+  setTalk: function (v) { aTalkData = v; }, setTalkFilter: function (v) { aTalkFilter = v; aRenderTalk(); }, aSaveConfig: aSaveConfig,
   setPending: function (v) { aPendingData = v; },
   setRole: function (r) { aRole = r; },
   DEMO_TALKS: DEMO_TALKS, DEMO_SLOTS: DEMO_SLOTS
@@ -550,6 +550,15 @@ function tick() {
   assert(gaveUp && netTries === 3, 'network errors give up after three attempts');
 
   await ui.demoCall('apiRegister', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba']);
+  ui.setCred('demo');
+  document.getElementById('cfg-fecha').value = '2026-11-05';
+  document.getElementById('cfg-zona').value = 'America/Argentina/Cordoba';
+  ui.aSaveConfig();
+  await tick();
+  assert(document.getElementById('cfg-msg').textContent === 'Configuración guardada.', 'config guardada');
+  const demoCfg = await ui.demoCall('apiAdminGetConfig', ['demo']);
+  assert(demoCfg.ok && demoCfg.event.fecha === '2026-11-05', 'demo config fecha');
+
   const demoPreview = await ui.demoCall('apiAdminMailPreview', ['demo']);
   assert(demoPreview.ok && demoPreview.total >= 1, 'demo mail preview');
   assert(demoPreview.sample.body.includes('Tus charlas:'), 'demo mail body');

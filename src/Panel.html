@@ -574,6 +574,10 @@
     }
     .status-chips button.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
     .status-chips button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .config-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 10px 0; }
+    @media (min-width: 620px) { .config-grid { grid-template-columns: 1fr 1.4fr; } }
+    .config-grid label { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .config-grid input { margin-top: 4px; }
     .mail-preview {
       white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 12px;
       padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
@@ -1082,6 +1086,16 @@
         <div id="a-totals"></div>
         <div id="a-toggle-box"></div>
         <div id="a-msg" class="banner"></div>
+      </div>
+
+      <div class="card admin-only" id="a-config-card">
+        <h3>Configuración del evento</h3>
+        <div class="config-grid">
+          <label for="cfg-fecha">Fecha<input id="cfg-fecha" type="date" autocomplete="off"></label>
+          <label for="cfg-zona">Zona horaria<input id="cfg-zona" type="text" spellcheck="false" placeholder="America/Argentina/Cordoba"></label>
+        </div>
+        <button id="btn-save-config" class="btn secondary small" type="button">Guardar configuración</button>
+        <div id="cfg-msg" class="banner"></div>
       </div>
 
       <div class="admin-actions top">
@@ -1811,7 +1825,26 @@
       return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
     function demoEvent() {
-      return { fecha: EVENT_DATE, zona: EVENT_TZ };
+      var saved = null;
+      try { saved = JSON.parse(lsGet('esi_demo_event') || 'null'); } catch (e) { }
+      return {
+        fecha: (saved && saved.fecha) || EVENT_DATE,
+        zona: (saved && saved.zona) || EVENT_TZ
+      };
+    }
+    function demoAdminSetConfig(cred, values) {
+      if (!demoIsAdmin_(cred)) return { ok: false, message: DEMO_NO_PERM };
+      var v = values || {};
+      if (v.evento_abierto != null) demoWrite('esi_demo_abierto', v.evento_abierto === true || String(v.evento_abierto).toLowerCase() === 'abierto');
+      var ev = demoEvent();
+      if (v.evento_fecha) {
+        var m = String(v.evento_fecha).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (!m) return { ok: false, message: 'Fecha inválida. Usá AAAA-MM-DD.' };
+        ev.fecha = m[1] + '-' + (m[2].length < 2 ? '0' + m[2] : m[2]) + '-' + (m[3].length < 2 ? '0' + m[3] : m[3]);
+      }
+      if (v.evento_zona) ev.zona = String(v.evento_zona).trim();
+      lsSet('esi_demo_event', JSON.stringify(ev));
+      return { ok: true, evento_abierto: demoOpen(), event: ev };
     }
     function demoPublicData(ciclo, mine) {
       var counts = {};
@@ -1978,7 +2011,8 @@
         }),
         signups: out,
         total: out.length,
-        porCiclo: porCiclo
+        porCiclo: porCiclo,
+        event: demoEvent()
       };
     }
     function demoLookupResponse_(ok, entry, rosterLoaded, message) {
@@ -2415,7 +2449,7 @@
       var rows = demoReminderRows_();
       var sample = rows[0] || null;
       return {
-        ok: true, total: rows.length,
+        ok: true, total: rows.length, pending: rows.length, dedup: true,
         subject: 'Recordatorio: ' + EVENT_NAME + ' del ' + aDateLabel_(EVENT_DATE),
         sample: sample ? { nombre: sample.nombre, curso: sample.curso, body: demoReminderBody_(sample) } : null,
         quota: 100, batchSize: 20, event: demoEvent()
@@ -2489,6 +2523,11 @@
       if (fn === 'apiAdminTalkRoster') return Promise.resolve(demoTalkRoster(a[1], demoRole_(a[0])));
       if (fn === 'apiAdminPending') return Promise.resolve(demoPending(demoRole_(a[0])));
       if (fn === 'apiAdminReports') return Promise.resolve(demoReports(demoRole_(a[0])));
+      if (fn === 'apiAdminGetConfig') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        return Promise.resolve({ ok: true, evento_abierto: demoOpen(), event: demoEvent() });
+      }
+      if (fn === 'apiAdminSetConfig') return Promise.resolve(demoAdminSetConfig(a[0], a[1]));
       if (fn === 'apiAdminMailPreview') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         return Promise.resolve(demoMailPreview());
@@ -3354,6 +3393,7 @@
     var aWakeLock = null;
     var A_MARK_QUEUE = 'esi_mark_queue';
     var aMailPreview = null;
+    var aConfigLoaded = false;
     var aMailBusy = false;
     var aPendingData = null;
     var aTalkId = '';
@@ -3687,7 +3727,9 @@
         .then(function (resp) {
           if (!resp.ok) { aMailMsg_(resp.message || 'No se pudo preparar el recordatorio.', 'err'); return; }
           aMailPreview = resp;
-          var meta = resp.total + ' destinatarios con al menos una charla. ';
+          var pending = resp.pending == null ? resp.total : resp.pending;
+          var meta = pending + ' pendientes de ' + resp.total + ' destinatarios. ';
+          if (!resp.dedup) meta += 'Falta la hoja Mails: ejecutá setup(). ';
           meta += resp.quota < 0 ? 'El envío no está disponible en este entorno.' : 'Cuota disponible: ' + resp.quota + ' mails.';
           $('mail-preview-meta').textContent = meta;
           var body = $('mail-preview-body');
@@ -3699,8 +3741,9 @@
     function aSendReminders() {
       if (!adminCred || aMailBusy) return;
       if (!aMailPreview) { aLoadMailPreview(); aMailMsg_('Cargá la vista previa antes de enviar.', 'err'); return; }
-      if (!aMailPreview.total) { aMailMsg_('No hay destinatarios.', 'err'); return; }
-      if (!window.confirm('Se enviarán ' + aMailPreview.total + ' mails. ¿Continuar?')) return;
+      var pending = aMailPreview.pending == null ? aMailPreview.total : aMailPreview.pending;
+      if (!pending) { aMailMsg_('No hay recordatorios pendientes.', 'ok'); return; }
+      if (!window.confirm('Se enviarán ' + pending + ' mails. ¿Continuar?')) return;
       aMailBusy = true;
       $('btn-mail-send').disabled = true;
       $('btn-mail-preview').disabled = true;
@@ -4303,6 +4346,12 @@
         + '<div class="admin-status"><span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
         + (d.evento_abierto ? 'Abierta' : 'Cerrada') + '</span></div>';
 
+      if (!aConfigLoaded && $('cfg-fecha') && $('cfg-zona')) {
+        var evCfg = d.event || { fecha: EVENT_DATE, zona: EVENT_TZ };
+        $('cfg-fecha').value = evCfg.fecha || EVENT_DATE;
+        $('cfg-zona').value = evCfg.zona || EVENT_TZ;
+        aConfigLoaded = true;
+      }
       var tb = $('a-toggle-box');
       tb.innerHTML = '';
       var toggle = document.createElement('button');
@@ -4654,6 +4703,31 @@
       document.body.removeChild(a);
     }
 
+    function aSaveConfig() {
+      if (!adminCred || !$('cfg-fecha')) return;
+      var msg = $('cfg-msg');
+      if (msg) { msg.textContent = ''; msg.className = 'banner'; msg.style.display = 'none'; }
+      var btn = $('btn-save-config');
+      if (btn) btn.disabled = true;
+      call('apiAdminSetConfig', [adminCred, {
+        evento_fecha: $('cfg-fecha').value,
+        evento_zona: $('cfg-zona').value
+      }]).then(function (resp) {
+        if (btn) btn.disabled = false;
+        if (!resp.ok) {
+          if (msg) { msg.textContent = resp.message || 'No se pudo guardar.'; msg.className = 'banner err'; msg.style.display = 'block'; }
+          return;
+        }
+        if (aData) { aData.event = resp.event; aData.evento_abierto = resp.evento_abierto; }
+        aConfigLoaded = false;
+        aRender();
+        if (msg) { msg.textContent = 'Configuración guardada.'; msg.className = 'banner ok'; msg.style.display = 'block'; }
+      }).catch(function () {
+        if (btn) btn.disabled = false;
+        if (msg) { msg.textContent = 'Sin conexión.'; msg.className = 'banner err'; msg.style.display = 'block'; }
+      });
+    }
+
     function aLogout() {
       aStopAutoRefresh();
       aReleaseAwake_();
@@ -4663,6 +4737,7 @@
       aTalkData = null;
       aPendingData = null;
       aTalkId = '';
+      aConfigLoaded = false;
       aData = null;
       $('input-pin').value = '';
       $('gate-msg').textContent = '';
@@ -4746,6 +4821,7 @@
         if (btn) aOnPresent(btn.getAttribute('data-id'));
       });
       $('btn-refresh-pend').addEventListener('click', function () { aLoadPending(); });
+      $('btn-save-config').addEventListener('click', aSaveConfig);
       $('btn-mail-preview').addEventListener('click', aLoadMailPreview);
       $('btn-mail-send').addEventListener('click', aSendReminders);
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
