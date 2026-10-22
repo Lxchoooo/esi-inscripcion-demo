@@ -18,7 +18,11 @@ var STUDENT_TOKEN_PREFIX = 's_';
 var STUDENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 var STUDENT_SESSION_GRACE_MS = 24 * 60 * 60 * 1000;
 // 2026-11-04 23:59:59 -03. Sessions can live 24 h past the event.
-var EVENT_DAY_END_MS = Date.UTC(2026, 10, 5, 2, 59, 59);
+var EVENT_DEFAULT_DATE_ = '2026-11-04';
+var EVENT_DEFAULT_TZ_ = 'America/Argentina/Cordoba';
+var EVENT_TITLE_ = 'Jornada ESI 2026';
+var REMINDER_BATCH_ = 20;
+var REMINDER_MAX_BATCH_ = 40;
 var ROLE_ADMIN = 'admin';
 var ROLE_GUIDE = 'guide';
 var DATA_CACHE_TTL = 12;
@@ -335,6 +339,174 @@ var EsiCore = (function () {
   };
 })();
 
+
+var MESES_ = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function eventDateLabel_(cfg) {
+  var raw = eventDate_(cfg);
+  var m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return raw;
+  return Number(m[3]) + ' de ' + MESES_[Number(m[2]) - 1] + ' de ' + m[1];
+}
+
+function reminderRecipients_() {
+  var signups = readSignupsCached_();
+  var slots = readSlotsCached_();
+  var talks = readTalksCached_();
+  var talkById = {};
+  for (var t = 0; t < talks.length; t++) talkById[String(talks[t].id)] = talks[t];
+  var byEmail = {};
+  var order = [];
+  for (var i = 0; i < signups.length; i++) {
+    var sg = signups[i];
+    var key = EsiCore.normalizeEmail(sg.email);
+    if (!key) continue;
+    if (!byEmail[key]) {
+      byEmail[key] = { email: key, nombre: '', apellido: '', curso: '', bySlot: {} };
+      order.push(key);
+    }
+    var row = byEmail[key];
+    if (!row.nombre) row.nombre = sg.nombre || '';
+    if (!row.apellido) row.apellido = sg.apellido || '';
+    if (!row.curso) row.curso = sg.curso || '';
+    if (!row.bySlot[Number(sg.slot_id)]) row.bySlot[Number(sg.slot_id)] = sg;
+  }
+  var out = [];
+  for (var j = 0; j < order.length; j++) {
+    var r = byEmail[order[j]];
+    var items = [];
+    for (var k = 0; k < slots.length; k++) {
+      var choice = r.bySlot[Number(slots[k].id)];
+      var info = choice ? talkById[String(choice.talk_id)] : null;
+      items.push({
+        slot: slots[k].nombre,
+        inicio: slots[k].inicio,
+        fin: slots[k].fin,
+        titulo: info ? info.titulo : '',
+        lugar: info ? (info.lugar || '') : '',
+        elegida: !!info
+      });
+    }
+    out.push({
+      email: r.email,
+      nombre: givenName_(r.nombre, r.apellido),
+      apellido: r.apellido,
+      nombreCompleto: r.nombre,
+      curso: r.curso,
+      items: items
+    });
+  }
+  out.sort(function (a, b) {
+    var c = String(a.apellido || '').localeCompare(String(b.apellido || ''), 'es', { sensitivity: 'base' });
+    if (c) return c;
+    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' });
+  });
+  return out;
+}
+
+function reminderSubject_(cfg) {
+  return 'Recordatorio: ' + EVENT_TITLE_ + ' del ' + eventDateLabel_(cfg);
+}
+
+function reminderBody_(r, cfg) {
+  var lines = [
+    'Hola ' + (r.nombre || '') + ':',
+    '',
+    'Te recordamos que el ' + eventDateLabel_(cfg) + ' es la ' + EVENT_TITLE_ + '.',
+    '',
+    'Tus charlas:'
+  ];
+  for (var i = 0; i < r.items.length; i++) {
+    var it = r.items[i];
+    var when = it.slot + ' (' + it.inicio + ' a ' + it.fin + ')';
+    if (it.elegida) {
+      lines.push('- ' + when + ': ' + it.titulo + (it.lugar ? ' (' + it.lugar + ')' : ''));
+    } else {
+      lines.push('- ' + when + ': todavía no elegiste.');
+    }
+  }
+  lines.push('');
+  lines.push('Llegá 10 minutos antes de cada charla. Si no podés asistir, avisale a un preceptor.');
+  lines.push('');
+  lines.push('Equipo ESI');
+  return lines.join('\n');
+}
+
+function mailQuota_() {
+  try {
+    if (typeof MailApp === 'undefined' || !MailApp) return -1;
+    return Number(MailApp.getRemainingDailyQuota());
+  } catch (e) {
+    return -1;
+  }
+}
+
+function apiAdminMailPreview(cred) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  if (auth.role !== ROLE_ADMIN) return { ok: false, message: 'Tu clave no permite esta acción.' };
+  try {
+    var cfg = readConfigCached_();
+    var rows = reminderRecipients_();
+    var sample = rows[0] || null;
+    return {
+      ok: true,
+      total: rows.length,
+      subject: reminderSubject_(cfg),
+      sample: sample ? { nombre: sample.nombre, curso: sample.curso, body: reminderBody_(sample, cfg) } : null,
+      quota: mailQuota_(),
+      batchSize: REMINDER_BATCH_,
+      event: eventInfo_(cfg)
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function apiAdminSendReminders(cred, offset, limit) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  if (auth.role !== ROLE_ADMIN) return { ok: false, message: 'Tu clave no permite esta acción.' };
+  if (mailQuota_() < 0) return { ok: false, message: 'El envío de mails no está disponible.' };
+  var quota = mailQuota_();
+  if (quota <= 0) return { ok: false, message: 'No queda cuota de mails por hoy.' };
+  try {
+    var cfg = readConfigCached_();
+    var rows = reminderRecipients_();
+    var start = Math.max(0, Number(offset) || 0);
+    var take = Math.min(REMINDER_MAX_BATCH_, Math.max(1, Number(limit) || REMINDER_BATCH_));
+    var end = Math.min(rows.length, start + take, start + quota);
+    var subject = reminderSubject_(cfg);
+    var sent = 0;
+    var failed = 0;
+    for (var i = start; i < end; i++) {
+      try {
+        MailApp.sendEmail({
+          to: rows[i].email,
+          subject: subject,
+          body: reminderBody_(rows[i], cfg),
+          name: EVENT_TITLE_
+        });
+        sent++;
+      } catch (err) {
+        failed++;
+      }
+    }
+    return {
+      ok: true,
+      sent: sent,
+      failed: failed,
+      total: rows.length,
+      nextOffset: end,
+      done: end >= rows.length,
+      quota: Math.max(0, quota - sent)
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
 var API_FN_MAP_ = {
   apiBootstrap: apiBootstrap,
   apiLookup: apiLookup,
@@ -350,7 +522,9 @@ var API_FN_MAP_ = {
   apiAdminTalkRoster: apiAdminTalkRoster,
   apiAdminPending: apiAdminPending,
   apiAdminSetPresent: apiAdminSetPresent,
-  apiAdminReports: apiAdminReports
+  apiAdminReports: apiAdminReports,
+  apiAdminMailPreview: apiAdminMailPreview,
+  apiAdminSendReminders: apiAdminSendReminders
 };
 
 function doGet(e) {
@@ -400,6 +574,8 @@ function setup() {
   ensureSheet_(ss, CONFIG_SHEET, ['clave', 'valor'], [
     ['evento_abierto', 'abierto']
   ]);
+  ensureConfigDefault_('evento_fecha', EVENT_DEFAULT_DATE_);
+  ensureConfigDefault_('evento_zona', EVENT_DEFAULT_TZ_);
   ensureSheet_(ss, SLOTS_SHEET, ['id', 'nombre', 'inicio', 'fin', 'orden'], [
     [1, '1ra', '10:30', '11:20', 1],
     [2, '2da', '11:30', '12:20', 2],
@@ -536,6 +712,34 @@ function writeConfig_(key, value) {
     }
   }
   sh.appendRow([key, value]);
+}
+
+function ensureConfigDefault_(key, value) {
+  var cfg = readConfig_();
+  if (cfg[key] == null || String(cfg[key]).trim() === '') writeConfig_(key, value);
+}
+
+function eventDate_(cfg) {
+  var raw = String((cfg && cfg.evento_fecha) || EVENT_DEFAULT_DATE_).trim();
+  var m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + (m[2].length < 2 ? '0' + m[2] : m[2]) + '-' + (m[1].length < 2 ? '0' + m[1] : m[1]);
+  return EVENT_DEFAULT_DATE_;
+}
+
+function eventInfo_(cfg) {
+  return {
+    fecha: eventDate_(cfg),
+    zona: String((cfg && cfg.evento_zona) || EVENT_DEFAULT_TZ_).trim() || EVENT_DEFAULT_TZ_
+  };
+}
+
+function eventDayEndMs_(cfg) {
+  var date = eventDate_(cfg);
+  var m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return Date.UTC(2026, 10, 5, 2, 59, 59);
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 1, 2, 59, 59);
 }
 
 function isOpen_(cfg) {
@@ -825,6 +1029,16 @@ function sortBySurname_(list) {
   });
 }
 
+function givenName_(full, apellido) {
+  var n = String(full == null ? '' : full).replace(/\s+/g, ' ').trim();
+  var ap = String(apellido == null ? '' : apellido).replace(/\s+/g, ' ').trim();
+  if (!n || !ap) return n;
+  var nn = EsiCore.normalizeText(n);
+  var na = EsiCore.normalizeText(ap);
+  if (nn.length > na.length && nn.slice(-na.length) === na) return n.slice(0, n.length - ap.length).trim();
+  return n;
+}
+
 function countByTalk_(signups) {
   var counts = {};
   for (var i = 0; i < signups.length; i++) {
@@ -873,8 +1087,9 @@ function publicData_(ciclo, mine, signupsNow) {
     });
   return {
     evento_abierto: isOpen_(cfg),
+    event: eventInfo_(cfg),
     slots: slots.map(function (s) {
-      return { id: Number(s.id), label: s.inicio + ' a ' + s.fin, nombre: s.nombre };
+      return { id: Number(s.id), label: s.inicio + ' a ' + s.fin, nombre: s.nombre, inicio: s.inicio, fin: s.fin };
     }),
     talks: talks,
     mine: mine || {}
@@ -892,10 +1107,12 @@ function rosterLoaded_() {
 
 function apiBootstrap() {
   try {
+    var cfg = readConfigCached_();
     return {
       ok: true,
-      evento_abierto: isOpen_(readConfigCached_()),
-      rosterLoaded: rosterLoaded_()
+      evento_abierto: isOpen_(cfg),
+      rosterLoaded: rosterLoaded_(),
+      event: eventInfo_(cfg)
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -1052,7 +1269,7 @@ function apiGetData(email, nombre, curso, sessionToken, apellido) {
 
 function studentSessionExpiry_(now) {
   var base = Number(now) || Date.now();
-  return Math.min(base + STUDENT_SESSION_TTL_MS, EVENT_DAY_END_MS + STUDENT_SESSION_GRACE_MS);
+  return Math.min(base + STUDENT_SESSION_TTL_MS, eventDayEndMs_(readConfigCached_()) + STUDENT_SESSION_GRACE_MS);
 }
 
 function studentTokenHash_(token) {
@@ -1428,7 +1645,8 @@ function apiAdminGetData(cred) {
         cuando: s.ts ? Utilities.formatDate(s.ts, tz, 'dd/MM HH:mm') : '',
         email: s.email,
         apellido: s.apellido || apellidos[s.emailKey] || '',
-        nombre: s.nombre,
+        nombre: givenName_(s.nombre, s.apellido || apellidos[s.emailKey] || ''),
+        nombreCompleto: s.nombre,
         curso: s.curso,
         ciclo: s.ciclo,
         slotLabel: slotLabelFor_(slots, s.slot_id),
@@ -1459,7 +1677,7 @@ function apiAdminGetData(cred) {
       rosterLoaded: students.length > 0,
       rosterCount: students.length,
       slots: slots.map(function (s) {
-        return { id: Number(s.id), label: s.inicio + ' a ' + s.fin, nombre: s.nombre };
+        return { id: Number(s.id), label: s.inicio + ' a ' + s.fin, nombre: s.nombre, inicio: s.inicio, fin: s.fin };
       }),
       talks: talksOut,
       signups: signups,
@@ -1601,7 +1819,8 @@ function apiAdminTalkRoster(cred, talkId) {
       var row = {
         id: signups[j].id,
         apellido: signups[j].apellido || apellidos[signups[j].emailKey] || '',
-        nombre: signups[j].nombre,
+        nombre: givenName_(signups[j].nombre, signups[j].apellido || apellidos[signups[j].emailKey] || ''),
+        nombreCompleto: signups[j].nombre,
         curso: signups[j].curso,
         slotLabel: slotLabelFor_(slots, signups[j].slot_id),
         presente: !!signups[j].presente
@@ -1658,31 +1877,41 @@ function apiAdminPending(cred) {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
     var admin = isAdmin_(auth);
-    var students = readStudentsCached_();
     var signups = readSignupsCached_();
     var slots = readSlotsCached_();
     var byEmail = {};
+    var order = [];
     for (var i = 0; i < signups.length; i++) {
-      var key = signups[i].emailKey;
-      if (!byEmail[key]) byEmail[key] = {};
-      byEmail[key][signups[i].slot_id] = true;
+      var sg = signups[i];
+      var key = sg.emailKey;
+      if (!byEmail[key]) {
+        byEmail[key] = {
+          email: sg.email,
+          apellido: sg.apellido || '',
+          nombre: givenName_(sg.nombre, sg.apellido),
+          nombreCompleto: sg.nombre || '',
+          curso: sg.curso || '',
+          done: {}
+        };
+        order.push(key);
+      }
+      if (!byEmail[key].apellido && sg.apellido) byEmail[key].apellido = sg.apellido;
+      if (!byEmail[key].curso && sg.curso) byEmail[key].curso = sg.curso;
+      byEmail[key].done[Number(sg.slot_id)] = true;
     }
     var rows = [];
-    for (var j = 0; j < students.length; j++) {
-      var st = students[j];
-      var done = byEmail[st.email] || {};
+    for (var j = 0; j < order.length; j++) {
+      var st = byEmail[order[j]];
       var faltan = [];
       for (var s = 0; s < slots.length; s++) {
-        if (!done[Number(slots[s].id)]) {
-          faltan.push(slots[s].nombre || String(slots[s].id));
-        }
+        if (!st.done[Number(slots[s].id)]) faltan.push(slots[s].nombre || String(slots[s].id));
       }
       if (!faltan.length) continue;
       var row = {
-        apellido: st.apellido || '',
-        nombre: st.nombre || '',
-        nombreCompleto: st.nombreCompleto || st.nombre || '',
-        curso: st.curso || '',
+        apellido: st.apellido,
+        nombre: st.nombre,
+        nombreCompleto: st.nombreCompleto,
+        curso: st.curso,
         faltan: faltan
       };
       if (admin) row.email = st.email;
@@ -1692,7 +1921,7 @@ function apiAdminPending(cred) {
     return {
       ok: true,
       role: auth.role,
-      total: students.length,
+      total: order.length,
       pending: rows.length,
       students: rows
     };
@@ -1716,7 +1945,7 @@ function apiAdminReports(cred) {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
     var admin = isAdmin_(auth);
-    var students = readStudentsCached_();
+    var cfg = readConfigCached_();
     var signups = readSignupsCached_();
     var slots = reportSlots_(readSlotsCached_());
     var talks = readTalksCached_();
@@ -1724,14 +1953,30 @@ function apiAdminReports(cred) {
     for (var t = 0; t < talks.length; t++) talkById[talks[t].id] = talks[t];
 
     var mineByEmail = {};
+    var meta = {};
+    var order = [];
     for (var i = 0; i < signups.length; i++) {
       var sg = signups[i];
-      if (!mineByEmail[sg.emailKey]) mineByEmail[sg.emailKey] = {};
-      mineByEmail[sg.emailKey][Number(sg.slot_id)] = sg;
+      if (!mineByEmail[sg.emailKey]) {
+        mineByEmail[sg.emailKey] = {};
+        meta[sg.emailKey] = {
+          email: sg.email,
+          apellido: sg.apellido || '',
+          nombre: givenName_(sg.nombre, sg.apellido),
+          nombreCompleto: sg.nombre || '',
+          curso: sg.curso || 'Sin curso',
+          ciclo: sg.ciclo || 'basico'
+        };
+        order.push(sg.emailKey);
+      }
+      if (!meta[sg.emailKey].apellido && sg.apellido) meta[sg.emailKey].apellido = sg.apellido;
+      if (!mineByEmail[sg.emailKey][Number(sg.slot_id)]) {
+        mineByEmail[sg.emailKey][Number(sg.slot_id)] = sg;
+      }
     }
 
-    function talksFor_(st) {
-      var mine = mineByEmail[st.email] || {};
+    function talksFor_(emailKey) {
+      var mine = mineByEmail[emailKey] || {};
       var out = [];
       for (var k = 0; k < slots.length; k++) {
         var slot = slots[k];
@@ -1752,13 +1997,16 @@ function apiAdminReports(cred) {
     }
 
     var totals = {
-      roster: students.length,
+      roster: order.length,
       complete: 0,
       incomplete: 0,
       missing: 0,
       signups: signups.length,
+      present: 0,
+      absent: 0,
+      byCiclo: { basico: 0, orientado: 0 },
       presentBySlot: slots.map(function (slot) {
-        return { slot_id: slot.id, slot: slot.nombre, label: slot.label, presentes: 0 };
+        return { slot_id: slot.id, slot: slot.nombre, label: slot.label, total: 0, presentes: 0, ausentes: 0 };
       })
     };
     var coursesMap = {};
@@ -1771,7 +2019,7 @@ function apiAdminReports(cred) {
           incomplete: 0,
           missing: 0,
           presentBySlot: slots.map(function (slot) {
-            return { slot_id: slot.id, slot: slot.nombre, label: slot.label, presentes: 0 };
+            return { slot_id: slot.id, slot: slot.nombre, label: slot.label, total: 0, presentes: 0, ausentes: 0 };
           }),
           students: []
         };
@@ -1779,26 +2027,30 @@ function apiAdminReports(cred) {
       return coursesMap[curso];
     }
 
-    for (var s = 0; s < students.length; s++) {
-      var st = students[s];
-      var curso = st.curso || 'Sin curso';
-      var row = courseRow_(curso);
-      var stTalks = talksFor_(st);
+    for (var s = 0; s < order.length; s++) {
+      var st = meta[order[s]];
+      var row = courseRow_(st.curso);
+      var stTalks = talksFor_(order[s]);
       var filled = 0;
       var presentes = 0;
       for (var k = 0; k < stTalks.length; k++) {
-        if (stTalks[k].signup_id) filled++;
+        if (stTalks[k].signup_id) {
+          filled++;
+          row.presentBySlot[k].total++;
+          totals.presentBySlot[k].total++;
+        }
         if (stTalks[k].presente) {
           presentes++;
+          totals.present++;
           row.presentBySlot[k].presentes++;
           totals.presentBySlot[k].presentes++;
         }
       }
       var student = {
-        apellido: st.apellido || '',
-        nombre: st.nombre || '',
-        nombreCompleto: st.nombreCompleto || st.nombre || '',
-        curso: curso,
+        apellido: st.apellido,
+        nombre: st.nombre,
+        nombreCompleto: st.nombreCompleto,
+        curso: st.curso,
         count: filled,
         presentes: presentes,
         talks: stTalks
@@ -1806,6 +2058,7 @@ function apiAdminReports(cred) {
       if (admin) student.email = st.email;
       row.students.push(student);
       row.roster++;
+      totals.byCiclo[st.ciclo === 'orientado' ? 'orientado' : 'basico']++;
       if (filled >= slots.length) {
         row.complete++;
         totals.complete++;
@@ -1817,6 +2070,10 @@ function apiAdminReports(cred) {
         totals.missing++;
       }
     }
+    totals.absent = Math.max(0, totals.signups - totals.present);
+    for (var pb = 0; pb < totals.presentBySlot.length; pb++) {
+      totals.presentBySlot[pb].ausentes = Math.max(0, totals.presentBySlot[pb].total - totals.presentBySlot[pb].presentes);
+    }
 
     var courseList = Object.keys(coursesMap).map(function (key) {
       sortBySurname_(coursesMap[key].students);
@@ -1826,10 +2083,6 @@ function apiAdminReports(cred) {
       return String(a.curso).localeCompare(String(b.curso), 'es', { numeric: true });
     });
 
-    var apellidos = {};
-    for (var a = 0; a < students.length; a++) {
-      apellidos[students[a].email] = students[a].apellido || '';
-    }
     var slotLabels = {};
     for (var sl = 0; sl < slots.length; sl++) slotLabels[Number(slots[sl].id)] = slots[sl].label;
     var talksOut = talks.map(function (talk) {
@@ -1861,8 +2114,9 @@ function apiAdminReports(cred) {
       talkRow.porCurso[cursoKey] = (talkRow.porCurso[cursoKey] || 0) + 1;
       var talkStudent = {
         id: signup.id,
-        apellido: apellidos[signup.emailKey] || '',
-        nombre: signup.nombre,
+        apellido: signup.apellido || '',
+        nombre: givenName_(signup.nombre, signup.apellido),
+        nombreCompleto: signup.nombre || '',
         curso: signup.curso,
         presente: !!signup.presente
       };
@@ -1887,7 +2141,8 @@ function apiAdminReports(cred) {
     return {
       ok: true,
       role: auth.role,
-      rosterLoaded: students.length > 0,
+      rosterLoaded: order.length > 0,
+      event: eventInfo_(cfg),
       generatedAt: Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'dd/MM/yyyy HH:mm'),
       slots: slots,
       totals: totals,

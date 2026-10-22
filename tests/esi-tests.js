@@ -291,8 +291,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 15) throw new Error('expected 15 api fns, got ' + names.length);
-  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports'];
+  if (names.length !== 17) throw new Error('expected 17 api fns, got ' + names.length);
+  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -734,7 +734,7 @@ t('Panel carries the ISS identity and an accessible green palette', () => {
   for (const needle of ['brand-logo', 'Instituto Secundario Salsipuedes (ISS)',
     'ISS · Jornada ESI 2026', '<title>ISS · Jornada ESI 2026</title>',
     'aria-label="Inicio, Instituto Secundario Salsipuedes"',
-    'src="assets/logo.png"', 'data:image/png;base64,',
+    'src="assets/logo.png"',
     '<span class="brand-school">Instituto Secundario Salsipuedes</span>']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
@@ -785,7 +785,9 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
   if (!/h2\.intro \{[^}]*margin: 0 0 12px/s.test(panelHtml)) throw new Error('title gap');
   if (!/p\.hint \{[^}]*margin: 0 0 24px/s.test(panelHtml)) throw new Error('hint gap');
   if (contrast('#0E7A2F', '#FFFFFF') < 4.5) throw new Error('active segment contrast');
-  if (/No te acordás tu mail\?/.test(panelHtml)) throw new Error('old mail help link remains');
+  if (!/id="mail-help"/.test(panelHtml)) throw new Error('mail help missing');
+  if (!/Tu mail es tu apellido, tu nombre y tu año de egreso/.test(panelHtml)) throw new Error('mail help text missing');
+  if (!/2026 \+ \(6 \- año que cursa\)/.test(panelSrc) && !/2026 \+ \(6 - year\)/.test(panelSrc)) throw new Error('mail help formula missing');
   if (!/\-webkit\-line\-clamp: 2/.test(panelHtml)) throw new Error('school name not clamped');
   if (!/\.panel-head \{ flex-wrap: wrap; \}/.test(panelHtml)) throw new Error('panel head does not wrap');
 });
@@ -907,10 +909,10 @@ function backendStub(props, seed) {
 function backendApi(services, names) {
   const src = names.split(',').map((n) => n.trim());
   const body = src.map((n) => n + ': ' + n).join(',');
-  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities',
+  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp',
     codeSrc + '\nreturn {' + body + '};')(
     services.PropertiesService, services.LockService, services.CacheService,
-    services.SpreadsheetApp, services.Utilities);
+    services.SpreadsheetApp, services.Utilities, services.MailApp);
 }
 
 t('Code.gs has two roles and a separate guide key', () => {
@@ -1225,29 +1227,30 @@ function reportSeed(services) {
     ['carla@secundariosalsipuedes.edu.ar', 'Sosa', 'Carla', '2°B'],
     ['dora@secundariosalsipuedes.edu.ar', 'Paz', 'Dora', '5°Turismo']
   ]);
-  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'], [
-    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si'],
-    ['s2', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no'],
-    ['s3', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si'],
-    ['s4', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no'],
-    ['s5', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si'],
-    ['s6', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no']
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido'], [
+    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si', 'Gómez'],
+    ['s2', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no', 'Gómez'],
+    ['s3', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si', 'Gómez'],
+    ['s4', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no', 'Díaz'],
+    ['s5', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si', 'Díaz'],
+    ['s6', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no', 'Sosa']
   ]);
 }
 
-t('apiAdminReports computes course totals from the cached roster', () => {
+t('apiAdminReports computes totals from signups, without a roster', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   reportSeed(services);
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], []);
   const api = backendApi(services, 'apiAdminReports');
   const r = api.apiAdminReports('1111');
   assertEq(r.ok, true);
   assertEq(r.rosterLoaded, true);
-  assertEq(r.totals.roster, 4);
+  assertEq(r.totals.roster, 3);
   assertEq(r.totals.complete, 1);
   assertEq(r.totals.incomplete, 2);
-  assertEq(r.totals.missing, 1);
+  assertEq(r.totals.missing, 0);
   assertEq(r.totals.presentBySlot[0].presentes, 1);
-  assertEq(r.courses.length, 2);
+  assertEq(r.courses.length, 1);
   const curso = r.courses.filter((c) => c.curso === '2°B')[0];
   assertEq(curso.roster, 3);
   assertEq(curso.complete, 1);
@@ -1271,6 +1274,49 @@ t('apiAdminReports sorts each course by surname and lists the three slots', () =
   assertEq(ana.talks[1].presente, false);
   assertEq(ana.talks[2].titulo, 'Charla tres');
   assertEq(ana.count, 3);
+});
+
+t('apiAdminMailPreview prepares a reminder only for signed-up students', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminMailPreview');
+  assertEq(api.apiAdminMailPreview('').ok, false, 'preview needs a key');
+  const p = api.apiAdminMailPreview('1111');
+  assertEq(p.ok, true, 'preview ok');
+  assertEq(p.total, 3, 'three unique recipients');
+  if (!/4 de noviembre de 2026/.test(p.subject)) throw new Error('date missing from subject');
+  if (!/Tus charlas:/.test(p.sample.body)) throw new Error('body missing schedule');
+  if (!/Charla uno/.test(p.sample.body)) throw new Error('body missing chosen talk');
+  if (/@/.test(p.sample.body)) throw new Error('body should not expose mails');
+  assertEq(p.quota, -1, 'no MailApp means no quota');
+  assertEq(api.apiAdminMailPreview('2222').ok, false, 'guide cannot mail');
+});
+
+t('apiAdminSendReminders sends in batches and respects quota', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const out = [];
+  services.MailApp = {
+    getRemainingDailyQuota: () => 50,
+    sendEmail: (msg) => { out.push(msg); }
+  };
+  const api = backendApi(services, 'apiAdminSendReminders');
+  assertEq(api.apiAdminSendReminders('', 0, 20).ok, false, 'send needs a key');
+  assertEq(api.apiAdminSendReminders('2222', 0, 20).ok, false, 'guide cannot send');
+  const first = api.apiAdminSendReminders('1111', 0, 2);
+  assertEq(first.ok, true, 'first batch ok');
+  assertEq(first.sent, 2, 'first batch size');
+  assertEq(first.done, false, 'more left');
+  assertEq(out.length, 2, 'two mails sent');
+  assertEq(out[0].to, 'beto@secundariosalsipuedes.edu.ar', 'surname order');
+  if (!/Hola Beto:/.test(out[0].body)) throw new Error('body not personalised');
+  const second = api.apiAdminSendReminders('1111', first.nextOffset, 20);
+  assertEq(second.sent, 1, 'last batch size');
+  assertEq(second.done, true, 'all sent');
+  assertEq(new Set(out.map((m) => m.to)).size, 3, 'no duplicate recipients');
+  services.MailApp.getRemainingDailyQuota = () => 0;
+  const none = api.apiAdminSendReminders('1111', 0, 20);
+  assertEq(none.ok, false, 'quota exhausted');
 });
 
 t('apiAdminReports rejects requests without a key or token', () => {
@@ -1343,7 +1389,7 @@ t('apiAdminReports keeps overall totals for the total report', () => {
   reportSeed(services);
   const api = backendApi(services, 'apiAdminReports');
   const r = api.apiAdminReports('1111');
-  assertEq(r.totals.roster, 4);
+  assertEq(r.totals.roster, 3);
   assertEq(r.totals.signups, 6);
   assertEq(r.totals.presentBySlot.length, 3);
   assertEq(r.totals.presentBySlot[0].slot, '1ra');
@@ -1425,10 +1471,10 @@ t('Panel demo backend: reports for admin and guide', () => {
     return api.call('apiAdminReports', ['demo']);
   }).then((r1) => {
     assertEq(r1.ok, true, 'reports ok');
-    assertEq(r1.totals.roster, 4, 'roster total');
+    assertEq(r1.totals.roster, 3, 'signup total');
     assertEq(r1.totals.complete, 0, 'nobody complete');
     assertEq(r1.totals.incomplete, 3, 'three with partial picks');
-    assertEq(r1.totals.missing, 1, 'lulu without picks');
+    assertEq(r1.totals.missing, 0, 'nobody invisible without a roster');
     assertEq(r1.totals.signups, 4, 'signups total');
     assertEq(r1.totals.presentBySlot[0].slot, '1ra');
     assertEq(r1.totals.presentBySlot[0].presentes, 2, 'two present in slot 1');
