@@ -28,10 +28,11 @@ En demo, todo queda en el navegador y no hay clave real.
 6. Copiar la URL `/exec`.
 
 `setup()` deja la hoja `Signups` con las columnas `presente` y `apellido`,
-crea la hoja `Sessions` y genera las dos claves si no existen. También deja en
-`Config` la fecha y la zona del evento (`2026-11-04` y
+crea las hojas `Sessions` y `Mails`, y genera las dos claves si no existen.
+También deja en `Config` la fecha y la zona del evento (`2026-11-04` y
 `America/Argentina/Cordoba`). La lista de alumnos es opcional: sin padrón se
-entra con el mail institucional y los datos se autodeclaran.
+entra con el mail institucional y los datos se autodeclaran. Si la planilla ya
+existía, volver a ejecutar `setup()` para crear `Mails`.
 
 La hoja `Students` queda como legado y se lee por encabezado:
 `email, apellido, nombre, curso, dni`. El DNI es opcional. Si no hay encabezado
@@ -165,9 +166,15 @@ franja y un aviso 10 minutos antes.
 
 En "Lista de mails", el profe puede ver la vista previa del recordatorio y
 enviarlo por tandas de 20. Se manda solo a mails con al menos una elección,
-desde `MailApp`, y se muestra la cuota disponible. Sin autorización de
-`MailApp` el envío queda deshabilitado con un mensaje claro. No se registran
-mails ni cuerpos en logs.
+desde `MailApp`, y se muestra la cuota disponible. La hoja `Mails` registra
+mail, fecha y asunto para no reenviar el mismo recordatorio; no guarda el
+cuerpo. Sin autorización de `MailApp` el envío queda deshabilitado con un
+mensaje claro. No se registran mails ni cuerpos en logs.
+
+En el panel de profes, la tarjeta "Configuración del evento" permite cambiar
+la fecha y la zona horaria sin editar la planilla. El backend valida el
+formato y actualiza la caché. El estado abierto/cerrado sigue en el botón de
+inscripción.
 
 ## Conectar esta web
 
