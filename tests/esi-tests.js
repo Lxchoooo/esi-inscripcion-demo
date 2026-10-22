@@ -122,7 +122,7 @@ try {
 
 const Core = new Function(codeSrc + '\nreturn EsiCore;')();
 
-const juana = { emailKey: 'juana@esc.edu.ar', ciclo: 'basico' };
+const juana = { emailKey: 'juana@secundariosalsipuedes.edu.ar', ciclo: 'basico' };
 
 function talks() {
   return {
@@ -139,12 +139,12 @@ function signup(id, emailKey, slot, talkId, ciclo) {
 }
 
 t('normalizeEmail lowercases and trims', () => {
-  assertEq(Core.normalizeEmail('  Juana@Esc.Edu.AR '), 'juana@esc.edu.ar');
+  assertEq(Core.normalizeEmail('  Juana@SecundariosAlsipuedes.Edu.AR '), 'juana@secundariosalsipuedes.edu.ar');
 });
 
 t('isValidEmail accepts institutional mails and rejects junk', () => {
-  assertEq(Core.isValidEmail('juana@esc.edu.ar'), true);
-  assertEq(Core.isValidEmail('juana.mendez@esc.edu.ar'), true);
+  assertEq(Core.isValidEmail('juana@secundariosalsipuedes.edu.ar'), true);
+  assertEq(Core.isValidEmail('juana.mendez@secundariosalsipuedes.edu.ar'), true);
   assertEq(Core.isValidEmail('juana@esc'), false);
   assertEq(Core.isValidEmail('juana esc.edu.ar'), false);
   assertEq(Core.isValidEmail(''), false);
@@ -160,9 +160,9 @@ t('cicloFromCurso derives cycles by year', () => {
 });
 
 t('validateStudentInput returns identity and cycle', () => {
-  const v = Core.validateStudentInput('  Juana@Esc.Edu.AR ', '  Juana   Pérez ', '2°A');
+  const v = Core.validateStudentInput('  Juana@SecundariosAlsipuedes.Edu.AR ', '  Juana   Pérez ', '2°A');
   assertEq(v.ok, true);
-  assertEq(v.email, 'juana@esc.edu.ar');
+  assertEq(v.email, 'juana@secundariosalsipuedes.edu.ar');
   assertEq(v.nombre, 'Juana Pérez');
   assertEq(v.nombreKey, 'juana perez');
   assertEq(v.ciclo, 'basico');
@@ -170,8 +170,8 @@ t('validateStudentInput returns identity and cycle', () => {
 
 t('validateStudentInput rejects bad email, short name and unknown year', () => {
   assertEq(Core.validateStudentInput('juana@esc', 'Juana Perez', '2°A').error, 'email');
-  assertEq(Core.validateStudentInput('juana@esc.edu.ar', 'Ju', '2°A').error, 'nombre');
-  assertEq(Core.validateStudentInput('juana@esc.edu.ar', 'Juana Perez', 'CB').error, 'curso');
+  assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'J', '2°A').error, 'nombre');
+  assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', 'CB').error, 'curso');
 });
 
 t('insert when talk free', () => {
@@ -196,16 +196,16 @@ t('change within slot when target has room', () => {
 t('cannot change into full talk, keeps previous', () => {
   const s = [
     signup('u1', juana.emailKey, 1, 'B1'),
-    signup('u2', 'otro@esc.edu.ar', 1, 'B2'),
-    signup('u3', 'dos@esc.edu.ar', 1, 'B2')
+    signup('u2', 'otro@secundariosalsipuedes.edu.ar', 1, 'B2'),
+    signup('u3', 'dos@secundariosalsipuedes.edu.ar', 1, 'B2')
   ];
   const p = Core.planRegistration(s, talks(), juana, 'B2');
   assertEq(p.error, 'full');
 });
 
 t('different mails add different students to same talk', () => {
-  const s = [signup('u1', 'juana@esc.edu.ar', 1, 'B1')];
-  const p = Core.planRegistration(s, talks(), { emailKey: 'melina@esc.edu.ar', ciclo: 'basico' }, 'B1');
+  const s = [signup('u1', 'juana@secundariosalsipuedes.edu.ar', 1, 'B1')];
+  const p = Core.planRegistration(s, talks(), { emailKey: 'melina@secundariosalsipuedes.edu.ar', ciclo: 'basico' }, 'B1');
   assertEq(p.action, 'insert');
 });
 
@@ -221,13 +221,13 @@ t('new slot insert allowed, one per slot', () => {
 });
 
 t('cannot take a full talk in a free slot', () => {
-  const s = [signup('u9', 'otra@esc.edu.ar', 3, 'B8')];
+  const s = [signup('u9', 'otra@secundariosalsipuedes.edu.ar', 3, 'B8')];
   const p = Core.planRegistration(s, talks(), juana, 'B8');
   assertEq(p.error, 'full');
 });
 
 t('cycle mismatch rejected', () => {
-  const p = Core.planRegistration([], talks(), { emailKey: 'x@esc.edu.ar', ciclo: 'orientado' }, 'B1');
+  const p = Core.planRegistration([], talks(), { emailKey: 'x@secundariosalsipuedes.edu.ar', ciclo: 'orientado' }, 'B1');
   assertEq(p.error, 'talkWrongCycle');
 });
 
@@ -257,19 +257,19 @@ const Client = new Function('window', 'document', panelSrc + '\nreturn EsiClient
 );
 
 t('Panel EsiClient parity: normalizeEmail/isValidEmail/cicloFromCurso', () => {
-  assertEq(Client.normalizeEmail('  Juana@Esc.Edu.AR '), Core.normalizeEmail('  Juana@Esc.Edu.AR '));
-  assertEq(Client.isValidEmail('juana@esc.edu.ar'), Core.isValidEmail('juana@esc.edu.ar'));
+  assertEq(Client.normalizeEmail('  Juana@SecundariosAlsipuedes.Edu.AR '), Core.normalizeEmail('  Juana@SecundariosAlsipuedes.Edu.AR '));
+  assertEq(Client.isValidEmail('juana@secundariosalsipuedes.edu.ar'), Core.isValidEmail('juana@secundariosalsipuedes.edu.ar'));
   assertEq(Client.isValidEmail('junk'), false);
   assertEq(Client.cicloFromCurso('5°'), Core.cicloFromCurso('5°'));
   assertEq(Client.cicloFromCurso('CB'), null);
 });
 
 t('Panel EsiClient parity: validateStudentInput', () => {
-  const a = Client.validateStudentInput(' juana@esc.edu.ar ', ' Juana Perez ', '2°A');
-  const b = Core.validateStudentInput(' juana@esc.edu.ar ', ' Juana Perez ', '2°A');
+  const a = Client.validateStudentInput(' juana@secundariosalsipuedes.edu.ar ', ' Juana Perez ', '2°A');
+  const b = Core.validateStudentInput(' juana@secundariosalsipuedes.edu.ar ', ' Juana Perez ', '2°A');
   ['ok', 'email', 'nombre', 'nombreKey', 'ciclo'].forEach((k) => assertEq(a[k], b[k], 'key ' + k));
-  assertEq(Client.validateStudentInput('juana@esc.edu.ar', 'Ju', '2°A').error, 'nombre');
-  assertEq(Client.validateStudentInput('juana@esc.edu.ar', 'Juana Perez', 'CB').error, 'curso');
+  assertEq(Client.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'J', '2°A').error, 'nombre');
+  assertEq(Client.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', 'CB').error, 'curso');
 });
 
 t('Panel EsiClient parity: planRegistration scenarios', () => {
@@ -277,7 +277,7 @@ t('Panel EsiClient parity: planRegistration scenarios', () => {
     [[], 'B1'],
     [[signup('u1', juana.emailKey, 1, 'B1')], 'B1'],
     [[signup('u1', juana.emailKey, 1, 'B1')], 'B2'],
-    [[signup('u9', 'o@esc.edu.ar', 3, 'B8')], 'B8'],
+    [[signup('u9', 'o@secundariosalsipuedes.edu.ar', 3, 'B8')], 'B8'],
     [[signup('u1', juana.emailKey, 1, 'B1'), signup('u2', juana.emailKey, 3, 'B8')], 'B5']
   ];
   scen.forEach((pair, i) => {
@@ -291,8 +291,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 14) throw new Error('expected 14 api fns, got ' + names.length);
-  const want = ['apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports'];
+  if (names.length !== 15) throw new Error('expected 15 api fns, got ' + names.length);
+  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -390,10 +390,10 @@ t('parseCurso tolerates school spellings, rejects junk', () => {
 t('parseRoster handles separators, header, dupes, invalids', () => {
   const txt = [
     'mail;nombre;curso',
-    ' juana1@esc.edu.ar ; Juana Perez ; 2b ',
-    'mateo2@esc.edu.ar,Mateo Gomez,5Turismo',
-    'lucia3@esc.edu.ar',
-    'juana1@esc.edu.ar; otra; 3A',
+    ' juana1@secundariosalsipuedes.edu.ar ; Juana Perez ; 2b ',
+    'mateo2@secundariosalsipuedes.edu.ar,Mateo Gomez,5Turismo',
+    'lucia3@secundariosalsipuedes.edu.ar',
+    'juana1@secundariosalsipuedes.edu.ar; otra; 3A',
     'malo@esc',
     '   '
   ].join('\n');
@@ -401,7 +401,7 @@ t('parseRoster handles separators, header, dupes, invalids', () => {
   assertEq(r.rows.length, 3, 'rows');
   assertEq(r.duplicados, 1, 'dupes');
   assertEq(r.invalidos.length, 1, 'invalid');
-  assertEq(r.rows[0].email, 'juana1@esc.edu.ar');
+  assertEq(r.rows[0].email, 'juana1@secundariosalsipuedes.edu.ar');
   assertEq(r.rows[0].nombre, 'Juana Perez');
   assertEq(r.rows[0].curso, '2\u00B0B');
   assertEq(r.rows[1].curso, '5\u00B0Turismo');
@@ -436,7 +436,7 @@ t('aggregateTalks counts, per cycle and remaining seats', () => {
 t('Panel parity: parseCurso/parseRoster/aggregateTalks/cursoFromParts', () => {
   assertEq(Client.cursoFromParts('4', 'C'), Core.cursoFromParts('4', 'C'));
   assertEq(Client.parseCurso('5\u00b0a'), Core.parseCurso('5\u00b0a'));
-  const txt = 'mail\nana1@esc.edu.ar; Ana Ana; 2B\nbea2@esc.edu.ar;Bea,4Turismo\nbea2@esc.edu.ar x';
+  const txt = 'mail\nana1@secundariosalsipuedes.edu.ar; Ana Ana; 2B\nbea2@secundariosalsipuedes.edu.ar;Bea,4Turismo\nbea2@secundariosalsipuedes.edu.ar x';
   assertEq(JSON.stringify(Client.parseRoster(txt)), JSON.stringify(Core.parseRoster(txt)));
   const talks = [{ id: 'B1', titulo: 'A', ciclo: 'basico', slot_id: 1, cupo: 2, activa: true, lugar: 'X' }];
   const s = [signup('u1', 'a@e.co', 1, 'B1'), signup('u2', 'b@e.co', 1, 'B1')];
@@ -467,26 +467,26 @@ t('Panel demo backend: register, full, keep previous, admin, close/open, delete'
   const seed = [];
   for (let i = 0; i < 40; i++) {
     seed.push({
-      id: 's' + i, ts: 0, email: 'f' + i + '@instituto.edu.ar', nombre: 'Fulano ' + i,
-      curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'B2', emailKey: 'f' + i + '@instituto.edu.ar'
+      id: 's' + i, ts: 0, email: 'f' + i + '@secundariosalsipuedes.edu.ar', nombre: 'Fulano ' + i,
+      curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'B2', emailKey: 'f' + i + '@secundariosalsipuedes.edu.ar'
     });
   }
 
-  return api.call('apiRegister', ['ana.lopez@instituto.edu.ar', 'Ana Lopez', '2°B', 'B1']).then((r1) => {
+  return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B1']).then((r1) => {
     assertEq(r1.ok, true, 'ana B1');
     if (!/Listo, quedaste anotado/.test(r1.message)) throw new Error('msg: ' + r1.message);
     assertEq(r1.data.mine[1], 'B1', 'mine slot1');
     if ('signups' in r1.data || 'students' in r1.data) throw new Error('public data leaks lists');
-    if (JSON.stringify(r1.data).includes('@instituto.edu.ar')) throw new Error('public data leaks mails');
+    if (JSON.stringify(r1.data).includes('@secundariosalsipuedes.edu.ar')) throw new Error('public data leaks mails');
     const cur = JSON.parse(ls.getItem('esi_demo_signups'));
     for (let i = 0; i < 40; i++) cur.push(seed[i]);
     ls.setItem('esi_demo_signups', JSON.stringify(cur));
-    return api.call('apiRegister', ['ana.lopez@instituto.edu.ar', 'Ana Lopez', '2°B', 'B2']);
+    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B2']);
   }).then((r2) => {
     assertEq(r2.ok, false, 'B2 full rejected');
     if (!/Sin lugares/.test(r2.message)) throw new Error('msg: ' + r2.message);
     assertEq(r2.data.mine[1], 'B1', 'kept previous B1');
-    return api.call('apiRegister', ['ana.lopez@instituto.edu.ar', 'Ana Lopez', '2°B', 'B5']);
+    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B5']);
   }).then((r3) => {
     assertEq(r3.ok, true, 'ana B5 slot2');
     assertEq(r3.data.mine[2], 'B5', 'mine slot2');
@@ -496,21 +496,21 @@ t('Panel demo backend: register, full, keep previous, admin, close/open, delete'
     return api.call('apiAdminSetOpen', ['demo', false]);
   }).then((r5) => {
     assertEq(r5.ok, true, 'closed by admin');
-    return api.call('apiRegister', ['bea@instituto.edu.ar', 'Bea Diaz', '1°A', 'B1']);
+    return api.call('apiRegister', ['bea@secundariosalsipuedes.edu.ar', 'Bea Diaz', '1°A', 'B1']);
   }).then((r6) => {
     assertEq(r6.ok, false, 'register blocked when closed');
     if (!/cerrada/.test(r6.message)) throw new Error('msg: ' + r6.message);
     return api.call('apiAdminSetOpen', ['demo', true]);
   }).then((r7) => {
     assertEq(r7.ok, true, 'reopened');
-    return api.call('apiRegister', ['bea@instituto.edu.ar', 'Bea Diaz', '1°A', 'B1']);
+    return api.call('apiRegister', ['bea@secundariosalsipuedes.edu.ar', 'Bea Diaz', '1°A', 'B1']);
   }).then((r8) => {
     assertEq(r8.ok, true, 'register after reopen');
     return api.call('apiAdminGetData', ['demo']);
   }).then((r9) => {
     assertEq(r9.ok, true, 'admin data');
     assertEq(r9.total, 43, 'total = 40 seed + ana x2 + bea');
-    assertEq(r9.signups.some((s) => s.email === 'bea@instituto.edu.ar'), true, 'bea listed');
+    assertEq(r9.signups.some((s) => s.email === 'bea@secundariosalsipuedes.edu.ar'), true, 'bea listed');
     return api.call('apiAdminDeleteSignup', ['demo', r9.signups[0].id]);
   }).then((r10) => {
     assertEq(r10.ok, true, 'deleted');
@@ -520,7 +520,7 @@ t('Panel demo backend: register, full, keep previous, admin, close/open, delete'
   });
 });
 
-t('Panel demo backend: roster import restricts lookup and register', () => {
+t('Panel demo backend: roster import does not restrict mail access', () => {
   const store = {};
   const ls = {
     getItem: (k) => (k in store ? store[k] : null),
@@ -534,24 +534,24 @@ t('Panel demo backend: roster import restricts lookup and register', () => {
   };
   const api = new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
 
-  return api.call('apiAdminImportRoster', ['demo', 'ana1@instituto.edu.ar; Ana Ruiz; 2b\nbea2@x.edu.ar', 'reemplazar']).then((r1) => {
+  return api.call('apiAdminImportRoster', ['demo', 'ana1@secundariosalsipuedes.edu.ar; Ana Ruiz; 2b\nbea2@secundariosalsipuedes.edu.ar', 'reemplazar']).then((r1) => {
     assertEq(r1.ok, true, 'import ok');
     assertEq(r1.total, 2, 'total roster');
     assertEq(r1.nuevos, 2, 'nuevos');
     assertEq(r1.modo, 'reemplazar', 'modo');
-    return api.call('apiLookup', ['bea2@x.edu.ar']);
+    return api.call('apiLookup', ['bea2@secundariosalsipuedes.edu.ar']);
   }).then((r2) => {
     assertEq(r2.ok, true, 'roster mail lookup');
     assertEq(r2.rosterLoaded, true, 'rosterLoaded');
     assertEq(r2.needsNombre, true, 'needsNombre');
+    assertEq(r2.needsApellido, true, 'needsApellido');
     assertEq(r2.needsCurso, true, 'needsCurso');
-    return api.call('apiLookup', ['desconocido@x.edu.ar']);
+    return api.call('apiLookup', ['desconocido@secundariosalsipuedes.edu.ar']);
   }).then((r3) => {
-    assertEq(r3.ok, false, 'unknown mail rejected');
-    if (!/no está en la lista/.test(r3.message)) throw new Error('msg: ' + r3.message);
-    return api.call('apiRegister', ['desconocido@x.edu.ar', 'Pepe Gomez', '2A', 'B1']);
+    assertEq(r3.ok, true, 'unknown mail still enters');
+    return api.call('apiRegister', ['desconocido@secundariosalsipuedes.edu.ar', 'Pepe Gomez', '2A', 'B1']);
   }).then((r4) => {
-    assertEq(r4.ok, false, 'unknown mail cannot register');
+    assertEq(r4.ok, true, 'unknown mail can register');
   });
 });
 
@@ -850,15 +850,15 @@ function backendStub(props, seed) {
       ['O1', 'Charla tres', 'orientado', 3, 'Aula 3', 40, 'si']
     ]),
     Students: fakeSheet('Students', ['email', 'nombre', 'curso'], (seed && seed.students) || [
-      ['ana@esc.edu.ar', 'Ana Gomez', '2°B'],
-      ['beto@esc.edu.ar', 'Beto Sanchez', '5°Turismo'],
-      ['carla@esc.edu.ar', 'Carla Diaz', '3°A']
+      ['ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B'],
+      ['beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo'],
+      ['carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A']
     ]),
     Signups: fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'],
       (seed && seed.signups) || [
-        ['s1', new Date(), 'ana@esc.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1'],
-        ['s2', new Date(), 'beto@esc.edu.ar', 'Beto Sanchez', '5°Turismo', 'orientado', 2, 'B2'],
-        ['s3', new Date(), 'carla@esc.edu.ar', 'Carla Diaz', '3°A', 'basico', 3, 'O1']
+        ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1'],
+        ['s2', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'orientado', 2, 'B2'],
+        ['s3', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A', 'basico', 3, 'O1']
       ])
   };
   const fakeProps = {
@@ -964,22 +964,26 @@ t('Code.gs guide payload has no signup list', () => {
   if (JSON.stringify(guideData).indexOf('@') >= 0) throw new Error('guide payload leaks a mail');
   const adminData = api.apiAdminGetData('1111');
   assertEq(adminData.signups.length, 3, 'admin sees the signups');
-  assertEq(adminData.signups[0].email, 'ana@esc.edu.ar', 'admin sees the mails');
+  assertEq(adminData.signups[0].email, 'ana@secundariosalsipuedes.edu.ar', 'admin sees the mails');
 });
 
-t('Code.gs lookup returns the roster name and course and nothing else', () => {
+t('Code.gs lookup accepts an institutional mail without a roster', () => {
   const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], []);
   const api = backendApi(services, 'apiLookup');
-  const r = api.apiLookup('ana@esc.edu.ar');
+  const r = api.apiLookup('ana@secundariosalsipuedes.edu.ar');
   assertEq(r.ok, true, 'lookup ok');
-  assertEq(r.nombre, 'Ana Gomez', 'name from roster');
-  assertEq(r.curso, '2°B', 'course from roster');
-  assertEq(r.needsNombre, false, 'name not needed');
-  assertEq(r.needsCurso, false, 'course not needed');
-  if (JSON.stringify(r).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
-  if (JSON.stringify(r).indexOf('beto@') >= 0) throw new Error('lookup leaks the list');
-  const out = api.apiLookup('nadie@esc.edu.ar');
-  assertEq(out.ok, false, 'mail out of roster');
+  assertEq(r.nombre, '', 'lookup never invents a name');
+  assertEq(r.curso, '', 'lookup never invents a course');
+  assertEq(r.needsNombre, true, 'name needed');
+  assertEq(r.needsApellido, true, 'surname needed');
+  assertEq(r.needsCurso, true, 'course needed');
+  assertEq(r.rosterLoaded, false, 'roster state exposed');
+  const out = api.apiLookup('nadie@secundariosalsipuedes.edu.ar');
+  assertEq(out.ok, true, 'any institutional mail can enter');
+  const bad = api.apiLookup('nadie@gmail.com');
+  assertEq(bad.ok, false, 'external mail rejected');
+  if (JSON.stringify([r, out]).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
 });
 
 t('Code.gs guide reads of the new views never leak mails', () => {
@@ -1024,7 +1028,7 @@ t('Code.gs talk roster counts and sorts by surname', () => {
   assertEq(r.count, 1, 'count');
   assertEq(r.talk.cupo, 40, 'cupo');
   assertEq(r.students[0].nombre, 'Ana Gomez', 'student in talk');
-  assertEq(r.students[0].email, 'ana@esc.edu.ar', 'admin sees the mail');
+  assertEq(r.students[0].email, 'ana@secundariosalsipuedes.edu.ar', 'admin sees the mail');
   const missing = api.apiAdminTalkRoster('1111', 'NOPE');
   assertEq(missing.ok, false, 'unknown talk');
 });
@@ -1092,8 +1096,8 @@ t('Code.gs exposes the attendance column and the attendance api', () => {
 t('parseRoster accepts separate surname and name columns', () => {
   const txt = [
     'mail;apellido;nombre;curso',
-    'ana@esc.edu.ar;Gómez;Ana;2B',
-    'beto@esc.edu.ar;Díaz;Beto;5Turismo'
+    'ana@secundariosalsipuedes.edu.ar;Gómez;Ana;2B',
+    'beto@secundariosalsipuedes.edu.ar;Díaz;Beto;5Turismo'
   ].join('\n');
   const r = Core.parseRoster(txt);
   assertEq(r.rows.length, 2);
@@ -1105,7 +1109,7 @@ t('parseRoster accepts separate surname and name columns', () => {
 });
 
 t('parseRoster keeps a full name as is and never guesses the surname', () => {
-  const txt = 'mail;nombre;curso\nana@esc.edu.ar;Ana María Gómez;2B';
+  const txt = 'mail;nombre;curso\nana@secundariosalsipuedes.edu.ar;Ana María Gómez;2B';
   const r = Core.parseRoster(txt);
   assertEq(r.rows[0].apellido, '');
   assertEq(r.rows[0].nombre, 'Ana María Gómez');
@@ -1113,14 +1117,14 @@ t('parseRoster keeps a full name as is and never guesses the surname', () => {
 });
 
 t('parseRoster accepts positional separate columns without header', () => {
-  const r = Core.parseRoster('ana@esc.edu.ar;Gómez;Ana;2B');
+  const r = Core.parseRoster('ana@secundariosalsipuedes.edu.ar;Gómez;Ana;2B');
   assertEq(r.rows[0].apellido, 'Gómez');
   assertEq(r.rows[0].nombre, 'Ana');
   assertEq(r.rows[0].nombreCompleto, 'Ana Gómez');
 });
 
 t('parseRoster leaves the name empty when the line only has a mail', () => {
-  const r = Core.parseRoster('ana@esc.edu.ar');
+  const r = Core.parseRoster('ana@secundariosalsipuedes.edu.ar');
   assertEq(r.rows[0].nombre, '');
   assertEq(r.rows[0].apellido, '');
   assertEq(r.rows[0].nombreCompleto, '');
@@ -1152,29 +1156,24 @@ t('sortBySurname_ keeps a legacy full name untouched but sorts by its last word'
   assertEq(out[0].apellido === undefined || out[0].apellido === '', true);
 });
 
-t('apiLookup returns surname and full name from separate columns', () => {
+t('apiBootstrap reports an empty roster and open signup', () => {
   const services = backendStub({});
-  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso'], [
-    ['ana@esc.edu.ar', 'Gómez', 'Ana', '2°B']
-  ]);
-  const api = backendApi(services, 'apiLookup');
-  const r = api.apiLookup('ana@esc.edu.ar');
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], []);
+  const api = backendApi(services, 'apiBootstrap');
+  const r = api.apiBootstrap();
   assertEq(r.ok, true);
-  assertEq(r.apellido, 'Gómez');
-  assertEq(r.nombre, 'Ana');
-  assertEq(r.nombreCompleto, 'Ana Gómez');
-  assertEq(r.needsNombre, false);
-  assertEq(r.needsCurso, false);
+  assertEq(r.rosterLoaded, false);
+  assertEq(r.evento_abierto, true);
 });
 
 t('apiAdminImportRoster writes surname, name and the optional DNI', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   const api = backendApi(services, 'apiAdminImportRoster, readStudents_');
-  const r = api.apiAdminImportRoster('1111', 'mail;apellido;nombre;curso;dni\nd@esc.edu.ar;Díaz;Dora;3A;12.345.678', 'agregar');
+  const r = api.apiAdminImportRoster('1111', 'mail;apellido;nombre;curso;dni\nd@secundariosalsipuedes.edu.ar;Díaz;Dora;3A;12.345.678', 'agregar');
   assertEq(r.ok, true);
   const head = services.sheets.Students.data[0];
   assertEq(head.join(','), 'email,apellido,nombre,curso,dni');
-  const saved = api.readStudents_().filter((s) => s.email === 'd@esc.edu.ar')[0];
+  const saved = api.readStudents_().filter((s) => s.email === 'd@secundariosalsipuedes.edu.ar')[0];
   assertEq(saved.apellido, 'Díaz');
   assertEq(saved.nombre, 'Dora');
   assertEq(saved.nombreCompleto, 'Dora Díaz');
@@ -1185,7 +1184,7 @@ t('apiAdminImportRoster drops duplicate DNIs and reports them', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   const api = backendApi(services, 'apiAdminImportRoster, readStudents_');
   const r = api.apiAdminImportRoster('1111',
-    'ana@esc.edu.ar;Gómez;Ana;2B;12345678\nbeto@esc.edu.ar;Díaz;Beto;2B;12345678', 'agregar');
+    'ana@secundariosalsipuedes.edu.ar;Gómez;Ana;2B;12345678\nbeto@secundariosalsipuedes.edu.ar;Díaz;Beto;2B;12345678', 'agregar');
   assertEq(r.dnisDuplicados, 1);
   const rows = api.readStudents_();
   assertEq(rows[0].dni, '12345678');
@@ -1194,9 +1193,9 @@ t('apiAdminImportRoster drops duplicate DNIs and reports them', () => {
 
 t('parseRoster reads an optional DNI column and rejects duplicates', () => {
   const r = Core.parseRoster('mail;apellido;nombre;curso;dni\n'
-    + 'ana@esc.edu.ar;Gómez;Ana;2°B;12.345.678\n'
-    + 'beto@esc.edu.ar;Díaz;Beto;2°B;12345678\n'
-    + 'caro@esc.edu.ar;Paz;Caro;2°B;999\n');
+    + 'ana@secundariosalsipuedes.edu.ar;Gómez;Ana;2°B;12.345.678\n'
+    + 'beto@secundariosalsipuedes.edu.ar;Díaz;Beto;2°B;12345678\n'
+    + 'caro@secundariosalsipuedes.edu.ar;Paz;Caro;2°B;999\n');
   assertEq(r.rows.length, 3);
   assertEq(r.rows[0].dni, '12345678');
   assertEq(r.rows[1].dni, '', 'duplicate dni dropped');
@@ -1205,7 +1204,7 @@ t('parseRoster reads an optional DNI column and rejects duplicates', () => {
 });
 
 t('parseRoster accepts a documento header in any order', () => {
-  const r = Core.parseRoster('Curso;DNI;Mail;Apellido;Nombre\n2B;30111222;ana@esc.edu.ar;Gómez;Ana');
+  const r = Core.parseRoster('Curso;DNI;Mail;Apellido;Nombre\n2B;30111222;ana@secundariosalsipuedes.edu.ar;Gómez;Ana');
   assertEq(r.rows[0].dni, '30111222');
   assertEq(r.rows[0].curso, '2°B');
   assertEq(r.rows[0].apellido, 'Gómez');
@@ -1221,18 +1220,18 @@ t('CSV keeps the mail last and includes the attendance columns', () => {
 
 function reportSeed(services) {
   services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso'], [
-    ['ana@esc.edu.ar', 'Gómez', 'Ana', '2°B'],
-    ['beto@esc.edu.ar', 'Díaz', 'Beto', '2°B'],
-    ['carla@esc.edu.ar', 'Sosa', 'Carla', '2°B'],
-    ['dora@esc.edu.ar', 'Paz', 'Dora', '5°Turismo']
+    ['ana@secundariosalsipuedes.edu.ar', 'Gómez', 'Ana', '2°B'],
+    ['beto@secundariosalsipuedes.edu.ar', 'Díaz', 'Beto', '2°B'],
+    ['carla@secundariosalsipuedes.edu.ar', 'Sosa', 'Carla', '2°B'],
+    ['dora@secundariosalsipuedes.edu.ar', 'Paz', 'Dora', '5°Turismo']
   ]);
   services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'], [
-    ['s1', new Date(), 'ana@esc.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si'],
-    ['s2', new Date(), 'ana@esc.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no'],
-    ['s3', new Date(), 'ana@esc.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si'],
-    ['s4', new Date(), 'beto@esc.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no'],
-    ['s5', new Date(), 'beto@esc.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si'],
-    ['s6', new Date(), 'carla@esc.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no']
+    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si'],
+    ['s2', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no'],
+    ['s3', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si'],
+    ['s4', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no'],
+    ['s5', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si'],
+    ['s6', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no']
   ]);
 }
 
@@ -1265,7 +1264,7 @@ t('apiAdminReports sorts each course by surname and lists the three slots', () =
   assertEq(curso.students[0].apellido, 'Díaz');
   assertEq(curso.students[1].apellido, 'Gómez');
   assertEq(curso.students[2].apellido, 'Sosa');
-  const ana = curso.students.filter((st) => st.email === 'ana@esc.edu.ar')[0];
+  const ana = curso.students.filter((st) => st.email === 'ana@secundariosalsipuedes.edu.ar')[0];
   assertEq(ana.talks.length, 3);
   assertEq(ana.talks[0].titulo, 'Charla uno');
   assertEq(ana.talks[0].presente, true);
@@ -1288,7 +1287,7 @@ t('apiAdminReports never sends mails to the guide role', () => {
   reportSeed(services);
   const api = backendApi(services, 'apiAdminReports');
   const admin = api.apiAdminReports('1111');
-  assertEq(admin.courses[0].students[0].email, 'beto@esc.edu.ar');
+  assertEq(admin.courses[0].students[0].email, 'beto@secundariosalsipuedes.edu.ar');
   const guide = api.apiAdminReports('2222');
   assertEq(guide.ok, true);
   assertEq(guide.role, 'guide');
@@ -1409,16 +1408,16 @@ t('Panel demo backend: reports for admin and guide', () => {
   };
   const api = new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
   const roster = [
-    'ana1@instituto.edu.ar; Diaz; Ana; 2b',
-    'bea2@x.edu.ar; Sanchez; Bea; 5Turismo',
-    'caro3@x.edu.ar; Diaz; Caro; 2b',
-    'lup4@x.edu.ar; Perez; Lulu; 1°A'
+    'ana1@secundariosalsipuedes.edu.ar; Diaz; Ana; 2b',
+    'bea2@secundariosalsipuedes.edu.ar; Sanchez; Bea; 5Turismo',
+    'caro3@secundariosalsipuedes.edu.ar; Diaz; Caro; 2b',
+    'lup4@secundariosalsipuedes.edu.ar; Perez; Lulu; 1°A'
   ].join('\n');
   const signups = [
-    { id: 'u1', ts: 0, email: 'ana1@instituto.edu.ar', nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: true },
-    { id: 'u2', ts: 0, email: 'ana1@instituto.edu.ar', nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 2, talk_id: 'B5', presente: false },
-    { id: 'u3', ts: 0, email: 'bea2@x.edu.ar', nombre: 'Bea', curso: '5°Turismo', ciclo: 'orientado', slot_id: 1, talk_id: 'O1', presente: true },
-    { id: 'u4', ts: 0, email: 'caro3@x.edu.ar', nombre: 'Caro', curso: '2°B', ciclo: 'basico', slot_id: 3, talk_id: 'B8', presente: false }
+    { id: 'u1', ts: 0, email: 'ana1@secundariosalsipuedes.edu.ar', nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: true },
+    { id: 'u2', ts: 0, email: 'ana1@secundariosalsipuedes.edu.ar', nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 2, talk_id: 'B5', presente: false },
+    { id: 'u3', ts: 0, email: 'bea2@secundariosalsipuedes.edu.ar', nombre: 'Bea', curso: '5°Turismo', ciclo: 'orientado', slot_id: 1, talk_id: 'O1', presente: true },
+    { id: 'u4', ts: 0, email: 'caro3@secundariosalsipuedes.edu.ar', nombre: 'Caro', curso: '2°B', ciclo: 'basico', slot_id: 3, talk_id: 'B8', presente: false }
   ];
   return api.call('apiAdminImportRoster', ['demo', roster, 'reemplazar']).then((r0) => {
     assertEq(r0.ok, true, 'roster import');
@@ -1464,45 +1463,45 @@ t('Report tables turn into cards on narrow screens', () => {
 
 t('Cached reads are invalidated by writes', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
-  services.cache.set('signups_v1', JSON.stringify([]));
+  services.cache.set('signups_v2', JSON.stringify([]));
   const api = backendApi(services, 'apiGetData, apiRegister, apiAdminSetOpen');
-  let r = api.apiGetData('ana@esc.edu.ar', '', '');
+  let r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
   assertEq(r.ok, true, 'getData ok');
   assertEq(r.data.mine[1], undefined, 'stale cache hides the row');
-  const reg = api.apiRegister('ana@esc.edu.ar', '', '', 'B1');
+  const reg = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B1');
   assertEq(reg.ok, true, 'register ok');
-  r = api.apiGetData('ana@esc.edu.ar', '', '');
+  r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
   assertEq(r.data.mine[1], 'B1', 'write invalidates the signups cache');
-  if (!services.cache.has('signups_v1')) throw new Error('cache not repopulated');
+  if (!services.cache.has('signups_v2')) throw new Error('cache not repopulated');
   if (!services.cache.has('talks_v1') || !services.cache.has('slots_v1')) {
     throw new Error('talks or slots not cached');
   }
   api.apiAdminSetOpen('1111', false);
   if (services.cache.has('config_v1')) throw new Error('config cache not invalidated');
-  const blocked = api.apiRegister('beto@esc.edu.ar', '', '', 'O1');
+  const blocked = api.apiRegister('beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'O1');
   assertEq(blocked.ok, false, 'closed signup rejected');
 });
 
 
 t('Registering the same student and talk twice keeps one row', () => {
   const services = backendStub({}, {
-    students: [['nueva@esc.edu.ar', 'Nueva Alumna', '1°A']],
+    students: [['nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A']],
     signups: []
   });
   const api = backendApi(services, 'apiRegister');
-  const first = api.apiRegister('nueva@esc.edu.ar', '', '', 'B1');
-  const second = api.apiRegister('nueva@esc.edu.ar', '', '', 'B1');
+  const first = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1');
+  const second = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1');
   assertEq(first.ok, true, 'first insert');
   assertEq(second.ok, true, 'second is accepted as already registered');
   if (!/Ya estabas anotado/.test(second.message)) throw new Error('message: ' + second.message);
-  const rows = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@esc.edu.ar');
+  const rows = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@secundariosalsipuedes.edu.ar');
   assertEq(rows.length, 1, 'one row');
 });
 
 t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   const students = [];
   for (let i = 0; i < 50; i++) {
-    students.push(['s' + i + '@esc.edu.ar', 'Alumno ' + i, '2°B']);
+    students.push(['s' + i + '@secundariosalsipuedes.edu.ar', 'Alumno ' + i, '2°B']);
   }
   const services = backendStub({}, { students: students, signups: [] });
   const api = backendApi(services, 'apiRegister');
@@ -1522,7 +1521,7 @@ t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   let busy = 0;
   for (let n = 0; n < order.length; n++) {
     const student = students[order[n]];
-    const r = api.apiRegister(student[0], '', '', 'B1');
+    const r = api.apiRegister(student[0], student[1], student[2], 'B1');
     if (r.busy) busy++;
     else if (r.ok) ok++;
     else if (/Sin lugares/.test(r.message)) full++;
@@ -1549,7 +1548,7 @@ t('A lock timeout returns the busy message and writes nothing', () => {
     })
   };
   const api = backendApi(services, 'apiRegister, apiAdminSetPresent, apiAdminDeleteSignup, apiAdminSetOpen');
-  const r = api.apiRegister('ana@esc.edu.ar', '', '', 'B2');
+  const r = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B2');
   assertEq(r.ok, false, 'busy is not ok');
   assertEq(r.busy, true, 'busy flag');
   assertEq(r.message, 'El servidor está ocupado. Probá de nuevo.', 'busy message');
@@ -1567,7 +1566,7 @@ t('A lock timeout returns the busy message and writes nothing', () => {
 function dniRosterStub() {
   const services = backendStub({});
   services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso', 'dni'], [
-    ['ana@esc.edu.ar', 'Gómez', 'Ana', '2°B', '12.345.678']
+    ['ana@secundariosalsipuedes.edu.ar', 'Gómez', 'Ana', '2°B', '12.345.678']
   ]);
   return services;
 }
@@ -1577,14 +1576,14 @@ t('apiLookupDni accepts dots and a case-insensitive surname', () => {
   const api = backendApi(services, 'apiLookupDni, apiGetData');
   const r = api.apiLookupDni('12.345.678', ' gomez ');
   assertEq(r.ok, true);
-  assertEq(r.email, 'ana@esc.edu.ar');
+  assertEq(r.email, 'ana@secundariosalsipuedes.edu.ar');
   assertEq(r.apellido, 'Gómez');
   assertEq(r.nombreCompleto, 'Ana Gómez');
   assertEq(r.curso, '2°B');
   assertEq(r.needsNombre, false);
   assertEq(r.needsCurso, false);
   if ('dni' in r) throw new Error('lookup leaks dni');
-  const data = api.apiGetData(r.email, r.nombre, r.curso);
+  const data = api.apiGetData(r.email, r.nombre, r.curso, '', r.apellido);
   assertEq(data.ok, true);
   if ('dni' in data.student) throw new Error('student leaks dni');
 });
@@ -1641,7 +1640,7 @@ t('Panel stores only an opaque student token and resumes or revokes it', () => {
 t('Code.gs issues opaque sessions that resume only their own data', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   const api = backendApi(services, 'apiGetData, apiResumeSession, apiStudentLogout, apiAdminGetData');
-  const first = api.apiGetData('ana@esc.edu.ar', '', '');
+  const first = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
   assertEq(first.ok, true, 'getData ok');
   if (typeof first.session !== 'string' || first.session.indexOf('s_') !== 0) {
     throw new Error('student token not issued');
@@ -1651,15 +1650,15 @@ t('Code.gs issues opaque sessions that resume only their own data', () => {
   const serialized = JSON.stringify(sheet.data);
   if (serialized.includes(first.session)) throw new Error('raw token stored in the sheet');
   if (!/^[0-9a-f]{40,}$/.test(String(sheet.data[1][0]))) throw new Error('token is not hashed');
-  if (sheet.data[1][1] !== 'ana@esc.edu.ar') throw new Error('session not bound to the student');
+  if (sheet.data[1][1] !== 'ana@secundariosalsipuedes.edu.ar') throw new Error('session not bound to the student');
 
   const resumed = api.apiResumeSession(first.session);
   assertEq(resumed.ok, true, 'resume ok');
-  assertEq(resumed.student.email, 'ana@esc.edu.ar', 'resume email');
+  assertEq(resumed.student.email, 'ana@secundariosalsipuedes.edu.ar', 'resume email');
   assertEq(resumed.data.mine[1], 'B1', 'resume own choices');
   if (JSON.stringify(resumed).includes('beto@')) throw new Error('resume leaks another student');
 
-  const other = api.apiGetData('beto@esc.edu.ar', '', '', first.session);
+  const other = api.apiGetData('beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', first.session);
   assertEq(other.ok, false, 'token cannot read another email');
   if (other.student || other.data) throw new Error('mismatched token leaked data');
 
@@ -1685,7 +1684,7 @@ t('Code.gs expires student sessions at seven days or after the event', () => {
   const after = api.studentSessionExpiry_(Date.UTC(2026, 10, 7, 12, 0, 0));
   if (after > Date.UTC(2026, 10, 7, 12, 0, 0)) throw new Error('session outlives the event');
 
-  const issued = api.apiGetData('ana@esc.edu.ar', '', '');
+  const issued = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
   const row = services.sheets.Sessions.data[1];
   row[6] = new Date(Date.now() - 1000);
   const expired = api.apiResumeSession(issued.session);
@@ -1693,23 +1692,23 @@ t('Code.gs expires student sessions at seven days or after the event', () => {
   if (expired.student || expired.data) throw new Error('expired token leaked data');
 });
 
-t('Lookup answers have the same shape for known and unknown mails', () => {
+t('Lookup answers have the same shape for any mail', () => {
   const services = backendStub({});
   const api = backendApi(services, 'apiLookup');
-  const hit = api.apiLookup('ana@esc.edu.ar');
-  const miss = api.apiLookup('nadie@esc.edu.ar');
+  const hit = api.apiLookup('ana@secundariosalsipuedes.edu.ar');
+  const other = api.apiLookup('nadie@secundariosalsipuedes.edu.ar');
   const bad = api.apiLookup('no-es-mail');
   const shape = (o) => Object.keys(o).sort().join(',');
-  assertEq(shape(hit), shape(miss), 'hit and miss shape');
+  assertEq(shape(hit), shape(other), 'hit and other shape');
   assertEq(shape(hit), shape(bad), 'hit and invalid shape');
-  assertEq(hit.ok, true, 'hit ok');
-  assertEq(miss.ok, false, 'miss not ok');
-  assertEq(miss.message, 'Ese mail no está en la lista.', 'miss message');
-  assertEq(miss.nombre, '', 'miss has no name');
-  assertEq(miss.curso, '', 'miss has no course');
-  assertEq(miss.apellido, '', 'miss has no surname');
+  assertEq(hit.ok, true, 'institutional mail accepted');
+  assertEq(other.ok, true, 'unknown institutional mail accepted');
+  assertEq(bad.ok, false, 'invalid mail rejected');
+  assertEq(other.nombre, '', 'no name from roster');
+  assertEq(other.curso, '', 'no course from roster');
+  assertEq(other.apellido, '', 'no surname from roster');
   assertEq(bad.message, 'Escribí tu mail institucional.', 'invalid message');
-  if (JSON.stringify(miss).indexOf('@') >= 0) throw new Error('miss leaks a mail');
+  if (JSON.stringify(other).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
 });
 
 summary();

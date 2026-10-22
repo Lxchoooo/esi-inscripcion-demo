@@ -893,10 +893,10 @@
     <section id="s-screen-mail" class="screen card">
       <div class="steps">1 de 3</div>
       <h2 class="intro" id="login-title">Entrá</h2>
-      <p class="hint" id="hint-mail">Usá tu mail del colegio o tu DNI.</p>
+      <p class="hint" id="hint-mail">Usá tu mail institucional.</p>
       <div class="seg" role="group" aria-label="Cómo entrás">
         <button id="login-mail" class="seg-btn active" type="button" aria-pressed="true">Con mail</button>
-        <button id="login-dni" class="seg-btn" type="button" aria-pressed="false">Con DNI</button>
+        <button id="login-dni" class="seg-btn" type="button" aria-pressed="false" hidden>Con DNI</button>
       </div>
       <div id="login-mail-box" class="login-fields">
         <div class="field">
@@ -905,8 +905,8 @@
             placeholder="usuario@secundariosalsipuedes.edu.ar">
         </div>
         <button id="btn-mail" class="btn full" type="button">Continuar</button>
-        <button id="btn-use-dni" class="btn link login-alt" type="button">Usar mi DNI</button>
-        <p class="hint-line" id="mail-hint" hidden>Revisá el mail o entrá con DNI.</p>
+        <button id="btn-use-dni" class="btn link login-alt" type="button" hidden>Usar mi DNI</button>
+        <p class="hint-line" id="mail-hint" hidden>Revisá el mail institucional.</p>
       </div>
       <div id="login-dni-box" class="login-fields" hidden>
         <div class="field">
@@ -937,7 +937,11 @@
       <div class="steps">2 de 3</div>
       <h2 class="intro">Tus datos</h2>
       <div id="fieldset-nombre">
-        <label for="input-nombre">Nombre y apellido</label>
+        <label for="input-apellido-datos">Apellido</label>
+        <input id="input-apellido-datos" type="text" autocomplete="off" maxlength="60">
+      </div>
+      <div id="fieldset-nombre-pila">
+        <label for="input-nombre">Nombre</label>
         <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
       </div>
       <div id="fieldset-anio" style="display:flex;gap:10px">
@@ -1199,7 +1203,7 @@
     }
 
     function sClearLoginFields_() {
-      var ids = ['input-mail', 'input-dni', 'input-apellido', 'input-nombre'];
+      var ids = ['input-mail', 'input-dni', 'input-apellido', 'input-apellido-datos', 'input-nombre'];
       for (var i = 0; i < ids.length; i++) {
         if ($(ids[i])) $(ids[i]).value = '';
       }
@@ -1210,10 +1214,10 @@
 
     function sEmptyState_() {
       return {
-        email: '', nombre: '', curso: '',
-        needsNombre: false, needsCurso: false,
+        email: '', nombre: '', apellido: '', curso: '',
+        needsNombre: false, needsApellido: false, needsCurso: false,
         data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
-        student: { email: '', nombre: '', curso: '', ciclo: '' }
+        student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
       };
     }
 
@@ -1235,6 +1239,10 @@
         if (!e || e.length > 120) return false;
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
       }
+      function isInstitutionalEmail(email) {
+        var e = normalizeEmail(email);
+        return isValidEmail(e) && e.slice(e.indexOf('@')) === '@secundariosalsipuedes.edu.ar';
+      }
       function normalizeDni(value) {
         return String(value == null ? '' : value).replace(/\D/g, '');
       }
@@ -1249,21 +1257,26 @@
         if (year >= 4 && year <= 6) return 'orientado';
         return null;
       }
-      function validateStudentInput(email, nombre, curso) {
+      function validateStudentInput(email, nombre, curso, apellido) {
         var e = normalizeEmail(email);
         if (!isValidEmail(e)) return { ok: false, error: 'email' };
         var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
-        if (n.length < 3 || n.length > 60) return { ok: false, error: 'nombre' };
+        var ap = String(apellido == null ? '' : apellido).replace(/\s+/g, ' ').trim();
+        if (n.length < 2 || n.length > 60) return { ok: false, error: 'nombre' };
+        if (ap && (ap.length < 2 || ap.length > 60)) return { ok: false, error: 'apellido' };
         var ciclo = cicloFromCurso(curso);
         if (!ciclo) return { ok: false, error: 'curso' };
         var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
+        var completa = n;
+        if (ap && normalizeText(n).slice(-normalizeText(ap).length) !== normalizeText(ap)) completa = n + ' ' + ap;
         return {
           ok: true,
           email: e,
-          nombre: n,
+          nombre: completa,
+          apellido: ap,
           curso: c,
           ciclo: ciclo,
-          nombreKey: normalizeText(n),
+          nombreKey: normalizeText(completa),
           emailKey: e
         };
       }
@@ -1472,6 +1485,7 @@
         normalizeText: normalizeText,
         normalizeEmail: normalizeEmail,
         isValidEmail: isValidEmail,
+        isInstitutionalEmail: isInstitutionalEmail,
         normalizeDni: normalizeDni,
         isValidDni: isValidDni,
         cicloFromCurso: cicloFromCurso,
@@ -1487,7 +1501,8 @@
 
     var STUDENT_MSG = {
       email: 'Escribí tu mail institucional.',
-      nombre: 'Escribí nombre y apellido.',
+      nombre: 'Escribí tu nombre.',
+      apellido: 'Escribí tu apellido.',
       curso: 'Elegí año y división.',
       notInRoster: 'Ese mail no está en la lista.'
     };
@@ -1658,6 +1673,7 @@
       DEMO_SESSIONS[raw] = {
         email: student.email,
         nombre: student.nombre,
+        apellido: student.apellido || '',
         curso: student.curso,
         ciclo: student.ciclo,
         expires: Date.now() + 7 * 24 * 60 * 60 * 1000
@@ -1709,20 +1725,10 @@
       if (st.apellido && st.nombre) return st.nombre + ' ' + st.apellido;
       return st.nombre || st.apellido || '';
     }
-    function demoStudent(email, nombre, curso) {
+    function demoStudent(email, nombre, curso, apellido) {
       var norm = EsiClient.normalizeEmail(email);
-      if (!EsiClient.isValidEmail(norm)) return { ok: false, error: 'email' };
-      var roster = demoRoster();
-      var entry = null;
-      for (var i = 0; i < roster.length; i++) {
-        if (roster[i].email === norm) { entry = roster[i]; break; }
-      }
-      if (roster.length && !entry) return { ok: false, error: 'notInRoster' };
-      var pc = entry ? EsiClient.parseCurso(entry.curso || '') : null;
-      var v = EsiClient.validateStudentInput(norm, entry ? demoFull_(entry) : (nombre || ''), pc || curso || '');
-      if (!v.ok) return v;
-      v.rosterLoaded = roster.length > 0;
-      return v;
+      if (!EsiClient.isInstitutionalEmail(norm)) return { ok: false, error: 'email' };
+      return EsiClient.validateStudentInput(norm, nombre || '', curso || '', apellido || '');
     }
     function demoMine(email) {
       var key = EsiClient.normalizeEmail(email);
@@ -1735,8 +1741,8 @@
       }
       return m;
     }
-    function demoRegister(email, nombre, curso, talkId) {
-      var s = demoStudent(email, nombre, curso);
+    function demoRegister(email, nombre, curso, talkId, apellido) {
+      var s = demoStudent(email, nombre, curso, apellido);
       if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
       if (!demoOpen()) return Promise.resolve({ ok: false, message: 'La inscripción está cerrada.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       var talksById = {};
@@ -1762,6 +1768,7 @@
           ts: Date.now(),
           email: s.email,
           nombre: s.nombre,
+          apellido: s.apellido || '',
           curso: s.curso,
           ciclo: s.ciclo,
           slot_id: Number(talk.slot_id),
@@ -1785,7 +1792,7 @@
       return Promise.resolve({
         ok: true,
         message: message,
-        student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+        student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
         data: demoPublicData(s.ciclo, demoMine(s.email))
       });
     }
@@ -1812,7 +1819,7 @@
           id: s.id,
           cuando: s.ts ? demoTs(s.ts) : '',
           email: s.email,
-          apellido: apellidos[s.email],
+          apellido: s.apellido || apellidos[s.email] || '',
           nombre: s.nombre,
           curso: s.curso,
           ciclo: s.ciclo,
@@ -1860,17 +1867,17 @@
     function demoLookup(emailRaw) {
       var email = EsiClient.normalizeEmail(emailRaw);
       var roster = demoRoster();
-      if (!EsiClient.isValidEmail(email)) {
-        return demoLookupResponse_(false, null, roster.length > 0, STUDENT_MSG.email);
+      var out = {
+        ok: false, message: '', rosterLoaded: roster.length > 0,
+        needsNombre: true, needsApellido: true, needsCurso: true,
+        nombre: '', nombreCompleto: '', apellido: '', curso: ''
+      };
+      if (!EsiClient.isInstitutionalEmail(email)) {
+        out.message = STUDENT_MSG.email;
+        return out;
       }
-      var entry = null;
-      for (var i = 0; i < roster.length; i++) {
-        if (roster[i].email === email) { entry = roster[i]; break; }
-      }
-      if (roster.length && !entry) {
-        return demoLookupResponse_(false, null, true, STUDENT_MSG.notInRoster);
-      }
-      return demoLookupResponse_(true, entry, roster.length > 0, '');
+      out.ok = true;
+      return out;
     }
     function demoLookupDni(dniRaw, apellidoRaw) {
       var roster = demoRoster();
@@ -2236,10 +2243,11 @@
     }
     function demoCall(fn, args) {
       var a = args || [];
+      if (fn === 'apiBootstrap') return Promise.resolve({ ok: true, evento_abierto: demoOpen(), rosterLoaded: demoRoster().length > 0 });
       if (fn === 'apiLookup') return Promise.resolve(demoLookup(a[0]));
       if (fn === 'apiLookupDni') return Promise.resolve(demoLookupDni(a[0], a[1]));
       if (fn === 'apiGetData') {
-        var s = demoStudent(a[0], a[1], a[2]);
+        var s = demoStudent(a[0], a[1], a[2], a[4]);
         if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
         var current = a[3] ? demoSession_(a[3]) : null;
         if (a[3] && (!current || current.email !== s.email)) {
@@ -2248,7 +2256,7 @@
         var session = current ? '' : demoIssueSession_(s);
         return Promise.resolve({
           ok: true,
-          student: { email: s.email, nombre: s.nombre, curso: s.curso, ciclo: s.ciclo },
+          student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
           data: demoPublicData(s.ciclo, demoMine(s.email)),
           session: session
         });
@@ -2256,12 +2264,12 @@
       if (fn === 'apiResumeSession') {
         var sess = demoSession_(a[0]);
         if (!sess) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
-        var resumed = demoStudent(sess.email, sess.nombre, sess.curso);
+        var resumed = demoStudent(sess.email, sess.nombre, sess.curso, sess.apellido);
         if (!resumed.ok) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
         return Promise.resolve({
           ok: true,
           email: resumed.email,
-          student: { email: resumed.email, nombre: resumed.nombre, curso: resumed.curso, ciclo: resumed.ciclo },
+          student: { email: resumed.email, nombre: resumed.nombre, apellido: resumed.apellido, curso: resumed.curso, ciclo: resumed.ciclo },
           data: demoPublicData(resumed.ciclo, demoMine(resumed.email))
         });
       }
@@ -2269,7 +2277,7 @@
         delete DEMO_SESSIONS[String(a[0] || '')];
         return Promise.resolve({ ok: true });
       }
-      if (fn === 'apiRegister') return demoRegister(a[0], a[1], a[2], a[3]);
+      if (fn === 'apiRegister') return demoRegister(a[0], a[1], a[2], a[3], a[4]);
       if (fn === 'apiAdminLogin') {
         var role = String(a[0] || '').toLowerCase() === 'guia' ? 'guide' : 'admin';
         return Promise.resolve({ ok: true, role: role });
@@ -2396,15 +2404,23 @@
     var A_SCREENS = ['a-screen-gate', 'a-screen-panel'];
 
     var sState = {
-      email: '', nombre: '', curso: '',
-      needsNombre: false, needsCurso: false,
+      email: '', nombre: '', apellido: '', curso: '',
+      needsNombre: false, needsApellido: false, needsCurso: false,
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
-      student: { email: '', nombre: '', curso: '', ciclo: '' }
+      student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
     };
     var sLoginMode = 'mail';
+    var sDniAvailable = false;
+
+    function sSetDniAvailable_(available) {
+      sDniAvailable = !!available;
+      $('login-dni').hidden = !sDniAvailable;
+      $('btn-use-dni').hidden = !sDniAvailable;
+      if (!sDniAvailable && sLoginMode === 'dni') sSetLoginMode('mail');
+    }
 
     function sSetLoginMode(mode) {
-      sLoginMode = mode === 'dni' ? 'dni' : 'mail';
+      sLoginMode = mode === 'dni' && sDniAvailable ? 'dni' : 'mail';
       var mail = sLoginMode === 'mail';
       $('login-mail-box').hidden = !mail;
       $('login-dni-box').hidden = mail;
@@ -2413,7 +2429,7 @@
       $('login-mail').setAttribute('aria-pressed', mail ? 'true' : 'false');
       $('login-dni').setAttribute('aria-pressed', mail ? 'false' : 'true');
       $('login-title').textContent = 'Entrá';
-      $('hint-mail').textContent = 'Usá tu mail del colegio o tu DNI.';
+      $('hint-mail').textContent = sDniAvailable ? 'Usá tu mail del colegio o tu DNI.' : 'Usá tu mail institucional.';
       $('mail-hint').hidden = true;
       sBanner('');
       if (mail) $('input-mail').focus(); else $('input-dni').focus();
@@ -2626,7 +2642,7 @@
       var slotId = target ? target.slot_id : null;
       var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
       sState.busy = true;
-      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId])
+      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido])
         .then(function (resp) {
           sState.busy = false;
           if (resp.data) sState.data = resp.data;
@@ -2668,17 +2684,18 @@
       }, 150);
     }
 
-    function sEnterPanel(nombre, curso) {
+    function sEnterPanel(nombre, curso, apellido) {
       if (sState.busy) return Promise.resolve();
       sState.busy = true;
       sBanner('Cargando...', 'ok');
       var savedToken = sState.data ? sSessionToken_() : '';
-      return call('apiGetData', [sState.email, nombre, curso, savedToken])
+      return call('apiGetData', [sState.email, nombre, curso, savedToken, apellido || sState.apellido || ''])
         .then(function (resp) {
           sState.busy = false;
           if (resp.ok) {
             sState.student = resp.student;
             sState.nombre = resp.student.nombre;
+            sState.apellido = resp.student.apellido || '';
             sState.curso = resp.student.curso;
             sState.data = resp.data;
             sSetSession_(resp.session || savedToken);
@@ -2693,9 +2710,8 @@
               showScreen(S_SCREENS, 's-screen-mail');
               return;
             }
-            if (resp.message && String(resp.message).indexOf('no está en la lista') >= 0) {
+            if (resp.expired) {
               sClearStudentSession_();
-              sState.email = '';
               showScreen(S_SCREENS, 's-screen-mail');
             }
           }
@@ -2717,13 +2733,14 @@
           if (!resp.ok) {
             var msg = resp.message || 'No se pudo validar el mail.';
             sBanner(msg, 'err');
-            $('mail-hint').hidden = msg.indexOf('no está en la lista') < 0;
+            $('mail-hint').hidden = false;
             return;
           }
           sBanner('');
           sState.email = email.replace(/\s/g, '').toLowerCase();
           sState.lookup = resp;
           sState.nombre = resp.nombreCompleto || resp.nombre || '';
+          sState.apellido = resp.apellido || '';
           sState.greeting = resp.nombre || '';
           sState.curso = resp.curso || '';
           $('mail-hint').hidden = true;
@@ -2731,8 +2748,8 @@
             sShowHello();
             return;
           }
-          if (!resp.needsNombre && !resp.needsCurso) {
-            sEnterPanel(sState.nombre, sState.curso);
+          if (!resp.needsNombre && !resp.needsApellido && !resp.needsCurso) {
+            sEnterPanel(sState.nombre, sState.curso, sState.apellido);
             return;
           }
           sShowDatos();
@@ -2775,14 +2792,15 @@
           sState.email = resp.email;
           sState.lookup = resp;
           sState.nombre = resp.nombreCompleto || resp.nombre || '';
+          sState.apellido = resp.apellido || '';
           sState.greeting = resp.nombre || '';
           sState.curso = resp.curso || '';
           if (resp.nombre) {
             sShowHello();
             return;
           }
-          if (!resp.needsNombre && !resp.needsCurso) {
-            sEnterPanel(sState.nombre, sState.curso);
+          if (!resp.needsNombre && !resp.needsApellido && !resp.needsCurso) {
+            sEnterPanel(sState.nombre, sState.curso, sState.apellido);
             return;
           }
           sShowDatos();
@@ -2795,8 +2813,8 @@
 
     function sHelloYes() {
       if (sState.busy) return;
-      if (!sState.lookup.needsNombre && !sState.lookup.needsCurso) {
-        sEnterPanel(sState.nombre, sState.curso);
+      if (!sState.lookup.needsNombre && !sState.lookup.needsApellido && !sState.lookup.needsCurso) {
+        sEnterPanel(sState.nombre, sState.curso, sState.apellido);
         return;
       }
       sShowDatos();
@@ -2846,9 +2864,11 @@
 
     function sShowDatos() {
       var needsNombre = sState.lookup.needsNombre;
+      var needsApellido = sState.lookup.needsApellido;
       var needsCurso = sState.lookup.needsCurso;
       document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
-      $('fieldset-nombre').style.display = needsNombre ? 'block' : 'none';
+      $('fieldset-nombre').style.display = needsApellido ? 'block' : 'none';
+      $('fieldset-nombre-pila').style.display = needsNombre ? 'block' : 'none';
       $('select-anio').value = '';
       var pc = EsiClient.parseCurso(sState.curso || '');
       var yearSel = '';
@@ -2860,11 +2880,15 @@
       sFillDivisions(yearSel, divSel);
       $('select-anio').value = yearSel;
       $('fieldset-anio').style.display = needsCurso ? 'flex' : 'none';
+      $('input-apellido-datos').value = sState.apellido;
+      $('input-apellido-datos').readOnly = !needsApellido;
       $('input-nombre').value = sState.nombre;
       $('input-nombre').readOnly = !needsNombre;
-      $('btn-datos').textContent = (needsNombre || needsCurso) ? 'Ver las charlas' : 'Continuar';
+      $('btn-datos').textContent = (needsNombre || needsApellido || needsCurso) ? 'Ver las charlas' : 'Continuar';
       showScreen(S_SCREENS, 's-screen-datos');
-      if (needsNombre) {
+      if (needsApellido) {
+        $('input-apellido-datos').focus();
+      } else if (needsNombre) {
         $('input-nombre').focus();
       } else if (needsCurso) {
         $('select-anio').focus();
@@ -2873,20 +2897,31 @@
 
     function sSubmitDatos() {
       var needsNombre = sState.lookup.needsNombre;
+      var needsApellido = sState.lookup.needsApellido;
       var needsCurso = sState.lookup.needsCurso;
       var nombre = needsNombre ? $('input-nombre').value : sState.nombre;
+      var apellido = needsApellido ? $('input-apellido-datos').value : sState.apellido;
       var curso = needsCurso
         ? EsiClient.cursoFromParts($('select-anio').value, $('select-division').value)
         : sState.curso;
-      if (needsNombre && String(nombre).replace(/\s/g, '').length < 3) {
-        sBanner('Escribí nombre y apellido.', 'err');
+      if (needsNombre && String(nombre).replace(/\s/g, '').length < 2) {
+        sBanner('Escribí tu nombre.', 'err');
+        return;
+      }
+      if (needsApellido && String(apellido).replace(/\s/g, '').length < 2) {
+        sBanner('Escribí tu apellido.', 'err');
         return;
       }
       if (needsCurso && !curso) {
         sBanner('Elegí año y división.', 'err');
         return;
       }
-      sEnterPanel(nombre, curso);
+      var full = String(nombre || '').replace(/\s+/g, ' ').trim();
+      var ap = String(apellido || '').replace(/\s+/g, ' ').trim();
+      if (ap && EsiClient.normalizeText(full).slice(-EsiClient.normalizeText(ap).length) !== EsiClient.normalizeText(ap)) {
+        full = (full + ' ' + ap).trim();
+      }
+      sEnterPanel(full, curso, ap);
     }
 
     function sInit() {
@@ -2897,6 +2932,7 @@
       $('btn-use-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
       $('login-mail').addEventListener('click', function () { sSetLoginMode('mail'); });
       $('login-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
+      sSetDniAvailable_(false);
       $('btn-dni').addEventListener('click', sLookupDni);
       $('input-dni').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') sLookupDni();
@@ -2910,6 +2946,9 @@
       $('input-mail').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') sLookup();
       });
+      call('apiBootstrap', []).then(function (b) {
+        if (b && b.ok) sSetDniAvailable_(!!b.rosterLoaded);
+      }).catch(function () { sSetDniAvailable_(false); });
       $('select-anio').addEventListener('change', function () {
         sFillDivisions(this.value, '');
       });
@@ -2935,7 +2974,7 @@
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible' && sState.data && !sState.busy
           && $('s-screen-panel').className.indexOf('active') >= 0) {
-          sEnterPanel(sState.nombre, sState.curso);
+          sEnterPanel(sState.nombre, sState.curso, sState.apellido);
         }
       });
 
@@ -2949,6 +2988,7 @@
               sState.email = resp.student.email;
               sState.student = resp.student;
               sState.nombre = resp.student.nombre;
+              sState.apellido = resp.student.apellido || '';
               sState.curso = resp.student.curso;
               sState.data = resp.data;
               sBanner('');
