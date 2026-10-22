@@ -291,8 +291,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 17) throw new Error('expected 17 api fns, got ' + names.length);
-  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders'];
+  if (names.length !== 19) throw new Error('expected 19 api fns, got ' + names.length);
+  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders', 'apiAdminGetConfig', 'apiAdminSetConfig'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -856,6 +856,7 @@ function backendStub(props, seed) {
       ['beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo'],
       ['carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A']
     ]),
+    Mails: fakeSheet('Mails', ['email', 'fecha', 'asunto'], []),
     Signups: fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'],
       (seed && seed.signups) || [
         ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1'],
@@ -1292,6 +1293,30 @@ t('apiAdminMailPreview prepares a reminder only for signed-up students', () => {
   assertEq(api.apiAdminMailPreview('2222').ok, false, 'guide cannot mail');
 });
 
+t('apiAdminSendReminders does not resend a subject already sent', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const subject = 'Recordatorio: Jornada ESI 2026 del 4 de noviembre de 2026';
+  services.sheets.Mails.appendRow(['beto@secundariosalsipuedes.edu.ar', new Date(), subject]);
+  const out = [];
+  services.MailApp = {
+    getRemainingDailyQuota: () => 50,
+    sendEmail: (msg) => { out.push(msg); }
+  };
+  const api = backendApi(services, 'apiAdminMailPreview, apiAdminSendReminders');
+  const preview = api.apiAdminMailPreview('1111');
+  assertEq(preview.pending, 2, 'already sent excluded');
+  const first = api.apiAdminSendReminders('1111', 0, 2);
+  assertEq(first.sent, 1, 'one new mail');
+  assertEq(first.skipped, 1, 'one skipped');
+  assertEq(first.done, false, 'third still pending');
+  const second = api.apiAdminSendReminders('1111', first.nextOffset, 20);
+  assertEq(second.sent, 1, 'last new mail');
+  assertEq(second.done, true, 'finished');
+  assertEq(out.length, 2, 'no duplicate send');
+  assertEq(out[0].to, 'ana@secundariosalsipuedes.edu.ar', 'skipped surname goes next');
+});
+
 t('apiAdminSendReminders sends in batches and respects quota', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
@@ -1317,6 +1342,28 @@ t('apiAdminSendReminders sends in batches and respects quota', () => {
   services.MailApp.getRemainingDailyQuota = () => 0;
   const none = api.apiAdminSendReminders('1111', 0, 20);
   assertEq(none.ok, false, 'quota exhausted');
+});
+
+t('apiAdminGetConfig and apiAdminSetConfig validate admin changes', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig');
+  assertEq(api.apiAdminGetConfig('').ok, false, 'config needs a key');
+  assertEq(api.apiAdminGetConfig('2222').ok, false, 'guide cannot read config');
+  const before = api.apiAdminGetConfig('1111');
+  assertEq(before.ok, true, 'admin reads config');
+  assertEq(before.event.fecha, '2026-11-04', 'default date');
+  const saved = api.apiAdminSetConfig('1111', {
+    evento_fecha: '2026-11-05',
+    evento_zona: 'America/Argentina/Buenos_Aires',
+    evento_abierto: false
+  });
+  assertEq(saved.ok, true, 'config saved');
+  assertEq(saved.event.fecha, '2026-11-05', 'date saved');
+  assertEq(saved.event.zona, 'America/Argentina/Buenos_Aires', 'zone saved');
+  assertEq(saved.evento_abierto, false, 'closed saved');
+  assertEq(api.apiAdminSetConfig('1111', { evento_fecha: '05/11/2026' }).ok, false, 'bad date rejected');
+  assertEq(api.apiAdminSetConfig('1111', { evento_zona: 'bad zone!' }).ok, false, 'bad zone rejected');
+  assertEq(api.apiAdminSetConfig('2222', { evento_fecha: '2026-11-05' }).ok, false, 'guide cannot write');
 });
 
 t('apiAdminReports rejects requests without a key or token', () => {
