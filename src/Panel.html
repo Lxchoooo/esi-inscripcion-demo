@@ -489,10 +489,15 @@
       max-width: 560px; margin: 0 auto;
       max-height: 86dvh; overflow-y: auto;
       transform: translateY(105%);
-      transition: transform .26s cubic-bezier(.32, .72, .25, 1);
+      visibility: hidden;
+      transition: transform .26s cubic-bezier(.32, .72, .25, 1), visibility 0s linear .26s;
       box-shadow: 0 -12px 44px rgba(31, 31, 31, .16);
     }
-    .sheet.show { transform: translateY(0); }
+    .sheet.show {
+      transform: translateY(0);
+      visibility: visible;
+      transition: transform .26s cubic-bezier(.32, .72, .25, 1), visibility 0s;
+    }
     .sheet-handle { width: 42px; height: 4px; border-radius: 999px; background: var(--line-strong); margin: 2px auto 16px; }
     .sheet h3 { margin: 0 0 10px; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
     .sheet-line { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
@@ -520,6 +525,7 @@
     #a-screen-gate .intro { margin-bottom: 24px; }
     .gate-form { display: grid; gap: 16px; }
     #gate-msg { margin: 0; }
+    #gate-msg:empty { display: none; }
 
     /* Selección de charlas y ajustes */
     .wrap { max-width: 760px; }
@@ -1107,7 +1113,7 @@
             <input id="input-pin" type="password" inputmode="numeric" autocomplete="off"
               placeholder="Tu clave">
           </div>
-          <div id="gate-msg" class="banner err"></div>
+          <div id="gate-msg" class="banner err" role="alert"></div>
           <button id="btn-pin" class="btn full" type="button">Entrar</button>
         </div>
       </div>
@@ -1339,7 +1345,7 @@
   <div id="print-area"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="sheet-backdrop" class="sheet-backdrop"></div>
-  <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true">
     <div class="sheet-handle"></div>
     <h3 id="sheet-title"></h3>
     <div id="sheet-body"></div>
@@ -2985,12 +2991,14 @@
       sheetCb = opts.onConfirm || null;
       $('sheet-backdrop').classList.add('show');
       $('sheet').classList.add('show');
+      $('sheet').setAttribute('aria-hidden', 'false');
       document.body.classList.add('sheet-open');
       try { $('sheet-confirm').focus(); } catch (e) { }
     }
     function closeSheet() {
       $('sheet-backdrop').classList.remove('show');
       $('sheet').classList.remove('show');
+      $('sheet').setAttribute('aria-hidden', 'true');
       document.body.classList.remove('sheet-open');
       sheetCb = null;
       var back = sheetPrevFocus;
@@ -3877,6 +3885,10 @@
         return false;
       }
       adminCred = '';
+      aStopAutoRefresh();
+      aReleaseAwake_();
+      if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
+      aClearTalkCaches_();
       aData = null;
       $('gate-msg').textContent = msg || 'Sesión vencida. Entrá de nuevo.';
       $('gate-msg').style.display = 'block';
@@ -3976,6 +3988,7 @@
       aTalkId = talkId;
       call('apiAdminTalkRoster', [adminCred, talkId])
         .then(function (resp) {
+          if (talkId !== aTalkId) return;
           if (!resp.ok) {
             aBanner(resp.message || 'No se pudo cargar.', 'err');
             return;
@@ -3990,6 +4003,7 @@
           aFlushMarks_();
         })
         .catch(function () {
+          if (talkId !== aTalkId) return;
           var hit = aReadTalkCache_(talkId);
           if (hit) {
             aTalkData = hit.data;
@@ -4103,6 +4117,7 @@
         call('apiAdminSetPresent', [adminCred, row.id, !!row.presente])
           .then(function (resp) {
             if (resp.ok) aUnqueue_(row.id);
+            else if (aAuthLost(resp)) return;
             next();
           })
           .catch(function () { });
@@ -4122,6 +4137,8 @@
     function aRenderTalk() {
       var d = aTalkData;
       if (!d) return;
+      var focusEl = document.activeElement;
+      var focusId = focusEl && focusEl.getAttribute ? focusEl.getAttribute('data-id') : '';
       var q = ($('input-buscar-charla') ? $('input-buscar-charla').value : '').replace(/\s+/g, ' ').trim().toLowerCase();
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
       $('charla-count').textContent = d.count + ' de ' + d.talk.cupo;
@@ -4156,6 +4173,16 @@
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
       $('charla-list').innerHTML = rows;
+      if (focusId) {
+        var list = $('charla-list');
+        var buttons = list && list.querySelectorAll ? list.querySelectorAll('.present-btn') : [];
+        for (var b = 0; b < buttons.length; b++) {
+          if (buttons[b].getAttribute('data-id') === focusId) {
+            try { buttons[b].focus(); } catch (e) { }
+            break;
+          }
+        }
+      }
     }
 
     function aMailMsg_(text, type) {
@@ -5190,10 +5217,33 @@
       });
     }
 
+    function aClearMarkQueue_() {
+      try { lsDel(A_MARK_QUEUE); } catch (e) { }
+    }
+
+    function aClearTalkCaches_() {
+      try {
+        if (aData && aData.talks) {
+          for (var i = 0; i < aData.talks.length; i++) lsDel(aTalkCacheKey_(aData.talks[i].id));
+        }
+        var storage = window.localStorage;
+        if (storage && typeof storage.length === 'number' && storage.key) {
+          var keys = [];
+          for (var j = 0; j < storage.length; j++) {
+            var key = storage.key(j);
+            if (key && key.indexOf('esi_talk_cache_') === 0) keys.push(key);
+          }
+          for (var k = 0; k < keys.length; k++) lsDel(keys[k]);
+        }
+      } catch (e) { }
+    }
+
     function aLogout() {
       aStopAutoRefresh();
       aReleaseAwake_();
       if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
+      aClearTalkCaches_();
+      aClearMarkQueue_();
       adminCred = '';
       aRole = 'admin';
       aTalkData = null;
@@ -5559,6 +5609,8 @@
             aBusy = false;
             if (!resp.ok) { aDangerMsg_(resp.message || 'No se pudo borrar.', 'err'); return; }
             aDangerMsg_('Datos personales borrados.', 'ok');
+            aClearTalkCaches_();
+            aClearMarkQueue_();
             aLoad(true);
           }).catch(function () { aBusy = false; aDangerMsg_('Sin conexión.', 'err'); });
         }

@@ -7,6 +7,7 @@ var SESSIONS_SHEET = 'Sessions';
 var SENT_MAILS_SHEET = 'Mails';
 var LOG_SHEET = 'Log';
 var BACKUP_SHEET = 'Backup';
+var RESUMEN_SHEET = 'Resumen';
 var BACKUP_KEEP = 20;
 var MAX_EMAIL_ = 120;
 var INSTITUTIONAL_DOMAIN = '@secundariosalsipuedes.edu.ar';
@@ -818,6 +819,7 @@ function setup() {
   ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
   ensureSheet_(ss, SESSIONS_SHEET, ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
+  repairErasedSignups_(ss);
   ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
   ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
   ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
@@ -857,27 +859,29 @@ function logAction_(action, signupId, detail) {
 }
 
 function backupSignups_() {
-  try {
-    var cfg = readConfig_();
-    if (!convertBool_(cfg[CONFIG_BACKUP_ACTIVE])) return { ok: false, message: 'Respaldo desactivado.' };
-    var signups = readSignups_();
-    if (!signups.length) return { ok: true, rows: 0, copies: 0 };
-    var sh = sheet_(BACKUP_SHEET);
-    var stamp = new Date();
-    var rows = [];
-    for (var i = 0; i < signups.length; i++) {
-      var s = signups[i];
-      rows.push([
-        stamp, s.id, s.ts, s.email, s.nombre, s.curso, s.ciclo, s.slot_id, s.talk_id,
-        s.presente ? 'si' : 'no', s.apellido, s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
-      ]);
+  return withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var cfg = readConfig_();
+      if (!convertBool_(cfg[CONFIG_BACKUP_ACTIVE])) return { ok: false, message: 'Respaldo desactivado.' };
+      var signups = readSignups_();
+      if (!signups.length) return { ok: true, rows: 0, copies: 0 };
+      var sh = sheet_(BACKUP_SHEET);
+      var stamp = new Date();
+      var rows = [];
+      for (var i = 0; i < signups.length; i++) {
+        var s = signups[i];
+        rows.push([
+          stamp, s.id, s.ts, s.email, s.nombre, s.curso, s.ciclo, s.slot_id, s.talk_id,
+          s.presente ? 'si' : 'no', s.apellido, s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
+        ]);
+      }
+      if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 13).setValues(rows);
+      var copies = pruneBackup_(sh);
+      return { ok: true, rows: rows.length, copies: copies };
+    } catch (e) {
+      return { ok: false, message: 'No se pudo respaldar.' };
     }
-    if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 13).setValues(rows);
-    var copies = pruneBackup_(sh);
-    return { ok: true, rows: rows.length, copies: copies };
-  } catch (e) {
-    return { ok: false, message: 'No se pudo respaldar.' };
-  }
+  });
 }
 
 function pruneBackup_(sh) {
@@ -952,6 +956,23 @@ function ensureSheet_(ss, name, headers, rows) {
     sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
   }
   return sh;
+}
+
+function repairErasedSignups_(ss) {
+  var sh = ss.getSheetByName(SIGNUPS_SHEET);
+  if (!sh || sh.getLastColumn() < 1) return;
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  var map = signupsHeaderMap_(head);
+  if (map.id >= 0 && map.email >= 0) return;
+  var rows = sh.getDataRange().getValues();
+  if (rows.length > 1) {
+    var resumen = ensureSheet_(ss, RESUMEN_SHEET,
+      ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes'], []);
+    resumen.clearContents();
+    resumen.getRange(1, 1, rows.length, Math.max(5, rows[0].length)).setValues(rows);
+  }
+  sh.clearContents();
+  sh.getRange(1, 1, 1, 8).setValues([['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id']]);
 }
 
 function ensureColumn_(sh, header) {
@@ -1538,20 +1559,30 @@ function apiLookupDni(dni, apellido) {
       curso: ''
     };
     if (!valid) return out;
-    if (dniFails_(norm) >= DNI_MAX_FAILS) {
+    var lookup = withScriptLock_(ADMIN_LOCK_MS, function () {
+      if (dniFails_(norm) >= DNI_MAX_FAILS) return { blocked: true };
+      var matches = [];
+      for (var i = 0; i < roster.length; i++) {
+        if (roster[i].dni && roster[i].dni === norm) matches.push(roster[i]);
+      }
+      var entry = matches.length === 1 ? matches[0] : null;
+      if (!entry || EsiCore.normalizeText(entry.apellido) !== ap) {
+        noteDniFailure_(norm);
+        return { entry: null };
+      }
+      clearDniFailures_(norm);
+      return { entry: entry };
+    });
+    if (lookup.busy) {
+      out.message = BUSY_MESSAGE;
+      return out;
+    }
+    if (lookup.blocked) {
       out.message = 'Demasiados intentos. Esperá dos minutos.';
       return out;
     }
-    var matches = [];
-    for (var i = 0; i < roster.length; i++) {
-      if (roster[i].dni && roster[i].dni === norm) matches.push(roster[i]);
-    }
-    var entry = matches.length === 1 ? matches[0] : null;
-    if (!entry || EsiCore.normalizeText(entry.apellido) !== ap) {
-      noteDniFailure_(norm);
-      return out;
-    }
-    clearDniFailures_(norm);
+    var entry = lookup.entry;
+    if (!entry) return out;
     var nombreCompleto = entry.nombreCompleto || entry.nombre || '';
     var pc = EsiCore.parseCurso(entry.curso);
     var login = issueLoginTicket_({
@@ -1594,14 +1625,14 @@ function apiSetReminder(token, value) {
       var sh = sheet_(SIGNUPS_SHEET);
       var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
       var map = signupsHeaderMap_(head);
-      if (map.recordatorio < 0) {
-        return { ok: false, message: 'Falta la columna recordatorio. Ejecutá setup().' };
+      if (map.email < 0 || map.recordatorio < 0) {
+        return { ok: false, message: 'Falta una columna de Signups. Ejecutá setup().' };
       }
       var vals = sh.getDataRange().getValues();
       var wanted = convertBool_(value);
       var updated = 0;
       for (var i = 1; i < vals.length; i++) {
-        if (EsiCore.normalizeEmail(vals[i][2]) !== sess.email) continue;
+        if (EsiCore.normalizeEmail(vals[i][map.email]) !== sess.email) continue;
         sh.getRange(i + 1, map.recordatorio + 1).setValue(wanted);
         updated++;
       }
@@ -1615,20 +1646,26 @@ function apiSetReminder(token, value) {
 
 function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
   try {
+    var current = sessionToken ? studentSession_(sessionToken) : null;
+    if (sessionToken && !current) return studentSessionExpired_();
     var ticket = loginTicket_(loginToken);
-    var baseEmail = ticket ? ticket.email : email;
-    var baseNombre = nombre || (ticket ? ticket.nombre : '');
-    var baseCurso = curso || (ticket ? ticket.curso : '');
-    var baseApellido = apellido || (ticket ? ticket.apellido : '');
-    var bs = buildStudent_(baseEmail, baseNombre, baseCurso, baseApellido);
+    if (current && ticket && ticket.email !== current.email) {
+      return { ok: false, message: 'La sesión no coincide con el mail.' };
+    }
+    if (current && email && EsiCore.normalizeEmail(email) !== current.email) return studentSessionExpired_();
+    if (ticket && email && EsiCore.normalizeEmail(email) !== ticket.email) {
+      return { ok: false, message: 'La sesión no coincide con el mail.' };
+    }
+    var identity = current || ticket;
+    var bs = identity
+      ? buildStudent_(identity.email, identity.nombre, identity.curso, identity.apellido)
+      : buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
     var s = bs.student;
     var signups = readSignupsCached_();
     var mine = mineMap_(signups, s.email);
-    var current = sessionToken ? studentSession_(sessionToken) : null;
-    if (sessionToken && (!current || current.email !== s.email)) return studentSessionExpired_();
     if (!current && !ticket && hasSignupsForEmail_(signups, s.email)) {
       return {
         ok: false,
@@ -1843,17 +1880,24 @@ function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, login
 
 function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken) {
   try {
-    var bs = buildStudent_(email, nombre, curso, apellido);
+    var current = sessionToken ? studentSession_(sessionToken) : null;
+    if (sessionToken && !current) return studentSessionExpired_();
+    var ticket = loginTicket_(loginToken);
+    if (current && ticket && ticket.email !== current.email) {
+      return { ok: false, message: 'La sesión no coincide con el mail.' };
+    }
+    if (current && email && EsiCore.normalizeEmail(email) !== current.email) return studentSessionExpired_();
+    if (ticket && email && EsiCore.normalizeEmail(email) !== ticket.email) {
+      return { ok: false, message: 'La sesión no coincide con el mail.' };
+    }
+    var identity = current || ticket;
+    var bs = identity
+      ? buildStudent_(identity.email, identity.nombre, identity.curso, identity.apellido)
+      : buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
     var s = bs.student;
-    var current = sessionToken ? studentSession_(sessionToken) : null;
-    if (sessionToken && (!current || current.email !== s.email)) return studentSessionExpired_();
-    var ticket = loginTicket_(loginToken);
-    if (ticket && ticket.email !== s.email) {
-      return { ok: false, message: 'La sesión no coincide con el mail.' };
-    }
 
     var cfg = readConfig_();
     var abierto = isOpen_(cfg);
@@ -1933,13 +1977,17 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       var row = findSignupRow_(plan.signupId);
       if (!row) throw new Error('Inscripción anterior no encontrada');
       var sh = sheet_(SIGNUPS_SHEET);
-      sh.getRange(row, 2).setValue(new Date());
-      sh.getRange(row, 8).setValue(talkId);
+      var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+      var map = signupsHeaderMap_(head);
+      if (map.ts < 0 || map.talk_id < 0) throw new Error('Falta una columna de Signups');
+      sh.getRange(row, map.ts + 1).setValue(new Date());
+      sh.getRange(row, map.talk_id + 1).setValue(talkId);
       message = 'Cambiaste tu charla de ese horario a ' + talk.titulo + '.';
     } else {
       message = 'Ya estabas anotado.';
     }
 
+    if (ticket) consumeLoginTicket_(loginToken);
     var fresh = readSignups_();
     invalidateDataCache_();
     return {
@@ -1957,8 +2005,11 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
 function findSignupRow_(id) {
   var sh = sheet_(SIGNUPS_SHEET);
   var vals = sh.getDataRange().getValues();
+  if (!vals.length) return 0;
+  var map = signupsHeaderMap_(vals[0]);
+  if (map.id < 0) return 0;
   for (var i = 1; i < vals.length; i++) {
-    if (String(vals[i][0]) === String(id)) return i + 1;
+    if (String(vals[i][map.id]) === String(id)) return i + 1;
   }
   return 0;
 }
@@ -2653,7 +2704,7 @@ function apiAdminErasePersonalData(cred, confirmation) {
   var perm = requireAdmin_(auth);
   if (!perm.ok) return { ok: false, message: perm.message };
   if (String(confirmation || '') !== 'BORRAR') return { ok: false, message: 'Confirmación inválida.' };
-  return withScriptLock_(ADMIN_LOCK_MS * 3, function () {
+  var resp = withScriptLock_(ADMIN_LOCK_MS * 3, function () {
     try {
       var signups = readSignups_();
       var byTalk = {};
@@ -2669,41 +2720,45 @@ function apiAdminErasePersonalData(cred, confirmation) {
         if (s.presente) byTalk[key].presentes++;
       }
       var sessions = readSessions_();
-      var active = 0;
-      var now = Date.now();
-      for (var j = 0; j < sessions.length; j++) {
-        if (!sessions[j].revoked && sessions[j].expires > now) active++;
-      }
       var mailsSh = sheet_(SENT_MAILS_SHEET);
       var mailCount = Math.max(0, mailsSh.getLastRow() - 1);
-      var cfg = readConfig_();
 
+      var ss = SpreadsheetApp.getActive();
       var signupsSh = sheet_(SIGNUPS_SHEET);
+      var signupHead = signupsSh.getRange(1, 1, 1, Math.max(1, signupsSh.getLastColumn())).getValues()[0];
       signupsSh.clearContents();
+      signupsSh.getRange(1, 1, 1, signupHead.length).setValues([signupHead]);
+
       var sRows = [['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes']];
       for (var k = 0; k < order.length; k++) {
         var r = byTalk[order[k]];
         sRows.push([r.talk_id, r.slot_id, r.ciclo, r.anotados, r.presentes]);
       }
-      signupsSh.getRange(1, 1, sRows.length, 5).setValues(sRows);
+      var resumenSh = ensureSheet_(ss, RESUMEN_SHEET,
+        ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes'], []);
+      resumenSh.clearContents();
+      resumenSh.getRange(1, 1, sRows.length, 5).setValues(sRows);
 
       var sessionsSh = sessionsSheet_();
+      var sessionsHead = sessionsSh.getRange(1, 1, 1, Math.max(1, sessionsSh.getLastColumn())).getValues()[0];
       sessionsSh.clearContents();
-      sessionsSh.getRange(1, 1, 2, 2).setValues([['total', 'activas'], [sessions.length, active]]);
+      sessionsSh.getRange(1, 1, 1, sessionsHead.length).setValues([sessionsHead]);
 
+      var mailHead = mailsSh.getRange(1, 1, 1, Math.max(1, mailsSh.getLastColumn())).getValues()[0];
       mailsSh.clearContents();
-      mailsSh.getRange(1, 1, 2, 2).setValues([['asunto', 'enviados'], [reminderSubject_(cfg), mailCount]]);
+      mailsSh.getRange(1, 1, 1, mailHead.length).setValues([mailHead]);
 
-      var studentsSh = SpreadsheetApp.getActive().getSheetByName(STUDENTS_SHEET);
+      var studentsSh = ss.getSheetByName(STUDENTS_SHEET);
       if (studentsSh) {
+        var studentsHead = studentsSh.getRange(1, 1, 1, Math.max(1, studentsSh.getLastColumn())).getValues()[0];
         studentsSh.clearContents();
-        studentsSh.getRange(1, 1, 1, 3).setValues([['email', 'nombre', 'curso']]);
+        studentsSh.getRange(1, 1, 1, studentsHead.length).setValues([studentsHead]);
       }
-      var ss = SpreadsheetApp.getActive();
       var backupSh = ensureSheet_(ss, BACKUP_SHEET,
         ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
+      var backupHead = backupSh.getRange(1, 1, 1, Math.max(1, backupSh.getLastColumn())).getValues()[0];
       backupSh.clearContents();
-      backupSh.getRange(1, 1, 1, 13).setValues([['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba']]);
+      backupSh.getRange(1, 1, 1, backupHead.length).setValues([backupHead]);
 
       writeConfig_('evento_abierto', 'cerrado');
       writeConfig_(CONFIG_DATA_ERASED, 'si');
@@ -2714,6 +2769,10 @@ function apiAdminErasePersonalData(cred, confirmation) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
   });
+  if (resp && resp.ok) {
+    try { rebuildReport_(); } catch (e) { }
+  }
+  return resp;
 }
 
 function apiAdminImportRoster(cred, text, mode) {
@@ -3177,7 +3236,7 @@ function rebuildReport_() {
     rows.push(['', '', '', 'Ciclo Básico', '', '', agg.porCiclo.basico, '']);
     rows.push(['', '', '', 'Ciclo Orientado', '', '', agg.porCiclo.orientado, '']);
     var width = 8;
-    var lastRow = sh.getMaxRow();
+    var lastRow = sh.getLastRow();
     if (lastRow > 0) sh.getRange(1, 1, lastRow, Math.max(width, sh.getLastColumn() || width)).clearContent();
     sh.getRange(1, 1, rows.length, width).setValues(rows);
     sh.setFrozenRows(2);

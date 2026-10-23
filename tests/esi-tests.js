@@ -4,6 +4,7 @@ global.Logger = { log: function () { } };
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = process.argv[2];
 if (!ROOT) {
@@ -904,16 +905,9 @@ function backendStub(props, seed) {
       DigestAlgorithm: { SHA_256: 'sha256' },
       getUuid: () => 'uuid-' + (++uuid),
       formatDate: (d) => '01/01 10:00',
-      computeDigest: (algo, value) => {
-        let h = 7;
-        const s = String(value);
-        const out = [];
-        for (let i = 0; i < 32; i++) {
-          for (let j = 0; j < s.length; j++) h = (h * 31 + s.charCodeAt(j) + i) & 255;
-          out.push(h);
-        }
-        return out;
-      }
+      computeDigest: (algo, value) => Array.from(
+        crypto.createHash('sha256').update(String(value)).digest()
+      )
     }
   };
 }
@@ -1489,6 +1483,39 @@ t('Panel prints A4 reports with a signature column and page breaks', () => {
   if (/print-table th \{[^}]*background: #eee/.test(panelHtml)) throw new Error('print keeps a gray header');
 });
 
+t('Panel keeps the closed sheet out of the tab order and announces errors', () => {
+  if (!/\.sheet \{[^}]*visibility: hidden/s.test(panelHtml)) throw new Error('closed sheet is still focusable');
+  if (!/\.sheet\.show \{[^}]*visibility: visible/s.test(panelHtml)) throw new Error('open sheet is hidden');
+  if (!/id="sheet"[^>]*aria-hidden="true"/.test(panelHtml)) throw new Error('sheet aria-hidden missing');
+  if (!/setAttribute\('aria-hidden', 'false'\)/.test(panelSrc)) throw new Error('sheet not exposed on open');
+  if (!/id="gate-msg"[^>]*role="alert"/.test(panelHtml)) throw new Error('gate message is not announced');
+  if (!/#gate-msg:empty \{ display: none; \}/.test(panelHtml)) throw new Error('empty gate error is visible');
+});
+
+t('Panel ignores stale talk loads and keeps focus after rerender', () => {
+  if (!/function aLoadTalk\(\)[\s\S]*?if \(talkId !== aTalkId\) return;/.test(panelSrc)) {
+    throw new Error('stale talk response not ignored');
+  }
+  if (!/function aRenderTalk\(\)[\s\S]*?focusId[\s\S]*?buttons\[b\]\.focus/.test(panelSrc)) {
+    throw new Error('focus not restored after rerender');
+  }
+});
+
+t('Panel clears offline talk caches on logout and erase', () => {
+  if (!/function aClearTalkCaches_\(\)/.test(panelSrc)) throw new Error('cache wipe helper missing');
+  if (!/function aLogout\(\)[\s\S]*?aClearTalkCaches_\(\)/.test(panelSrc)) throw new Error('logout keeps talk caches');
+  if (!/apiAdminErasePersonalData[\s\S]*?aClearTalkCaches_\(\)/.test(panelSrc)) throw new Error('erase keeps talk caches');
+});
+
+t('Panel clears the offline attendance queue on logout and erase', () => {
+  if (!/function aClearMarkQueue_\(\)/.test(panelSrc)) throw new Error('queue wipe helper missing');
+  if (!/function aLogout\(\)[\s\S]*?aClearMarkQueue_\(\)/.test(panelSrc)) throw new Error('logout keeps queued marks');
+  if (!/apiAdminErasePersonalData[\s\S]*?aClearMarkQueue_\(\)/.test(panelSrc)) throw new Error('erase keeps queued marks');
+  if (!/function aFlushMarks_\(\)[\s\S]*?else if \(aAuthLost\(resp\)\) return;/.test(panelSrc)) {
+    throw new Error('flush keeps looping after auth loss');
+  }
+});
+
 t('Panel wipes student data on Salir and warns about shared phones', () => {
   if (!/function sClearStudentSession_\(\)[\s\S]*?'esi_session'[\s\S]*?'esi_student'[\s\S]*?ssDel/.test(panelSrc)) {
     throw new Error('session wipe helper');
@@ -1598,15 +1625,28 @@ t('Registering the same student and talk twice keeps one row', () => {
     students: [['nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A']],
     signups: []
   });
-  const api = backendApi(services, 'apiRegister');
+  const api = backendApi(services, 'apiGetData, apiRegister');
   const ticket = loginTicketFor(services, 'nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', '');
-  const first = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', '', ticket);
-  const second = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', '', ticket);
+  const login = api.apiGetData('', '', '', '', '', ticket);
+  assertEq(login.ok, true, 'ticket login');
+  const first = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', login.session);
+  const second = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', login.session);
   assertEq(first.ok, true, 'first insert');
   assertEq(second.ok, true, 'second is accepted as already registered');
   if (!/Ya estabas anotado/.test(second.message)) throw new Error('message: ' + second.message);
   const rows = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@secundariosalsipuedes.edu.ar');
   assertEq(rows.length, 1, 'one row');
+});
+
+t('A login ticket cannot be replayed through apiRegister', () => {
+  const services = backendStub({}, { students: [], signups: [] });
+  const api = backendApi(services, 'apiRegister');
+  const ticket = loginTicketFor(services, 'nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', '');
+  const first = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', '', ticket);
+  assertEq(first.ok, true, 'ticket register');
+  const replay = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B2', '', '', ticket);
+  assertEq(replay.ok, false, 'ticket replay rejected');
+  assertEq(replay.needsLogin, true, 'replay asks for a session');
 });
 
 t('Concurrent registrations never exceed the cap or duplicate rows', () => {
@@ -1615,10 +1655,13 @@ t('Concurrent registrations never exceed the cap or duplicate rows', () => {
     students.push(['s' + i + '@secundariosalsipuedes.edu.ar', 'Alumno', '2°B']);
   }
   const services = backendStub({}, { students: students, signups: [] });
-  const api = backendApi(services, 'apiRegister');
-  const tickets = {};
+  const api = backendApi(services, 'apiGetData, apiRegister');
+  const sessions = {};
   for (let i = 0; i < students.length; i++) {
-    tickets[students[i][0]] = loginTicketFor(services, students[i][0], students[i][1], students[i][2], '');
+    const ticket = loginTicketFor(services, students[i][0], students[i][1], students[i][2], '');
+    const login = api.apiGetData('', '', '', '', '', ticket);
+    if (!login.session) throw new Error('no session for ' + students[i][0]);
+    sessions[students[i][0]] = login.session;
   }
   const order = [];
   for (let i = 0; i < 50; i++) {
@@ -1636,7 +1679,7 @@ t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   let busy = 0;
   for (let n = 0; n < order.length; n++) {
     const student = students[order[n]];
-    const r = api.apiRegister(student[0], student[1], student[2], 'B1', '', '', tickets[student[0]]);
+    const r = api.apiRegister(student[0], student[1], student[2], 'B1', '', sessions[student[0]]);
     if (r.busy) busy++;
     else if (r.ok) ok++;
     else if (/Sin lugares/.test(r.message)) full++;
@@ -2067,6 +2110,76 @@ t('admin r12 status, duplicates, manual fixes, test data, close and erase', () =
   assertEq(api.apiAdminGetData(token).signups.length, 0, 'no personal rows after erase');
   assertEq(api.apiAdminStatus(token).data_erased, true, 'erase flag set');
   assertEq(api.apiAdminStatus(token).evento_abierto, false, 'event stays closed');
+  assertEq(services.sheets.Signups.data[0].indexOf('id') >= 0, true, 'Signups header kept');
+  assertEq(services.sheets.Signups.data[0].indexOf('email') >= 0, true, 'Signups email header kept');
+  assertEq(!!services.sheets.Resumen, true, 'Resumen sheet created');
+  if (!services.sheets.Reporte) throw new Error('Reporte sheet not rebuilt after erase');
+  assertEq(services.sheets.Reporte.data[2][6], 0, 'Reporte has no personal rows');
+});
+
+t('Session identity wins over client course and cycle', () => {
+  const services = backendStub({}, { signups: [] });
+  const api = backendApi(services, 'apiGetData, apiRegister');
+  const first = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  assertEq(first.ok, true, 'first login');
+  const session = first.session;
+  const same = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '5°Turismo', session);
+  assertEq(same.ok, true, 'session resumes');
+  assertEq(same.student.curso, '2°B', 'course comes from the session');
+  const wrong = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '5°Turismo', 'O1', '', session);
+  assertEq(wrong.ok, false, 'session cannot switch to the other cycle');
+  if (!/otro ciclo|no es de tu ciclo/i.test(wrong.message || '')) {
+    throw new Error('unexpected cycle message: ' + wrong.message);
+  }
+});
+
+t('Signup writes use header names, not fixed columns', () => {
+  const services = backendStub({}, { students: [], signups: [] });
+  services.sheets.Talks = fakeSheet('Talks', ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], [
+    ['B1', 'Charla uno', 'basico', 1, 'Aula 1', 40, 'si'],
+    ['B2', 'Charla dos', 'basico', 1, 'Aula 2', 40, 'si']
+  ]);
+  services.sheets.Signups = fakeSheet('Signups',
+    ['id', 'email', 'ts', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'recordatorio'], [
+      ['s1', 'ana@secundariosalsipuedes.edu.ar', new Date(), 'Ana Gomez', '2°B', 'basico', 1, 'B1', false]
+    ]);
+  const api = backendApi(services, 'apiGetData, apiSetReminder, apiRegister');
+  const ticket = loginTicketFor(services, 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', '');
+  const got = api.apiGetData('', '', '', '', '', ticket);
+  assertEq(got.ok, true, 'ticket login');
+  const reminder = api.apiSetReminder(got.session, true);
+  assertEq(reminder.ok, true, 'reminder ok');
+  assertEq(reminder.updated, 1, 'reminder matched by email column');
+  assertEq(services.sheets.Signups.data[1][8], true, 'reminder written to its column');
+  const changed = api.apiRegister('', '', '', 'B2', '', got.session);
+  assertEq(changed.ok, true, 'change talk ok: ' + changed.message);
+  assertEq(services.sheets.Signups.data[1][7], 'B2', 'talk_id column updated');
+  assertEq(services.sheets.Signups.data[1][6], 1, 'slot_id column kept');
+});
+
+t('setup creates and rebuilds the Reporte sheet', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'setup');
+  api.setup();
+  const report = services.sheets.Reporte;
+  if (!report) throw new Error('Reporte sheet missing');
+  if (!report.data || report.data.length < 2) throw new Error('Reporte was not written');
+  assertEq(report.data[1][0], 'ID', 'report header');
+});
+
+t('setup repairs Signups after an aggregate erase', () => {
+  const services = backendStub({});
+  services.sheets.Signups = fakeSheet('Signups',
+    ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes'], [
+      ['B1', 1, 'basico', 3, 2]
+    ]);
+  const api = backendApi(services, 'setup');
+  api.setup();
+  const head = services.sheets.Signups.data[0];
+  if (head.indexOf('id') < 0 || head.indexOf('email') < 0) throw new Error('Signups header not repaired');
+  if (!services.sheets.Resumen) throw new Error('Resumen not created');
+  assertEq(services.sheets.Resumen.data[0][0], 'talk_id', 'Resumen header');
+  assertEq(services.sheets.Resumen.data[1][3], 3, 'aggregate copied');
 });
 
 t('Docs send staff to /exec and list shared sheets', () => {
