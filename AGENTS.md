@@ -22,10 +22,10 @@ ver mails.
 
 ## Estado actual
 
-- Ronda 10 en `main`. La ronda 10 agrega acceso sin padron, reportes desde
-  `Signups`, ESI, logo oficial, `.ics`, verificacion movil, recordatorios,
-  configuracion de evento y deduplicacion de mails.
-- Tests locales: 99 passed, 0 failed. UI smoke: OK.
+- Ronda 11 en `main`. La ronda 11 agrega validacion estricta de nombres,
+  recordatorios opt-in, remitente configurable, texto ESI con enlaces `tel:`
+  y aviso de acceso por `/exec` para profes y guias.
+- Tests locales: 111 passed, 0 failed. UI smoke: OK.
 - CI: workflow `tests` y Pages corren en cada push a `main`.
 - MailApp real, descarga `.ics`, Wake Lock, offline y tacto en dispositivo
   siguen sin verificarse en un telefono real.
@@ -89,12 +89,13 @@ Resumen y bitacora compartidos:
 Hojas de Google Sheets:
 
 - `Config`: `clave`, `valor`. Claves: `evento_abierto`, `evento_fecha`,
-  `evento_zona`.
+  `evento_zona`, `mail_remitente`.
 - `Slots`: `id`, `nombre`, `inicio`, `fin`, `orden`.
 - `Talks`: `id`, `titulo`, `ciclo`, `slot_id`, `lugar`, `cupo`, `activa`.
 - `Students`: legado. `email`, `apellido`, `nombre`, `curso`, `dni` opcional.
 - `Signups`: `id`, `ts`, `email`, `nombre`, `curso`, `ciclo`, `slot_id`,
-  `talk_id`, `presente`, `apellido`. Las dos ultimas se agregan al final.
+  `talk_id`, `presente`, `apellido`, `recordatorio`. Las ultimas columnas se
+  agregan al final.
 - `Sessions`: hash del token, mail, nombre, apellido, curso, ciclo, emision,
   vencimiento y revocacion. Nunca guardar el token crudo.
 - `Mails`: `email`, `fecha`, `asunto`. Evita reenviar el mismo recordatorio.
@@ -118,7 +119,11 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
   El alumno escribe apellido, nombre, año y division.
 - Si hay `Students`, aparece DNI + apellido como respaldo.
 - Sin padron, DNI y botones relacionados quedan ocultos.
-- Validacion: nombre 2-60, apellido 2-60, dominio institucional.
+- Validacion: nombre y apellido de 2-60, solo letras con tildes/ñ, espacios,
+  apóstrofe y guion. Se rechazan dígitos, símbolos, HTML, URLs, saltos de
+  línea y valores que empiecen con `=`, `+`, `-` o `@`. El nombre completo no
+  supera 60. Se colapsan espacios antes de guardar. Dominio institucional
+  obligatorio.
 - La sesion local es solo `esi_session`, token opaco `s_` + 64 hex.
 - `apiResumeSession` reanuda. `Salir`, `Cambiar datos` y `No soy yo` revocan.
 - Vencimiento: 7 dias o 24 horas despues del evento, lo que ocurra antes.
@@ -131,10 +136,18 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
 - La clave se cambia por token de 2 horas. Cinco fallos bloquean 60 segundos.
 - El backend aplica permisos; la UI solo los refleja.
 
+## Acceso de profes y guias
+
+- Entrar por la URL `/exec` del Apps Script, con `?admin=1` para el panel.
+- La clave viaja por POST con `google.script.run`; no usar `?api=` de GitHub
+  Pages para administrar.
+- El login publico de Pages muestra un aviso con esta indicacion.
+- `Sessions`, `Signups` y `Mails` se comparten solo con profes autorizados.
+
 ## APIs principales
 
 - Publicas: `apiBootstrap`, `apiLookup`, `apiGetData`, `apiResumeSession`,
-  `apiStudentLogout`, `apiRegister`.
+  `apiStudentLogout`, `apiRegister`, `apiSetReminder`.
 - Admin: `apiAdminLogin`, `apiAdminGetData`, `apiAdminSetOpen`,
   `apiAdminDeleteSignup`, `apiAdminImportRoster`, `apiAdminTalkRoster`,
   `apiAdminPending`, `apiAdminSetPresent`, `apiAdminReports`,
@@ -167,14 +180,19 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
 
 ## Recordatorios
 
-- `apiAdminMailPreview`: destinatarios, pendientes, asunto, cuerpo de muestra,
-  cuota, lote y evento.
+- Casilla "Quiero recibir un mail de recordatorio" en la confirmacion,
+  desmarcada por defecto. Solo reciben quienes la marcaron.
+- `apiSetReminder(token, value)` actualiza todas las filas del mail.
+- `apiAdminMailPreview`: destinatarios opt-in, pendientes, asunto, cuerpo de
+  muestra, cuota, lote, evento y remitente.
 - `apiAdminSendReminders`: tandas de 20, maximo 40, via `MailApp`.
-- Solo mails con al menos una eleccion.
+- Solo mails con al menos una eleccion y `recordatorio` activo.
+- `mail_remitente` es opcional. Si existe, se usa como `from` y `replyTo`.
 - La hoja `Mails` deduplica por mail + asunto.
 - Si falta `Mails`, pide ejecutar `setup()` y no envia.
 - Asunto: `Recordatorio: Jornada ESI 2026 del 4 de noviembre de 2026`.
 - El cuerpo incluye las tres franjas, la charla elegida o el faltante.
+- `mailLine_` limpia CR/LF/tabs para evitar inyeccion de encabezados.
 - No registrar cuerpos ni mails en logs.
 - MailApp real sigue sin probarse.
 
@@ -187,6 +205,10 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
 ## ESI y UI
 
 - Seccion ESI antes de FAQ. Cinco tarjetas visibles.
+- Texto de ayuda exacto: `Línea 102: niñez y adolescencia. Línea 144:
+  violencia de género. 0800-222-3444: salud sexual, gratuita y confidencial.
+  También podés hablar con un docente o preceptor de confianza.`
+- Cada numero tiene enlace `tel:`.
 - `TEXTO_DIRECCION` vacio oculta "Por que esta jornada".
 - Logo oficial. Paleta verde con contraste claro/oscuro.
 - Movil 360 px: una columna, targets de 44 px, inputs de 16 px.
@@ -283,13 +305,15 @@ Actualizar tambien `AGENTS.md` y el resumen compartido cuando cambie el estado.
 - Probar en celular real: `.ics`, tacto 360 px, teclado, Wake Lock, cola
   offline, graficos, modo oscuro y PDF.
 - Confirmar `TEXTO_DIRECCION` con la direccion.
-- Volver a ejecutar `setup()` en la planilla real para crear `Mails`.
+- Volver a ejecutar `setup()` en la planilla real para crear `Mails` y las
+  columnas `presente`, `apellido` y `recordatorio`.
 - Revisar orden definitivo de charlas y lugares.
 - Rotar claves si se compartieron o si se reutilizo `1234`.
 
 ## Decisiones y supuestos
 
-- "Solo anotados" para recordatorios significa al menos una eleccion.
+- "Solo anotados" para recordatorios significa al menos una eleccion y
+  `recordatorio` activo. El opt-in es por mail, no por charla.
 - Sin padron, el mail es una declaracion; no se valida pertenencia.
 - La ultima escritura gana en asistencia; la cola offline se aplica encima.
 - La sesion no se renueva por uso.

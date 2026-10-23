@@ -1000,6 +1000,7 @@
         <button id="btn-dni" class="btn full" type="button">Continuar</button>
         <p class="hint-line">Si no estás en la lista con DNI, entrá con tu mail.</p>
       </div>
+      <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: entren por la URL /exec del Apps Script, con la clave en el formulario. Este acceso es solo para alumnos.</p>
       <p class="hint-line login-note" id="login-note">Si el celular es compartido, tocá "Salir" al terminar.</p>
     </section>
 
@@ -1075,6 +1076,7 @@
     <section id="a-screen-gate" class="screen">
       <div class="card">
         <h2 class="intro">Panel de profes</h2>
+        <p class="hint-line" id="gate-notice" hidden>Entrá por la URL /exec?admin=1 del Apps Script. No uses el enlace ?api= de GitHub Pages.</p>
         <div class="gate-form">
           <div class="field">
             <label for="input-pin">Clave</label>
@@ -2619,6 +2621,14 @@
       for (var i = 0; i < ids.length; i++) $(ids[i]).className = 'screen';
     }
 
+    function showPagesNotice_() {
+      var pages = TRANSPORT === 'jsonp';
+      try { pages = pages || /\.github\.io$/i.test(window.location.hostname || ''); } catch (e) { }
+      if (!pages) return;
+      if ($('login-notice')) $('login-notice').hidden = false;
+      if ($('gate-notice')) $('gate-notice').hidden = false;
+    }
+
     function showScreen(ids, activeId) {
       for (var i = 0; i < ids.length; i++) {
         $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' : '');
@@ -3429,6 +3439,7 @@
         showScreen(S_SCREENS, 's-screen-mail');
       });
 
+      showPagesNotice_();
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible' && sState.data && !sState.busy
           && $('s-screen-panel').className.indexOf('active') >= 0) {
@@ -4900,6 +4911,7 @@
         }
         aRenderTalk();
       });
+      showPagesNotice_();
       window.addEventListener('online', aFlushMarks_);
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') aKeepAwake_();
