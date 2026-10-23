@@ -41,8 +41,8 @@ var ERROR_MESSAGES_ = {
 
 var STUDENT_ERRORS_ = {
   email: 'Escribí tu mail institucional.',
-  nombre: 'Escribí tu nombre.',
-  apellido: 'Escribí tu apellido.',
+  nombre: 'Escribí tu nombre con letras, espacios, apóstrofe o guion.',
+  apellido: 'Escribí tu apellido con letras, espacios, apóstrofe o guion.',
   curso: 'Elegí año y división.',
   notInRoster: 'Ese mail no está en la lista.',
   domain: 'Usá tu mail institucional @secundariosalsipuedes.edu.ar.'
@@ -75,6 +75,22 @@ var EsiCore = (function () {
     if (!isValidEmail(e)) return false;
     return e.slice(e.indexOf('@')) === INSTITUTIONAL_DOMAIN;
   }
+  var NAME_RE_ = /^[A-Za-zÀ-ÖØ-öø-ÿ' \u2019-]+$/;
+  var NAME_LETTER_RE_ = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
+
+  function sanitizeName(value) {
+    return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  }
+
+  function isValidName(value) {
+    var raw = String(value == null ? '' : value);
+    if (/[\r\n\t]/.test(raw)) return false;
+    var name = sanitizeName(raw);
+    if (name.length < 2 || name.length > 60) return false;
+    if (!NAME_RE_.test(name) || !NAME_LETTER_RE_.test(name)) return false;
+    return !/^['\u2019-]|['\u2019-]$/.test(name);
+  }
+
   function normalizeDni(value) {
     return String(value == null ? '' : value).replace(/\D/g, '');
   }
@@ -95,15 +111,18 @@ var EsiCore = (function () {
   function validateStudentInput(email, nombre, curso, apellido) {
     var e = normalizeEmail(email);
     if (!isValidEmail(e)) return { ok: false, error: 'email' };
-    var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
-    var ap = String(apellido == null ? '' : apellido).replace(/\s+/g, ' ').trim();
-    if (n.length < 2 || n.length > 60) return { ok: false, error: 'nombre' };
-    if (ap && (ap.length < 2 || ap.length > 60)) return { ok: false, error: 'apellido' };
+    if (!isValidName(nombre)) return { ok: false, error: 'nombre' };
+    if (apellido != null && String(apellido).trim() && !isValidName(apellido)) {
+      return { ok: false, error: 'apellido' };
+    }
+    var n = sanitizeName(nombre);
+    var ap = sanitizeName(apellido);
     var ciclo = cicloFromCurso(curso);
     if (!ciclo) return { ok: false, error: 'curso' };
     var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
     var completa = n;
     if (ap && normalizeText(n).slice(-normalizeText(ap).length) !== normalizeText(ap)) completa = n + ' ' + ap;
+    if (completa.length > 60) return { ok: false, error: 'nombre' };
     return {
       ok: true,
       email: e,
@@ -324,6 +343,8 @@ var EsiCore = (function () {
 
   return {
     normalizeText: normalizeText,
+    sanitizeName: sanitizeName,
+    isValidName: isValidName,
     normalizeEmail: normalizeEmail,
     isValidEmail: isValidEmail,
     isInstitutionalEmail: isInstitutionalEmail,
@@ -1376,7 +1397,8 @@ function apiGetData(email, nombre, curso, sessionToken, apellido) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
     var s = bs.student;
-    var mine = mineMap_(readSignupsCached_(), s.email);
+    var signups = readSignupsCached_();
+    var mine = mineMap_(signups, s.email);
     var current = sessionToken ? studentSession_(sessionToken) : null;
     if (sessionToken && (!current || current.email !== s.email)) return studentSessionExpired_();
     var session = current ? '' : issueStudentSession_(s);
