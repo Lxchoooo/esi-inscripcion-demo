@@ -5,24 +5,27 @@ charla por franja horaria. Incluye panel de profes, asistencia, reportes,
 impresion, calendario y recordatorios por mail.
 
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
-- Panel de profes: https://lxchoooo.github.io/esi-inscripcion-demo/?admin=1&demo=1
 - Demo: https://lxchoooo.github.io/esi-inscripcion-demo/?demo=1
+- Panel demo: https://lxchoooo.github.io/esi-inscripcion-demo/?admin=1&demo=1
 
-La documentacion tecnica completa, el estado actual, las decisiones y las
-instrucciones para agentes estan en [AGENTS.md](AGENTS.md).
+El panel real de profes y guias se abre desde la URL `/exec` del Apps Script,
+no desde GitHub Pages. La documentacion tecnica completa esta en
+[AGENTS.md](AGENTS.md).
 
 ## Que incluye
 
 - Acceso con mail institucional sin necesidad de padron.
 - Acceso por DNI + apellido si se carga la hoja `Students`.
+- Validacion de nombre y apellido: letras, espacios, apóstrofe y guion.
 - Eleccion de tres charlas, una por horario, con control de cupo.
 - Sesion opaca: el navegador guarda solo un token, no la identidad.
 - Panel de profes con cupos, inscriptos, incompletos, reportes y graficos.
 - Asistencia movil con filtros, deshacer y cola offline.
 - Impresion A4 y exportacion CSV.
 - Archivo `.ics` con las tres charlas y recordatorio 10 minutos antes.
-- Recordatorios por mail por tandas, con control de cuota y sin reenvios.
-- Configuracion de fecha y zona horaria desde el panel.
+- Recordatorios por mail solo para quienes marcaron la casilla opt-in.
+- Remitente configurable y control de cuota por tandas.
+- Configuracion de fecha, zona horaria y remitente desde el panel.
 
 ## Inicio rapido
 
@@ -42,15 +45,15 @@ Para usar el backend real:
 6. Implementar como aplicacion web, ejecutar como el dueno y acceso para
    cualquiera.
 7. Abrir el sitio una vez con `?api=<URL-/exec>`.
-8. Entrar al panel con `?admin=1`.
+8. Compartir a profes y guias la URL `<URL-/exec>?admin=1`.
 
 Si la planilla ya existia, volver a ejecutar `setup()` para crear la hoja
-`Mails` y las columnas nuevas.
+`Mails` y las columnas `presente`, `apellido` y `recordatorio`.
 
 ## Acceso
 
 El camino principal es el mail `@secundariosalsipuedes.edu.ar`. El alumno
-escribe apellido, nombre, año y division; el sistema arma el curso. El mail no
+escribe apellido, nombre, año y división; el sistema arma el curso. El mail no
 se valida contra una lista.
 
 Si se carga `Students`, tambien se habilita DNI + apellido como respaldo. Sin
@@ -61,6 +64,10 @@ Hay dos claves en Script Properties:
 - `ADMIN_PIN`: profes. Puede administrar, importar, configurar y enviar mails.
 - `GUIDE_PIN`: guias. Puede consultar, imprimir y marcar presentes, sin mails.
 
+Profes y guias entran por la URL `/exec` del Apps Script. La clave viaja por
+POST con `google.script.run`; no se usa el enlace `?api=` de GitHub Pages para
+administrar. El login publico muestra un aviso con esta indicacion.
+
 ## Paneles
 
 - Alumnos: elegir charlas, confirmar, descargar `.ics` y salir.
@@ -70,6 +77,14 @@ Hay dos claves en Script Properties:
 
 La asistencia funciona en celular a 360 px. El boton de presente vibra, se
 puede deshacer durante 5 segundos y los toques sin conexion se reintentan.
+
+## Recordatorios
+
+La confirmacion incluye la casilla "Quiero recibir un mail de recordatorio",
+desmarcada por defecto. Solo reciben el mail quienes la marcaron. El panel
+muestra cuantos destinatarios hay, cuantos quedan pendientes y la cuota
+disponible. El remitente es opcional; si se configura, se usa como `from` y
+`replyTo`.
 
 ## Tests
 
@@ -105,6 +120,7 @@ gh run list --limit 3
 - El DNI no se guarda en el dispositivo, reportes ni CSV.
 - Los mails solo se muestran con clave de profe.
 - La hoja `Mails` guarda mail, fecha y asunto; no guarda el cuerpo.
+- `Sessions`, `Signups` y `Mails` se comparten solo con profes autorizados.
 - No versionar listas, CSV, claves ni tokens.
 
 ## Estructura
@@ -121,7 +137,7 @@ AGENTS.md          contexto completo para agentes
 
 ## Pendientes antes del evento
 
-- Probar MailApp real, autorizacion y cuota para ~500 mails.
+- Probar MailApp real, autorizacion, remitente y cuota para ~500 mails.
 - Probar en un celular real el `.ics`, la asistencia offline, el PDF y los
   graficos a 360 px.
 - Confirmar el texto de ESI de la direccion y cargarlo en `TEXTO_DIRECCION`.
