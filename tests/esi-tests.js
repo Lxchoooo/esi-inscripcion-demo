@@ -291,8 +291,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 19) throw new Error('expected 19 api fns, got ' + names.length);
-  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders', 'apiAdminGetConfig', 'apiAdminSetConfig'];
+  if (names.length !== 20) throw new Error('expected 20 api fns, got ' + names.length);
+  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiSetReminder', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders', 'apiAdminGetConfig', 'apiAdminSetConfig'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -857,11 +857,11 @@ function backendStub(props, seed) {
       ['carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A']
     ]),
     Mails: fakeSheet('Mails', ['email', 'fecha', 'asunto'], []),
-    Signups: fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'],
+    Signups: fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'recordatorio'],
       (seed && seed.signups) || [
-        ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1'],
-        ['s2', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'orientado', 2, 'B2'],
-        ['s3', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A', 'basico', 3, 'O1']
+        ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1', true],
+        ['s2', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'orientado', 2, 'B2', true],
+        ['s3', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A', 'basico', 3, 'O1', true]
       ])
   };
   const fakeProps = {
@@ -1228,13 +1228,13 @@ function reportSeed(services) {
     ['carla@secundariosalsipuedes.edu.ar', 'Sosa', 'Carla', '2°B'],
     ['dora@secundariosalsipuedes.edu.ar', 'Paz', 'Dora', '5°Turismo']
   ]);
-  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido'], [
-    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si', 'Gómez'],
-    ['s2', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no', 'Gómez'],
-    ['s3', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si', 'Gómez'],
-    ['s4', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no', 'Díaz'],
-    ['s5', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si', 'Díaz'],
-    ['s6', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no', 'Sosa']
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio'], [
+    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 1, 'B1', 'si', 'Gómez', true],
+    ['s2', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 2, 'B2', 'no', 'Gómez', true],
+    ['s3', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'basico', 3, 'O1', 'si', 'Gómez', true],
+    ['s4', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 1, 'B1', 'no', 'Díaz', true],
+    ['s5', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Díaz', '2°B', 'basico', 2, 'B2', 'si', 'Díaz', true],
+    ['s6', new Date(), 'carla@secundariosalsipuedes.edu.ar', 'Carla Sosa', '2°B', 'basico', 1, 'B1', 'no', 'Sosa', true]
   ]);
 }
 
@@ -1594,7 +1594,7 @@ t('Registering the same student and talk twice keeps one row', () => {
 t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   const students = [];
   for (let i = 0; i < 50; i++) {
-    students.push(['s' + i + '@secundariosalsipuedes.edu.ar', 'Alumno ' + i, '2°B']);
+    students.push(['s' + i + '@secundariosalsipuedes.edu.ar', 'Alumno', '2°B']);
   }
   const services = backendStub({}, { students: students, signups: [] });
   const api = backendApi(services, 'apiRegister');
@@ -1802,6 +1802,186 @@ t('Lookup answers have the same shape for any mail', () => {
   assertEq(other.apellido, '', 'no surname from roster');
   assertEq(bad.message, 'Escribí tu mail institucional.', 'invalid message');
   if (JSON.stringify(other).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
+});
+
+t('Name validation rejects formulas, markup, digits and line breaks', () => {
+  const good = ['Ana', '  Ana   María  ', "O'Connor", 'D’Angelo', 'Ana-María', 'Ñandú'];
+  const bad = ['A', 'Ana2', '=1+1', '+54 11 5555', '-Ana', '@ana', '<b>Ana</b>',
+    'Ana;DROP', 'Ana\nBcc: x@y.z', 'Ana\tPerez', 'https://x.y', 'Ana!'];
+  good.forEach((name) => {
+    assertEq(Core.isValidName(name), true, 'good ' + name);
+    assertEq(Client.isValidName(name), true, 'client good ' + name);
+  });
+  bad.forEach((name) => {
+    assertEq(Core.isValidName(name), false, 'bad ' + name);
+    assertEq(Client.isValidName(name), false, 'client bad ' + name);
+  });
+  assertEq(Core.sanitizeName('  Ana   María  '), 'Ana María', 'server collapses spaces');
+  assertEq(Client.sanitizeName('  Ana   María  '), 'Ana María', 'client collapses spaces');
+  assertEq(Core.validateStudentInput('ana@secundariosalsipuedes.edu.ar', '=cmd', '2°B').error, 'nombre');
+  assertEq(Client.validateStudentInput('ana@secundariosalsipuedes.edu.ar', '<img>', '2°B').error, 'nombre');
+});
+
+t('apiRegister stores a sanitized name and rejects formula injection', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiRegister');
+  const before = services.sheets.Signups.data.length;
+  const bad = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', '=HYPERLINK("http://x")', '2°B', 'B1');
+  assertEq(bad.ok, false, 'formula name rejected');
+  assertEq(services.sheets.Signups.data.length, before, 'nothing written');
+  const ok = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', '  Ana   María  ', '2°B', 'B1');
+  assertEq(ok.ok, true, 'valid name accepted');
+  const row = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@secundariosalsipuedes.edu.ar')[0];
+  assertEq(row[3], 'Ana María', 'name sanitized before write');
+});
+
+t('Reminder opt-in is stored per mail and filters recipients', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const sh = services.sheets.Signups;
+  const col = sh.data[0].indexOf('recordatorio');
+  sh.data.slice(1).forEach((r) => { if (r[2] === 'ana@secundariosalsipuedes.edu.ar') r[col] = false; });
+  const api = backendApi(services, 'apiGetData, apiResumeSession, apiSetReminder, apiAdminMailPreview');
+  const got = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B');
+  assertEq(got.recordatorio, false, 'existing opt-out returned');
+  assertEq(api.apiResumeSession(got.session).recordatorio, false, 'resume returns opt-out');
+  assertEq(api.apiAdminMailPreview('1111').total, 2, 'only opted-in recipients');
+  const on = api.apiSetReminder(got.session, true);
+  assertEq(on.ok, true, 'set reminder ok');
+  assertEq(on.updated, 3, 'all rows for the mail updated');
+  assertEq(api.apiAdminMailPreview('1111').total, 3, 'opt-in adds recipient');
+  const off = api.apiSetReminder(got.session, false);
+  assertEq(off.recordatorio, false, 'opt-out returned');
+  assertEq(api.apiAdminMailPreview('1111').total, 2, 'opt-out removes recipient');
+  assertEq(api.apiSetReminder('bad-token', true).ok, false, 'bad session rejected');
+});
+
+t('apiRegister preserves an existing reminder preference', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const sh = services.sheets.Signups;
+  const col = sh.data[0].indexOf('recordatorio');
+  sh.data.slice(1).forEach((r) => { if (r[2] === 'ana@secundariosalsipuedes.edu.ar') r[col] = false; });
+  const api = backendApi(services, 'apiRegister, apiGetData');
+  const got = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B');
+  const r = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'B1');
+  assertEq(r.ok, true, 'register ok');
+  assertEq(r.recordatorio, false, 'opt-out preserved');
+});
+
+t('Configurable sender is validated and used for reminders', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const out = [];
+  services.MailApp = { getRemainingDailyQuota: () => 50, sendEmail: (msg) => out.push(msg) };
+  const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig, apiAdminMailPreview, apiAdminSendReminders, apiAdminGetData');
+  assertEq(api.apiAdminGetConfig('1111').mail_remitente, '', 'empty sender by default');
+  assertEq(api.apiAdminSetConfig('1111', { mail_remitente: 'no-es-mail' }).ok, false, 'invalid sender rejected');
+  assertEq(api.apiAdminSetConfig('2222', { mail_remitente: 'guia@secundariosalsipuedes.edu.ar' }).ok, false, 'guide cannot change sender');
+  const sender = 'recordatorios@secundariosalsipuedes.edu.ar';
+  assertEq(api.apiAdminSetConfig('1111', { mail_remitente: sender }).ok, true, 'valid sender saved');
+  assertEq(api.apiAdminGetConfig('1111').mail_remitente, sender, 'sender read back');
+  assertEq(api.apiAdminGetData('1111').mail_remitente, sender, 'sender in admin data');
+  assertEq(api.apiAdminMailPreview('1111').from, sender, 'sender in preview');
+  const sent = api.apiAdminSendReminders('1111', 0, 20);
+  assertEq(sent.sent, 3, 'three sent');
+  assertEq(out[0].from, sender, 'from set');
+  assertEq(out[0].replyTo, sender, 'replyTo set');
+});
+
+t('Reminder bodies remove header-injection line breaks', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const sh = services.sheets.Signups;
+  sh.data.slice(1).forEach((r) => { if (r[2] === 'beto@secundariosalsipuedes.edu.ar') r[3] = 'Beto\r\nBcc: evil@example.com'; });
+  const api = backendApi(services, 'apiAdminMailPreview, mailLine_');
+  assertEq(api.mailLine_('Ana\r\nBcc: x'), 'Ana Bcc: x', 'line breaks collapsed');
+  const body = api.apiAdminMailPreview('1111').sample.body;
+  if (/\r|\n(Bcc|To|Subject):/i.test(body)) throw new Error('header injection survived');
+  if (body.indexOf('Beto Bcc: evil@example.com') < 0) throw new Error('name missing from body');
+});
+
+t('Panel escapes HTML, CSV formulas and ICS control characters', () => {
+  const dirty = "<img src=x onerror='alert(1)'>";
+  const escaped = Client.esc(dirty);
+  if (/[<>"']/.test(escaped)) throw new Error('raw HTML survived: ' + escaped);
+  if (escaped.indexOf('&#39;') < 0) throw new Error('apostrophe not escaped');
+  assertEq(Client.csvCell('=1+1'), "'=1+1", 'formula guarded');
+  assertEq(Client.csvCell('+1'), "'+1", 'plus guarded');
+  assertEq(Client.csvCell('-1'), "'-1", 'minus guarded');
+  assertEq(Client.csvCell('@x'), "'@x", 'at guarded');
+  assertEq(Client.csvCell('Ana'), 'Ana', 'plain text unchanged');
+  const ics = Client.icsEscape('Ana\r\nB;c,d\\e');
+  if (ics.indexOf('\r') >= 0) throw new Error('CR survived');
+  if (ics.indexOf('\\n') < 0) throw new Error('newline not escaped');
+  if (ics.indexOf('\\;') < 0 || ics.indexOf('\\,') < 0) throw new Error('separators not escaped');
+});
+
+t('ESI help text is exact and uses tel links', () => {
+  const m = panelHtml.match(/<article class="esi-card" aria-label="Ayuda">([\s\S]*?)<\/article>/);
+  if (!m) throw new Error('ESI help card missing');
+  const text = m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  const want = 'Línea 102: niñez y adolescencia. Línea 144: violencia de género. 0800-222-3444: salud sexual, gratuita y confidencial. También podés hablar con un docente o preceptor de confianza.';
+  assertEq(text, want, 'ESI text changed');
+  ['tel:102', 'tel:144', 'tel:08002223444'].forEach((href) => {
+    if (m[1].indexOf(href) < 0) throw new Error('missing ' + href);
+  });
+});
+
+t('Panel shows the /exec notice only on GitHub Pages', () => {
+  if (!/id="login-notice"/.test(panelHtml) || !/URL \/exec/.test(panelHtml)) throw new Error('student notice missing');
+  if (!/id="gate-notice"/.test(panelHtml) || !/\/exec\?admin=1/.test(panelHtml)) throw new Error('admin notice missing');
+  if (!/function showPagesNotice_\(\)/.test(panelSrc) || !/github\\.io/.test(panelSrc)) throw new Error('pages detection missing');
+});
+
+t('Panel demo backend stores reminder opt-in and filters preview', () => {
+  const store = {};
+  const ls = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
+  const win = { location: { search: '' }, localStorage: ls };
+  const doc = { addEventListener: function () { }, body: { appendChild: function () { }, classList: { add: function () { } } } };
+  const api = new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
+  const email = 'ana@secundariosalsipuedes.edu.ar';
+  const rows = [
+    { id: 'd1', email: email, emailKey: email, nombre: 'Ana', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: false, recordatorio: false },
+    { id: 'd2', email: 'beto@secundariosalsipuedes.edu.ar', emailKey: 'beto@secundariosalsipuedes.edu.ar', nombre: 'Beto', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: false, recordatorio: true }
+  ];
+  ls.setItem('esi_demo_signups', JSON.stringify(rows));
+  return api.call('apiGetData', [email, 'Ana', '2°B']).then((got) => {
+    assertEq(got.recordatorio, false, 'demo opt-out returned');
+    return api.call('apiAdminMailPreview', ['demo']);
+  }).then((p1) => {
+    assertEq(p1.total, 1, 'demo preview filters opt-in');
+    return api.call('apiGetData', [email, 'Ana', '2°B']).then((got) => api.call('apiSetReminder', [got.session, true]));
+  }).then((on) => {
+    assertEq(on.ok, true, 'demo opt-in ok');
+    return api.call('apiAdminMailPreview', ['demo']);
+  }).then((p2) => {
+    assertEq(p2.total, 2, 'demo opt-in adds recipient');
+  });
+});
+
+t('setup adds the reminder column without touching existing rows', () => {
+  const services = backendStub({});
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], [
+    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1']
+  ]);
+  const api = backendApi(services, 'setup');
+  api.setup();
+  const head = services.sheets.Signups.data[0];
+  assertEq(head.indexOf('recordatorio') >= 0, true, 'column added');
+  assertEq(services.sheets.Signups.data[1][2], 'ana@secundariosalsipuedes.edu.ar', 'row kept');
+});
+
+t('Docs send staff to /exec and list shared sheets', () => {
+  const docs = [read('../README.md'), read('../AGENTS.md')];
+  docs.forEach((doc, i) => {
+    if (!/\/exec/.test(doc)) throw new Error('doc ' + i + ' lacks /exec');
+    if (!/google\.script\.run|POST/.test(doc)) throw new Error('doc ' + i + ' lacks POST login');
+    if (!/Sessions/.test(doc) || !/Signups/.test(doc) || !/Mails/.test(doc)) {
+      throw new Error('doc ' + i + ' lacks shared sheet warning');
+    }
+    if (/Compartir a profes.*\?api=/i.test(doc)) throw new Error('doc ' + i + ' recommends ?api=');
+  });
 });
 
 summary();
