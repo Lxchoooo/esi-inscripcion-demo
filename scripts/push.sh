@@ -8,6 +8,12 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ "${SKIP_TESTS:-0}" != "1" ]; then
+  node tests/esi-tests.js src
+  node tests/ui-smoke.js src
+  cmp src/Panel.html index.html
+fi
+
 GH_TOKEN="$(gh auth token)"
 export GH_TOKEN
 
