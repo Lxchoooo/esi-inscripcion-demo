@@ -1,297 +1,48 @@
 # AGENTS.md - ESI Inscripcion
 
-Este archivo es el contexto principal para cualquier agente o subagente que
-trabaje en este repo. El resumen para personas y otras IA vive fuera del repo,
-en `/storage/emulated/0/esi-inscripcion/RESUMEN-PARA-OTRA-IA.txt`.
-
-## Proyecto
-
-App de inscripcion a la Jornada ESI del Instituto Secundario Salsipuedes.
-El alumno entra con mail institucional (o DNI + apellido si hay padron), elige
-una charla por franja y queda anotado. El profe administra cupos, asistencia,
-reportes, recordatorios y configuracion. La guia consulta y marca presentes sin
-ver mails.
+App de inscripcion a la Jornada ESI del Instituto Secundario Salsipuedes:
+Google Apps Script + Google Sheets + HTML/CSS/JS plano, sin build ni
+dependencias. El alumno elige una charla por franja; el profe administra y la
+guia marca presentes sin ver mails.
 
 - Repo: `Lxchoooo/esi-inscripcion-demo`
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
-- Panel: https://lxchoooo.github.io/esi-inscripcion-demo/?admin=1&demo=1
-- Demo: https://lxchoooo.github.io/esi-inscripcion-demo/?demo=1
-- Evento: 4 de noviembre de 2026, ~500 alumnos.
-- Stack: Google Apps Script + Google Sheets + HTML/CSS/JS plano.
-- Sin dependencias de Node ni build step.
+- Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
+- Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
+- Estado: ronda 12 publicada en `main` (`7326aea`); tests 112/0, smoke OK,
+  CI y Pages verdes. Backend real, MailApp y dispositivo siguen sin probarse.
 
-## Estado actual
+## Donde trabajar
 
-- Ronda 12 publicada en `main`. Agrega tickets de login, bloqueos mas
-  estrictos, APIs de estado y correcciones manuales, modo ensayo, respaldo
-  automatico, copia offline por charla, cierre y borrado de datos personales.
-- Commits: `01e90ae feat: reforzar acceso y agregar herramientas de evento` y
-  `72e1941 docs: documentar la ronda 12 y el borrado de datos`.
-- Ronda 11 publicada sobre `8fe7643`.
-- Tests: 112 passed, 0 failed. UI smoke: OK. CI `tests` y Pages verdes sobre
-  `72e1941`.
-- MailApp real, descarga `.ics`, Wake Lock, offline y tacto en dispositivo
-  siguen sin verificarse en un telefono real.
-- `TEXTO_DIRECCION` esta vacio: la tarjeta ESI "Por que esta jornada" queda
-  oculta hasta que la direccion entregue el texto.
+- Checkout completo: el directorio con `.git`, `src/Code.gs`, `src/Panel.html`,
+  `index.html` y `tests/`. Los clones temporales bajo
+  `/data/data/com.termux/files/usr/tmp/opencode` pueden desaparecer.
+- Copia local: `/data/data/com.termux/files/home/proyecto/esi-panel/` tiene
+  `Code.gs`, `Panel.html`, `web/index.html`, `README.md` y `AGENTS.md`; no
+  tiene `src/`, `tests/` ni `.git`. No pushear desde ahi.
+- Tests de la copia: `/data/data/com.termux/files/home/proyecto/build/esi-tests.js`
+  y `ui-smoke.js`.
+- Resumen y bitacora externos:
+  `/storage/emulated/0/esi-inscripcion/RESUMEN-PARA-OTRA-IA.txt` y
+  `esi-inscripcion-cambios.txt`. Actualizarlos cuando cambie el estado.
 
-## Rutas
+## Comandos
 
-Repo local de trabajo:
-
-```text
-/data/data/com.termux/files/usr/tmp/opencode/esi-r9
-```
-
-Copias para editar en Termux:
-
-```text
-/data/data/com.termux/files/home/proyecto/esi-panel/Code.gs
-/data/data/com.termux/files/home/proyecto/esi-panel/Panel.html
-/data/data/com.termux/files/home/proyecto/esi-panel/web/index.html
-/data/data/com.termux/files/home/proyecto/esi-panel/web/assets/logo.png
-/data/data/com.termux/files/home/proyecto/esi-panel/README.md
-/data/data/com.termux/files/home/proyecto/build/esi-tests.js
-/data/data/com.termux/files/home/proyecto/build/ui-smoke.js
-```
-
-Resumen y bitacora compartidos:
-
-```text
-/storage/emulated/0/esi-inscripcion/RESUMEN-PARA-OTRA-IA.txt
-/storage/emulated/0/esi-inscripcion/esi-inscripcion-cambios.txt
-```
-
-## Archivos del repo
-
-- `src/Code.gs`: backend Apps Script, APIs, auth, datos, reportes, mails.
-- `src/Panel.html`: toda la interfaz alumno/admin, CSS y JS inline.
-- `index.html`: copia literal de `src/Panel.html` para GitHub Pages.
-- `assets/logo.png`: logo oficial. No hay base64 de respaldo.
-- `tests/esi-tests.js`: tests de logica, backend, contrato y contenido.
-- `tests/ui-smoke.js`: smoke de interfaz con DOM simulado.
-- `src/appsscript.json`: manifiesto de Apps Script.
-- `.github/workflows/tests.yml`: tests en push y PR.
-- `AGENTS.md`: este archivo.
-- `README.md`: guia corta para personas.
-
-## Reglas criticas
-
-- `index.html` debe ser copia byte a byte de `src/Panel.html`.
-- No agregar dependencias ni frameworks. Apps Script + JS plano.
-- No commitear listas, CSV, claves, tokens ni keystores.
-- No hardcodear rutas de la maquina fuera de este archivo; usar constantes.
-- No usar `git reset --hard`, `git clean`, `rm -rf` sobre home/root ni `sudo`.
-- Un commit por tema, en espanol, prefijo `feat:`, `fix:`, `docs:` o `test:`.
-- Verificar antes de afirmar que algo funciona.
-- No prometer que la ronda esta publicada hasta confirmar Pages.
-- No usar datos reales de alumnos en demo ni en tests.
-
-## Modelo de datos
-
-Hojas de Google Sheets:
-
-- `Config`: `clave`, `valor`. Claves: `evento_abierto`, `evento_fecha`,
-  `evento_zona`, `mail_remitente`, `modo_prueba`, `backup_activo` y
-  `datos_personales_borrados`.
-- `Slots`: `id`, `nombre`, `inicio`, `fin`, `orden`.
-- `Talks`: `id`, `titulo`, `ciclo`, `slot_id`, `lugar`, `cupo`, `activa`.
-- `Students`: legado. `email`, `apellido`, `nombre`, `curso`, `dni` opcional.
-- `Signups`: `id`, `ts`, `email`, `nombre`, `curso`, `ciclo`, `slot_id`,
-  `talk_id`, `presente`, `apellido`, `recordatorio`, `prueba`. Las ultimas
-  columnas se agregan al final. Si se borran datos personales, la hoja queda
-  con contadores agregados (`talk_id`, `slot_id`, `ciclo`, `anotados`,
-  `presentes`).
-- `Sessions`: hash del token, mail, nombre, apellido, curso, ciclo, emision,
-  vencimiento y revocacion. Nunca guardar el token crudo.
-- `Mails`: `email`, `fecha`, `asunto`. Evita reenviar el mismo recordatorio.
-- `Log`: `fecha`, `accion`, `signup_id`, `detalle`. No guarda mails completos.
-- `Backup`: copia de `Signups` con `backup_at`; conserva 20 copias.
-
-Migraciones: solo aditivas, salvo el borrado de datos personales pedido por
-un admin. Si la planilla ya existia, volver a ejecutar `setup()` crea `Mails`,
-`Log`, `Backup`, las columnas faltantes y el trigger de respaldo.
-
-## Evento
-
-- 3 franjas: 10:30-11:20, 11:30-12:20, 12:30-13:30.
-- Basico 1-3: B1-B10. Orientado 4-6: O1-O9.
-- Divisiones 1-3: A/B. Divisiones 4-6: Turismo/Economia.
-- Cupo 40 por charla. El ciclo se deduce del año.
-- No hay disertante. No inventar nombres.
-- Fecha y zona por defecto: `2026-11-04`, `America/Argentina/Cordoba`.
-- La configuracion se puede editar desde el panel de profes.
-
-## Acceso del alumno
-
-- Principal: mail `@secundariosalsipuedes.edu.ar`. No se valida contra padron.
-  El alumno escribe apellido, nombre, año y division.
-- Si hay `Students`, aparece DNI + apellido como respaldo.
-- Sin padron, DNI y botones relacionados quedan ocultos.
-- Validacion: nombre y apellido de 2-60, solo letras con tildes/ñ, espacios,
-  apóstrofe y guion. Se rechazan dígitos, símbolos, HTML, URLs, saltos de
-  línea y valores que empiecen con `=`, `+`, `-` o `@`. El nombre completo no
-  supera 60. Se colapsan espacios antes de guardar. Dominio institucional
-  obligatorio.
-- `apiLookupDni` no devuelve el mail: devuelve un ticket `l_` de un solo uso.
-- `apiGetData` y `apiRegister` exigen sesion o ticket si el mail ya tiene
-  inscripciones; si no, responden `needsLogin`.
-- La sesion local es solo `esi_session`, token opaco `s_` + 64 hex.
-- `apiResumeSession` reanuda. `Salir`, `Cambiar datos` y `No soy yo` revocan.
-- Vencimiento: 7 dias o 24 horas despues del evento, lo que ocurra antes.
-
-## Roles
-
-- `ADMIN_PIN`: profe. Todo, importar, borrar, configurar, mails.
-- `GUIDE_PIN`: guia. Lee, reportes, asistencia; sin mails ni escrituras
-  administrativas.
-- La clave se cambia por token de 2 horas. Cinco fallos bloquean el acceso
-  admin 15 minutos; los intentos por DNI se bloquean 2 minutos. Los PIN son de
-  6 digitos.
-- El backend aplica permisos; la UI solo los refleja.
-
-## Acceso de profes y guias
-
-- Entrar por la URL `/exec?admin=1` del Apps Script.
-- La clave viaja por POST con `google.script.run`; no usar `?api=` de GitHub
-  Pages para administrar.
-- El login publico de Pages muestra un aviso con esta indicacion.
-- Las APIs `apiAdmin*` rechazan JSONP sin `admin=1`.
-- `Sessions`, `Signups`, `Mails`, `Log` y `Backup` se comparten solo con
-  profes autorizados.
-
-## APIs principales
-
-- Publicas: `apiBootstrap`, `apiLookup`, `apiGetData`, `apiResumeSession`,
-  `apiStudentLogout`, `apiRegister`, `apiSetReminder`.
-- Admin: `apiAdminLogin`, `apiAdminGetData`, `apiAdminSetOpen`,
-  `apiAdminDeleteSignup`, `apiAdminImportRoster`, `apiAdminTalkRoster`,
-  `apiAdminPending`, `apiAdminSetPresent`, `apiAdminReports`,
-  `apiAdminMailPreview`, `apiAdminSendReminders`, `apiAdminGetConfig`,
-  `apiAdminSetConfig`, `apiAdminStatus`, `apiAdminDuplicates`,
-  `apiAdminAddStudent`, `apiAdminCorrectStudent`, `apiAdminMoveTalk`,
-  `apiAdminMergeDuplicates`, `apiAdminDeleteStudent`,
-  `apiAdminDeleteTestData`, `apiAdminCloseEvent`,
-  `apiAdminErasePersonalData`.
-- Todas devuelven objetos con `ok` y `message` cuando fallan.
-- Los cambios de datos invalidan la cache. TTL de cache: 12 segundos.
-
-## Correcciones manuales
-
-- Solo admin. Agregar exige mail institucional, nombre, apellido, curso y al
-  menos una charla; respeta ciclo, cupo, un horario por alumno y duplicados.
-- Corregir actualiza `Signups`, `Sessions` y `Students` sin cambiar el mail.
-- Mover solo permite otra charla del mismo horario, activa, con cupo y ciclo
-  correcto.
-- Fusionar conserva un mail, mueve las charlas sin choque de horario y
-  descarta los horarios repetidos; revoca la sesion del mail descartado.
-- Borrar alumno elimina todas sus filas y revoca su sesion.
-- `Log` registra fecha, accion e ID, sin mails completos.
-
-## Respaldo y offline
-
-- `backup_activo=si` copia `Signups` a `Backup` cada 30 minutos y conserva 20
-  copias. `setup()` instala el trigger; `apiAdminSetConfig` lo activa o
-  desactiva.
-- La pestana Por charla guarda una copia local sin mails. Si falla la red,
-  muestra "Sin conexion, datos de hace X minutos" y permite seguir marcando.
-- La cola `esi_mark_queue` sigue guardando solo ID y estado.
-
-## Modo ensayo
-
-- `modo_prueba=si` marca las inscripciones nuevas con `prueba=true`.
-- La franja "MODO ENSAYO" se muestra en todas las pantallas.
-- "Borrar datos de prueba" exige `BORRAR PRUEBA`, borra solo filas de ensayo y
-  muestra el conteo. No toca datos reales.
-
-## Cierre y privacidad
-
-- "Cerrar evento" exporta CSV, cierra la inscripcion y revoca sesiones.
-- "Borrar datos personales" exporta CSV y deja solo contadores agregados; pide
-  `BORRAR`, cierra el evento y marca `datos_personales_borrados`.
-- Limpia `Signups`, `Sessions`, `Mails`, `Students` y `Backup`; conserva
-  contadores por charla.
-- Recomendacion: ejecutarlo pasados 30 dias del evento, revisando antes las
-  obligaciones de guarda de la escuela.
-- Riesgo residual: el token de alumno viaja por JSONP y los mails nuevos sin
-  padron siguen siendo autodeclarados.
-
-## Reportes
-
-- Se calculan desde `Signups`, no desde `Students`.
-- Inscriptos: mails unicos con al menos una eleccion.
-- Completos: 3 franjas. Incompletos: 1 o 2. Missing: 0.
-- Presentes/ausentes: columna `presente`.
-- `apiAdminPending`: solo incompletos.
-- `apiAdminReports`: totales, cursos, charlas, por ciclo y por franja.
-- La guia nunca recibe mails.
-- Graficos SVG/CSS con tabla alternativa y numeros visibles.
-- Impresion A4, una pagina por curso o charla, columna de firma.
-
-## Verificacion movil
-
-- Selector agrupado por horario y busqueda por apellido/nombre.
-- Contador `Presentes X de Y` y chips Todos/Presentes/Faltan.
-- Filas de 56 px, nombre `Apellido, Nombre`, boton grande de presente.
-- Vibracion, aviso `Marcado` con `Deshacer` 5 segundos.
-- Cola offline `esi_mark_queue` con id de inscripcion y estado. Sin mails.
-- Wake Lock al entrar al panel; se libera al salir.
-- Refresh cada 30 segundos, pausado con la pestana oculta.
-
-## Recordatorios
-
-- Casilla "Quiero recibir un mail de recordatorio" en la confirmacion,
-  desmarcada por defecto. Solo reciben quienes la marcaron.
-- `apiSetReminder(token, value)` actualiza todas las filas del mail.
-- `apiAdminMailPreview`: destinatarios opt-in, pendientes, asunto, cuerpo de
-  muestra, cuota, lote, evento y remitente.
-- `apiAdminSendReminders`: tandas de 20, maximo 40, via `MailApp`.
-- Solo mails con al menos una eleccion y `recordatorio` activo.
-- `mail_remitente` es opcional. Si existe, se usa como `from` y `replyTo`.
-- La hoja `Mails` deduplica por mail + asunto.
-- Si falta `Mails`, pide ejecutar `setup()` y no envia.
-- Asunto: `Recordatorio: Jornada ESI 2026 del 4 de noviembre de 2026`.
-- El cuerpo incluye las tres franjas, la charla elegida o el faltante.
-- `mailLine_` limpia CR/LF/tabs para evitar inyeccion de encabezados.
-- No registrar cuerpos ni mails en logs.
-- MailApp real sigue sin probarse.
-
-## Calendario
-
-- Boton `.ics` en el resumen y en la confirmacion.
-- Un `VEVENT` por charla, `America/Argentina/Cordoba`, alarma 10 minutos.
-- UID sin mail ni datos personales.
-
-## ESI y UI
-
-- Seccion ESI antes de FAQ. Cinco tarjetas visibles.
-- Texto de ayuda exacto: `Línea 102: niñez y adolescencia. Línea 144:
-  violencia de género. 0800-222-3444: salud sexual, gratuita y confidencial.
-  También podés hablar con un docente o preceptor de confianza.`
-- Cada numero tiene enlace `tel:`.
-- `TEXTO_DIRECCION` vacio oculta "Por que esta jornada".
-- Logo oficial. Paleta verde con contraste claro/oscuro.
-- Movil 360 px: una columna, targets de 44 px, inputs de 16 px.
-- Sin emojis, sin signos de exclamacion, sin guiones largos.
-- Voseo rioplatense.
-
-## Tests y CI
-
-Local:
+Desde el checkout completo:
 
 ```bash
 node tests/esi-tests.js src
 node tests/ui-smoke.js src
 ```
 
-En Termux:
+En Termux, bajar prioridad:
 
 ```bash
 nice -n 19 ionice -c 3 node tests/esi-tests.js src
 nice -n 19 ionice -c 3 node tests/ui-smoke.js src
 ```
 
-Sintaxis de Apps Script:
+Sintaxis de Apps Script (no acepta `.gs` directo):
 
 ```bash
 cp src/Code.gs build/Code.check.js
@@ -299,82 +50,123 @@ node --check build/Code.check.js
 rm build/Code.check.js
 ```
 
-CI: `.github/workflows/tests.yml` con Node 20. Pages se despliega por separado.
-No asumir que un test local cubre la version de Node de CI. Evitar APIs de
-navegador sin guardas; por ejemplo `typeof navigator !== 'undefined'`.
-
-## Publicacion rapida
-
-El remoto es `Lxchoooo/esi-inscripcion-demo`. Para pushear sin volver a
-escribir el helper de credenciales:
+Publicar desde el checkout completo:
 
 ```bash
 scripts/push.sh
-```
-
-Ese script usa `gh auth token` y hace push de `HEAD` a `main`. No esperar
-`gh run watch` bloqueando la conversacion: pushear, consultar el run con
-`gh run list` y seguir trabajando. Verificar al final:
-
-```bash
 gh run list --limit 3
 gh run view <id> --log-failed
-curl -sL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" | grep -c "Instituto Secundario Salsipuedes"
 ```
 
-Pages tarda uno o dos minutos. Usar `?v=<timestamp>` para evitar cache.
-
-## Sincronizacion local
-
-Despues de un cambio verificado:
+`scripts/push.sh` usa `gh auth token` y hace push de `HEAD` a `main`. No
+bloquear la conversacion con `gh run watch`; consultar el run y seguir.
+Verificar Pages con cachebuster:
 
 ```bash
-cp src/Code.gs /data/data/com.termux/files/home/proyecto/esi-panel/Code.gs
-cp src/Panel.html /data/data/com.termux/files/home/proyecto/esi-panel/Panel.html
-cp index.html /data/data/com.termux/files/home/proyecto/esi-panel/web/index.html
-cp assets/logo.png /data/data/com.termux/files/home/proyecto/esi-panel/web/assets/logo.png
-cp README.md /data/data/com.termux/files/home/proyecto/esi-panel/README.md
-cp README.md /data/data/com.termux/files/home/proyecto/esi-panel/web/README.md
-cp tests/esi-tests.js /data/data/com.termux/files/home/proyecto/build/esi-tests.js
-cp tests/ui-smoke.js /data/data/com.termux/files/home/proyecto/build/ui-smoke.js
+curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
+  | grep -c "Instituto Secundario Salsipuedes"
 ```
 
-Actualizar tambien `AGENTS.md` y el resumen compartido cuando cambie el estado.
+## Arquitectura
 
-## Agentes y subagentes
+- `src/Code.gs` es el backend unico; `src/Panel.html` contiene toda la UI, CSS
+  y JS inline. `index.html` es la copia publicada para Pages.
+- El transporte real usa `google.script.run`; la demo usa JSONP/localStorage.
+  `API_FN_MAP_` es la lista de APIs expuestas. Si agregas una API, sumala al
+  mapa y a los tests; hoy hay 30.
+- Cache en `CacheService` con TTL de 12 s. Toda escritura debe invalidarla.
+  Las operaciones de escritura usan `LockService`; no leer datos crudos fuera
+  del lock.
+- Hojas: `Config`, `Slots`, `Talks`, `Students` (legado), `Signups`,
+  `Sessions`, `Mails`, `Log`, `Backup`.
+- `Signups` incluye `presente`, `apellido`, `recordatorio` y `prueba`.
+  `setup()` crea hojas/columnas faltantes y el trigger de respaldo cada 30
+  minutos; `Backup` conserva 20 copias. Las migraciones son aditivas, salvo el
+  borrado de datos personales pedido por un admin.
+- Invariantes de negocio: una charla por franja, ciclo correcto, cupo 40,
+  charla activa y un solo alumno por mail. El backend revalida; la UI no
+  alcanza.
+- Privacidad: la API publica solo devuelve datos propios; la guia nunca recibe
+  mails. `apiLookupDni` no devuelve el mail, solo un ticket `l_` de un solo
+  uso. La sesion local es un token opaco `s_`; no guardar identidad.
+- `apiGetData` y `apiRegister` exigen sesion o ticket si el mail ya tiene
+  inscripciones; si no, responden `needsLogin`.
+- `apiAdmin*` rechaza JSONP sin `admin=1`. El panel real va por POST a
+  `/exec?admin=1`; no usar `?api=` de Pages para administrar.
+- Modo ensayo: `modo_prueba=si` marca filas `prueba=true`; el borrado de
+  prueba exige `BORRAR PRUEBA` y no toca datos reales.
+- Offline: la copia por charla no guarda mails; la cola de presentes guarda
+  solo ID y estado.
 
-- Todo agente debe leer este archivo antes de tocar el repo.
-- Para cambios chicos, trabajar directo; no delegar.
-- Para investigaciones independientes, usar subagentes `explore` o `general`
-  con un prompt que incluya rutas, objetivo y criterio de salida.
-- Los subagentes no comparten el contexto de la conversacion. Pasarles el
-  contenido relevante de este archivo o pedirles que lo lean.
-- No delegar commits, push, deploy ni cambios destructivos.
-- Dividir el trabajo en paralelo solo si los archivos no se pisan.
-- Antes de cerrar, pedir al subagente un resumen con archivos tocados, tests
-  ejecutados y riesgos; verificar localmente, no confiar solo en su reporte.
-- Tareas tipicas delegables: revisar tests, buscar usos de una API, revisar
-  accesibilidad, comparar `index.html` con `Panel.html`, buscar textos
-  desactualizados.
-- Tareas no delegables: push, configuracion de secretos, migraciones de datos,
-  cambios de permisos, borrado de filas.
+## Dominio
 
-## Pendientes y riesgos
+- 3 franjas: 10:30-11:20, 11:30-12:20 y 12:30-13:30. Basico 1-3: B1-B10;
+  orientado 4-6: O1-O9. Divisiones 1-3: A/B; 4-6: Turismo/Economia. Cupo 40
+  por charla; el ciclo se deduce del año. No hay disertante: no inventar
+  nombres.
+- `ADMIN_PIN` puede todo; `GUIDE_PIN` lee y marca presentes, sin mails ni
+  escrituras administrativas. PIN de 6 digitos; 5 fallos bloquean admin 15 min
+  y los intentos por DNI 2 min. El backend aplica permisos.
+- Validacion de nombre/apellido: 2-60 caracteres, letras con tildes/ñ, espacios,
+  apostrofe y guion; rechazar digitos, HTML, URLs, saltos y prefijos `= + - @`.
+- `Sessions` guarda el hash del token, nunca el token crudo; vence a los 7 dias
+  o 24 h despues del evento. `Log` no guarda mails completos.
+- Correcciones admin: agregar respeta ciclo/cupo/horario; corregir actualiza
+  `Signups`, `Sessions` y `Students`; mover solo dentro del mismo horario;
+  fusionar conserva un mail y revoca la sesion descartada; borrar elimina filas
+  y sesion.
+- Reportes se calculan desde `Signups`, no desde `Students`: inscriptos = mails
+  unicos; completos = 3 franjas; incompletos = 1 o 2. La guia nunca recibe mails.
+- Recordatorios solo opt-in, tandas de 20 con maximo 40, `Mails` deduplica por
+  mail + asunto. `MailApp` real sigue sin probarse.
+- `.ics`: un `VEVENT` por charla, alarma 10 min antes, UID sin datos personales.
+- Borrado de datos personales: exporta, limpia `Signups`, `Sessions`, `Mails`,
+  `Students` y `Backup`, conserva contadores. Recomendado a los 30 dias.
+- Riesgo residual: el token de alumno viaja por JSONP y los mails nuevos sin
+  padron son autodeclarados.
 
-- Probar MailApp real: autorizacion, cuota para ~500 mails y envio por tandas.
-- Probar en celular real: `.ics`, tacto 360 px, teclado, Wake Lock, cola
-  offline, graficos, modo oscuro y PDF.
-- Confirmar `TEXTO_DIRECCION` con la direccion.
-- Volver a ejecutar `setup()` en la planilla real para crear `Mails` y las
-  columnas `presente`, `apellido` y `recordatorio`.
-- Revisar orden definitivo de charlas y lugares.
-- Rotar claves si se compartieron o si se reutilizo `1234`.
+## Tests y trampas
 
-## Decisiones y supuestos
+- No hay `package.json` ni `npm install`; los tests son Node puro.
+- CI usa Node 20. Evitar APIs nuevas de Node/navegador sin guardas; por ejemplo
+  `typeof navigator !== 'undefined'`.
+- `esi-tests.js` falla si `index.html` no es copia byte a byte de
+  `src/Panel.html`. Sincronizar siempre.
+- Los tests extraen el `<script>` inline de `Panel.html` y prueban `demoCall`;
+  no separar la UI en scripts externos sin actualizarlos.
+- Los tests tambien revisan que `README.md` y `AGENTS.md` mencionen `/exec`,
+  `POST` y las hojas compartidas. Un cambio de docs puede romper CI.
+- `MailApp` y `ScriptApp` no existen en los tests. Usar guardas
+  `typeof ... !== 'undefined'`; el backend ya lo hace para respaldo y cuota.
+- El smoke usa un DOM simulado, no un navegador. No reemplaza la prueba real a
+  360 px, tacto, teclado, `.ics`, PDF, Wake Lock ni modo oscuro.
 
-- "Solo anotados" para recordatorios significa al menos una eleccion y
-  `recordatorio` activo. El opt-in es por mail, no por charla.
-- Sin padron, el mail es una declaracion; no se valida pertenencia.
-- La ultima escritura gana en asistencia; la cola offline se aplica encima.
-- La sesion no se renueva por uso.
-- Los datos de demo pueden incluir DNI en localStorage; no usar lista real.
+## Convenciones
+
+- `index.html` debe ser copia literal de `src/Panel.html`.
+- Sin dependencias, frameworks ni build step.
+- Textos en voseo rioplatense, frases cortas, sin emojis, sin signos de
+  exclamacion ni guiones largos. Movil a 360 px.
+- Mantener el texto ESI exacto: `Línea 102: niñez y adolescencia. Línea 144:
+  violencia de género. 0800-222-3444: salud sexual, gratuita y confidencial.
+  También podés hablar con un docente o preceptor de confianza.` Cada numero
+  lleva enlace `tel:`. `TEXTO_DIRECCION` vacio oculta la tarjeta de la direccion.
+- No commitear listas, CSV, claves, tokens, keystores ni datos reales de
+  alumnos. Los secretos van en Script Properties o GitHub Secrets.
+- No hardcodear rutas de la maquina fuera de este archivo; usar constantes.
+- No usar `git reset --hard`, `git clean`, `rm -rf` sobre home/root ni `sudo`.
+- Commits en espanol, un tema por commit, prefijo `feat:`, `fix:`, `docs:` o
+  `test:`.
+- No declarar publicado hasta ver el run de CI, Pages verde y el sitio con
+  cachebuster.
+
+## Despliegue real
+
+1. Pegar `src/Code.gs` y `src/Panel.html` (archivo `Panel`) en Apps Script.
+2. Ejecutar `setup()` y autorizar; crea/actualiza hojas, columnas y trigger.
+3. Implementar una nueva version de la aplicacion web.
+4. Abrir Pages una vez con `?api=<URL-/exec>` y compartir `/exec?admin=1` con
+   profes y guias.
+5. Probar en una copia de la planilla: ticket de login, correcciones, modo
+   ensayo, respaldo, cierre y borrado. Nunca probar el borrado sobre datos
+   reales.
