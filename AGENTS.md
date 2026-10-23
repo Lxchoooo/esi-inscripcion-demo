@@ -9,8 +9,9 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: ronda 12 publicada en `main` (`7326aea`); tests 112/0, smoke OK,
-  CI y Pages verdes. Backend real, MailApp y dispositivo siguen sin probarse.
+- Estado: ronda 12 publicada en `main` (`34c6c2b`); tests 121/0, smoke OK,
+  CI y Pages verdes. Las correcciones de auditoria estan en el checkout local
+  sin publicar. Backend real, MailApp y dispositivo siguen sin probarse.
 
 ## Donde trabajar
 
@@ -58,8 +59,10 @@ gh run list --limit 3
 gh run view <id> --log-failed
 ```
 
-`scripts/push.sh` usa `gh auth token` y hace push de `HEAD` a `main`. No
-bloquear la conversacion con `gh run watch`; consultar el run y seguir.
+`scripts/push.sh` corre tests, smoke y `cmp src/Panel.html index.html` antes de
+usar `gh auth token` y hacer push de `HEAD` a `main`; `SKIP_TESTS=1` saltea el
+control. No bloquear la conversacion con `gh run watch`; consultar el run y
+seguir.
 Verificar Pages con cachebuster:
 
 ```bash
@@ -78,7 +81,7 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   Las operaciones de escritura usan `LockService`; no leer datos crudos fuera
   del lock.
 - Hojas: `Config`, `Slots`, `Talks`, `Students` (legado), `Signups`,
-  `Sessions`, `Mails`, `Log`, `Backup`.
+  `Sessions`, `Mails`, `Log`, `Backup`, `Resumen` (agregados del borrado).
 - `Signups` incluye `presente`, `apellido`, `recordatorio` y `prueba`.
   `setup()` crea hojas/columnas faltantes y el trigger de respaldo cada 30
   minutos; `Backup` conserva 20 copias. Las migraciones son aditivas, salvo el
@@ -118,10 +121,13 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
 - Reportes se calculan desde `Signups`, no desde `Students`: inscriptos = mails
   unicos; completos = 3 franjas; incompletos = 1 o 2. La guia nunca recibe mails.
 - Recordatorios solo opt-in, tandas de 20 con maximo 40, `Mails` deduplica por
-  mail + asunto. `MailApp` real sigue sin probarse.
+  mail + asunto. `MailApp` real sigue sin probarse. El respaldo y las escrituras
+  administrativas comparten el lock global.
 - `.ics`: un `VEVENT` por charla, alarma 10 min antes, UID sin datos personales.
 - Borrado de datos personales: exporta, limpia `Signups`, `Sessions`, `Mails`,
-  `Students` y `Backup`, conserva contadores. Recomendado a los 30 dias.
+  `Students` y `Backup`; conserva los encabezados de `Signups` y guarda los
+  contadores agregados en `Resumen`. `setup()` repara una `Signups` con
+  encabezado agregado viejo. Recomendado a los 30 dias.
 - Riesgo residual: el token de alumno viaja por JSONP y los mails nuevos sin
   padron son autodeclarados.
 
