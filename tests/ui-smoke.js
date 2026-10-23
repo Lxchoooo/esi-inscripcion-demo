@@ -549,10 +549,11 @@ function tick() {
   } catch (e) { gaveUp = true; }
   assert(gaveUp && netTries === 3, 'network errors give up after three attempts');
 
-  await ui.demoCall('apiRegister', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba']);
-  const demoStudent = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B']);
+  const pre = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B']);
+  await ui.demoCall('apiRegister', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba', pre.session]);
+  const demoStudent = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', pre.session, 'Prueba']);
   assert(demoStudent.ok && demoStudent.recordatorio === false, 'demo reminder opt-out by default');
-  await ui.demoCall('apiSetReminder', [demoStudent.session, true]);
+  await ui.demoCall('apiSetReminder', [pre.session, true]);
   ui.setCred('demo');
   document.getElementById('cfg-fecha').value = '2026-11-05';
   document.getElementById('cfg-zona').value = 'America/Argentina/Cordoba';
