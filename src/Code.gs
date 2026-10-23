@@ -392,11 +392,13 @@ function reminderRecipients_() {
     if (!row.nombre) row.nombre = sg.nombre || '';
     if (!row.apellido) row.apellido = sg.apellido || '';
     if (!row.curso) row.curso = sg.curso || '';
+    if (sg.recordatorio) row.recordatorio = true;
     if (!row.bySlot[Number(sg.slot_id)]) row.bySlot[Number(sg.slot_id)] = sg;
   }
   var out = [];
   for (var j = 0; j < order.length; j++) {
     var r = byEmail[order[j]];
+    if (!r.recordatorio) continue;
     var items = [];
     for (var k = 0; k < slots.length; k++) {
       var choice = r.bySlot[Number(slots[k].id)];
@@ -431,9 +433,16 @@ function reminderSubject_(cfg) {
   return 'Recordatorio: ' + EVENT_TITLE_ + ' del ' + eventDateLabel_(cfg);
 }
 
+function mailLine_(value) {
+  return String(value == null ? '' : value)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function reminderBody_(r, cfg) {
   var lines = [
-    'Hola ' + (r.nombre || '') + ':',
+    'Hola ' + mailLine_(r.nombre) + ':',
     '',
     'Te recordamos que el ' + eventDateLabel_(cfg) + ' es la ' + EVENT_TITLE_ + '.',
     '',
@@ -441,9 +450,9 @@ function reminderBody_(r, cfg) {
   ];
   for (var i = 0; i < r.items.length; i++) {
     var it = r.items[i];
-    var when = it.slot + ' (' + it.inicio + ' a ' + it.fin + ')';
+    var when = mailLine_(it.slot) + ' (' + mailLine_(it.inicio) + ' a ' + mailLine_(it.fin) + ')';
     if (it.elegida) {
-      lines.push('- ' + when + ': ' + it.titulo + (it.lugar ? ' (' + it.lugar + ')' : ''));
+      lines.push('- ' + when + ': ' + mailLine_(it.titulo) + (it.lugar ? ' (' + mailLine_(it.lugar) + ')' : ''));
     } else {
       lines.push('- ' + when + ': todavía no elegiste.');
     }
@@ -505,6 +514,7 @@ function apiAdminMailPreview(cred) {
         quota: mailQuota_(),
         batchSize: REMINDER_BATCH_,
         event: eventInfo_(cfg),
+        from: mailSender_(cfg),
         message: 'Falta la hoja Mails. Ejecutá setup() otra vez.'
       };
     }
@@ -522,7 +532,8 @@ function apiAdminMailPreview(cred) {
       sample: sample ? { nombre: sample.nombre, curso: sample.curso, body: reminderBody_(sample, cfg) } : null,
       quota: mailQuota_(),
       batchSize: REMINDER_BATCH_,
-      event: eventInfo_(cfg)
+      event: eventInfo_(cfg),
+      from: mailSender_(cfg)
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -553,12 +564,15 @@ function apiAdminSendReminders(cred, offset, limit) {
       if (sentSet[key]) { skipped++; continue; }
       var delivered = false;
       try {
-        MailApp.sendEmail({
+        var mailOpts = {
           to: rows[i].email,
           subject: subject,
           body: reminderBody_(rows[i], cfg),
           name: EVENT_TITLE_
-        });
+        };
+        var sender = mailSender_(cfg);
+        if (sender) { mailOpts.from = sender; mailOpts.replyTo = sender; }
+        MailApp.sendEmail(mailOpts);
         delivered = true;
       } catch (err) {
         failed++;
@@ -584,6 +598,10 @@ function apiAdminSendReminders(cred, offset, limit) {
 }
 
 
+function mailSender_(cfg) {
+  return String((cfg && cfg.mail_remitente) || '').trim().toLowerCase();
+}
+
 function apiAdminGetConfig(cred) {
   var auth = adminAuth_(cred);
   if (!auth.ok) return { ok: false, message: auth.message };
@@ -593,7 +611,8 @@ function apiAdminGetConfig(cred) {
     return {
       ok: true,
       evento_abierto: isOpen_(cfg),
-      event: eventInfo_(cfg)
+      event: eventInfo_(cfg),
+      mail_remitente: mailSender_(cfg)
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -636,12 +655,20 @@ function apiAdminSetConfig(cred, values) {
         }
         writeConfig_('evento_zona', zone);
       }
+      if (v.mail_remitente != null) {
+        var sender = String(v.mail_remitente).trim().toLowerCase();
+        if (sender && !EsiCore.isValidEmail(sender)) {
+          return { ok: false, message: 'Remitente inválido. Usá un mail completo.' };
+        }
+        writeConfig_('mail_remitente', sender);
+      }
       invalidateDataCache_();
       var cfg = readConfig_();
       return {
         ok: true,
         evento_abierto: isOpen_(cfg),
-        event: eventInfo_(cfg)
+        event: eventInfo_(cfg),
+        mail_remitente: mailSender_(cfg)
       };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -655,6 +682,7 @@ var API_FN_MAP_ = {
   apiGetData: apiGetData,
   apiResumeSession: apiResumeSession,
   apiStudentLogout: apiStudentLogout,
+  apiSetReminder: apiSetReminder,
   apiRegister: apiRegister,
   apiAdminLogin: apiAdminLogin,
   apiAdminGetData: apiAdminGetData,
@@ -733,6 +761,7 @@ function setup() {
   var signupsSh = sheet_(SIGNUPS_SHEET);
   ensureColumn_(signupsSh, 'presente');
   ensureColumn_(signupsSh, 'apellido');
+  ensureColumn_(signupsSh, 'recordatorio');
   ensureAdminPin_();
   ensureGuidePin_();
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
@@ -934,11 +963,12 @@ function readTalks_() {
 }
 
 function signupsHeaderMap_(head) {
-  var map = { presente: -1, apellido: -1 };
+  var map = { presente: -1, apellido: -1, recordatorio: -1 };
   for (var i = 0; i < (head || []).length; i++) {
     var h = EsiCore.normalizeText(head[i]);
     if (h === 'presente') map.presente = i;
     else if (h === 'apellido') map.apellido = i;
+    else if (h === 'recordatorio') map.recordatorio = i;
   }
   return map;
 }
@@ -960,6 +990,7 @@ function readSignups_() {
       slot_id: Number(vals[i][6]),
       talk_id: String(vals[i][7]),
       presente: map.presente >= 0 ? convertBool_(vals[i][map.presente]) : false,
+      recordatorio: map.recordatorio >= 0 ? convertBool_(vals[i][map.recordatorio]) : false,
       emailKey: EsiCore.normalizeEmail(vals[i][2])
     });
   }
@@ -982,6 +1013,7 @@ function appendSignupRow_(student, talk) {
     else if (key === 'slot_id') row.push(Number(talk.slot_id));
     else if (key === 'talk_id') row.push(String(talk.id));
     else if (key === 'presente') row.push('');
+    else if (key === 'recordatorio') row.push(!!student.recordatorio);
     else row.push('');
   }
   sh.appendRow(row);
@@ -1390,6 +1422,41 @@ function apiLookupDni(dni, apellido) {
   }
 }
 
+function reminderOptIn_(signups, email) {
+  var key = EsiCore.normalizeEmail(email);
+  for (var i = 0; i < (signups || []).length; i++) {
+    if (signups[i].emailKey === key && signups[i].recordatorio) return true;
+  }
+  return false;
+}
+
+function apiSetReminder(token, value) {
+  var sess = studentSession_(token);
+  if (!sess) return studentSessionExpired_();
+  return withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var sh = sheet_(SIGNUPS_SHEET);
+      var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+      var map = signupsHeaderMap_(head);
+      if (map.recordatorio < 0) {
+        return { ok: false, message: 'Falta la columna recordatorio. Ejecutá setup().' };
+      }
+      var vals = sh.getDataRange().getValues();
+      var wanted = convertBool_(value);
+      var updated = 0;
+      for (var i = 1; i < vals.length; i++) {
+        if (EsiCore.normalizeEmail(vals[i][2]) !== sess.email) continue;
+        sh.getRange(i + 1, map.recordatorio + 1).setValue(wanted);
+        updated++;
+      }
+      if (updated) invalidateDataCache_();
+      return { ok: true, recordatorio: wanted, updated: updated };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
 function apiGetData(email, nombre, curso, sessionToken, apellido) {
   try {
     var bs = buildStudent_(email, nombre, curso, apellido);
@@ -1406,6 +1473,7 @@ function apiGetData(email, nombre, curso, sessionToken, apellido) {
       ok: true,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
       data: publicData_(s.ciclo, mine),
+      recordatorio: reminderOptIn_(signups, s.email),
       session: session
     };
   } catch (err) {
@@ -1523,7 +1591,8 @@ function apiResumeSession(token) {
       ok: true,
       email: out.student.email,
       student: out.student,
-      data: out.data
+      data: out.data,
+      recordatorio: !!out.recordatorio
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -1620,6 +1689,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido) {
     var message = '';
     if (plan.action === 'insert') {
       var slot = slotLabelFor_(slots, talk.slot_id);
+      s.recordatorio = reminderOptIn_(readSignups_(), s.email);
       appendSignupRow_(s, talk);
       message = 'Listo, quedaste anotado.';
     } else if (plan.action === 'change') {
@@ -1639,7 +1709,8 @@ function registerLocked_(email, nombre, curso, talkId, apellido) {
       ok: true,
       message: message,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
-      data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh)
+      data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh),
+      recordatorio: reminderOptIn_(fresh, s.email)
     };
   } catch (err) {
     return { ok: false, message: 'Error inesperado: ' + (err && err.message ? err.message : err) };
@@ -1820,6 +1891,7 @@ function apiAdminGetData(cred) {
       ok: true,
       role: auth.role,
       evento_abierto: isOpen_(cfg),
+      mail_remitente: mailSender_(cfg),
       rosterLoaded: students.length > 0,
       rosterCount: students.length,
       slots: slots.map(function (s) {
