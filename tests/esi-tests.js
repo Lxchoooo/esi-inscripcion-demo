@@ -291,8 +291,8 @@ t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 20) throw new Error('expected 20 api fns, got ' + names.length);
-  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiSetReminder', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders', 'apiAdminGetConfig', 'apiAdminSetConfig'];
+  if (names.length !== 30) throw new Error('expected 30 api fns, got ' + names.length);
+  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiSetReminder', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders', 'apiAdminGetConfig', 'apiAdminSetConfig', 'apiAdminStatus', 'apiAdminDuplicates', 'apiAdminAddStudent', 'apiAdminCorrectStudent', 'apiAdminMoveTalk', 'apiAdminMergeDuplicates', 'apiAdminDeleteStudent', 'apiAdminDeleteTestData', 'apiAdminCloseEvent', 'apiAdminErasePersonalData'];
   want.forEach((n) => {
     if (!names.includes(n)) throw new Error('missing in map: ' + n);
     if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
@@ -309,7 +309,7 @@ t('Panel.html has demo mode, JSONP transport and api persistence', () => {
   for (const needle of ["TRANSPORT = 'unconfigured'", 'TRANSPORT === \'jsonp\'', 'esi_api', 'esi_demo_signups']) {
     if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
   }
-  for (const needle of ['MODO PRUEBA', 'Sin servidor configurado', 'btn-demo']) {
+  for (const needle of ['MODO DEMO', 'Sin servidor configurado', 'btn-demo']) {
     if (!panelHtml.includes(needle)) throw new Error('missing markup ' + needle);
   }
 });
@@ -472,7 +472,11 @@ t('Panel demo backend: register, full, keep previous, admin, close/open, delete'
     });
   }
 
-  return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B1']).then((r1) => {
+  let sess = '';
+  return api.call('apiGetData', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B']).then((start) => {
+    sess = start.session;
+    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B1', '', sess]);
+  }).then((r1) => {
     assertEq(r1.ok, true, 'ana B1');
     if (!/Listo, quedaste anotado/.test(r1.message)) throw new Error('msg: ' + r1.message);
     assertEq(r1.data.mine[1], 'B1', 'mine slot1');
@@ -481,12 +485,12 @@ t('Panel demo backend: register, full, keep previous, admin, close/open, delete'
     const cur = JSON.parse(ls.getItem('esi_demo_signups'));
     for (let i = 0; i < 40; i++) cur.push(seed[i]);
     ls.setItem('esi_demo_signups', JSON.stringify(cur));
-    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B2']);
+    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B2', '', sess]);
   }).then((r2) => {
     assertEq(r2.ok, false, 'B2 full rejected');
     if (!/Sin lugares/.test(r2.message)) throw new Error('msg: ' + r2.message);
     assertEq(r2.data.mine[1], 'B1', 'kept previous B1');
-    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B5']);
+    return api.call('apiRegister', ['ana.lopez@secundariosalsipuedes.edu.ar', 'Ana Lopez', '2°B', 'B5', '', sess]);
   }).then((r3) => {
     assertEq(r3.ok, true, 'ana B5 slot2');
     assertEq(r3.data.mine[2], 'B5', 'mine slot2');
@@ -612,7 +616,7 @@ t('Code.gs admin APIs reject invalid keys before reading data', () => {
 
 t('Code.gs seeds no admin PIN and logs no key', () => {
   if (!/ADMIN_MAX_FAILS\s*=\s*5/.test(codeSrc)) throw new Error('max fails missing');
-  if (!/ADMIN_BLOCK_MS\s*=\s*60000/.test(codeSrc)) throw new Error('block window missing');
+  if (!/ADMIN_BLOCK_MS\s*=\s*15 \* 60 \* 1000/.test(codeSrc)) throw new Error('block window missing');
   if (/\[[\s]*['"]admin_pin['"],\s*randomPin_/.test(codeSrc)) throw new Error('seeded admin pin');
   if (/Logger\.log\([^)]*PIN de profes/i.test(codeSrc)) throw new Error('logs pin');
   if (!/ensureAdminPin_/.test(codeSrc)) throw new Error('ensureAdminPin_ missing');
@@ -815,6 +819,7 @@ function fakeSheet(name, headers, rows) {
           return out;
         },
         setValue: (v) => { sh.data[r - 1][c - 1] = v; },
+        setNumberFormat: () => { },
         setValues: (vals) => {
           for (let i = 0; i < vals.length; i++) {
             if (!sh.data[r - 1 + i]) sh.data[r - 1 + i] = [];
@@ -827,10 +832,16 @@ function fakeSheet(name, headers, rows) {
       };
     },
     getLastRow() { return sh.data.length; },
-    getLastColumn() { return Math.max(1, sh.data[0] ? sh.data[0].length : 1); },
+    getLastColumn() { return sh.data[0] ? sh.data[0].length : 0; },
     deleteRow(r) { sh.data.splice(r - 1, 1); },
     setFrozenRows() { },
-    clear() { sh.data = [headers.slice()]; }
+    clear() { sh.data = [headers.slice()]; },
+    clearContent() {
+      for (let i = 0; i < sh.data.length; i++) sh.data[i] = sh.data[i].map(() => '');
+    },
+    clearContents() {
+      sh.data = [];
+    }
   };
   return sh;
 }
@@ -905,6 +916,11 @@ function backendStub(props, seed) {
       }
     }
   };
+}
+
+function loginTicketFor(services, email, nombre, curso, apellido) {
+  const api = backendApi(services, 'issueLoginTicket_');
+  return api.issueLoginTicket_({ email: email, nombre: nombre, curso: curso, apellido: apellido || '' });
 }
 
 function backendApi(services, names) {
@@ -1561,9 +1577,10 @@ t('Cached reads are invalidated by writes', () => {
   let r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
   assertEq(r.ok, true, 'getData ok');
   assertEq(r.data.mine[1], undefined, 'stale cache hides the row');
-  const reg = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B1');
+  const session = r.session;
+  const reg = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B1', '', session);
   assertEq(reg.ok, true, 'register ok');
-  r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', session);
   assertEq(r.data.mine[1], 'B1', 'write invalidates the signups cache');
   if (!services.cache.has('signups_v2')) throw new Error('cache not repopulated');
   if (!services.cache.has('talks_v1') || !services.cache.has('slots_v1')) {
@@ -1582,8 +1599,9 @@ t('Registering the same student and talk twice keeps one row', () => {
     signups: []
   });
   const api = backendApi(services, 'apiRegister');
-  const first = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1');
-  const second = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1');
+  const ticket = loginTicketFor(services, 'nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', '');
+  const first = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', '', ticket);
+  const second = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', '', ticket);
   assertEq(first.ok, true, 'first insert');
   assertEq(second.ok, true, 'second is accepted as already registered');
   if (!/Ya estabas anotado/.test(second.message)) throw new Error('message: ' + second.message);
@@ -1598,6 +1616,10 @@ t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   }
   const services = backendStub({}, { students: students, signups: [] });
   const api = backendApi(services, 'apiRegister');
+  const tickets = {};
+  for (let i = 0; i < students.length; i++) {
+    tickets[students[i][0]] = loginTicketFor(services, students[i][0], students[i][1], students[i][2], '');
+  }
   const order = [];
   for (let i = 0; i < 50; i++) {
     order.push(i);
@@ -1614,7 +1636,7 @@ t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   let busy = 0;
   for (let n = 0; n < order.length; n++) {
     const student = students[order[n]];
-    const r = api.apiRegister(student[0], student[1], student[2], 'B1');
+    const r = api.apiRegister(student[0], student[1], student[2], 'B1', '', '', tickets[student[0]]);
     if (r.busy) busy++;
     else if (r.ok) ok++;
     else if (/Sin lugares/.test(r.message)) full++;
@@ -1669,16 +1691,20 @@ t('apiLookupDni accepts dots and a case-insensitive surname', () => {
   const api = backendApi(services, 'apiLookupDni, apiGetData');
   const r = api.apiLookupDni('12.345.678', ' gomez ');
   assertEq(r.ok, true);
-  assertEq(r.email, 'ana@secundariosalsipuedes.edu.ar');
+  assertEq(r.email, '');
+  if (!/^l_/.test(r.login)) throw new Error('login ticket missing');
   assertEq(r.apellido, 'Gómez');
   assertEq(r.nombreCompleto, 'Ana Gómez');
   assertEq(r.curso, '2°B');
   assertEq(r.needsNombre, false);
   assertEq(r.needsCurso, false);
   if ('dni' in r) throw new Error('lookup leaks dni');
-  const data = api.apiGetData(r.email, r.nombre, r.curso, '', r.apellido);
+  const data = api.apiGetData('', '', '', '', '', r.login);
   assertEq(data.ok, true);
+  assertEq(data.student.email, 'ana@secundariosalsipuedes.edu.ar');
   if ('dni' in data.student) throw new Error('student leaks dni');
+  const replay = api.apiGetData('', '', '', '', '', r.login);
+  assertEq(replay.ok, false, 'ticket is single use');
 });
 
 t('apiLookupDni gives the same shape and message for misses', () => {
@@ -1705,7 +1731,7 @@ t('apiLookupDni blocks after five failures', () => {
   for (let i = 0; i < 5; i++) assertEq(api.apiLookupDni('12345678', 'nadie').ok, false);
   const blocked = api.apiLookupDni('12345678', 'Gómez');
   assertEq(blocked.ok, false);
-  assertEq(blocked.message, 'Demasiados intentos. Esperá un minuto.');
+  assertEq(blocked.message, 'Demasiados intentos. Esperá dos minutos.');
 });
 
 t('Panel logs in with DNI and apellido against the public endpoint', () => {
@@ -1733,7 +1759,8 @@ t('Panel stores only an opaque student token and resumes or revokes it', () => {
 t('Code.gs issues opaque sessions that resume only their own data', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   const api = backendApi(services, 'apiGetData, apiResumeSession, apiStudentLogout, apiAdminGetData');
-  const first = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  const ticket = loginTicketFor(services, 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', '');
+  const first = api.apiGetData('', '', '', '', '', ticket);
   assertEq(first.ok, true, 'getData ok');
   if (typeof first.session !== 'string' || first.session.indexOf('s_') !== 0) {
     throw new Error('student token not issued');
@@ -1777,7 +1804,8 @@ t('Code.gs expires student sessions at seven days or after the event', () => {
   const after = api.studentSessionExpiry_(Date.UTC(2026, 10, 7, 12, 0, 0));
   if (after > Date.UTC(2026, 10, 7, 12, 0, 0)) throw new Error('session outlives the event');
 
-  const issued = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  const ticket = loginTicketFor(services, 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', '');
+  const issued = api.apiGetData('', '', '', '', '', ticket);
   const row = services.sheets.Sessions.data[1];
   row[6] = new Date(Date.now() - 1000);
   const expired = api.apiResumeSession(issued.session);
@@ -1842,7 +1870,8 @@ t('Reminder opt-in is stored per mail and filters recipients', () => {
   const col = sh.data[0].indexOf('recordatorio');
   sh.data.slice(1).forEach((r) => { if (r[2] === 'ana@secundariosalsipuedes.edu.ar') r[col] = false; });
   const api = backendApi(services, 'apiGetData, apiResumeSession, apiSetReminder, apiAdminMailPreview');
-  const got = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B');
+  const ticket = loginTicketFor(services, 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', '');
+  const got = api.apiGetData('', '', '', '', '', ticket);
   assertEq(got.recordatorio, false, 'existing opt-out returned');
   assertEq(api.apiResumeSession(got.session).recordatorio, false, 'resume returns opt-out');
   assertEq(api.apiAdminMailPreview('1111').total, 2, 'only opted-in recipients');
@@ -1863,8 +1892,9 @@ t('apiRegister preserves an existing reminder preference', () => {
   const col = sh.data[0].indexOf('recordatorio');
   sh.data.slice(1).forEach((r) => { if (r[2] === 'ana@secundariosalsipuedes.edu.ar') r[col] = false; });
   const api = backendApi(services, 'apiRegister, apiGetData');
-  const got = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B');
-  const r = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'B1');
+  const ticket = loginTicketFor(services, 'ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', '');
+  const got = api.apiGetData('', '', '', '', '', ticket);
+  const r = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gómez', '2°B', 'B1', '', got.session);
   assertEq(r.ok, true, 'register ok');
   assertEq(r.recordatorio, false, 'opt-out preserved');
 });
@@ -1946,12 +1976,19 @@ t('Panel demo backend stores reminder opt-in and filters preview', () => {
     { id: 'd2', email: 'beto@secundariosalsipuedes.edu.ar', emailKey: 'beto@secundariosalsipuedes.edu.ar', nombre: 'Beto', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: false, recordatorio: true }
   ];
   ls.setItem('esi_demo_signups', JSON.stringify(rows));
-  return api.call('apiGetData', [email, 'Ana', '2°B']).then((got) => {
+  ls.setItem('esi_demo_roster', JSON.stringify([
+    { email: email, apellido: 'Lopez', nombre: 'Ana', nombreCompleto: 'Ana Lopez', curso: '2°B', dni: '12345678' }
+  ]));
+  let sess = '';
+  return api.call('apiLookupDni', ['12345678', 'Lopez']).then((login) => {
+    return api.call('apiGetData', [email, 'Ana', '2°B', null, 'Lopez', login.login]);
+  }).then((got) => {
+    sess = got.session;
     assertEq(got.recordatorio, false, 'demo opt-out returned');
     return api.call('apiAdminMailPreview', ['demo']);
   }).then((p1) => {
     assertEq(p1.total, 1, 'demo preview filters opt-in');
-    return api.call('apiGetData', [email, 'Ana', '2°B']).then((got) => api.call('apiSetReminder', [got.session, true]));
+    return api.call('apiSetReminder', [sess, true]);
   }).then((on) => {
     assertEq(on.ok, true, 'demo opt-in ok');
     return api.call('apiAdminMailPreview', ['demo']);
@@ -1970,6 +2007,66 @@ t('setup adds the reminder column without touching existing rows', () => {
   const head = services.sheets.Signups.data[0];
   assertEq(head.indexOf('recordatorio') >= 0, true, 'column added');
   assertEq(services.sheets.Signups.data[1][2], 'ana@secundariosalsipuedes.edu.ar', 'row kept');
+});
+
+t('admin r12 status, duplicates, manual fixes, test data, close and erase', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  services.sheets.Talks = fakeSheet('Talks', ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], [
+    ['B1', 'Charla uno', 'basico', 1, 'Aula 1', 40, 'si'],
+    ['B2', 'Charla dos', 'basico', 1, 'Aula 2', 40, 'si'],
+    ['B5', 'Charla tres', 'basico', 2, 'Aula 3', 40, 'si'],
+    ['O1', 'Charla cuatro', 'orientado', 3, 'Aula 4', 40, 'si']
+  ]);
+  const headers = ['id', 'ts', 'email', 'nombre', 'apellido', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'recordatorio', 'prueba'];
+  services.sheets.Signups = fakeSheet('Signups', headers, [
+    ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', 'Gomez', '2°B', 'basico', 1, 'B1', false, false, false],
+    ['s2', new Date(), 'ana.gomez@secundariosalsipuedes.edu.ar', 'Ana Gomez', 'Gomez', '2°B', 'basico', 2, 'B5', false, false, false],
+    ['s3', new Date(), 'beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', 'Sanchez', '5°Turismo', 'orientado', 3, 'O1', false, false, false]
+  ]);
+  const api = backendApi(services, 'apiAdminLogin, apiAdminStatus, apiAdminDuplicates, apiAdminAddStudent, apiAdminCorrectStudent, apiAdminMoveTalk, apiAdminMergeDuplicates, apiAdminDeleteStudent, apiAdminDeleteTestData, apiAdminCloseEvent, apiAdminErasePersonalData, apiAdminGetData, apiAdminSetConfig');
+  const token = api.apiAdminLogin('1111').token;
+  const status = api.apiAdminStatus(token);
+  assertEq(status.ok, true, 'status ok');
+  assertEq(status.total, 3, 'status total');
+  assertEq(status.test_count, 0, 'status test count');
+  const dup = api.apiAdminDuplicates(token);
+  assertEq(dup.ok, true, 'duplicates ok');
+  assertEq(dup.total, 1, 'one duplicate group');
+  assertEq(dup.groups[0].emails.length, 2, 'two mails in group');
+  assertEq(api.apiAdminSetConfig(token, { modo_prueba: true }).ok, true, 'test mode on');
+  const added = api.apiAdminAddStudent(token, {
+    email: 'nueva@secundariosalsipuedes.edu.ar', nombre: 'Nueva Alumna', apellido: 'Alumna', curso: '2°A', talkIds: ['B1']
+  });
+  assertEq(added.ok, true, 'manual add ok');
+  assertEq(added.added.length, 1, 'manual add one talk');
+  const addedId = added.added[0].id;
+  const afterAdd = api.apiAdminGetData(token).signups.filter((x) => x.email === 'nueva@secundariosalsipuedes.edu.ar');
+  assertEq(afterAdd.length, 1, 'added row visible');
+  assertEq(afterAdd[0].prueba, true, 'added row marked as test');
+  assertEq(api.apiAdminStatus(token).test_count, 1, 'status counts test row');
+  const corrected = api.apiAdminCorrectStudent(token, 'nueva@secundariosalsipuedes.edu.ar', {
+    nombre: 'Nueva', apellido: 'Alumna', curso: '2°B'
+  });
+  assertEq(corrected.ok, true, 'manual correct ok');
+  const afterCorrect = api.apiAdminGetData(token).signups.filter((x) => x.email === 'nueva@secundariosalsipuedes.edu.ar')[0];
+  assertEq(afterCorrect.nombreCompleto, 'Nueva Alumna', 'corrected name kept');
+  assertEq(afterCorrect.curso, '2°B', 'corrected course');
+  assertEq(api.apiAdminMoveTalk(token, addedId, 'B2').ok, true, 'manual move same slot ok');
+  assertEq(api.apiAdminMoveTalk(token, addedId, 'B5').ok, false, 'move across slot rejected');
+  assertEq(api.apiAdminDeleteTestData(token, 'BORRAR PRUEBA').deleted, 1, 'test data deleted');
+  assertEq(api.apiAdminGetData(token).signups.filter((x) => x.email === 'nueva@secundariosalsipuedes.edu.ar').length, 0, 'test row gone');
+  const merged = api.apiAdminMergeDuplicates(token, 'ana@secundariosalsipuedes.edu.ar', 'ana.gomez@secundariosalsipuedes.edu.ar');
+  assertEq(merged.ok, true, 'merge ok');
+  assertEq(merged.moved, 1, 'merge moved one slot');
+  assertEq(merged.deleted, 0, 'merge deleted none');
+  assertEq(api.apiAdminGetData(token).signups.filter((x) => x.email === 'ana.gomez@secundariosalsipuedes.edu.ar').length, 0, 'drop mail gone');
+  assertEq(api.apiAdminDeleteStudent(token, 'ana@secundariosalsipuedes.edu.ar').deleted, 2, 'delete student removes rows');
+  assertEq(api.apiAdminCloseEvent(token).evento_abierto, false, 'event closed');
+  const erased = api.apiAdminErasePersonalData(token, 'BORRAR');
+  assertEq(erased.ok, true, 'erase personal data ok: ' + erased.message);
+  assertEq(api.apiAdminGetData(token).signups.length, 0, 'no personal rows after erase');
+  assertEq(api.apiAdminStatus(token).data_erased, true, 'erase flag set');
+  assertEq(api.apiAdminStatus(token).evento_abierto, false, 'event stays closed');
 });
 
 t('Docs send staff to /exec and list shared sheets', () => {

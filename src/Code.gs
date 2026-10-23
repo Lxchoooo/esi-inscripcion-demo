@@ -5,6 +5,9 @@ var SIGNUPS_SHEET = 'Signups';
 var STUDENTS_SHEET = 'Students';
 var SESSIONS_SHEET = 'Sessions';
 var SENT_MAILS_SHEET = 'Mails';
+var LOG_SHEET = 'Log';
+var BACKUP_SHEET = 'Backup';
+var BACKUP_KEEP = 20;
 var MAX_EMAIL_ = 120;
 var INSTITUTIONAL_DOMAIN = '@secundariosalsipuedes.edu.ar';
 var ADMIN_PIN_PROP = 'ADMIN_PIN';
@@ -12,12 +15,17 @@ var GUIDE_PIN_PROP = 'GUIDE_PIN';
 var ADMIN_FAIL_PROP = 'ADMIN_FAIL_COUNT';
 var ADMIN_BLOCK_PROP = 'ADMIN_BLOCK_UNTIL';
 var ADMIN_MAX_FAILS = 5;
-var ADMIN_BLOCK_MS = 60000;
+var ADMIN_BLOCK_MS = 15 * 60 * 1000;
 var ADMIN_TOKEN_PREFIX = 't_';
 var ADMIN_TOKEN_TTL = 7200;
 var STUDENT_TOKEN_PREFIX = 's_';
 var STUDENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 var STUDENT_SESSION_GRACE_MS = 24 * 60 * 60 * 1000;
+var LOGIN_TICKET_PREFIX = 'l_';
+var LOGIN_TICKET_TTL = 300;
+var CONFIG_TEST_MODE = 'modo_prueba';
+var CONFIG_DATA_ERASED = 'datos_personales_borrados';
+var CONFIG_BACKUP_ACTIVE = 'backup_activo';
 // 2026-11-04 23:59:59 -03. Sessions can live 24 h past the event.
 var EVENT_DEFAULT_DATE_ = '2026-11-04';
 var EVENT_DEFAULT_TZ_ = 'America/Argentina/Cordoba';
@@ -266,6 +274,10 @@ var EsiCore = (function () {
       }
       if (dni) seenDni[dni] = true;
       var nombreCompleto = completo || clean([nombre, apellido].filter(Boolean).join(' '));
+      if (looksLikeFormula_(nombreCompleto) || looksLikeFormula_(apellido) || looksLikeFormula_(cursoRaw)) {
+        invalidos.push({ linea: i + 1, texto: cols.join(';').slice(0, 80) });
+        continue;
+      }
       if (completo) {
         nombre = completo;
         apellido = '';
@@ -306,6 +318,10 @@ var EsiCore = (function () {
       };
     });
     return { counts: counts, porCiclo: porCiclo, rows: rows, total: signups.length };
+  }
+
+  function looksLikeFormula_(value) {
+    return /^[=+\-@\t\r]/.test(String(value == null ? '' : value).trim());
   }
 
   function planRegistration(signups, talksById, student, talkId) {
@@ -350,6 +366,7 @@ var EsiCore = (function () {
     isInstitutionalEmail: isInstitutionalEmail,
     normalizeDni: normalizeDni,
     isValidDni: isValidDni,
+    looksLikeFormula_: looksLikeFormula_,
     cicloFromCurso: cicloFromCurso,
     validateStudentInput: validateStudentInput,
     planRegistration: planRegistration,
@@ -478,6 +495,9 @@ function readSentMails_(subject) {
     var sh = sheet_(SENT_MAILS_SHEET);
     if (!sh) return null;
     var vals = sh.getDataRange().getValues();
+    if (!vals.length) return {};
+    var head = EsiCore.normalizeText(vals[0][0]);
+    if (head !== 'email' && head !== 'mail') return {};
     var out = {};
     for (var i = 1; i < vals.length; i++) {
       if (String(vals[i][2]) !== subject) continue;
@@ -547,6 +567,22 @@ function apiAdminSendReminders(cred, offset, limit) {
   if (mailQuota_() < 0) return { ok: false, message: 'El envío de mails no está disponible.' };
   var quota = mailQuota_();
   if (quota <= 0) return { ok: false, message: 'No queda cuota de mails por hoy.' };
+  var lockKey = 'mail_send_lock';
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(2000); } catch (e) { return { ok: false, busy: true, message: BUSY_MESSAGE }; }
+  var cache = null;
+  try {
+    cache = CacheService.getScriptCache();
+    if (cache.get(lockKey)) {
+      try { lock.releaseLock(); } catch (e2) { }
+      return { ok: false, busy: true, message: 'Ya hay un envío en curso.' };
+    }
+    cache.put(lockKey, '1', 180);
+  } catch (e) {
+    try { lock.releaseLock(); } catch (e2) { }
+    return { ok: false, message: 'No se pudo bloquear el envío.' };
+  }
+  try { lock.releaseLock(); } catch (e) { }
   try {
     var cfg = readConfigCached_();
     var rows = reminderRecipients_();
@@ -594,9 +630,10 @@ function apiAdminSendReminders(cred, offset, limit) {
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  } finally {
+    try { if (cache) cache.remove(lockKey); } catch (e) { }
   }
 }
-
 
 function mailSender_(cfg) {
   return String((cfg && cfg.mail_remitente) || '').trim().toLowerCase();
@@ -612,7 +649,8 @@ function apiAdminGetConfig(cred) {
       ok: true,
       evento_abierto: isOpen_(cfg),
       event: eventInfo_(cfg),
-      mail_remitente: mailSender_(cfg)
+      mail_remitente: mailSender_(cfg),
+      backup_activo: convertBool_(cfg[CONFIG_BACKUP_ACTIVE])
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -662,13 +700,21 @@ function apiAdminSetConfig(cred, values) {
         }
         writeConfig_('mail_remitente', sender);
       }
+      if (v.modo_prueba != null) {
+        writeConfig_(CONFIG_TEST_MODE, convertBool_(v.modo_prueba) ? 'si' : 'no');
+      }
+      if (v.backup_activo != null) {
+        writeConfig_(CONFIG_BACKUP_ACTIVE, convertBool_(v.backup_activo) ? 'si' : 'no');
+        configureBackupTrigger_();
+      }
       invalidateDataCache_();
       var cfg = readConfig_();
       return {
         ok: true,
         evento_abierto: isOpen_(cfg),
         event: eventInfo_(cfg),
-        mail_remitente: mailSender_(cfg)
+        mail_remitente: mailSender_(cfg),
+        backup_activo: convertBool_(cfg[CONFIG_BACKUP_ACTIVE])
       };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -696,7 +742,17 @@ var API_FN_MAP_ = {
   apiAdminMailPreview: apiAdminMailPreview,
   apiAdminSendReminders: apiAdminSendReminders,
   apiAdminGetConfig: apiAdminGetConfig,
-  apiAdminSetConfig: apiAdminSetConfig
+  apiAdminSetConfig: apiAdminSetConfig,
+  apiAdminStatus: apiAdminStatus,
+  apiAdminDuplicates: apiAdminDuplicates,
+  apiAdminAddStudent: apiAdminAddStudent,
+  apiAdminCorrectStudent: apiAdminCorrectStudent,
+  apiAdminMoveTalk: apiAdminMoveTalk,
+  apiAdminMergeDuplicates: apiAdminMergeDuplicates,
+  apiAdminDeleteStudent: apiAdminDeleteStudent,
+  apiAdminDeleteTestData: apiAdminDeleteTestData,
+  apiAdminCloseEvent: apiAdminCloseEvent,
+  apiAdminErasePersonalData: apiAdminErasePersonalData
 };
 
 function doGet(e) {
@@ -716,8 +772,11 @@ function apiJsonp_(p) {
     cb = 'callback';
     payload = { ok: false, message: 'Callback invalido.' };
   } else {
-    var f = API_FN_MAP_[String(p.fn || '')];
-    if (!f) {
+    var fnName = String(p.fn || '');
+    var f = API_FN_MAP_[fnName];
+    if (fnName.indexOf('apiAdmin') === 0 && String(p.admin || '') !== '1') {
+      payload = { ok: false, message: 'Entrá por /exec?admin=1.' };
+    } else if (!f) {
       payload = { ok: false, message: 'Funcion desconocida.' };
     } else {
       var args = [];
@@ -748,6 +807,8 @@ function setup() {
   ]);
   ensureConfigDefault_('evento_fecha', EVENT_DEFAULT_DATE_);
   ensureConfigDefault_('evento_zona', EVENT_DEFAULT_TZ_);
+  ensureConfigDefault_(CONFIG_TEST_MODE, 'no');
+  ensureConfigDefault_(CONFIG_BACKUP_ACTIVE, 'si');
   ensureSheet_(ss, SLOTS_SHEET, ['id', 'nombre', 'inicio', 'fin', 'orden'], [
     [1, '1ra', '10:30', '11:20', 1],
     [2, '2da', '11:30', '12:20', 2],
@@ -758,14 +819,84 @@ function setup() {
   ensureSheet_(ss, SESSIONS_SHEET, ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
   ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
+  ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
+  ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
   var signupsSh = sheet_(SIGNUPS_SHEET);
   ensureColumn_(signupsSh, 'presente');
   ensureColumn_(signupsSh, 'apellido');
   ensureColumn_(signupsSh, 'recordatorio');
+  ensureColumn_(signupsSh, 'prueba');
   ensureAdminPin_();
   ensureGuidePin_();
+  configureBackupTrigger_();
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
+}
+
+function configureBackupTrigger_() {
+  if (typeof ScriptApp === 'undefined') return;
+  try {
+    var active = convertBool_(readConfig_()[CONFIG_BACKUP_ACTIVE]);
+    var triggers = ScriptApp.getProjectTriggers();
+    var existing = [];
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'backupSignups_') existing.push(triggers[i]);
+    }
+    if (active && !existing.length) {
+      ScriptApp.newTrigger('backupSignups_').timeBased().everyMinutes(30).create();
+    } else if (!active) {
+      for (var j = 0; j < existing.length; j++) ScriptApp.deleteTrigger(existing[j]);
+    }
+  } catch (e) { }
+}
+
+function logAction_(action, signupId, detail) {
+  try {
+    sheet_(LOG_SHEET).appendRow([new Date(), String(action || ''), String(signupId || ''), String(detail || '')]);
+  } catch (e) { }
+}
+
+function backupSignups_() {
+  try {
+    var cfg = readConfig_();
+    if (!convertBool_(cfg[CONFIG_BACKUP_ACTIVE])) return { ok: false, message: 'Respaldo desactivado.' };
+    var signups = readSignups_();
+    if (!signups.length) return { ok: true, rows: 0, copies: 0 };
+    var sh = sheet_(BACKUP_SHEET);
+    var stamp = new Date();
+    var rows = [];
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      rows.push([
+        stamp, s.id, s.ts, s.email, s.nombre, s.curso, s.ciclo, s.slot_id, s.talk_id,
+        s.presente ? 'si' : 'no', s.apellido, s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
+      ]);
+    }
+    if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 13).setValues(rows);
+    var copies = pruneBackup_(sh);
+    return { ok: true, rows: rows.length, copies: copies };
+  } catch (e) {
+    return { ok: false, message: 'No se pudo respaldar.' };
+  }
+}
+
+function pruneBackup_(sh) {
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return 0;
+  var groups = {};
+  var order = [];
+  for (var i = 1; i < vals.length; i++) {
+    var key = vals[i][0] instanceof Date ? String(vals[i][0].getTime()) : String(vals[i][0]);
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(vals[i]);
+  }
+  order.sort(function (a, b) { return Number(a) - Number(b); });
+  var keep = order.slice(-BACKUP_KEEP);
+  var out = [vals[0]];
+  for (var k = 0; k < keep.length; k++) out = out.concat(groups[keep[k]]);
+  sh.clearContent();
+  sh.getRange(1, 1, out.length, out[0].length).setValues(out);
+  return keep.length;
 }
 
 function ensureAdminPin_() {
@@ -805,11 +936,10 @@ function removeConfigKey_(key) {
 }
 
 function randomPin_() {
-  var pin = String(Math.floor(Math.random() * 9) + 1);
-  for (var i = 0; i < 3; i++) {
-    pin += String(Math.floor(Math.random() * 10));
-  }
-  return pin;
+  var raw = Utilities.getUuid().replace(/-/g, '');
+  var pin = '';
+  for (var i = 0; i < 6; i++) pin += String(parseInt(raw.charAt(i), 16) % 10);
+  return pin.charAt(0) === '0' ? '1' + pin.slice(1) : pin;
 }
 
 function ensureSheet_(ss, name, headers, rows) {
@@ -905,7 +1035,9 @@ function eventDate_(cfg) {
 function eventInfo_(cfg) {
   return {
     fecha: eventDate_(cfg),
-    zona: String((cfg && cfg.evento_zona) || EVENT_DEFAULT_TZ_).trim() || EVENT_DEFAULT_TZ_
+    zona: String((cfg && cfg.evento_zona) || EVENT_DEFAULT_TZ_).trim() || EVENT_DEFAULT_TZ_,
+    modo_prueba: convertBool_(cfg && cfg.modo_prueba),
+    datos_personales_borrados: convertBool_(cfg && cfg.datos_personales_borrados)
   };
 }
 
@@ -963,35 +1095,47 @@ function readTalks_() {
 }
 
 function signupsHeaderMap_(head) {
-  var map = { presente: -1, apellido: -1, recordatorio: -1 };
+  var map = { id: -1, ts: -1, email: -1, nombre: -1, apellido: -1, curso: -1, ciclo: -1, slot_id: -1, talk_id: -1, presente: -1, recordatorio: -1, prueba: -1 };
   for (var i = 0; i < (head || []).length; i++) {
     var h = EsiCore.normalizeText(head[i]);
-    if (h === 'presente') map.presente = i;
+    if (h === 'id') map.id = i;
+    else if (h === 'ts') map.ts = i;
+    else if (h === 'email' || h === 'mail') map.email = i;
+    else if (h === 'nombre') map.nombre = i;
+    else if (h === 'presente') map.presente = i;
     else if (h === 'apellido') map.apellido = i;
+    else if (h === 'curso') map.curso = i;
+    else if (h === 'ciclo') map.ciclo = i;
+    else if (h === 'slot_id') map.slot_id = i;
+    else if (h === 'talk_id') map.talk_id = i;
     else if (h === 'recordatorio') map.recordatorio = i;
+    else if (h === 'prueba') map.prueba = i;
   }
   return map;
 }
 
 function readSignups_() {
   var vals = sheet_(SIGNUPS_SHEET).getDataRange().getValues();
+  if (!vals.length) return [];
   var map = signupsHeaderMap_(vals[0]);
+  if (map.id < 0 || map.email < 0) return [];
   var signups = [];
   for (var i = 1; i < vals.length; i++) {
-    if (vals[i][0] === '') continue;
+    if (vals[i][map.id] === '') continue;
     signups.push({
-      id: String(vals[i][0]),
-      ts: vals[i][1],
-      email: String(vals[i][2]),
-      nombre: String(vals[i][3]),
+      id: String(vals[i][map.id]),
+      ts: map.ts >= 0 ? vals[i][map.ts] : vals[i][1],
+      email: String(vals[i][map.email]),
+      nombre: map.nombre >= 0 ? String(vals[i][map.nombre]) : String(vals[i][3]),
       apellido: map.apellido >= 0 ? String(vals[i][map.apellido] == null ? '' : vals[i][map.apellido]).replace(/\s+/g, ' ').trim() : '',
-      curso: String(vals[i][4]),
-      ciclo: String(vals[i][5]).trim().toLowerCase(),
-      slot_id: Number(vals[i][6]),
-      talk_id: String(vals[i][7]),
+      curso: map.curso >= 0 ? String(vals[i][map.curso]) : String(vals[i][4]),
+      ciclo: String(map.ciclo >= 0 ? vals[i][map.ciclo] : vals[i][5]).trim().toLowerCase(),
+      slot_id: Number(map.slot_id >= 0 ? vals[i][map.slot_id] : vals[i][6]),
+      talk_id: String(map.talk_id >= 0 ? vals[i][map.talk_id] : vals[i][7]),
       presente: map.presente >= 0 ? convertBool_(vals[i][map.presente]) : false,
       recordatorio: map.recordatorio >= 0 ? convertBool_(vals[i][map.recordatorio]) : false,
-      emailKey: EsiCore.normalizeEmail(vals[i][2])
+      prueba: map.prueba >= 0 ? convertBool_(vals[i][map.prueba]) : false,
+      emailKey: EsiCore.normalizeEmail(vals[i][map.email])
     });
   }
   return signups;
@@ -1001,9 +1145,10 @@ function appendSignupRow_(student, talk) {
   var sh = sheet_(SIGNUPS_SHEET);
   var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
   var row = [];
+  var newId = Utilities.getUuid();
   for (var i = 0; i < head.length; i++) {
     var key = EsiCore.normalizeText(head[i]);
-    if (key === 'id') row.push(Utilities.getUuid());
+    if (key === 'id') row.push(newId);
     else if (key === 'ts') row.push(new Date());
     else if (key === 'email' || key === 'mail') row.push(student.email);
     else if (key === 'nombre') row.push(student.nombre);
@@ -1014,9 +1159,11 @@ function appendSignupRow_(student, talk) {
     else if (key === 'talk_id') row.push(String(talk.id));
     else if (key === 'presente') row.push('');
     else if (key === 'recordatorio') row.push(!!student.recordatorio);
+    else if (key === 'prueba') row.push(!!student.prueba);
     else row.push('');
   }
   sh.appendRow(row);
+  return newId;
 }
 
 function presenteCol_(sh) {
@@ -1054,6 +1201,7 @@ function readStudents_() {
     var vals = sh.getDataRange().getValues();
     if (!vals.length) return [];
     var map = studentsHeader_(vals[0]);
+    if (!map) return [];
     function cell(row, idx) {
       return String(row[idx] == null ? '' : row[idx]).replace(/\s+/g, ' ').trim();
     }
@@ -1339,7 +1487,7 @@ function apiLookup(email) {
 }
 
 var DNI_MAX_FAILS = 5;
-var DNI_BLOCK_MS = 60000;
+var DNI_BLOCK_MS = 2 * 60 * 1000;
 
 function dniCacheKey_(dni) {
   var sig = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(dni));
@@ -1380,6 +1528,7 @@ function apiLookupDni(dni, apellido) {
       ok: false,
       message: 'No pudimos entrar. Revisá el DNI y el apellido.',
       email: '',
+      login: '',
       rosterLoaded: roster.length > 0,
       needsNombre: false,
       needsCurso: false,
@@ -1390,7 +1539,7 @@ function apiLookupDni(dni, apellido) {
     };
     if (!valid) return out;
     if (dniFails_(norm) >= DNI_MAX_FAILS) {
-      out.message = 'Demasiados intentos. Esperá un minuto.';
+      out.message = 'Demasiados intentos. Esperá dos minutos.';
       return out;
     }
     var matches = [];
@@ -1405,10 +1554,17 @@ function apiLookupDni(dni, apellido) {
     clearDniFailures_(norm);
     var nombreCompleto = entry.nombreCompleto || entry.nombre || '';
     var pc = EsiCore.parseCurso(entry.curso);
+    var login = issueLoginTicket_({
+      email: entry.email,
+      nombre: nombreCompleto,
+      apellido: entry.apellido || '',
+      curso: pc || ''
+    });
     return {
       ok: true,
       message: '',
-      email: entry.email,
+      email: '',
+      login: login,
       rosterLoaded: true,
       needsNombre: !nombreCompleto,
       needsCurso: !pc,
@@ -1457,9 +1613,14 @@ function apiSetReminder(token, value) {
   });
 }
 
-function apiGetData(email, nombre, curso, sessionToken, apellido) {
+function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
   try {
-    var bs = buildStudent_(email, nombre, curso, apellido);
+    var ticket = loginTicket_(loginToken);
+    var baseEmail = ticket ? ticket.email : email;
+    var baseNombre = nombre || (ticket ? ticket.nombre : '');
+    var baseCurso = curso || (ticket ? ticket.curso : '');
+    var baseApellido = apellido || (ticket ? ticket.apellido : '');
+    var bs = buildStudent_(baseEmail, baseNombre, baseCurso, baseApellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
@@ -1468,7 +1629,15 @@ function apiGetData(email, nombre, curso, sessionToken, apellido) {
     var mine = mineMap_(signups, s.email);
     var current = sessionToken ? studentSession_(sessionToken) : null;
     if (sessionToken && (!current || current.email !== s.email)) return studentSessionExpired_();
+    if (!current && !ticket && hasSignupsForEmail_(signups, s.email)) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.'
+      };
+    }
     var session = current ? '' : issueStudentSession_(s);
+    if (ticket) consumeLoginTicket_(loginToken);
     return {
       ok: true,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
@@ -1493,6 +1662,53 @@ function studentTokenHash_(token) {
     }).join('');
 }
 
+function loginTicketHash_(token) {
+  return 'login_ticket_' + studentTokenHash_(token);
+}
+
+function issueLoginTicket_(student) {
+  try {
+    var token = LOGIN_TICKET_PREFIX + Utilities.getUuid().replace(/-/g, '');
+    var payload = {
+      email: student.email,
+      nombre: student.nombre || '',
+      apellido: student.apellido || '',
+      curso: student.curso || '',
+      expires: Date.now() + LOGIN_TICKET_TTL * 1000
+    };
+    CacheService.getScriptCache().put(loginTicketHash_(token), JSON.stringify(payload), LOGIN_TICKET_TTL);
+    return token;
+  } catch (e) {
+    return '';
+  }
+}
+
+function loginTicket_(token) {
+  var raw = String(token == null ? '' : token).trim();
+  if (!raw || raw.indexOf(LOGIN_TICKET_PREFIX) !== 0) return null;
+  try {
+    var hit = CacheService.getScriptCache().get(loginTicketHash_(raw));
+    if (!hit) return null;
+    var data = JSON.parse(hit);
+    if (!data || Number(data.expires) < Date.now() || !data.email) return null;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+function consumeLoginTicket_(token) {
+  try { CacheService.getScriptCache().remove(loginTicketHash_(token)); } catch (e) { }
+}
+
+function hasSignupsForEmail_(signups, email) {
+  var key = EsiCore.normalizeEmail(email);
+  for (var i = 0; i < (signups || []).length; i++) {
+    if (signups[i].emailKey === key) return true;
+  }
+  return false;
+}
+
 function sessionsSheet_() {
   var ss = SpreadsheetApp.getActive();
   var sh = ensureSheet_(ss, SESSIONS_SHEET,
@@ -1510,7 +1726,13 @@ function sessionDateMs_(value) {
 }
 
 function readSessions_() {
-  var vals = sessionsSheet_().getDataRange().getValues();
+  var sh = sessionsSheet_();
+  var vals = sh.getDataRange().getValues();
+  if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return [];
+  var apellidoCol = -1;
+  for (var h = 0; h < vals[0].length; h++) {
+    if (EsiCore.normalizeText(vals[0][h]) === 'apellido') { apellidoCol = h; break; }
+  }
   var rows = [];
   for (var i = 1; i < vals.length; i++) {
     if (!String(vals[i][0] || '').trim()) continue;
@@ -1521,7 +1743,7 @@ function readSessions_() {
       nombre: String(vals[i][2] == null ? '' : vals[i][2]).replace(/\s+/g, ' ').trim(),
       curso: EsiCore.parseCurso(vals[i][3]) || String(vals[i][3] == null ? '' : vals[i][3]).trim(),
       ciclo: String(vals[i][4] == null ? '' : vals[i][4]).trim().toLowerCase(),
-      apellido: String(vals[i][8] == null ? '' : vals[i][8]).replace(/\s+/g, ' ').trim(),
+      apellido: apellidoCol >= 0 ? String(vals[i][apellidoCol] == null ? '' : vals[i][apellidoCol]).replace(/\s+/g, ' ').trim() : '',
       created: sessionDateMs_(vals[i][5]),
       expires: sessionDateMs_(vals[i][6]),
       revoked: convertBool_(vals[i][7])
@@ -1608,9 +1830,9 @@ function apiStudentLogout(token) {
   }
 }
 
-function apiRegister(email, nombre, curso, talkId, apellido) {
+function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, loginToken) {
   var resp = withScriptLock_(REGISTER_LOCK_MS, function () {
-    return registerLocked_(email, nombre, curso, talkId, apellido);
+    return registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken);
   });
   if (resp && resp.busy) return resp;
   if (resp && resp.ok) {
@@ -1619,15 +1841,22 @@ function apiRegister(email, nombre, curso, talkId, apellido) {
   return resp;
 }
 
-function registerLocked_(email, nombre, curso, talkId, apellido) {
+function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken) {
   try {
     var bs = buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
     var s = bs.student;
+    var current = sessionToken ? studentSession_(sessionToken) : null;
+    if (sessionToken && (!current || current.email !== s.email)) return studentSessionExpired_();
+    var ticket = loginTicket_(loginToken);
+    if (ticket && ticket.email !== s.email) {
+      return { ok: false, message: 'La sesión no coincide con el mail.' };
+    }
 
-    var abierto = isOpen_(readConfig_());
+    var cfg = readConfig_();
+    var abierto = isOpen_(cfg);
     var slots = readSlotsCached_();
     var talks = readTalksCached_();
     var talksById = {};
@@ -1635,6 +1864,13 @@ function registerLocked_(email, nombre, curso, talkId, apellido) {
       talksById[talks[i].id] = talks[i];
     }
     var signups = readSignups_();
+    if (!current && !ticket && hasSignupsForEmail_(signups, s.email)) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.'
+      };
+    }
     var mine = mineMap_(signups, s.email);
     talkId = String(talkId || '');
     var talk = talksById[talkId];
@@ -1690,6 +1926,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido) {
     if (plan.action === 'insert') {
       var slot = slotLabelFor_(slots, talk.slot_id);
       s.recordatorio = reminderOptIn_(readSignups_(), s.email);
+      s.prueba = convertBool_(cfg.modo_prueba);
       appendSignupRow_(s, talk);
       message = 'Listo, quedaste anotado.';
     } else if (plan.action === 'change') {
@@ -1743,7 +1980,7 @@ function adminAuth_(cred) {
   var now = Date.now();
   var blockedUntil = Number(props.getProperty(ADMIN_BLOCK_PROP) || 0);
   if (blockedUntil > now) {
-    return { ok: false, message: 'Demasiados intentos. Esperá un minuto.' };
+    return { ok: false, message: 'Demasiados intentos. Esperá 15 minutos.' };
   }
   if (!getAdminPin_() && !getGuidePin_()) {
     return { ok: false, message: 'Clave no configurada. Ejecutá setup().' };
@@ -1866,10 +2103,13 @@ function apiAdminGetData(cred) {
         nombreCompleto: s.nombre,
         curso: s.curso,
         ciclo: s.ciclo,
+        slot_id: Number(s.slot_id),
+        talk_id: s.talk_id,
         slotLabel: slotLabelFor_(slots, s.slot_id),
         talkTitulo: titulos[s.talk_id] || s.talk_id,
         lugar: lugares[s.talk_id] || '',
-        presente: !!s.presente
+        presente: !!s.presente,
+        prueba: !!s.prueba
       };
     }) : [];
     var porCiclo = { basico: 0, orientado: 0 };
@@ -1892,6 +2132,7 @@ function apiAdminGetData(cred) {
       role: auth.role,
       evento_abierto: isOpen_(cfg),
       mail_remitente: mailSender_(cfg),
+      backup_activo: convertBool_(cfg[CONFIG_BACKUP_ACTIVE]),
       rosterLoaded: students.length > 0,
       rosterCount: students.length,
       slots: slots.map(function (s) {
@@ -1900,8 +2141,45 @@ function apiAdminGetData(cred) {
       talks: talksOut,
       signups: signups,
       total: signups.length,
+      testCount: admin ? signupsRaw.filter(function (x) { return !!x.prueba; }).length : 0,
+      data_erased: convertBool_(cfg[CONFIG_DATA_ERASED]),
       porCiclo: porCiclo,
       event: eventInfo_(cfg)
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function apiAdminStatus(cred) {
+  try {
+    var auth = adminAuth_(cred);
+    if (!auth.ok) return { ok: false, message: auth.message };
+    var cfg = readConfigCached_();
+    var signups = readSignups_();
+    var last = 0;
+    for (var i = 0; i < signups.length; i++) {
+      var t = sessionDateMs_(signups[i].ts);
+      if (t > last) last = t;
+    }
+    var sessions = readSessions_();
+    var active = 0;
+    var now = Date.now();
+    for (var j = 0; j < sessions.length; j++) {
+      if (!sessions[j].revoked && sessions[j].expires > now) active++;
+    }
+    return {
+      ok: true,
+      role: auth.role,
+      server_time: new Date().toISOString(),
+      evento_abierto: isOpen_(cfg),
+      last_signup: last ? new Date(last).toISOString() : '',
+      total: signups.length,
+      active_sessions: active,
+      mail_quota: mailQuota_(),
+      test_count: signups.filter(function (x) { return !!x.prueba; }).length,
+      data_erased: convertBool_(cfg[CONFIG_DATA_ERASED]),
+      modo_prueba: convertBool_(cfg[CONFIG_TEST_MODE])
     };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -1932,6 +2210,7 @@ function apiAdminDeleteSignup(cred, signupId) {
       var row = findSignupRow_(signupId);
       if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
       sheet_(SIGNUPS_SHEET).deleteRow(row);
+      logAction_('delete_signup', signupId, '');
       invalidateDataCache_();
       return { ok: true };
     } catch (err) {
@@ -1942,6 +2221,499 @@ function apiAdminDeleteSignup(cred, signupId) {
     try { rebuildReport_(); } catch (e) { }
   }
   return resp;
+}
+
+function signupRowsByEmail_(email) {
+  var key = EsiCore.normalizeEmail(email);
+  var signups = readSignups_();
+  var out = [];
+  for (var i = 0; i < signups.length; i++) {
+    if (signups[i].emailKey !== key) continue;
+    out.push({ row: findSignupRow_(signups[i].id), signup: signups[i] });
+  }
+  return out;
+}
+
+function setSignupFields_(sh, map, row, fields) {
+  for (var key in fields) {
+    if (!Object.prototype.hasOwnProperty.call(fields, key)) continue;
+    if (map[key] == null || map[key] < 0) continue;
+    sh.getRange(row, map[key] + 1).setValue(fields[key]);
+  }
+}
+
+function updateSessionsStudent_(student) {
+  try {
+    var sh = sessionsSheet_();
+    var vals = sh.getDataRange().getValues();
+    if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return;
+    var apellidoCol = -1;
+    for (var h = 0; h < vals[0].length; h++) {
+      if (EsiCore.normalizeText(vals[0][h]) === 'apellido') { apellidoCol = h; break; }
+    }
+    for (var i = 1; i < vals.length; i++) {
+      if (EsiCore.normalizeEmail(vals[i][1]) !== student.email) continue;
+      sh.getRange(i + 1, 3).setValue(student.nombre);
+      sh.getRange(i + 1, 4).setValue(student.curso);
+      sh.getRange(i + 1, 5).setValue(student.ciclo);
+      if (apellidoCol >= 0) sh.getRange(i + 1, apellidoCol + 1).setValue(student.apellido || '');
+    }
+  } catch (e) { }
+}
+
+function updateRosterStudent_(student) {
+  try {
+    var sh = SpreadsheetApp.getActive().getSheetByName(STUDENTS_SHEET);
+    if (!sh) return;
+    var vals = sh.getDataRange().getValues();
+    if (!vals.length) return;
+    var map = studentsHeader_(vals[0]);
+    if (!map) return;
+    for (var i = 1; i < vals.length; i++) {
+      if (EsiCore.normalizeEmail(vals[i][map.email]) !== student.email) continue;
+      if (map.apellido != null) sh.getRange(i + 1, map.apellido + 1).setValue(student.apellido || '');
+      if (map.completo != null) sh.getRange(i + 1, map.completo + 1).setValue(student.nombre);
+      else if (map.nombre != null) sh.getRange(i + 1, map.nombre + 1).setValue(givenName_(student.nombre, student.apellido));
+      if (map.curso != null) sh.getRange(i + 1, map.curso + 1).setValue(student.curso);
+      return;
+    }
+  } catch (e) { }
+}
+
+function revokeSessionsForEmail_(email) {
+  try {
+    var key = EsiCore.normalizeEmail(email);
+    var sh = sessionsSheet_();
+    var vals = sh.getDataRange().getValues();
+    if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return 0;
+    var count = 0;
+    for (var i = 1; i < vals.length; i++) {
+      if (EsiCore.normalizeEmail(vals[i][1]) !== key) continue;
+      if (!convertBool_(vals[i][7])) {
+        sh.getRange(i + 1, 8).setValue(true);
+        count++;
+      }
+    }
+    return count;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function revokeAllStudentSessions_() {
+  try {
+    var sh = sessionsSheet_();
+    var vals = sh.getDataRange().getValues();
+    if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return 0;
+    var count = 0;
+    for (var i = 1; i < vals.length; i++) {
+      if (!convertBool_(vals[i][7])) {
+        sh.getRange(i + 1, 8).setValue(true);
+        count++;
+      }
+    }
+    return count;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function apiAdminDuplicates(cred) {
+  try {
+    var auth = adminAuth_(cred);
+    var perm = requireAdmin_(auth);
+    if (!perm.ok) return { ok: false, message: perm.message };
+    var signups = readSignups_();
+    var talks = readTalksCached_();
+    var slots = readSlotsCached_();
+    var talkById = {};
+    for (var t = 0; t < talks.length; t++) talkById[String(talks[t].id)] = talks[t];
+    var groups = {};
+    var order = [];
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      var ap = EsiCore.normalizeText(s.apellido);
+      var nom = EsiCore.normalizeText(givenName_(s.nombre, s.apellido));
+      if (!ap && !nom) continue;
+      var key = ap + '|' + nom + '|' + EsiCore.normalizeText(s.curso);
+      if (!groups[key]) {
+        groups[key] = {
+          apellido: s.apellido || '',
+          nombre: givenName_(s.nombre, s.apellido),
+          curso: s.curso || '',
+          emails: {},
+          talks: []
+        };
+        order.push(key);
+      }
+      var g = groups[key];
+      if (!g.emails[s.email]) g.emails[s.email] = true;
+      var talk = talkById[String(s.talk_id)] || null;
+      g.talks.push({
+        signup_id: s.id,
+        email: s.email,
+        talk_id: s.talk_id,
+        titulo: talk ? talk.titulo : s.talk_id,
+        lugar: talk ? (talk.lugar || '') : '',
+        slotLabel: slotLabelFor_(slots, s.slot_id),
+        presente: !!s.presente
+      });
+    }
+    var out = [];
+    for (var j = 0; j < order.length; j++) {
+      var group = groups[order[j]];
+      var emails = Object.keys(group.emails);
+      if (emails.length < 2) continue;
+      emails.sort();
+      group.emails = emails;
+      group.talks.sort(function (a, b) { return String(a.slotLabel).localeCompare(String(b.slotLabel), 'es'); });
+      out.push(group);
+    }
+    out.sort(function (a, b) {
+      return String(a.apellido).localeCompare(String(b.apellido), 'es', { sensitivity: 'base' });
+    });
+    return { ok: true, groups: out, total: out.length };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function apiAdminAddStudent(cred, data) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  var d = data && typeof data === 'object' ? data : {};
+  var v = EsiCore.validateStudentInput(d.email, d.nombre, d.curso, d.apellido);
+  if (!v.ok) return { ok: false, message: STUDENT_ERRORS_[v.error] || 'Datos inválidos.' };
+  if (!EsiCore.isInstitutionalEmail(v.email)) return { ok: false, message: STUDENT_ERRORS_.email };
+  var ids = d.talkIds;
+  if (Object.prototype.toString.call(ids) !== '[object Array]' || !ids.length) {
+    return { ok: false, message: 'Elegí al menos una charla.' };
+  }
+  return withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    try {
+      var talks = readTalksCached_();
+      var talkById = {};
+      for (var i = 0; i < talks.length; i++) talkById[String(talks[i].id)] = talks[i];
+      var signups = readSignups_();
+      var counts = countByTalk_(signups);
+      var bySlot = {};
+      var mine = {};
+      for (var m = 0; m < signups.length; m++) {
+        if (signups[m].emailKey === v.email) {
+          bySlot[Number(signups[m].slot_id)] = true;
+          mine[String(signups[m].talk_id)] = true;
+        }
+      }
+      var chosen = [];
+      for (var j = 0; j < ids.length; j++) {
+        var talk = talkById[String(ids[j])];
+        if (!talk) return { ok: false, message: 'No encontramos una de las charlas.' };
+        if (!talk.activa) return { ok: false, message: 'Esa charla no está disponible.' };
+        if (talk.ciclo !== v.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
+        if (bySlot[Number(talk.slot_id)]) return { ok: false, message: 'Ya tiene una charla en ese horario.' };
+        if (mine[String(talk.id)]) return { ok: false, message: 'Ya está anotado en esa charla.' };
+        if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + '.' };
+        bySlot[Number(talk.slot_id)] = true;
+        mine[String(talk.id)] = true;
+        chosen.push(talk);
+      }
+      var cfg = readConfig_();
+      var student = {
+        email: v.email,
+        nombre: v.nombre,
+        apellido: v.apellido,
+        curso: v.curso,
+        ciclo: v.ciclo,
+        emailKey: v.emailKey,
+        prueba: convertBool_(cfg.modo_prueba),
+        recordatorio: reminderOptIn_(signups, v.email)
+      };
+      var added = [];
+      for (var k = 0; k < chosen.length; k++) {
+        var id = appendSignupRow_(student, chosen[k]);
+        logAction_('manual_add', id, chosen[k].id);
+        added.push({ id: id, talk_id: chosen[k].id });
+      }
+      invalidateDataCache_();
+      return { ok: true, added: added, message: 'Alumno anotado.' };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
+function apiAdminCorrectStudent(cred, email, data) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  var d = data && typeof data === 'object' ? data : {};
+  var v = EsiCore.validateStudentInput(email, d.nombre, d.curso, d.apellido);
+  if (!v.ok) return { ok: false, message: STUDENT_ERRORS_[v.error] || 'Datos inválidos.' };
+  return withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var rows = signupRowsByEmail_(v.email);
+      if (!rows.length) return { ok: false, message: 'Ese mail no tiene inscripciones.' };
+      var talks = readTalksCached_();
+      var talkById = {};
+      for (var t = 0; t < talks.length; t++) talkById[String(talks[t].id)] = talks[t];
+      for (var i = 0; i < rows.length; i++) {
+        var talk = talkById[String(rows[i].signup.talk_id)];
+        if (talk && talk.ciclo !== v.ciclo) {
+          return { ok: false, message: 'Ese cambio de ciclo no coincide con las charlas anotadas.' };
+        }
+      }
+      var sh = sheet_(SIGNUPS_SHEET);
+      var map = signupsHeaderMap_(sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]);
+      for (var j = 0; j < rows.length; j++) {
+        setSignupFields_(sh, map, rows[j].row, {
+          nombre: v.nombre,
+          apellido: v.apellido,
+          curso: v.curso,
+          ciclo: v.ciclo
+        });
+      }
+      updateSessionsStudent_(v);
+      updateRosterStudent_(v);
+      logAction_('correct_student', rows[0].signup.id, '');
+      invalidateDataCache_();
+      return { ok: true, updated: rows.length, student: { email: v.email, nombre: v.nombre, apellido: v.apellido, curso: v.curso, ciclo: v.ciclo } };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
+function apiAdminMoveTalk(cred, signupId, talkId) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  return withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var row = findSignupRow_(signupId);
+      if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
+      var signups = readSignups_();
+      var current = null;
+      for (var i = 0; i < signups.length; i++) {
+        if (String(signups[i].id) === String(signupId)) { current = signups[i]; break; }
+      }
+      if (!current) return { ok: false, message: 'No encontramos esa inscripción.' };
+      var talks = readTalksCached_();
+      var talk = null;
+      for (var j = 0; j < talks.length; j++) {
+        if (String(talks[j].id) === String(talkId)) { talk = talks[j]; break; }
+      }
+      if (!talk) return { ok: false, message: 'No encontramos esa charla.' };
+      if (!talk.activa) return { ok: false, message: 'Esa charla no está disponible.' };
+      if (Number(talk.slot_id) !== Number(current.slot_id)) return { ok: false, message: 'Solo se puede mover dentro del mismo horario.' };
+      if (talk.ciclo !== current.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
+      if (String(talk.id) === String(current.talk_id)) return { ok: true, changed: false };
+      var counts = countByTalk_(signups);
+      if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + '.' };
+      for (var k = 0; k < signups.length; k++) {
+        if (signups[k].emailKey === current.emailKey && String(signups[k].talk_id) === String(talk.id)) {
+          return { ok: false, message: 'Ya está anotado en esa charla.' };
+        }
+      }
+      var sh = sheet_(SIGNUPS_SHEET);
+      var map = signupsHeaderMap_(sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]);
+      setSignupFields_(sh, map, row, { talk_id: String(talk.id) });
+      logAction_('move_talk', signupId, talk.id);
+      invalidateDataCache_();
+      return { ok: true, changed: true, talk: { id: talk.id, titulo: talk.titulo } };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
+function apiAdminMergeDuplicates(cred, keepEmail, dropEmail) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  var keep = EsiCore.normalizeEmail(keepEmail);
+  var drop = EsiCore.normalizeEmail(dropEmail);
+  if (!EsiCore.isInstitutionalEmail(keep) || !EsiCore.isInstitutionalEmail(drop) || keep === drop) {
+    return { ok: false, message: 'Elegí dos mails distintos.' };
+  }
+  return withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    try {
+      var keepRows = signupRowsByEmail_(keep);
+      var dropRows = signupRowsByEmail_(drop);
+      if (!keepRows.length || !dropRows.length) return { ok: false, message: 'Faltan inscripciones para fusionar.' };
+      var keepSignup = keepRows[0].signup;
+      var keepSlots = {};
+      for (var i = 0; i < keepRows.length; i++) keepSlots[Number(keepRows[i].signup.slot_id)] = true;
+      var sh = sheet_(SIGNUPS_SHEET);
+      var map = signupsHeaderMap_(sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]);
+      var deleted = [];
+      var moved = 0;
+      for (var j = 0; j < dropRows.length; j++) {
+        var dr = dropRows[j];
+        if (keepSlots[Number(dr.signup.slot_id)]) {
+          deleted.push(dr.row);
+          continue;
+        }
+        setSignupFields_(sh, map, dr.row, {
+          email: keepSignup.email,
+          nombre: keepSignup.nombre,
+          apellido: keepSignup.apellido,
+          curso: keepSignup.curso,
+          ciclo: keepSignup.ciclo
+        });
+        keepSlots[Number(dr.signup.slot_id)] = true;
+        moved++;
+      }
+      deleted.sort(function (a, b) { return b - a; });
+      for (var k = 0; k < deleted.length; k++) sh.deleteRow(deleted[k]);
+      revokeSessionsForEmail_(drop);
+      logAction_('merge_duplicates', keepSignup.id, 'moved=' + moved + ';deleted=' + deleted.length);
+      invalidateDataCache_();
+      return { ok: true, moved: moved, deleted: deleted.length };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
+function apiAdminDeleteStudent(cred, email) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  var norm = EsiCore.normalizeEmail(email);
+  if (!EsiCore.isInstitutionalEmail(norm)) return { ok: false, message: STUDENT_ERRORS_.email };
+  var resp = withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var rows = signupRowsByEmail_(norm);
+      if (!rows.length) return { ok: false, message: 'Ese mail no tiene inscripciones.' };
+      var sh = sheet_(SIGNUPS_SHEET);
+      rows.sort(function (a, b) { return b.row - a.row; });
+      for (var i = 0; i < rows.length; i++) sh.deleteRow(rows[i].row);
+      revokeSessionsForEmail_(norm);
+      logAction_('delete_student', rows[0].signup.id, 'rows=' + rows.length);
+      invalidateDataCache_();
+      return { ok: true, deleted: rows.length };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+  if (resp && resp.ok) {
+    try { rebuildReport_(); } catch (e) { }
+  }
+  return resp;
+}
+
+function apiAdminDeleteTestData(cred, confirmation) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  if (String(confirmation || '') !== 'BORRAR PRUEBA') return { ok: false, message: 'Confirmación inválida.' };
+  var resp = withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    try {
+      var signups = readSignups_();
+      var rows = [];
+      for (var i = 0; i < signups.length; i++) {
+        if (signups[i].prueba) rows.push({ id: signups[i].id, row: findSignupRow_(signups[i].id) });
+      }
+      rows.sort(function (a, b) { return b.row - a.row; });
+      var sh = sheet_(SIGNUPS_SHEET);
+      for (var j = 0; j < rows.length; j++) sh.deleteRow(rows[j].row);
+      logAction_('delete_test_data', '', 'rows=' + rows.length);
+      invalidateDataCache_();
+      return { ok: true, deleted: rows.length };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+  if (resp && resp.ok) {
+    try { rebuildReport_(); } catch (e) { }
+  }
+  return resp;
+}
+
+function apiAdminCloseEvent(cred) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  return withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    try {
+      writeConfig_('evento_abierto', 'cerrado');
+      var revoked = revokeAllStudentSessions_();
+      logAction_('close_event', '', 'revoked=' + revoked);
+      invalidateDataCache_();
+      return { ok: true, evento_abierto: false, revoked: revoked };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
+function apiAdminErasePersonalData(cred, confirmation) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  if (String(confirmation || '') !== 'BORRAR') return { ok: false, message: 'Confirmación inválida.' };
+  return withScriptLock_(ADMIN_LOCK_MS * 3, function () {
+    try {
+      var signups = readSignups_();
+      var byTalk = {};
+      var order = [];
+      for (var i = 0; i < signups.length; i++) {
+        var s = signups[i];
+        var key = String(s.talk_id) + '|' + String(s.slot_id) + '|' + String(s.ciclo);
+        if (!byTalk[key]) {
+          byTalk[key] = { talk_id: s.talk_id, slot_id: s.slot_id, ciclo: s.ciclo, anotados: 0, presentes: 0 };
+          order.push(key);
+        }
+        byTalk[key].anotados++;
+        if (s.presente) byTalk[key].presentes++;
+      }
+      var sessions = readSessions_();
+      var active = 0;
+      var now = Date.now();
+      for (var j = 0; j < sessions.length; j++) {
+        if (!sessions[j].revoked && sessions[j].expires > now) active++;
+      }
+      var mailsSh = sheet_(SENT_MAILS_SHEET);
+      var mailCount = Math.max(0, mailsSh.getLastRow() - 1);
+      var cfg = readConfig_();
+
+      var signupsSh = sheet_(SIGNUPS_SHEET);
+      signupsSh.clearContents();
+      var sRows = [['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes']];
+      for (var k = 0; k < order.length; k++) {
+        var r = byTalk[order[k]];
+        sRows.push([r.talk_id, r.slot_id, r.ciclo, r.anotados, r.presentes]);
+      }
+      signupsSh.getRange(1, 1, sRows.length, 5).setValues(sRows);
+
+      var sessionsSh = sessionsSheet_();
+      sessionsSh.clearContents();
+      sessionsSh.getRange(1, 1, 2, 2).setValues([['total', 'activas'], [sessions.length, active]]);
+
+      mailsSh.clearContents();
+      mailsSh.getRange(1, 1, 2, 2).setValues([['asunto', 'enviados'], [reminderSubject_(cfg), mailCount]]);
+
+      var studentsSh = SpreadsheetApp.getActive().getSheetByName(STUDENTS_SHEET);
+      if (studentsSh) {
+        studentsSh.clearContents();
+        studentsSh.getRange(1, 1, 1, 3).setValues([['email', 'nombre', 'curso']]);
+      }
+      var ss = SpreadsheetApp.getActive();
+      var backupSh = ensureSheet_(ss, BACKUP_SHEET,
+        ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
+      backupSh.clearContents();
+      backupSh.getRange(1, 1, 1, 13).setValues([['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba']]);
+
+      writeConfig_('evento_abierto', 'cerrado');
+      writeConfig_(CONFIG_DATA_ERASED, 'si');
+      logAction_('erase_personal_data', '', 'signups=' + signups.length + ';sessions=' + sessions.length + ';mails=' + mailCount);
+      invalidateDataCache_();
+      return { ok: true, signups: signups.length, sessions: sessions.length, mails: mailCount, talks: order.length };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
 }
 
 function apiAdminImportRoster(cred, text, mode) {
@@ -1997,7 +2769,9 @@ function importRosterLocked_(auth, text, mode) {
     }
     var last = sh.getLastRow();
     if (last > 1) sh.getRange(2, 1, last - 1, Math.max(5, sh.getLastColumn())).clearContent();
-    sh.getRange(1, 1, outRows.length, 5).setValues(outRows);
+    var target = sh.getRange(1, 1, outRows.length, 5);
+    target.setNumberFormat('@');
+    target.setValues(outRows);
     invalidateDataCache_();
     return {
       ok: true,
