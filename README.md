@@ -1,5 +1,7 @@
 # Jornada ESI - Inscripcion a charlas
 
+[![tests](https://github.com/Lxchoooo/esi-inscripcion-demo/actions/workflows/tests.yml/badge.svg)](https://github.com/Lxchoooo/esi-inscripcion-demo/actions/workflows/tests.yml)
+
 App para que los alumnos del Instituto Secundario Salsipuedes elijan una
 charla por franja horaria. Incluye panel de profes, asistencia, reportes,
 impresion, calendario, recordatorios por mail, correcciones manuales y
@@ -54,9 +56,10 @@ Para usar el backend real:
 8. Compartir a profes y guias la URL `<URL-/exec>?admin=1`.
 
 Si la planilla ya existia, volver a ejecutar `setup()` para crear `Log`,
-`Backup`, las columnas `presente`, `apellido`, `recordatorio` y `prueba`, y
-las claves de configuracion nuevas. `setup()` tambien instala el respaldo
-automatico cada 30 minutos si `backup_activo` esta en `si`.
+`Backup`, `Resumen`, las columnas `presente`, `apellido`, `recordatorio` y
+`prueba`, y las claves de configuracion nuevas. `setup()` tambien repara una
+`Signups` con encabezado agregado viejo e instala el respaldo automatico cada
+30 minutos si `backup_activo` esta en `si`.
 
 ## Acceso
 
@@ -123,8 +126,9 @@ ultimas 20 copias. Se activa o desactiva desde Configuracion o con
 ## Cierre y privacidad
 
 "Cerrar evento" exporta el CSV, cierra la inscripcion y revoca sesiones.
-"Borrar datos personales" exporta primero y deja solo contadores agregados:
-no conserva mails, nombres, apellidos ni sesiones. Pide escribir `BORRAR`.
+"Borrar datos personales" exporta primero y deja solo contadores agregados en
+`Resumen`: no conserva mails, nombres, apellidos ni sesiones. `Signups` queda
+con sus encabezados para poder volver a usarse. Pide escribir `BORRAR`.
 
 Se recomienda ejecutar el borrado pasados 30 dias del evento. La copia
 `Backup` tambien se limpia en ese momento. Revisar antes las obligaciones de
@@ -152,13 +156,17 @@ nice -n 19 ionice -c 3 node tests/esi-tests.js src
 nice -n 19 ionice -c 3 node tests/ui-smoke.js src
 ```
 
-CI corre los dos tests en cada push a `main`.
+CI corre los dos tests y verifica que `index.html` sea copia de `src/Panel.html`
+en cada push a `main` y en cada pull request.
 
 ## Publicar
 
 ```bash
 scripts/push.sh
 ```
+
+El script corre los tests y la comparacion de `index.html` antes de pushear.
+Para saltear ese control en una emergencia: `SKIP_TESTS=1 scripts/push.sh`.
 
 Luego revisar el workflow y Pages:
 
@@ -175,8 +183,9 @@ gh run list --limit 3
 - `Log` guarda fecha, accion, ID y detalle acotado; no guarda mails completos.
 - `Backup` guarda una copia temporal de inscripciones y se limpia al borrar
   los datos personales.
-- `Sessions`, `Signups`, `Mails`, `Log` y `Backup` se comparten solo con
-  profes autorizados.
+- `Resumen` solo tiene contadores por charla; no guarda datos personales.
+- `Sessions`, `Signups`, `Mails`, `Log`, `Backup` y `Resumen` se comparten
+  solo con profes autorizados.
 - No versionar listas, CSV, claves ni tokens.
 
 ## Estructura
