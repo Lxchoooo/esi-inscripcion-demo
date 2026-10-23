@@ -22,11 +22,14 @@ ver mails.
 
 ## Estado actual
 
-- Ronda 11 en `main`. La ronda 11 agrega validacion estricta de nombres,
-  recordatorios opt-in, remitente configurable, texto ESI con enlaces `tel:`
-  y aviso de acceso por `/exec` para profes y guias.
-- Tests locales: 111 passed, 0 failed. UI smoke: OK.
-- CI: workflow `tests` y Pages corren en cada push a `main`.
+- Ronda 12 en preparacion local, sin commit ni push. Agrega tickets de login,
+  bloqueos mas estrictos, APIs de estado y correcciones manuales, modo ensayo,
+  respaldo automatico, copia offline por charla, cierre y borrado de datos
+  personales.
+- Ronda 11 publicada en `main` sobre `8fe7643`.
+- Tests locales: 112 passed, 0 failed. UI smoke: OK.
+- CI de ronda 12 sin ejecutar. Workflow `tests` y Pages corren en cada push a
+  `main`.
 - MailApp real, descarga `.ics`, Wake Lock, offline y tacto en dispositivo
   siguen sin verificarse en un telefono real.
 - `TEXTO_DIRECCION` esta vacio: la tarjeta ESI "Por que esta jornada" queda
@@ -89,19 +92,25 @@ Resumen y bitacora compartidos:
 Hojas de Google Sheets:
 
 - `Config`: `clave`, `valor`. Claves: `evento_abierto`, `evento_fecha`,
-  `evento_zona`, `mail_remitente`.
+  `evento_zona`, `mail_remitente`, `modo_prueba`, `backup_activo` y
+  `datos_personales_borrados`.
 - `Slots`: `id`, `nombre`, `inicio`, `fin`, `orden`.
 - `Talks`: `id`, `titulo`, `ciclo`, `slot_id`, `lugar`, `cupo`, `activa`.
 - `Students`: legado. `email`, `apellido`, `nombre`, `curso`, `dni` opcional.
 - `Signups`: `id`, `ts`, `email`, `nombre`, `curso`, `ciclo`, `slot_id`,
-  `talk_id`, `presente`, `apellido`, `recordatorio`. Las ultimas columnas se
-  agregan al final.
+  `talk_id`, `presente`, `apellido`, `recordatorio`, `prueba`. Las ultimas
+  columnas se agregan al final. Si se borran datos personales, la hoja queda
+  con contadores agregados (`talk_id`, `slot_id`, `ciclo`, `anotados`,
+  `presentes`).
 - `Sessions`: hash del token, mail, nombre, apellido, curso, ciclo, emision,
   vencimiento y revocacion. Nunca guardar el token crudo.
 - `Mails`: `email`, `fecha`, `asunto`. Evita reenviar el mismo recordatorio.
+- `Log`: `fecha`, `accion`, `signup_id`, `detalle`. No guarda mails completos.
+- `Backup`: copia de `Signups` con `backup_at`; conserva 20 copias.
 
-Migraciones: solo aditivas. No borrar filas ni hojas. Si la planilla ya
-existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
+Migraciones: solo aditivas, salvo el borrado de datos personales pedido por
+un admin. Si la planilla ya existia, volver a ejecutar `setup()` crea `Mails`,
+`Log`, `Backup`, las columnas faltantes y el trigger de respaldo.
 
 ## Evento
 
@@ -124,6 +133,9 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
   línea y valores que empiecen con `=`, `+`, `-` o `@`. El nombre completo no
   supera 60. Se colapsan espacios antes de guardar. Dominio institucional
   obligatorio.
+- `apiLookupDni` no devuelve el mail: devuelve un ticket `l_` de un solo uso.
+- `apiGetData` y `apiRegister` exigen sesion o ticket si el mail ya tiene
+  inscripciones; si no, responden `needsLogin`.
 - La sesion local es solo `esi_session`, token opaco `s_` + 64 hex.
 - `apiResumeSession` reanuda. `Salir`, `Cambiar datos` y `No soy yo` revocan.
 - Vencimiento: 7 dias o 24 horas despues del evento, lo que ocurra antes.
@@ -133,16 +145,20 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
 - `ADMIN_PIN`: profe. Todo, importar, borrar, configurar, mails.
 - `GUIDE_PIN`: guia. Lee, reportes, asistencia; sin mails ni escrituras
   administrativas.
-- La clave se cambia por token de 2 horas. Cinco fallos bloquean 60 segundos.
+- La clave se cambia por token de 2 horas. Cinco fallos bloquean el acceso
+  admin 15 minutos; los intentos por DNI se bloquean 2 minutos. Los PIN son de
+  6 digitos.
 - El backend aplica permisos; la UI solo los refleja.
 
 ## Acceso de profes y guias
 
-- Entrar por la URL `/exec` del Apps Script, con `?admin=1` para el panel.
+- Entrar por la URL `/exec?admin=1` del Apps Script.
 - La clave viaja por POST con `google.script.run`; no usar `?api=` de GitHub
   Pages para administrar.
 - El login publico de Pages muestra un aviso con esta indicacion.
-- `Sessions`, `Signups` y `Mails` se comparten solo con profes autorizados.
+- Las APIs `apiAdmin*` rechazan JSONP sin `admin=1`.
+- `Sessions`, `Signups`, `Mails`, `Log` y `Backup` se comparten solo con
+  profes autorizados.
 
 ## APIs principales
 
@@ -152,9 +168,53 @@ existia, volver a ejecutar `setup()` crea `Mails` y las columnas faltantes.
   `apiAdminDeleteSignup`, `apiAdminImportRoster`, `apiAdminTalkRoster`,
   `apiAdminPending`, `apiAdminSetPresent`, `apiAdminReports`,
   `apiAdminMailPreview`, `apiAdminSendReminders`, `apiAdminGetConfig`,
-  `apiAdminSetConfig`.
+  `apiAdminSetConfig`, `apiAdminStatus`, `apiAdminDuplicates`,
+  `apiAdminAddStudent`, `apiAdminCorrectStudent`, `apiAdminMoveTalk`,
+  `apiAdminMergeDuplicates`, `apiAdminDeleteStudent`,
+  `apiAdminDeleteTestData`, `apiAdminCloseEvent`,
+  `apiAdminErasePersonalData`.
 - Todas devuelven objetos con `ok` y `message` cuando fallan.
 - Los cambios de datos invalidan la cache. TTL de cache: 12 segundos.
+
+## Correcciones manuales
+
+- Solo admin. Agregar exige mail institucional, nombre, apellido, curso y al
+  menos una charla; respeta ciclo, cupo, un horario por alumno y duplicados.
+- Corregir actualiza `Signups`, `Sessions` y `Students` sin cambiar el mail.
+- Mover solo permite otra charla del mismo horario, activa, con cupo y ciclo
+  correcto.
+- Fusionar conserva un mail, mueve las charlas sin choque de horario y
+  descarta los horarios repetidos; revoca la sesion del mail descartado.
+- Borrar alumno elimina todas sus filas y revoca su sesion.
+- `Log` registra fecha, accion e ID, sin mails completos.
+
+## Respaldo y offline
+
+- `backup_activo=si` copia `Signups` a `Backup` cada 30 minutos y conserva 20
+  copias. `setup()` instala el trigger; `apiAdminSetConfig` lo activa o
+  desactiva.
+- La pestana Por charla guarda una copia local sin mails. Si falla la red,
+  muestra "Sin conexion, datos de hace X minutos" y permite seguir marcando.
+- La cola `esi_mark_queue` sigue guardando solo ID y estado.
+
+## Modo ensayo
+
+- `modo_prueba=si` marca las inscripciones nuevas con `prueba=true`.
+- La franja "MODO ENSAYO" se muestra en todas las pantallas.
+- "Borrar datos de prueba" exige `BORRAR PRUEBA`, borra solo filas de ensayo y
+  muestra el conteo. No toca datos reales.
+
+## Cierre y privacidad
+
+- "Cerrar evento" exporta CSV, cierra la inscripcion y revoca sesiones.
+- "Borrar datos personales" exporta CSV y deja solo contadores agregados; pide
+  `BORRAR`, cierra el evento y marca `datos_personales_borrados`.
+- Limpia `Signups`, `Sessions`, `Mails`, `Students` y `Backup`; conserva
+  contadores por charla.
+- Recomendacion: ejecutarlo pasados 30 dias del evento, revisando antes las
+  obligaciones de guarda de la escuela.
+- Riesgo residual: el token de alumno viaja por JSONP y los mails nuevos sin
+  padron siguen siendo autodeclarados.
 
 ## Reportes
 
