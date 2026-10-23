@@ -6,9 +6,17 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   panel:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,3 +26,5 @@ jobs:
         run: node tests/esi-tests.js src
       - name: Smoke de interfaz
         run: node tests/ui-smoke.js src
+      - name: Copia publicada
+        run: cmp src/Panel.html index.html
