@@ -22,14 +22,14 @@ ver mails.
 
 ## Estado actual
 
-- Ronda 12 en preparacion local, sin commit ni push. Agrega tickets de login,
-  bloqueos mas estrictos, APIs de estado y correcciones manuales, modo ensayo,
-  respaldo automatico, copia offline por charla, cierre y borrado de datos
-  personales.
-- Ronda 11 publicada en `main` sobre `8fe7643`.
-- Tests locales: 112 passed, 0 failed. UI smoke: OK.
-- CI de ronda 12 sin ejecutar. Workflow `tests` y Pages corren en cada push a
-  `main`.
+- Ronda 12 publicada en `main`. Agrega tickets de login, bloqueos mas
+  estrictos, APIs de estado y correcciones manuales, modo ensayo, respaldo
+  automatico, copia offline por charla, cierre y borrado de datos personales.
+- Commits: `01e90ae feat: reforzar acceso y agregar herramientas de evento` y
+  `72e1941 docs: documentar la ronda 12 y el borrado de datos`.
+- Ronda 11 publicada sobre `8fe7643`.
+- Tests: 112 passed, 0 failed. UI smoke: OK. CI `tests` y Pages verdes sobre
+  `72e1941`.
 - MailApp real, descarga `.ics`, Wake Lock, offline y tacto en dispositivo
   siguen sin verificarse en un telefono real.
 - `TEXTO_DIRECCION` esta vacio: la tarjeta ESI "Por que esta jornada" queda
