@@ -1291,7 +1291,8 @@
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     function lsGet(key) {
@@ -1376,6 +1377,22 @@
         var e = normalizeEmail(email);
         return isValidEmail(e) && e.slice(e.indexOf('@')) === '@secundariosalsipuedes.edu.ar';
       }
+      var NAME_RE_ = /^[A-Za-zÀ-ÖØ-öø-ÿ' \u2019-]+$/;
+      var NAME_LETTER_RE_ = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
+
+      function sanitizeName(value) {
+        return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+      }
+
+      function isValidName(value) {
+        var raw = String(value == null ? '' : value);
+        if (/[\r\n\t]/.test(raw)) return false;
+        var name = sanitizeName(raw);
+        if (name.length < 2 || name.length > 60) return false;
+        if (!NAME_RE_.test(name) || !NAME_LETTER_RE_.test(name)) return false;
+        return !/^['\u2019-]|['\u2019-]$/.test(name);
+      }
+
       function normalizeDni(value) {
         return String(value == null ? '' : value).replace(/\D/g, '');
       }
@@ -1393,15 +1410,18 @@
       function validateStudentInput(email, nombre, curso, apellido) {
         var e = normalizeEmail(email);
         if (!isValidEmail(e)) return { ok: false, error: 'email' };
-        var n = String(nombre == null ? '' : nombre).replace(/\s+/g, ' ').trim();
-        var ap = String(apellido == null ? '' : apellido).replace(/\s+/g, ' ').trim();
-        if (n.length < 2 || n.length > 60) return { ok: false, error: 'nombre' };
-        if (ap && (ap.length < 2 || ap.length > 60)) return { ok: false, error: 'apellido' };
+        if (!isValidName(nombre)) return { ok: false, error: 'nombre' };
+        if (apellido != null && String(apellido).trim() && !isValidName(apellido)) {
+          return { ok: false, error: 'apellido' };
+        }
+        var n = sanitizeName(nombre);
+        var ap = sanitizeName(apellido);
         var ciclo = cicloFromCurso(curso);
         if (!ciclo) return { ok: false, error: 'curso' };
         var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
         var completa = n;
         if (ap && normalizeText(n).slice(-normalizeText(ap).length) !== normalizeText(ap)) completa = n + ' ' + ap;
+        if (completa.length > 60) return { ok: false, error: 'nombre' };
         return {
           ok: true,
           email: e,
@@ -1616,6 +1636,11 @@
       }
       return {
         normalizeText: normalizeText,
+        esc: esc,
+        sanitizeName: sanitizeName,
+        isValidName: isValidName,
+        csvCell: aCsvCell,
+        icsEscape: sIcsEscape_,
         normalizeEmail: normalizeEmail,
         isValidEmail: isValidEmail,
         isInstitutionalEmail: isInstitutionalEmail,
@@ -1634,8 +1659,8 @@
 
     var STUDENT_MSG = {
       email: 'Escribí tu mail institucional.',
-      nombre: 'Escribí tu nombre.',
-      apellido: 'Escribí tu apellido.',
+      nombre: 'Escribí tu nombre con letras, espacios, apóstrofe o guion.',
+      apellido: 'Escribí tu apellido con letras, espacios, apóstrofe o guion.',
       curso: 'Elegí año y división.',
       notInRoster: 'Ese mail no está en la lista.'
     };
@@ -2850,7 +2875,12 @@
     }
 
     function sIcsEscape_(text) {
-      return String(text == null ? '' : text).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+      return String(text == null ? '' : text)
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\r\n|\r|\n/g, '\\n');
     }
 
     function sBuildIcs_() {
@@ -4659,7 +4689,8 @@
 
     function aCsvCell(v) {
       var s = String(v == null ? '' : v);
-      if (s.indexOf(';') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) {
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      if (s.indexOf(';') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
         return '"' + s.replace(/"/g, '""') + '"';
       }
       return s;
