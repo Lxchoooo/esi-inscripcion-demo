@@ -494,6 +494,12 @@
     .sheet-meta { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
     .sheet-talk { margin: 6px 0 4px; font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; }
     .sheet-seats { margin: 0 0 12px; color: var(--accent-strong); font-size: 13px; font-weight: 600; }
+    .sheet-check {
+      display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 0;
+      padding: 12px; border: 1px solid var(--line); border-radius: 12px;
+      font-size: 14px; line-height: 1.4; cursor: pointer;
+    }
+    .sheet-check input { width: 20px; height: 20px; margin: 1px 0 0; flex: 0 0 auto; accent-color: var(--accent); }
     .sheet-warn {
       margin: 12px 0 2px; padding: 11px 13px;
       background: var(--warn-soft); border: 1px solid var(--warn-line);
@@ -1093,6 +1099,7 @@
         <div class="config-grid">
           <label for="cfg-fecha">Fecha<input id="cfg-fecha" type="date" autocomplete="off"></label>
           <label for="cfg-zona">Zona horaria<input id="cfg-zona" type="text" spellcheck="false" placeholder="America/Argentina/Cordoba"></label>
+          <label for="cfg-remitente">Remitente de los mails<input id="cfg-remitente" type="email" autocomplete="off" placeholder="Opcional: recordatorios@secundariosalsipuedes.edu.ar"></label>
         </div>
         <button id="btn-save-config" class="btn secondary small" type="button">Guardar configuración</button>
         <div id="cfg-msg" class="banner"></div>
@@ -1348,7 +1355,7 @@
 
     function sEmptyState_() {
       return {
-        email: '', nombre: '', apellido: '', curso: '',
+        email: '', nombre: '', apellido: '', curso: '', recordatorio: false,
         needsNombre: false, needsApellido: false, needsCurso: false,
         data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
         student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
@@ -1854,7 +1861,8 @@
       try { saved = JSON.parse(lsGet('esi_demo_event') || 'null'); } catch (e) { }
       return {
         fecha: (saved && saved.fecha) || EVENT_DATE,
-        zona: (saved && saved.zona) || EVENT_TZ
+        zona: (saved && saved.zona) || EVENT_TZ,
+        remitente: (saved && saved.remitente) || ''
       };
     }
     function demoAdminSetConfig(cred, values) {
@@ -1868,6 +1876,11 @@
         ev.fecha = m[1] + '-' + (m[2].length < 2 ? '0' + m[2] : m[2]) + '-' + (m[3].length < 2 ? '0' + m[3] : m[3]);
       }
       if (v.evento_zona) ev.zona = String(v.evento_zona).trim();
+      if (v.mail_remitente != null) {
+        var sender = String(v.mail_remitente).trim().toLowerCase();
+        if (sender && !EsiClient.isValidEmail(sender)) return { ok: false, message: 'Remitente inválido. Usá un mail completo.' };
+        ev.remitente = sender;
+      }
       lsSet('esi_demo_event', JSON.stringify(ev));
       return { ok: true, evento_abierto: demoOpen(), event: ev };
     }
@@ -1920,6 +1933,14 @@
       if (!EsiClient.isInstitutionalEmail(norm)) return { ok: false, error: 'email' };
       return EsiClient.validateStudentInput(norm, nombre || '', curso || '', apellido || '');
     }
+    function demoOptIn_(email) {
+      var key = EsiClient.normalizeEmail(email);
+      var signups = demoSignups();
+      for (var i = 0; i < signups.length; i++) {
+        if (signups[i].emailKey === key && signups[i].recordatorio) return true;
+      }
+      return false;
+    }
     function demoMine(email) {
       var key = EsiClient.normalizeEmail(email);
       var m = {};
@@ -1963,6 +1984,7 @@
           ciclo: s.ciclo,
           slot_id: Number(talk.slot_id),
           talk_id: String(talkId),
+          recordatorio: demoOptIn_(s.email),
           emailKey: s.emailKey
         });
         message = 'Listo, quedaste anotado.';
@@ -1988,6 +2010,7 @@
     }
     function demoAdminData(role) {
       var admin = !role || role === 'admin';
+      var ev = demoEvent();
       var signups = demoSignups();
       var counts = {};
       for (var i = 0; i < signups.length; i++) {
@@ -2037,7 +2060,8 @@
         signups: out,
         total: out.length,
         porCiclo: porCiclo,
-        event: demoEvent()
+        event: demoEvent(),
+        mail_remitente: ev.remitente || ''
       };
     }
     function demoLookupResponse_(ok, entry, rosterLoaded, message) {
@@ -2440,6 +2464,7 @@
           order.push(key);
         }
         by[key].bySlot[Number(signups[i].slot_id)] = signups[i];
+        if (signups[i].recordatorio) by[key].recordatorio = true;
         if (!by[key].nombre) by[key].nombre = signups[i].nombre || '';
         if (!by[key].apellido) by[key].apellido = signups[i].apellido || '';
         if (!by[key].curso) by[key].curso = signups[i].curso || '';
@@ -2447,6 +2472,7 @@
       var rows = [];
       for (var j = 0; j < order.length; j++) {
         var r = by[order[j]];
+        if (!r.recordatorio) continue;
         rows.push({
           email: r.email,
           nombre: demoGiven_(r.nombre || 'Alumno', r.apellido),
@@ -2477,7 +2503,7 @@
         ok: true, total: rows.length, pending: rows.length, dedup: true,
         subject: 'Recordatorio: ' + EVENT_NAME + ' del ' + aDateLabel_(EVENT_DATE),
         sample: sample ? { nombre: sample.nombre, curso: sample.curso, body: demoReminderBody_(sample) } : null,
-        quota: 100, batchSize: 20, event: demoEvent()
+        quota: 100, batchSize: 20, event: demoEvent(), from: demoEvent().remitente || ''
       };
     }
     function demoCall(fn, args) {
@@ -2497,6 +2523,7 @@
           ok: true,
           student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
           data: demoPublicData(s.ciclo, demoMine(s.email)),
+          recordatorio: demoOptIn_(s.email),
           session: session
         });
       }
@@ -2509,12 +2536,27 @@
           ok: true,
           email: resumed.email,
           student: { email: resumed.email, nombre: resumed.nombre, apellido: resumed.apellido, curso: resumed.curso, ciclo: resumed.ciclo },
-          data: demoPublicData(resumed.ciclo, demoMine(resumed.email))
+          data: demoPublicData(resumed.ciclo, demoMine(resumed.email)),
+          recordatorio: demoOptIn_(resumed.email)
         });
       }
       if (fn === 'apiStudentLogout') {
         delete DEMO_SESSIONS[String(a[0] || '')];
         return Promise.resolve({ ok: true });
+      }
+      if (fn === 'apiSetReminder') {
+        var remSess = demoSession_(a[0]);
+        if (!remSess) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
+        var remKey = EsiClient.normalizeEmail(remSess.email);
+        var remSignups = demoSignups();
+        var remUpdated = 0;
+        for (var ri = 0; ri < remSignups.length; ri++) {
+          if (EsiClient.normalizeEmail(remSignups[ri].email) !== remKey) continue;
+          remSignups[ri].recordatorio = !!a[1];
+          remUpdated++;
+        }
+        demoWrite('esi_demo_signups', remSignups);
+        return Promise.resolve({ ok: true, recordatorio: !!a[1], updated: remUpdated });
       }
       if (fn === 'apiRegister') return demoRegister(a[0], a[1], a[2], a[3], a[4]);
       if (fn === 'apiAdminLogin') {
@@ -2550,7 +2592,7 @@
       if (fn === 'apiAdminReports') return Promise.resolve(demoReports(demoRole_(a[0])));
       if (fn === 'apiAdminGetConfig') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
-        return Promise.resolve({ ok: true, evento_abierto: demoOpen(), event: demoEvent() });
+        return Promise.resolve({ ok: true, evento_abierto: demoOpen(), event: demoEvent(), mail_remitente: demoEvent().remitente || '' });
       }
       if (fn === 'apiAdminSetConfig') return Promise.resolve(demoAdminSetConfig(a[0], a[1]));
       if (fn === 'apiAdminMailPreview') {
@@ -3000,11 +3042,22 @@
           + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
       }
       lines += '<button id="btn-ics-confirm" class="btn secondary full" type="button" style="margin-top:12px">Agregar a mi calendario</button>';
+      lines += '<label class="sheet-check"><input type="checkbox" id="chk-recordatorio"'
+        + (sState.recordatorio ? ' checked' : '') + '>'
+        + '<span>Quiero recibir un mail de recordatorio</span></label>';
       openSheet({
         title: 'Tus charlas',
         body: lines,
         confirm: 'Confirmar',
         onConfirm: function () {
+          var wants = !!($('chk-recordatorio') && $('chk-recordatorio').checked);
+          sState.recordatorio = wants;
+          var token = sSessionToken_();
+          if (token) {
+            call('apiSetReminder', [token, wants]).catch(function () {
+              toast('No se pudo guardar la preferencia de mail.', 'err');
+            });
+          }
           toast('Listo, quedaste anotado.', 'ok');
         }
       });
@@ -3044,6 +3097,7 @@
           sState.busy = false;
           if (resp.data) sState.data = resp.data;
           if (resp.student) sState.student = resp.student;
+          if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
           toast(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
           if (resp.ok) sRenderChange(slotId, prevId, talkId);
           else sRender();
@@ -3095,6 +3149,7 @@
             sState.apellido = resp.student.apellido || '';
             sState.curso = resp.student.curso;
             sState.data = resp.data;
+            sState.recordatorio = !!resp.recordatorio;
             sSetSession_(resp.session || savedToken);
             sBanner('');
             showScreen(S_SCREENS, 's-screen-panel');
@@ -3395,6 +3450,7 @@
               sState.apellido = resp.student.apellido || '';
               sState.curso = resp.student.curso;
               sState.data = resp.data;
+              sState.recordatorio = !!resp.recordatorio;
               sBanner('');
               showScreen(S_SCREENS, 's-screen-panel');
               sRender();
@@ -3758,9 +3814,10 @@
           if (!resp.ok) { aMailMsg_(resp.message || 'No se pudo preparar el recordatorio.', 'err'); return; }
           aMailPreview = resp;
           var pending = resp.pending == null ? resp.total : resp.pending;
-          var meta = pending + ' pendientes de ' + resp.total + ' destinatarios. ';
+          var meta = pending + ' pendientes de ' + resp.total + ' destinatarios con recordatorio. ';
           if (!resp.dedup) meta += 'Falta la hoja Mails: ejecutá setup(). ';
-          meta += resp.quota < 0 ? 'El envío no está disponible en este entorno.' : 'Cuota disponible: ' + resp.quota + ' mails.';
+          meta += resp.quota < 0 ? 'El envío no está disponible en este entorno.' : 'Cuota restante: ' + resp.quota + ' mails.';
+          if (resp.from) meta += ' Remitente: ' + resp.from + '.';
           $('mail-preview-meta').textContent = meta;
           var body = $('mail-preview-body');
           body.textContent = resp.sample ? resp.sample.body : 'Todavía no hay alumnos anotados.';
@@ -4380,6 +4437,7 @@
         var evCfg = d.event || { fecha: EVENT_DATE, zona: EVENT_TZ };
         $('cfg-fecha').value = evCfg.fecha || EVENT_DATE;
         $('cfg-zona').value = evCfg.zona || EVENT_TZ;
+        if ($('cfg-remitente')) $('cfg-remitente').value = d.mail_remitente || '';
         aConfigLoaded = true;
       }
       var tb = $('a-toggle-box');
@@ -4742,14 +4800,19 @@
       if (btn) btn.disabled = true;
       call('apiAdminSetConfig', [adminCred, {
         evento_fecha: $('cfg-fecha').value,
-        evento_zona: $('cfg-zona').value
+        evento_zona: $('cfg-zona').value,
+        mail_remitente: $('cfg-remitente') ? $('cfg-remitente').value : ''
       }]).then(function (resp) {
         if (btn) btn.disabled = false;
         if (!resp.ok) {
           if (msg) { msg.textContent = resp.message || 'No se pudo guardar.'; msg.className = 'banner err'; msg.style.display = 'block'; }
           return;
         }
-        if (aData) { aData.event = resp.event; aData.evento_abierto = resp.evento_abierto; }
+        if (aData) {
+          aData.event = resp.event;
+          aData.evento_abierto = resp.evento_abierto;
+          aData.mail_remitente = resp.mail_remitente || '';
+        }
         aConfigLoaded = false;
         aRender();
         if (msg) { msg.textContent = 'Configuración guardada.'; msg.className = 'banner ok'; msg.style.display = 'block'; }
