@@ -1025,6 +1025,24 @@ t('Code.gs guide payload has no signup list', () => {
   assertEq(adminData.signups[0].email, 'ana@secundariosalsipuedes.edu.ar', 'admin sees the mails');
 });
 
+t('Code.gs counts unique students separately from reservations', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  reportSeed(services);
+  const api = backendApi(services, 'apiAdminGetData, apiAdminStatus');
+  const admin = api.apiAdminGetData('1111');
+  assertEq(admin.total, 6, 'admin sees reservations');
+  assertEq(admin.studentCount, 3, 'admin sees unique students');
+  assertEq(admin.porCiclo.basico, 3, 'cycle counts unique students');
+  const guide = api.apiAdminGetData('2222');
+  assertEq(guide.total, 6, 'guide sees reservation total');
+  assertEq(guide.studentCount, 3, 'guide sees unique students');
+  assertEq(guide.signups.length, 0, 'guide still gets no list');
+  if (JSON.stringify(guide).indexOf('@') >= 0) throw new Error('guide totals leak a mail');
+  const status = api.apiAdminStatus('1111');
+  assertEq(status.total, 6, 'status reservations');
+  assertEq(status.student_count, 3, 'status unique students');
+});
+
 t('Code.gs lookup accepts an institutional mail without a roster', () => {
   const services = backendStub({});
   services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], []);
@@ -1629,8 +1647,8 @@ t('Panel demo backend: reports for admin and guide', () => {
 t('Reports hide mails for guides even if the payload leaks one', () => {
   if (!/showMail = aRole === 'admin'/.test(panelSrc)) throw new Error('course report is not role aware');
   if (!/showMailTalk = aRole === 'admin'/.test(panelSrc)) throw new Error('talk report is not role aware');
-  if (!/showMail && st\.email/.test(panelSrc)) throw new Error('course mail is not gated');
-  if (!/showMailTalk && st\.email/.test(panelSrc)) throw new Error('talk mail is not gated');
+  if (!/aStudentNameHtml_\(st, 'row-name', showMail\)/.test(panelSrc)) throw new Error('course mail is not gated');
+  if (!/aStudentNameHtml_\(st, 'row-name', showMailTalk\)/.test(panelSrc)) throw new Error('talk mail is not gated');
 });
 
 t('Report tables turn into cards on narrow screens', () => {

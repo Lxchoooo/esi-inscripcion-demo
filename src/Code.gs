@@ -2164,8 +2164,15 @@ function apiAdminGetData(cred) {
       };
     }) : [];
     var porCiclo = { basico: 0, orientado: 0 };
-    for (var c = 0; c < signups.length; c++) {
-      if (porCiclo[signups[c].ciclo] != null) porCiclo[signups[c].ciclo]++;
+    var vistos = {};
+    var studentCount = 0;
+    for (var c = 0; c < signupsRaw.length; c++) {
+      var alumno = signupsRaw[c];
+      var clave = alumno.emailKey || EsiCore.normalizeEmail(alumno.email);
+      if (!clave || vistos[clave]) continue;
+      vistos[clave] = true;
+      studentCount++;
+      if (porCiclo[alumno.ciclo] != null) porCiclo[alumno.ciclo]++;
     }
     var talksOut = talks.map(function (t) {
       return {
@@ -2191,7 +2198,8 @@ function apiAdminGetData(cred) {
       }),
       talks: talksOut,
       signups: signups,
-      total: signups.length,
+      total: signupsRaw.length,
+      studentCount: studentCount,
       testCount: admin ? signupsRaw.filter(function (x) { return !!x.prueba; }).length : 0,
       data_erased: convertBool_(cfg[CONFIG_DATA_ERASED]),
       porCiclo: porCiclo,
@@ -2219,6 +2227,14 @@ function apiAdminStatus(cred) {
     for (var j = 0; j < sessions.length; j++) {
       if (!sessions[j].revoked && sessions[j].expires > now) active++;
     }
+    var vistos = {};
+    var studentCount = 0;
+    for (var k = 0; k < signups.length; k++) {
+      var clave = signups[k].emailKey || EsiCore.normalizeEmail(signups[k].email);
+      if (!clave || vistos[clave]) continue;
+      vistos[clave] = true;
+      studentCount++;
+    }
     return {
       ok: true,
       role: auth.role,
@@ -2226,6 +2242,7 @@ function apiAdminStatus(cred) {
       evento_abierto: isOpen_(cfg),
       last_signup: last ? new Date(last).toISOString() : '',
       total: signups.length,
+      student_count: studentCount,
       active_sessions: active,
       mail_quota: mailQuota_(),
       test_count: signups.filter(function (x) { return !!x.prueba; }).length,

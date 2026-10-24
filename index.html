@@ -521,6 +521,15 @@
       color: var(--warn); border-radius: 10px;
       font-size: 13px; font-weight: 600;
     }
+    .mail-detail { display: grid; gap: 6px; }
+    .mail-detail-name { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+    .mail-detail-label { margin: 10px 0 0; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .mail-detail-address {
+      display: block; padding: 12px; border: 1px solid var(--line);
+      border-radius: 10px; background: var(--surface-2);
+      font: 600 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow-wrap: anywhere; user-select: all; -webkit-user-select: all;
+    }
     .sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 16px; }
     .sheet-actions .btn { margin: 0; }
 
@@ -602,6 +611,19 @@
     .config-grid input { margin-top: 4px; }
     .config-grid .check-row { display: flex; align-items: center; gap: 8px; font-weight: 600; }
     .config-grid .check-row input { margin: 0; }
+    .config-card summary, .danger-card summary {
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      margin: -4px 0 2px; cursor: pointer; list-style: none;
+      font-size: 16px; font-weight: 700;
+    }
+    .config-card summary::-webkit-details-marker, .danger-card summary::-webkit-details-marker { display: none; }
+    .config-card summary::after, .danger-card summary::after {
+      content: '+'; margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1;
+    }
+    .config-card[open] summary::after, .danger-card[open] summary::after { content: '−'; }
+    .summary-hint { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+    .danger-card { border-color: var(--danger-line); }
+    .danger-card summary { color: var(--danger); }
     .mail-preview {
       white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 12px;
       padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
@@ -615,14 +637,27 @@
     @media (max-width: 719px) {
       body.admin #pane-charla .filters { position: sticky; top: 0; z-index: 20; background: var(--paper); padding: 8px 0; }
     }
-    .roster-who { display: block; flex: 1 1 100%; min-width: 0; }
-    .roster-name, .row-name, .t-title { min-width: 0; overflow-wrap: anywhere; }
-    .roster-name { font-weight: 600; }
-    .roster-mail, .row-mail {
-      display: block; width: 100%; color: var(--muted); font-size: 11.5px;
-      overflow-wrap: anywhere; text-overflow: ellipsis;
+    .roster-who { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
+    .student-avatar {
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+      width: 34px; height: 34px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent-strong);
+      font-size: 12px; font-weight: 800; letter-spacing: .02em;
     }
-    .row-name { display: block; font-weight: 600; text-overflow: ellipsis; }
+    .roster-name, .row-name, .t-title { min-width: 0; overflow-wrap: anywhere; }
+    .roster-name, .row-name { font-weight: 600; }
+    .student-mail-btn {
+      display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+      padding: 2px 0; border: 0; background: none; color: inherit;
+      font: inherit; text-align: left; cursor: pointer;
+    }
+    .student-mail-btn:focus-visible { outline: none; border-radius: 4px; box-shadow: 0 0 0 3px var(--accent); }
+    .student-name-text { min-width: 0; overflow-wrap: anywhere; }
+    .mail-cue {
+      flex: 0 0 auto; padding: 1px 6px; border: 1px solid var(--accent-line);
+      border-radius: 999px; color: var(--accent-strong); background: var(--accent-soft);
+      font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+    }
     .roster-curso { color: var(--muted); font-size: 13px; }
     .roster-faltan { margin-left: auto; color: var(--danger); font-size: 12.5px; font-weight: 700; }
     .present-btn {
@@ -680,7 +715,7 @@
     #a-screen-gate .card { margin: clamp(24px, 8dvh, 64px) auto; }
     #a-screen-gate .intro { margin-bottom: 24px; }
     #a-cupos h3:first-child { margin-top: 0; }
-    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin-bottom: 12px; }
     .stat { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
     .stat-num { display: block; font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
     .stat-label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -836,12 +871,8 @@
       }
       body.admin #charla-list .roster-row:last-child,
       body.admin #pend-list .roster-row:last-child { border-bottom: 0; }
-      body.admin .roster-who { display: flex; align-items: baseline; gap: 10px; flex: 1 1 auto; }
+      body.admin .roster-who { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; }
       body.admin .roster-name { flex: 0 1 auto; }
-      body.admin .roster-mail {
-        display: inline; width: auto; flex: 1 1 34%;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
       body.admin .roster-curso { flex: 0 0 90px; }
       body.admin .present-btn { order: 3; flex: 0 0 auto; }
       body.admin .roster-faltan { margin-left: 0; flex: 0 0 auto; }
@@ -855,9 +886,11 @@
     .corr-form .hint-line { margin: 0; }
     .corr-dup { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; margin: 10px 0; }
     .corr-dup h4 { margin: 0 0 6px; font-size: 14px; }
-    .corr-dup ul { margin: 0 0 10px; padding-left: 18px; font-size: 13px; }
-    .corr-dup li { margin: 3px 0; }
+    .corr-dup ul, .corr-dup ol { margin: 0 0 10px; padding-left: 20px; font-size: 13px; }
+    .corr-dup li { margin: 5px 0; overflow-wrap: anywhere; }
+    .corr-dup .dup-where { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
     .corr-dup .btn { margin: 4px 6px 0 0; }
+    #sheet-body { overflow-wrap: anywhere; }
     .estado-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
     .estado-item { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; }
     .estado-item b { display: block; font-size: 20px; }
@@ -1224,8 +1257,8 @@
         <div id="a-msg" class="banner"></div>
       </div>
 
-      <div class="card admin-only" id="a-config-card">
-        <h3>Configuración del evento</h3>
+      <details class="card admin-only config-card" id="a-config-card">
+        <summary>Configuración del evento<span class="summary-hint">Fecha, zona, mails y respaldo</span></summary>
         <div class="config-grid">
           <label for="cfg-fecha">Fecha<input id="cfg-fecha" type="date" autocomplete="off"></label>
           <label for="cfg-zona">Zona horaria<input id="cfg-zona" type="text" spellcheck="false" placeholder="America/Argentina/Cordoba"></label>
@@ -1236,7 +1269,7 @@
         <p class="hint-line">El modo ensayo marca las inscripciones nuevas como datos de prueba.</p>
         <button id="btn-save-config" class="btn secondary small" type="button">Guardar configuración</button>
         <div id="cfg-msg" class="banner"></div>
-      </div>
+      </details>
 
       <div class="admin-actions top">
         <button id="btn-copiar-link" class="btn secondary small admin-only" type="button">Copiar link</button>
@@ -1248,11 +1281,11 @@
 
       <div class="tabs" role="tablist" aria-label="Panel">
         <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">Por charla</button>
-        <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend">Incompletos</button>
+        <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend">Faltan charlas</button>
         <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes">Reportes</button>
         <button id="tab-estado" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-estado">Estado</button>
         <button id="tab-inscriptos" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos">Inscriptos</button>
-        <button id="tab-mails" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Lista de mails</button>
+        <button id="tab-mails" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Accesos y mails</button>
         <button id="tab-corr" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-corr">Correcciones</button>
       </div>
 
@@ -1330,6 +1363,10 @@
             <select id="filter-division" aria-label="División"></select>
             <select id="filter-charla" aria-label="Charla"></select>
           </div>
+          <div class="view-head">
+            <span class="view-count" id="a-table-count">0 reservas</span>
+            <span class="hint-line">Cada fila es una reserva; un alumno puede tener hasta tres.</span>
+          </div>
           <div id="a-table"></div>
         </div>
       </div>
@@ -1347,8 +1384,8 @@
           <div id="corr-msg" class="banner"></div>
           <div id="corr-out"></div>
         </div>
-        <div class="card">
-          <h3>Datos de prueba y cierre</h3>
+        <details class="card danger-card">
+          <summary>Datos de prueba y cierre<span class="summary-hint">Acciones irreversibles</span></summary>
           <p class="hint-line">El cierre exporta el CSV antes de cerrar. El borrado de datos personales deja solo contadores.</p>
           <div class="toolbar">
             <button id="btn-test-del" class="btn red small" type="button">Borrar datos de prueba</button>
@@ -1357,14 +1394,15 @@
             <button id="btn-guide" class="btn secondary small" type="button">Imprimir guía rápida</button>
           </div>
           <div id="danger-msg" class="banner"></div>
-        </div>
+        </details>
       </div>
 
       <div id="pane-mails" class="tabpanel" role="tabpanel" aria-labelledby="tab-mails" hidden>
         <div class="card">
-          <h3>Lista de mails</h3>
+          <h3>Lista base de alumnos</h3>
           <div class="totals" id="a-roster-info"></div>
-          <label class="sr-only" for="ta-roster">Lista de mails</label>
+          <p class="hint-line">Estos mails habilitan el ingreso por DNI y alimentan los recordatorios. No es la lista de inscriptos.</p>
+          <label class="sr-only" for="ta-roster">Lista base de alumnos</label>
           <textarea id="ta-roster" rows="6" placeholder="mail;apellido;nombre;curso;dni"></textarea>
           <p class="hint-line">Una línea por alumno. El DNI es opcional y va al final. También sirve mail;nombre completo;curso.</p>
           <div class="toolbar" style="margin-top:10px">
@@ -4340,7 +4378,7 @@
       var focusId = focusEl && focusEl.getAttribute ? focusEl.getAttribute('data-id') : '';
       var q = ($('input-buscar-charla') ? $('input-buscar-charla').value : '').replace(/\s+/g, ' ').trim().toLowerCase();
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
-      $('charla-count').textContent = d.count + ' de ' + d.talk.cupo;
+      $('charla-count').textContent = d.count + ' de ' + d.talk.cupo + ' lugares';
       var presentesEl = $('charla-presentes');
       if (presentesEl) presentesEl.textContent = 'Presentes ' + (d.presentes || 0) + ' de ' + d.count;
       var rows = '';
@@ -4354,13 +4392,12 @@
         if (aTalkFilter === 'absent' && st.presente) continue;
         if (q && aSearch_(st).indexOf(q) < 0) continue;
         shown++;
-        var stMail = aRole === 'admin' && st.email ? '<span class="roster-mail">' + esc(st.email) + '</span>' : '';
         rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '">'
           + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
           + ' data-id="' + esc(st.id) + '" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
           + ' aria-label="Marcar presente a ' + esc(aDisplay_(st, false)) + '">Presente</button>'
-          + '<span class="roster-who"><span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
-          + stMail + '</span>'
+          + '<span class="roster-who">' + aAvatarHtml_(st)
+          + aStudentNameHtml_(st, 'roster-name', aRole === 'admin') + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '</div>';
       }
@@ -4474,7 +4511,8 @@
       var q = ($('input-buscar-pend') ? $('input-buscar-pend').value : '').replace(/\s+/g, ' ').trim().toLowerCase();
       var fCurso = $('filter-curso-pend') ? $('filter-curso-pend').value : '';
       var fDiv = $('filter-division-pend') ? $('filter-division-pend').value : '';
-      $('pend-count').textContent = d.pending + ' incompletos de ' + d.total;
+      $('pend-count').textContent = d.pending + (d.pending === 1 ? ' alumno' : ' alumnos')
+        + ' con charlas pendientes de ' + d.total;
       var rows = '';
       var shown = 0;
       var cursos = {};
@@ -4491,10 +4529,9 @@
         if (fDiv && (!pc || pc.slice(2) !== fDiv)) continue;
         if (q && aSearch_(st).indexOf(q) < 0) continue;
         shown++;
-        var pendMail = aRole === 'admin' && st.email ? '<span class="roster-mail">' + esc(st.email) + '</span>' : '';
         rows += '<div class="roster-row">'
-          + '<span class="roster-who"><span class="roster-name">' + esc(aDisplay_(st, false)) + '</span>'
-          + pendMail + '</span>'
+          + '<span class="roster-who">' + aAvatarHtml_(st)
+          + aStudentNameHtml_(st, 'roster-name', aRole === 'admin') + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '<span class="roster-faltan">Falta ' + esc(st.faltan.join(' y ')) + '</span>'
           + '</div>';
@@ -4504,7 +4541,7 @@
       if (fCurso) $('filter-curso-pend').value = fCurso;
       if (fDiv) $('filter-division-pend').value = fDiv;
       if (!d.students.length) {
-        rows = '<div class="empty-state"><p class="es-title">No hay inscripciones incompletas.</p></div>';
+        rows = '<div class="empty-state"><p class="es-title">No hay alumnos con charlas pendientes.</p></div>';
       } else if (!shown) {
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
@@ -4634,13 +4671,13 @@
         html += chartDonut_(present, Math.max(0, total - present), 'Asistencia en ' + course.curso);
         html += chartBars_((d.courses || []).map(function (c) {
           return { label: c.curso, value: c.roster };
-        }), 'Inscriptos por curso');
+        }), 'Alumnos por curso');
       } else {
         html += chartDonut_(t.present, t.absent, 'Asistencia general');
         html += chartBars_((t.presentBySlot || []).map(function (x) {
           return { label: x.slot + ' · ' + x.label, value: x.presentes, max: x.total };
         }), 'Presentes por franja');
-        html += chartDonut_((t.byCiclo || {}).basico, (t.byCiclo || {}).orientado, 'Inscriptos por ciclo');
+        html += chartDonut_((t.byCiclo || {}).basico, (t.byCiclo || {}).orientado, 'Alumnos por ciclo');
         html += chartBars_((d.talks || []).map(function (x) {
           return { label: x.titulo, value: x.anotados, max: x.cupo };
         }), 'Reservas por charla');
@@ -4683,7 +4720,7 @@
       if ($('rep-curso')) $('rep-curso').value = course.curso;
       var showMail = aRole === 'admin';
       var html = reportStats_([
-        [course.roster, 'Inscriptos'],
+        [course.roster, 'Alumnos'],
         [course.complete, 'Completos'],
         [course.incomplete, 'Incompletos'],
         [course.presentBySlot.reduce(function (a, x) { return a + x.presentes; }, 0), 'Presentes']
@@ -4699,8 +4736,7 @@
       for (var i = 0; i < course.students.length; i++) {
         var st = course.students[i];
         html += '<tr><td class="num" data-label="#">' + (i + 1) + '</td>'
-          + '<td data-label="Alumno"><span class="row-name">' + esc(aDisplay_(st, showMail)) + '</span>'
-          + (showMail && st.email ? '<span class="row-mail">' + esc(st.email) + '</span>' : '')
+          + '<td data-label="Alumno">' + aStudentNameHtml_(st, 'row-name', showMail)
           + '</td><td data-label="Curso">' + esc(st.curso) + '</td>';
         for (var t = 0; t < st.talks.length; t++) {
           var tk = st.talks[t];
@@ -4759,7 +4795,7 @@
       if ($('rep-charla')) $('rep-charla').value = talk.id;
       var showMailTalk = aRole === 'admin';
       var html = reportStats_([
-        [talk.anotados, 'Inscriptos'],
+        [talk.anotados, 'Reservas'],
         [talk.presentes, 'Presentes'],
         [talk.ausentes, 'Ausentes'],
         [talk.cupo, 'Cupo']
@@ -4780,8 +4816,7 @@
       for (var s = 0; s < students.length; s++) {
         var st = students[s];
         html += '<tr><td class="num" data-label="#">' + (s + 1) + '</td>'
-          + '<td data-label="Alumno"><span class="row-name">' + esc(aDisplay_(st, showMailTalk)) + '</span>'
-          + (showMailTalk && st.email ? '<span class="row-mail">' + esc(st.email) + '</span>' : '')
+          + '<td data-label="Alumno">' + aStudentNameHtml_(st, 'row-name', showMailTalk)
           + '</td><td data-label="Curso">' + esc(st.curso) + '</td>'
           + '<td data-label="Presente">'
           + '<button class="present-mini' + (st.presente ? ' on' : '') + '" type="button"'
@@ -4801,7 +4836,7 @@
       var d = aReports;
       var t = d.totals || {};
       var html = reportStats_([
-        [t.roster || 0, 'Inscriptos'],
+        [t.roster || 0, 'Alumnos'],
         [t.complete || 0, 'Completos'],
         [t.incomplete || 0, 'Incompletos'],
         [t.signups || 0, 'Reservas'],
@@ -4810,7 +4845,7 @@
       html += aCharts_('total');
       html += '<p class="hint-line">' + esc(reportPresentLine_(t.presentBySlot || [])) + '</p>';
       html += '<div class="table-wrap report-table"><table><thead><tr>'
-        + '<th>Charla</th><th>Ciclo</th><th>Horario</th><th>Inscriptos</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th>'
+        + '<th>Charla</th><th>Ciclo</th><th>Horario</th><th>Reservas</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th>'
         + '</tr></thead><tbody>';
       var list = d.talks || [];
       var sumAnotados = 0;
@@ -4826,7 +4861,7 @@
           + '<span class="rep-place">' + esc(talk.lugar || '') + '</span></td>'
           + '<td data-label="Ciclo">' + esc(talk.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
           + '<td data-label="Horario">' + esc(talk.slotLabel) + '</td>'
-          + '<td data-label="Inscriptos">' + talk.anotados + '</td>'
+          + '<td data-label="Reservas">' + talk.anotados + '</td>'
           + '<td data-label="Presentes">' + talk.presentes + '</td>'
           + '<td data-label="Ausentes">' + talk.ausentes + '</td>'
           + '<td data-label="Cupo">' + talk.cupo + '</td>'
@@ -4836,7 +4871,7 @@
       if (!list.length) {
         html += '<div class="empty-state"><p class="es-title">Todavía no hay charlas cargadas.</p></div>';
       } else {
-        html += '<p class="hint-line">Total: ' + sumAnotados + ' inscriptos, ' + sumPresentes
+        html += '<p class="hint-line">Total: ' + sumAnotados + ' reservas, ' + sumPresentes
           + ' presentes, ' + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
       }
       $('rep-out').innerHTML = html;
@@ -4871,7 +4906,7 @@
       if (aRepType === 'curso') {
         for (i = 0; i < d.courses.length; i++) {
           var course = d.courses[i];
-          var summary = 'Inscriptos: ' + course.roster + ' · Completos: ' + course.complete
+          var summary = 'Alumnos: ' + course.roster + ' · Completos: ' + course.complete
             + ' · Incompletos: ' + course.incomplete
             + ' · ' + reportPresentLine_(course.presentBySlot);
           var rows = '';
@@ -4907,7 +4942,7 @@
         var talks = d.talks || [];
         for (i = 0; i < talks.length; i++) {
           var talk = talks[i];
-          var tsummary = 'Inscriptos: ' + talk.anotados + ' · Presentes: ' + talk.presentes
+          var tsummary = 'Reservas: ' + talk.anotados + ' · Presentes: ' + talk.presentes
             + ' · Ausentes: ' + talk.ausentes + ' · Cupo: ' + talk.cupo
             + ' · ' + (talk.slotLabel || '');
           var trows = '';
@@ -4930,7 +4965,7 @@
         }
       } else {
         var t = d.totals || {};
-        var sum = 'Inscriptos: ' + (t.roster || 0) + ' · Completos: ' + (t.complete || 0)
+        var sum = 'Alumnos: ' + (t.roster || 0) + ' · Completos: ' + (t.complete || 0)
           + ' · Incompletos: ' + (t.incomplete || 0) + ' · Reservas: ' + (t.signups || 0)
           + ' · ' + reportPresentLine_(t.presentBySlot || []);
         var all = d.talks || [];
@@ -4946,7 +4981,7 @@
         parts.push('<section class="print-page">' + printHead_('Reporte total')
           + '<p class="print-summary">' + esc(sum) + '</p>'
           + '<table class="print-table"><thead><tr><th>Charla</th><th>Ciclo</th><th>Horario</th>'
-          + '<th>Inscriptos</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th></tr></thead>'
+          + '<th>Reservas</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th></tr></thead>'
           + '<tbody>' + tbody + '</tbody></table>'
           + '<p class="print-note">' + esc(EVENT_NAME) + ' · ' + esc(SCHOOL_NAME) + ' · ' + esc(printDate_()) + '</p>'
           + '</section>');
@@ -5008,13 +5043,16 @@
       aApplyTestMode_(d.event && d.event.modo_prueba);
 
       $('a-roster-info').textContent = d.rosterLoaded
-        ? d.rosterCount + ' mails'
-        : 'Sin lista cargada';
+        ? d.rosterCount + ' mails cargados · habilitan DNI y recordatorios'
+        : 'Sin lista cargada · el acceso por mail sigue funcionando';
 
+      var studentsTotal = d.studentCount != null ? d.studentCount : d.total;
+      var porCiclo = d.porCiclo || {};
       $('a-totals').innerHTML = '<div class="stat-grid">'
-        + '<div class="stat"><span class="stat-num">' + d.total + '</span><span class="stat-label">Inscriptos</span></div>'
-        + '<div class="stat"><span class="stat-num">' + d.porCiclo.basico + '</span><span class="stat-label">Básico</span></div>'
-        + '<div class="stat"><span class="stat-num">' + d.porCiclo.orientado + '</span><span class="stat-label">Orientado</span></div>'
+        + '<div class="stat"><span class="stat-num">' + studentsTotal + '</span><span class="stat-label">Alumnos</span></div>'
+        + '<div class="stat"><span class="stat-num">' + d.total + '</span><span class="stat-label">Reservas</span></div>'
+        + '<div class="stat"><span class="stat-num">' + (porCiclo.basico || 0) + '</span><span class="stat-label">Básico</span></div>'
+        + '<div class="stat"><span class="stat-num">' + (porCiclo.orientado || 0) + '</span><span class="stat-label">Orientado</span></div>'
         + '</div>'
         + '<div class="admin-status"><span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
         + (d.evento_abierto ? 'Abierta' : 'Cerrada') + '</span></div>';
@@ -5071,8 +5109,69 @@
       return showMail && st && st.email ? st.email : 'Sin nombre';
     }
 
+    function aInitials_(st) {
+      var ap = String(st && st.apellido ? st.apellido : '').replace(/\s+/g, ' ').trim();
+      var nombre = String(st && st.nombre ? st.nombre : '').replace(/\s+/g, ' ').trim();
+      if (ap && nombre) return (ap.charAt(0) + nombre.charAt(0)).toUpperCase();
+      var parts = (ap || nombre || '').split(' ');
+      var ini = (parts[0] || '').charAt(0) + (parts[1] || '').charAt(0);
+      return ini.toUpperCase() || '?';
+    }
+
+    function aAvatarHtml_(st) {
+      return '<span class="student-avatar" aria-hidden="true">' + esc(aInitials_(st)) + '</span>';
+    }
+
+    function aStudentNameHtml_(st, className, allowMail) {
+      var name = aDisplay_(st, false);
+      var cls = className || 'roster-name';
+      var mail = allowMail && st && st.email ? String(st.email).trim() : '';
+      if (!mail) return '<span class="' + cls + '">' + esc(name) + '</span>';
+      return '<button class="' + cls + ' student-mail-btn" type="button"'
+        + ' data-mail="' + esc(mail) + '" data-name="' + esc(name) + '"'
+        + ' data-curso="' + esc(st.curso || '') + '" title="Ver y copiar el mail"'
+        + ' aria-label="Ver y copiar el mail de ' + esc(name) + '">'
+        + '<span class="student-name-text">' + esc(name) + '</span>'
+        + '<span class="mail-cue" aria-hidden="true">mail</span></button>';
+    }
+
+    function aCopyText_(text, message) {
+      var value = String(text || '').trim();
+      if (!value) return;
+      var done = function () { toast(message || 'Copiado.', 'ok'); };
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done, function () {
+          if (window.prompt) window.prompt('Copiá el mail:', value);
+        });
+      } else if (window.prompt) {
+        window.prompt('Copiá el mail:', value);
+      }
+    }
+
+    function aShowMail_(email, name, curso) {
+      var mail = String(email || '').trim();
+      if (!mail) return;
+      var who = String(name || '').replace(/\s+/g, ' ').trim() || 'Alumno';
+      openSheet({
+        title: 'Mail del alumno',
+        body: '<div class="mail-detail">'
+          + '<p class="mail-detail-name">' + esc(who) + '</p>'
+          + (curso ? '<p class="sheet-meta">' + esc(curso) + '</p>' : '')
+          + '<p class="mail-detail-label">Mail institucional</p>'
+          + '<code class="mail-detail-address">' + esc(mail) + '</code>'
+          + '<p class="hint-line">Tocá Copiar mail para usarlo en otro lado.</p>'
+          + '</div>',
+        confirm: 'Copiar mail',
+        cancel: 'Cerrar',
+        onConfirm: function () { aCopyText_(mail, 'Mail copiado.'); }
+      });
+    }
+
     function aSearch_(st) {
-      return (String(st.apellido || '') + ' ' + String(st.nombre || '') + ' ' + String(st.nombreCompleto || '') + ' ' + String(st.curso || '')).toLowerCase();
+      var text = String(st.apellido || '') + ' ' + String(st.nombre || '') + ' '
+        + String(st.nombreCompleto || '') + ' ' + String(st.curso || '');
+      if (aRole === 'admin') text += ' ' + String(st.email || '');
+      return text.toLowerCase();
     }
 
     function fillFilter(id, values, allLabel) {
@@ -5193,13 +5292,13 @@
           if (!pc || pc.slice(2) !== fDiv) continue;
         }
         if (fCharla && s.talkTitulo !== fCharla) continue;
-        var hay = (s.nombre + ' ' + s.email + ' ' + s.curso + ' ' + s.slotLabel + ' ' + s.talkTitulo).toLowerCase();
-        if (q && hay.indexOf(q) < 0) continue;
+        var hay = aSearch_(s) + ' ' + String(s.slotLabel || '') + ' ' + String(s.talkTitulo || '');
+        if (q && hay.toLowerCase().indexOf(q) < 0) continue;
         shown++;
         rows += '<tr>'
           + '<td class="narrow" data-label="Fecha">' + esc(s.cuando) + '</td>'
-          + '<td data-label="Alumno"><span class="row-name">' + esc(aDisplay_(s, true)) + '</span>'
-          + '<span class="row-mail">' + esc(s.email) + '</span></td>'
+          + '<td data-label="Alumno">' + aStudentNameHtml_(s, 'row-name', aRole === 'admin')
+          + '</td>'
           + '<td data-label="Curso">' + esc(s.curso) + '</td>'
           + '<td data-label="Horario">' + esc(s.slotLabel) + '</td>'
           + '<td data-label="Charla">' + esc(s.talkTitulo) + '</td>'
@@ -5208,6 +5307,8 @@
           + '</tr>';
       }
       rows += '</tbody></table></div>';
+      var countEl = $('a-table-count');
+      if (countEl) countEl.textContent = shown + ' de ' + d.signups.length + ' reservas';
       if (!d.signups.length) {
         rows = '<div class="empty-state">'
           + '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".5"/><circle cx="3.5" cy="12" r=".5"/><circle cx="3.5" cy="18" r=".5"/></svg>'
@@ -5489,7 +5590,8 @@
           var items = [
             ['Servidor', 'Alcanzable', ''],
             ['Última inscripción', aFmtDate_(resp.last_signup), ''],
-            ['Inscriptos', resp.total, ''],
+            ['Alumnos', resp.student_count != null ? resp.student_count : resp.total, ''],
+            ['Reservas', resp.total, ''],
             ['Sesiones activas', resp.active_sessions, ''],
             ['Cuota de mails', resp.mail_quota < 0 ? 'No disponible' : resp.mail_quota, ''],
             ['Datos de prueba', resp.test_count || 0, ''],
@@ -5573,12 +5675,18 @@
       return html;
     }
 
-    function aCorrFields_(prefix, withTalks) {
-      var html = '<div class="corr-form">'
-        + '<label for="' + prefix + '-email">Mail institucional<input id="' + prefix + '-email" type="email" autocomplete="off"></label>'
-        + '<label for="' + prefix + '-apellido">Apellido<input id="' + prefix + '-apellido" type="text" autocomplete="off"></label>'
-        + '<label for="' + prefix + '-nombre">Nombre<input id="' + prefix + '-nombre" type="text" autocomplete="off"></label>'
-        + '<label for="' + prefix + '-curso">Curso<input id="' + prefix + '-curso" type="text" autocomplete="off" placeholder="2°B"></label>';
+    function aCorrFields_(prefix, withTalks, mailFirst, mailLabel) {
+      var mail = '<label for="' + prefix + '-email">' + esc(mailLabel || 'Mail institucional')
+        + '<input id="' + prefix + '-email" type="email" autocomplete="off"></label>';
+      var html = '<div class="corr-form">';
+      if (mailFirst) html += mail;
+      html += '<label for="' + prefix + '-apellido">Apellido<input id="' + prefix + '-apellido"'
+        + ' type="text" autocomplete="off" autocapitalize="words"></label>'
+        + '<label for="' + prefix + '-nombre">Nombre<input id="' + prefix + '-nombre"'
+        + ' type="text" autocomplete="off" autocapitalize="words"></label>'
+        + '<label for="' + prefix + '-curso">Curso<input id="' + prefix + '-curso"'
+        + ' type="text" autocomplete="off" placeholder="2°B"></label>';
+      if (!mailFirst) html += mail;
       if (withTalks) {
         html += '<label for="' + prefix + '-talks">Charlas<select id="' + prefix + '-talks" multiple size="8">'
           + aCorrTalkOptions_() + '</select></label>'
@@ -5622,7 +5730,7 @@
       if (!aData || aBusy) return;
       openSheet({
         title: 'Corregir alumno',
-        body: aCorrFields_('corr-edit', false) + '<p class="hint-line">Escribí el mail actual y los datos corregidos.</p>',
+        body: aCorrFields_('corr-edit', false, true, 'Mail actual') + '<p class="hint-line">Escribí el mail actual y los datos corregidos.</p>',
         confirm: 'Guardar',
         onConfirm: function () {
           aBusy = true;
@@ -5675,16 +5783,28 @@
         var html = '<p class="hint-line">' + resp.total + ' grupos con más de un mail.</p>';
         for (var i = 0; i < resp.groups.length; i++) {
           var g = resp.groups[i];
-          html += '<div class="corr-dup"><h4>' + esc(g.apellido + ', ' + g.nombre + ' · ' + g.curso) + '</h4><ul>';
-          for (var j = 0; j < g.talks.length; j++) {
-            var t = g.talks[j];
-            html += '<li><b>' + esc(t.email) + '</b> · ' + esc(t.titulo) + ' · ' + esc(t.slotLabel) + (t.presente ? ' · presente' : '') + '</li>';
-          }
-          html += '</ul>';
+          html += '<div class="corr-dup"><h4>' + esc(g.apellido + ', ' + g.nombre + ' · ' + g.curso) + '</h4>'
+            + '<ol class="dup-mails">';
           for (var k = 0; k < g.emails.length; k++) {
+            var mail = g.emails[k];
+            var where = [];
+            for (var j = 0; j < g.talks.length; j++) {
+              var t = g.talks[j];
+              if (t.email !== mail) continue;
+              where.push(t.titulo + ' · ' + t.slotLabel + (t.presente ? ' · presente' : ''));
+            }
+            html += '<li><b>' + esc(mail) + '</b>'
+              + (where.length ? '<span class="dup-where">' + esc(where.join(' · ')) + '</span>' : '')
+              + '</li>';
+          }
+          html += '</ol><p class="hint-line">Elegí qué número conservar; el otro se une a ese mail.</p>';
+          for (var k2 = 0; k2 < g.emails.length; k2++) {
             for (var m = 0; m < g.emails.length; m++) {
-              if (k === m) continue;
-              html += '<button class="btn secondary small" type="button" data-keep="' + esc(g.emails[k]) + '" data-drop="' + esc(g.emails[m]) + '">Dejar ' + esc(g.emails[k]) + '</button>';
+              if (k2 === m) continue;
+              html += '<button class="btn secondary small" type="button"'
+                + ' data-keep="' + esc(g.emails[k2]) + '" data-drop="' + esc(g.emails[m]) + '"'
+                + ' aria-label="Conservar ' + esc(g.emails[k2]) + ' y unir ' + esc(g.emails[m]) + '">'
+                + 'Conservar ' + (k2 + 1) + ' · unir ' + (m + 1) + '</button>';
             }
           }
           html += '</div>';
@@ -5924,6 +6044,19 @@
       $('btn-mail-send').addEventListener('click', aSendReminders);
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
+      document.addEventListener('click', function (ev) {
+        var el = ev.target;
+        while (el && el !== document) {
+          if (el.getAttribute) {
+            var mail = el.getAttribute('data-mail');
+            if (mail) {
+              aShowMail_(mail, el.getAttribute('data-name') || '', el.getAttribute('data-curso') || '');
+              return;
+            }
+          }
+          el = el.parentNode;
+        }
+      });
       document.addEventListener('keydown', aOnKey_);
 
       if (adminCred) {
