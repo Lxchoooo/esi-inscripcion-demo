@@ -46,6 +46,8 @@ function makeEl(id) {
 }
 
 const els = new Map();
+const cardProbe = makeEl('card-probe');
+cardProbe.clientWidth = 360;
 const store = {
   esi_demo: '1',
   esi_demo_roster: JSON.stringify([
@@ -60,6 +62,7 @@ const document = {
   },
   createElement() { return makeEl(null); },
   querySelectorAll(sel) {
+    if (sel === '.report-table, #a-table') return [cardProbe];
     if (sel === '.admin-only') {
       return ['tab-inscriptos', 'tab-mails', 'btn-copiar-link', 'btn-csv']
         .map((id) => document.getElementById(id));
@@ -95,6 +98,7 @@ return {
   sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
+  aSyncTableCards_: aSyncTableCards_,
   aShowMail_: aShowMail_, aCopyText_: aCopyText_, closeSheet: closeSheet,
   aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
   retryTransient_: retryTransient_,
@@ -419,6 +423,10 @@ function tick() {
   assert(rep.includes('student-mail-btn'), 'mail detras del nombre en el reporte');
   assert(rep.includes('data-mail="beto@esc.edu.ar"'), 'mail disponible en el reporte');
   assert(!rep.includes('row-mail'), 'mail no ocupa la tabla');
+  assert(cardProbe.classList.contains('is-cards'), 'tabla angosta en modo tarjeta');
+  cardProbe.clientWidth = 900;
+  ui.aSyncTableCards_();
+  assert(!cardProbe.classList.contains('is-cards'), 'tabla ancha en modo tabla');
   ui.setRole('guide');
   ui.setReports({
     ok: true, role: 'guide',
