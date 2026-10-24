@@ -1657,6 +1657,12 @@ t('Registering the same student and talk twice keeps one row', () => {
   assertEq(rows.length, 1, 'one row');
 });
 
+t('Panel sends the session when registering a second slot', () => {
+  if (!/call\('apiRegister', \[sState\.email, sState\.nombre, sState\.curso, talkId, sState\.apellido, sSessionToken_\(\)\]\)/.test(panelSrc)) {
+    throw new Error('apiRegister call drops the session token');
+  }
+});
+
 t('A login ticket cannot be replayed through apiRegister', () => {
   const services = backendStub({}, { students: [], signups: [] });
   const api = backendApi(services, 'apiRegister');
