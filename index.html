@@ -260,12 +260,8 @@
     .field { display: grid; gap: 8px; }
     .field label { margin: 0; }
     .login-fields { display: grid; gap: 16px; }
-    .login-fields[hidden] { display: none; }
-    .login-form[hidden], .login-start[hidden] { display: none; }
     .login-form { margin-top: 4px; }
-    .login-form .seg { margin-bottom: 14px; }
     .login-fields .btn.full { margin: 0; }
-    .login-alt { justify-self: start; margin: 0; padding-left: 0; padding-right: 0; }
     input[type=text], input[type=password], input[type=email], select, textarea {
       width: 100%; min-height: 50px;
       padding: 12px 14px;
@@ -1056,10 +1052,7 @@
     .field-row { display: flex; gap: 10px; }
     .field-row > div { flex: 1; min-width: 0; }
     .field-row label { margin: 0 0 7px; }
-    #s-screen-datos .field + .field { margin-top: 16px; }
-    #s-screen-datos .field-row { margin-top: 16px; }
-    #s-screen-datos .btn.full { margin-top: 20px; }
-    .login-form:not([hidden]) { animation: rise .22s ease both; }
+    .login-form { animation: rise .22s ease both; }
   </style>
 </head>
 <body>
@@ -1132,22 +1125,52 @@
     <section id="s-screen-mail" class="screen card">
       <div class="steps">1 de 3</div>
       <h2 class="intro" id="login-title">Ingresar</h2>
-      <p class="hint" id="login-intro">Vas a necesitar tu mail institucional o tu DNI.</p>
-      <button id="btn-login-start" class="btn full" type="button" aria-controls="login-form" aria-expanded="false">Ingresar</button>
-      <div id="login-form" class="login-form" hidden>
-        <div class="seg" role="group" aria-label="Cómo entrás">
-          <button id="login-mail" class="seg-btn active" type="button" aria-pressed="true">Con mail</button>
-          <button id="login-dni" class="seg-btn" type="button" aria-pressed="false" hidden>Con DNI</button>
-        </div>
-        <p class="hint" id="hint-mail">Usá tu mail institucional.</p>
-        <div id="login-mail-box" class="login-fields">
+      <p class="hint">Vas a necesitar tu mail institucional o tu DNI.</p>
+      <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
+      <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: entren por la URL /exec del Apps Script, con la clave en el formulario. Este acceso es solo para alumnos.</p>
+      <p class="hint-line login-note" id="login-note">Si el celular es compartido, tocá "Salir" al terminar.</p>
+    </section>
+
+    <section id="s-screen-login" class="screen card">
+      <div class="steps">2 de 3</div>
+      <h2 class="intro">Ingresá tus datos</h2>
+      <p class="hint" id="login-intro">Completá tus datos. Si ya te inscribiste, alcanza con el mail o el DNI.</p>
+      <form id="login-form" class="login-form" novalidate>
+        <div class="login-fields">
+          <div class="field">
+            <label for="input-nombre">Nombre</label>
+            <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
+              autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
+          </div>
+          <div class="field">
+            <label for="input-apellido">Apellido</label>
+            <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
+              autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
+          </div>
+          <div class="field-row">
+            <div>
+              <label for="select-anio">Año</label>
+              <select id="select-anio">
+                <option value="">Elegí...</option>
+                <option value="1">1°</option>
+                <option value="2">2°</option>
+                <option value="3">3°</option>
+                <option value="4">4°</option>
+                <option value="5">5°</option>
+                <option value="6">6°</option>
+              </select>
+            </div>
+            <div>
+              <label for="select-division">División</label>
+              <select id="select-division"></select>
+            </div>
+          </div>
           <div class="field">
             <label for="input-mail">Mail institucional</label>
             <input id="input-mail" type="email" inputmode="email" autocomplete="off" maxlength="120"
               spellcheck="false" autocapitalize="none" enterkeyhint="go"
               aria-describedby="mail-hint" placeholder="usuario@secundariosalsipuedes.edu.ar">
           </div>
-          <button id="btn-mail" class="btn full" type="button">Continuar</button>
           <details class="mail-help" id="mail-help">
             <summary>¿No te acordás tu mail?</summary>
             <p>Tu mail es tu apellido, tu nombre y tu año de egreso, todo junto, en minúsculas, sin tildes y sin ñ, y termina en @secundariosalsipuedes.edu.ar.</p>
@@ -1164,72 +1187,26 @@
               </select>
               <span id="mail-year-out" class="hint-line"></span>
             </div>
-            <button id="btn-prefer-dni" class="btn link" type="button" hidden>Prefiero usar mi DNI</button>
           </details>
-          <button id="btn-use-dni" class="btn link login-alt" type="button" hidden>Usar mi DNI</button>
-          <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
-        </div>
-        <div id="login-dni-box" class="login-fields" hidden>
           <div class="field">
             <label for="input-dni">DNI</label>
             <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
-              enterkeyhint="next" placeholder="Solo números">
+              enterkeyhint="go" placeholder="Solo números">
           </div>
-          <div class="field">
-            <label for="input-apellido">Apellido</label>
-            <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
-              autocapitalize="words" enterkeyhint="go" placeholder="Tu apellido">
-          </div>
-          <button id="btn-dni" class="btn full" type="button">Continuar</button>
-          <p class="hint-line">Si no estás en la lista con DNI, entrá con tu mail.</p>
+          <p class="hint-line">Usá el mail o el DNI. Si el DNI se repite, agregá el apellido.</p>
+          <button id="btn-login" class="btn full" type="submit">Ingresar</button>
+          <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
         </div>
-        <button id="btn-login-back" class="btn link" type="button">Volver</button>
-      </div>
-      <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: entren por la URL /exec del Apps Script, con la clave en el formulario. Este acceso es solo para alumnos.</p>
-      <p class="hint-line login-note" id="login-note">Si el celular es compartido, tocá "Salir" al terminar.</p>
+      </form>
+      <button id="btn-login-back" class="btn link" type="button">Volver</button>
     </section>
 
     <section id="s-screen-hello" class="screen card">
-      <div class="steps">1 de 3</div>
+      <div class="steps">2 de 3</div>
       <h2 class="intro">Confirmá tus datos</h2>
       <p class="hint" id="hello-text">Hola. ¿Sos vos?</p>
       <button id="btn-hello-yes" class="btn full" type="button">Sí</button>
       <button id="btn-hello-no" class="btn secondary full" type="button">No soy yo</button>
-    </section>
-
-    <section id="s-screen-datos" class="screen card">
-      <div class="steps">2 de 3</div>
-      <h2 class="intro">Tus datos</h2>
-      <div id="fieldset-nombre" class="field">
-        <label for="input-nombre">Nombre</label>
-        <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
-          autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
-      </div>
-      <div id="fieldset-apellido" class="field">
-        <label for="input-apellido-datos">Apellido</label>
-        <input id="input-apellido-datos" type="text" autocomplete="off" maxlength="60"
-          autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
-      </div>
-      <div id="fieldset-anio" class="field-row">
-        <div>
-          <label for="select-anio">Año</label>
-          <select id="select-anio">
-            <option value="">Elegí...</option>
-            <option value="1">1°</option>
-            <option value="2">2°</option>
-            <option value="3">3°</option>
-            <option value="4">4°</option>
-            <option value="5">5°</option>
-            <option value="6">6°</option>
-          </select>
-        </div>
-        <div>
-          <label for="select-division">División</label>
-          <select id="select-division"></select>
-        </div>
-      </div>
-      <button id="btn-datos" class="btn full" type="button">Ver las charlas</button>
-      <button id="btn-datos-volver" class="btn secondary small full" type="button">Volver</button>
     </section>
 
     <section id="s-screen-panel" class="screen">
@@ -1602,7 +1579,7 @@
     }
 
     function sClearLoginFields_() {
-      var ids = ['input-mail', 'input-dni', 'input-apellido', 'input-apellido-datos', 'input-nombre'];
+      var ids = ['input-mail', 'input-dni', 'input-apellido', 'input-nombre'];
       for (var i = 0; i < ids.length; i++) {
         if ($(ids[i])) $(ids[i]).value = '';
       }
@@ -2528,6 +2505,7 @@
         message: message || '',
         rosterLoaded: rosterLoaded,
         needsNombre: ok ? !(entry && demoFull_(entry)) : false,
+        needsApellido: false,
         needsCurso: ok ? !pc : false,
         apellido: ok && entry && entry.apellido ? entry.apellido : '',
         nombre: ok ? nombre : '',
@@ -2555,20 +2533,33 @@
       var roster = demoRoster();
       var dni = EsiClient.normalizeDni(dniRaw);
       var ap = EsiClient.normalizeText(apellidoRaw);
+      var hasAp = ap.length >= 2;
       var miss = 'No pudimos entrar. Revisá el DNI y el apellido.';
-      if (!EsiClient.isValidDni(dni) || ap.length < 2) {
+      if (!EsiClient.isValidDni(dni) || (ap && !hasAp)) {
         return demoLookupResponse_(false, null, roster.length > 0, miss);
       }
       var entry = null;
-      var matches = 0;
+      var matches = [];
       for (var i = 0; i < roster.length; i++) {
-        if (roster[i].dni === dni) {
-          entry = roster[i];
-          matches++;
-        }
+        if (roster[i].dni === dni) matches.push(roster[i]);
       }
-      if (matches !== 1 || EsiClient.normalizeText(entry.apellido) !== ap) {
-        return demoLookupResponse_(false, null, roster.length > 0, miss);
+      if (hasAp) {
+        for (var j = 0; j < matches.length; j++) {
+          if (EsiClient.normalizeText(matches[j].apellido) === ap) {
+            entry = matches[j];
+            break;
+          }
+        }
+      } else if (matches.length === 1) {
+        entry = matches[0];
+      }
+      if (!entry) {
+        var missOut = demoLookupResponse_(false, null, roster.length > 0, miss);
+        if (!hasAp && matches.length > 1) {
+          missOut.message = 'Hay más de un alumno con ese DNI. Escribí el apellido.';
+          missOut.needsApellido = true;
+        }
+        return missOut;
       }
       var out = demoLookupResponse_(true, entry, true, '');
       out.email = '';
@@ -3226,7 +3217,7 @@
       });
     }
 
-    var S_SCREENS = ['s-screen-mail', 's-screen-hello', 's-screen-datos', 's-screen-panel'];
+    var S_SCREENS = ['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel'];
     var A_SCREENS = ['a-screen-gate', 'a-screen-panel'];
 
     var sState = {
@@ -3235,41 +3226,12 @@
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
       student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
     };
-    var sLoginMode = 'mail';
-    var sLoginOpen = false;
-    var sDniAvailable = false;
-
-    function sSetLoginOpen_(open) {
-      sLoginOpen = !!open;
-      var start = $('btn-login-start');
-      var form = $('login-form');
-      var intro = $('login-intro');
-      if (start) {
-        start.hidden = sLoginOpen;
-        start.setAttribute('aria-expanded', sLoginOpen ? 'true' : 'false');
-      }
-      if (form) form.hidden = !sLoginOpen;
-      if (intro) intro.hidden = sLoginOpen;
-      if (sLoginOpen) {
-        sSetLoginMode(sLoginMode);
-      } else {
-        sBanner('');
-      }
-    }
 
     function sSetLoginBusy_(id, busy, label, normal) {
       var btn = $(id);
       if (!btn) return;
       btn.disabled = !!busy;
       btn.textContent = busy ? label : normal;
-    }
-
-    function sSetDniAvailable_(available) {
-      sDniAvailable = !!available;
-      $('login-dni').hidden = !sDniAvailable;
-      $('btn-use-dni').hidden = !sDniAvailable;
-      if ($('btn-prefer-dni')) $('btn-prefer-dni').hidden = !sDniAvailable;
-      if (!sDniAvailable && sLoginMode === 'dni') sSetLoginMode('mail');
     }
 
     function sMailYearHint_() {
@@ -3282,23 +3244,6 @@
       }
       var egreso = 2026 + (6 - year);
       out.textContent = 'Tu mail termina en ' + egreso + '.';
-    }
-
-    function sSetLoginMode(mode) {
-      sLoginMode = mode === 'dni' && sDniAvailable ? 'dni' : 'mail';
-      var mail = sLoginMode === 'mail';
-      $('login-mail-box').hidden = !mail;
-      $('login-dni-box').hidden = mail;
-      $('login-mail').classList.toggle('active', mail);
-      $('login-dni').classList.toggle('active', !mail);
-      $('login-mail').setAttribute('aria-pressed', mail ? 'true' : 'false');
-      $('login-dni').setAttribute('aria-pressed', mail ? 'false' : 'true');
-      $('login-title').textContent = 'Ingresar';
-      $('hint-mail').textContent = sDniAvailable ? 'Usá tu mail del colegio o tu DNI.' : 'Usá tu mail institucional.';
-      $('mail-hint').hidden = true;
-      sBanner('');
-      if (!sLoginOpen) return;
-      if (mail) $('input-mail').focus(); else $('input-dni').focus();
     }
 
     function sBanner(text, type) {
@@ -3715,7 +3660,6 @@
             sBanner(resp.message || 'No se pudo cargar.', 'err');
             if (resp.needsLogin) {
               sState.login = '';
-              if (sDniAvailable) sSetLoginMode('dni');
               return;
             }
             if (resp.expired) {
@@ -3751,13 +3695,13 @@
         return;
       }
       sState.busy = true;
-      sSetLoginBusy_('btn-mail', true, 'Buscando...', 'Continuar');
+      sSetLoginBusy_('btn-login', true, 'Ingresando...', 'Ingresar');
       $('input-mail').setAttribute('aria-invalid', 'false');
       sBanner('Buscando...', 'ok');
       call('apiLookup', [email])
         .then(function (resp) {
           sState.busy = false;
-          sSetLoginBusy_('btn-mail', false, 'Buscando...', 'Continuar');
+          sSetLoginBusy_('btn-login', false, 'Ingresando...', 'Ingresar');
           if (!resp.ok) {
             sMailError_(resp.message || 'No se pudo validar el mail.');
             return;
@@ -3780,11 +3724,11 @@
             sEnterPanel(sState.nombre, sState.curso, sState.apellido);
             return;
           }
-          sShowDatos();
+          sUseLoginData_();
         })
         .catch(function () {
           sState.busy = false;
-          sSetLoginBusy_('btn-mail', false, 'Buscando...', 'Continuar');
+          sSetLoginBusy_('btn-login', false, 'Ingresando...', 'Ingresar');
           sMailError_('Sin conexión. Probá de nuevo.');
         });
     }
@@ -3809,20 +3753,23 @@
         try { $('input-dni').focus(); } catch (e) { }
         return;
       }
-      if (!EsiClient.isValidName(apellido)) {
-        sBanner('Escribí tu apellido como figura en el DNI.', 'err');
+      if (apellido && !EsiClient.isValidName(apellido)) {
+        sBanner('Revisá el apellido: solo letras, espacios, apóstrofe o guion.', 'err');
         try { $('input-apellido').focus(); } catch (e) { }
         return;
       }
       sState.busy = true;
-      sSetLoginBusy_('btn-dni', true, 'Buscando...', 'Continuar');
+      sSetLoginBusy_('btn-login', true, 'Ingresando...', 'Ingresar');
       sBanner('Buscando...', 'ok');
       call('apiLookupDni', [dni, apellido])
         .then(function (resp) {
           sState.busy = false;
-          sSetLoginBusy_('btn-dni', false, 'Buscando...', 'Continuar');
+          sSetLoginBusy_('btn-login', false, 'Ingresando...', 'Ingresar');
           if (!resp.ok) {
             sBanner(resp.message || 'No pudimos entrar.', 'err');
+            if (resp.needsApellido) {
+              try { $('input-apellido').focus(); } catch (e) { }
+            }
             return;
           }
           if (!resp.login) {
@@ -3845,11 +3792,11 @@
             sEnterPanel(sState.nombre, sState.curso, sState.apellido);
             return;
           }
-          sShowDatos();
+          sUseLoginData_();
         })
         .catch(function () {
           sState.busy = false;
-          sSetLoginBusy_('btn-dni', false, 'Buscando...', 'Continuar');
+          sSetLoginBusy_('btn-login', false, 'Ingresando...', 'Ingresar');
           sBanner('Sin conexión. Probá de nuevo.', 'err');
         });
     }
@@ -3860,7 +3807,7 @@
         sEnterPanel(sState.nombre, sState.curso, sState.apellido);
         return;
       }
-      sShowDatos();
+      sUseLoginData_();
     }
 
     function sHelloNo() {
@@ -3868,14 +3815,14 @@
       sClearStudentSession_();
       sState.email = '';
       sState.nombre = '';
+      sState.apellido = '';
       sState.curso = '';
       sState.login = '';
       sState.lookup = null;
       sClearLoginFields_();
-      showScreen(S_SCREENS, 's-screen-mail');
-      sSetLoginOpen_(true);
-      sBanner(sLoginMode === 'dni' ? 'Probá de nuevo con tu DNI.' : 'Escribí tu mail de nuevo.', 'err');
-      if (sLoginMode === 'dni') $('input-dni').focus(); else $('input-mail').focus();
+      showScreen(S_SCREENS, 's-screen-login');
+      sBanner('Escribí tu mail o tu DNI de nuevo.', 'err');
+      $('input-mail').focus();
     }
 
     function sSalir() {
@@ -3891,8 +3838,6 @@
       $('sel-count').textContent = '0 de 3 elegidas';
       $('sel-hint').hidden = true;
       showScreen(S_SCREENS, 's-screen-mail');
-      sSetLoginOpen_(false);
-      sSetLoginMode('mail');
       sBanner('');
       $('btn-login-start').focus();
     }
@@ -3908,58 +3853,37 @@
       if (selected) sel.value = selected;
     }
 
-    function sShowDatos() {
-      var needsNombre = sState.lookup.needsNombre;
-      var needsApellido = sState.lookup.needsApellido;
-      var needsCurso = sState.lookup.needsCurso;
-      document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
-      $('fieldset-nombre').style.display = needsNombre ? 'grid' : 'none';
-      $('fieldset-apellido').style.display = needsApellido ? 'grid' : 'none';
-      $('select-anio').value = '';
-      var pc = EsiClient.parseCurso(sState.curso || '');
-      var yearSel = '';
-      var divSel = '';
-      if (needsCurso && pc) {
-        yearSel = String(Number(pc.match(/\d/)[0]));
-        divSel = pc.slice(2);
-      }
-      sFillDivisions(yearSel, divSel);
-      $('select-anio').value = yearSel;
-      $('fieldset-anio').style.display = needsCurso ? 'flex' : 'none';
-      $('input-apellido-datos').value = sState.apellido;
-      $('input-apellido-datos').readOnly = !needsApellido;
-      $('input-nombre').value = sState.nombre;
-      $('input-nombre').readOnly = !needsNombre;
-      $('btn-datos').textContent = (needsNombre || needsApellido || needsCurso) ? 'Ver las charlas' : 'Continuar';
-      showScreen(S_SCREENS, 's-screen-datos');
-      if (needsNombre) {
-        $('input-nombre').focus();
-      } else if (needsApellido) {
-        $('input-apellido-datos').focus();
-      } else if (needsCurso) {
-        $('select-anio').focus();
-      }
+    function sLoginData_() {
+      return {
+        nombre: EsiClient.sanitizeName($('input-nombre').value),
+        apellido: EsiClient.sanitizeName($('input-apellido').value),
+        curso: EsiClient.cursoFromParts($('select-anio').value, $('select-division').value)
+      };
     }
 
-    function sSubmitDatos() {
-      var needsNombre = sState.lookup.needsNombre;
-      var needsApellido = sState.lookup.needsApellido;
-      var needsCurso = sState.lookup.needsCurso;
-      var nombre = needsNombre ? $('input-nombre').value : sState.nombre;
-      var apellido = needsApellido ? $('input-apellido-datos').value : sState.apellido;
-      var curso = needsCurso
-        ? EsiClient.cursoFromParts($('select-anio').value, $('select-division').value)
-        : sState.curso;
+    function sUseLoginData_() {
+      var lookup = sState.lookup;
+      if (!lookup) return;
+      var form = sLoginData_();
+      var needsNombre = !!lookup.needsNombre;
+      var needsApellido = !!lookup.needsApellido;
+      var needsCurso = !!lookup.needsCurso;
+      var nombre = needsNombre ? form.nombre : sState.nombre;
+      var apellido = needsApellido ? form.apellido : sState.apellido;
+      var curso = needsCurso ? form.curso : sState.curso;
       if (needsNombre && String(nombre).replace(/\s/g, '').length < 2) {
         sBanner('Escribí tu nombre.', 'err');
+        try { $('input-nombre').focus(); } catch (e) { }
         return;
       }
       if (needsApellido && String(apellido).replace(/\s/g, '').length < 2) {
         sBanner('Escribí tu apellido.', 'err');
+        try { $('input-apellido').focus(); } catch (e) { }
         return;
       }
       if (needsCurso && !curso) {
         sBanner('Elegí año y división.', 'err');
+        try { $('select-anio').focus(); } catch (e) { }
         return;
       }
       var full = String(nombre || '').replace(/\s+/g, ' ').trim();
@@ -3970,6 +3894,22 @@
       sEnterPanel(full, curso, ap);
     }
 
+    function sLoginSubmit() {
+      if (sState.busy) return;
+      var email = EsiClient.normalizeEmail($('input-mail').value);
+      var dni = EsiClient.normalizeDni($('input-dni').value);
+      if (email) {
+        sLookup();
+        return;
+      }
+      if (dni) {
+        sLookupDni();
+        return;
+      }
+      sBanner('Escribí tu mail institucional o tu DNI.', 'err');
+      try { $('input-mail').focus(); } catch (e) { }
+    }
+
     function sInit() {
       document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
       if (TEXTO_DIRECCION) {
@@ -3978,9 +3918,8 @@
       }
       $('hdr-title').textContent = 'Inscripción a las charlas';
       $('hdr-sub').textContent = EVENT_NAME;
-      sSetLoginOpen_(false);
+      $('login-title').textContent = 'Ingresar';
       $('btn-hero-start').addEventListener('click', function () {
-        sSetLoginOpen_(true);
         var card = $('s-screen-mail');
         if (card && card.scrollIntoView) {
           try {
@@ -3988,44 +3927,27 @@
           } catch (e) { }
         }
       });
-      $('btn-login-start').addEventListener('click', function () { sSetLoginOpen_(true); });
+      $('btn-login-start').addEventListener('click', function () {
+        showScreen(S_SCREENS, 's-screen-login');
+        $('input-mail').focus();
+      });
       $('btn-login-back').addEventListener('click', function () {
-        sSetLoginOpen_(false);
+        showScreen(S_SCREENS, 's-screen-mail');
         $('btn-login-start').focus();
       });
-      $('btn-mail').addEventListener('click', sLookup);
-      $('btn-use-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
-      $('btn-prefer-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
+      $('login-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        sLoginSubmit();
+      });
       $('select-mail-year').addEventListener('change', sMailYearHint_);
-      $('login-mail').addEventListener('click', function () { sSetLoginMode('mail'); });
-      $('login-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
-      sSetDniAvailable_(false);
-      $('btn-dni').addEventListener('click', sLookupDni);
-      $('input-dni').addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') sLookupDni();
-      });
-      $('input-apellido').addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') sLookupDni();
-      });
       $('btn-alumno-salir').addEventListener('click', sSalir);
       $('btn-hello-yes').addEventListener('click', sHelloYes);
       $('btn-hello-no').addEventListener('click', sHelloNo);
-      $('input-mail').addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') sLookup();
-      });
       call('apiBootstrap', []).then(function (b) {
-        if (b && b.ok) {
-          sSetDniAvailable_(!!b.rosterLoaded);
-          aApplyTestMode_(b.event && b.event.modo_prueba);
-        }
-      }).catch(function () { sSetDniAvailable_(false); });
+        if (b && b.ok) aApplyTestMode_(b.event && b.event.modo_prueba);
+      }).catch(function () { });
       $('select-anio').addEventListener('change', function () {
         sFillDivisions(this.value, '');
-      });
-      $('btn-datos').addEventListener('click', sSubmitDatos);
-      $('btn-datos-volver').addEventListener('click', function () {
-        showScreen(S_SCREENS, 's-screen-mail');
-        sSetLoginOpen_(true);
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
       $('btn-ics').addEventListener('click', sDownloadIcs_);
@@ -4040,8 +3962,8 @@
         sState = sEmptyState_();
         sClearLoginFields_();
         sBanner('');
-        showScreen(S_SCREENS, 's-screen-mail');
-        sSetLoginOpen_(true);
+        showScreen(S_SCREENS, 's-screen-login');
+        $('input-nombre').focus();
       });
 
       showPagesNotice_();

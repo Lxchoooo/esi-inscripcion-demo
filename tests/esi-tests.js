@@ -776,12 +776,13 @@ t('Panel stays usable at 360px with 44px targets and safe overflow', () => {
 });
 
 t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
-  for (const needle of ['class="login-fields"', 'class="field"', 'id="btn-use-dni"',
+  for (const needle of ['class="login-fields"', 'class="field"', 'id="btn-login"',
+    'id="input-nombre"', 'id="input-apellido"', 'id="input-dni"', 'id="input-mail"',
+    'id="select-anio"', 'id="select-division"',
     'placeholder="usuario@secundariosalsipuedes.edu.ar"', 'placeholder="Solo números"',
     '<h2 class="intro" id="login-title">Ingresar</h2>',
-    'Usá tu mail del colegio o tu DNI.',
+    'Completá tus datos. Si ya te inscribiste, alcanza con el mail o el DNI.',
     '.login-fields { display: grid; gap: 16px; }',
-    '.login-fields[hidden] { display: none; }',
     '.field { display: grid; gap: 8px; }',
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
@@ -931,43 +932,60 @@ t('Landing opens with the event poster and a primary call to action', () => {
     'class="poster-day">04', '10:30', '11:30', '12:30', 'Elegí tus charlas.']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/btn-hero-start[\s\S]*?sSetLoginOpen_\(true\)/.test(panelSrc)) {
-    throw new Error('hero CTA does not open the login form');
+  if (!/btn-hero-start[\s\S]*?s-screen-mail[\s\S]*?scrollIntoView/.test(panelSrc)) {
+    throw new Error('hero CTA does not go to the login form');
   }
   if (!/\.hero-grid \{[^}]*display: grid/s.test(panelHtml)) throw new Error('hero grid missing');
 });
 
-t('Datos asks for nombre before apellido', () => {
-  const nombre = panelHtml.indexOf('id="fieldset-nombre"');
-  const apellido = panelHtml.indexOf('id="fieldset-apellido"');
+t('Login asks for nombre before apellido', () => {
+  const nombre = panelHtml.indexOf('id="input-nombre"');
+  const apellido = panelHtml.indexOf('id="input-apellido"');
   if (nombre < 0 || apellido < 0 || nombre > apellido) {
     throw new Error('nombre must come before apellido');
   }
-  if (!/if \(needsNombre\) \{[\s\S]*?input-nombre'\)\.focus\(\);[\s\S]*?else if \(needsApellido\)/s.test(panelSrc)) {
+  if (!/function sUseLoginData_[\s\S]*?needsNombre[\s\S]*?input-nombre'\)\.focus\(\)/s.test(panelSrc)) {
     throw new Error('focus order does not start with nombre');
-  }
-  if (!/fieldset-nombre'\)\.style\.display = needsNombre/s.test(panelSrc)
-    || !/fieldset-apellido'\)\.style\.display = needsApellido/s.test(panelSrc)) {
-    throw new Error('field visibility is not aligned with nombre/apellido');
   }
 });
 
-t('Access screen starts with an Ingresar gate and inline mail validation', () => {
-  for (const needle of ['id="btn-login-start"', 'id="login-form" class="login-form" hidden',
-    'id="login-intro"', 'id="btn-login-back"', 'aria-expanded="false"', 'role="status" aria-live="polite"',
-    'aria-describedby="mail-hint"', 'enterkeyhint="go"', 'function sSetLoginOpen_',
+t('Access screen starts with one Ingresar gate and a separate form', () => {
+  for (const needle of ['id="s-screen-mail"', 'id="btn-login-start"',
+    'id="s-screen-login"', 'id="login-form" class="login-form"',
+    'id="login-intro"', 'id="btn-login"', 'id="btn-login-back"',
+    'role="status" aria-live="polite"',
+    'aria-describedby="mail-hint"', 'enterkeyhint="go"', 'function sLoginSubmit',
     'function sSetLoginBusy_', 'function sMailError_', 'aria-invalid']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/id="login-form"[^>]*hidden/.test(panelHtml)) throw new Error('login form starts hidden');
-  if (!/function sSalir\(\)[\s\S]*?sSetLoginOpen_\(false\)/.test(panelSrc)) {
-    throw new Error('Salir keeps the gate open');
+  const gate = panelHtml.match(/<section id="s-screen-mail"[\s\S]*?<\/section>/);
+  if (!gate) throw new Error('login gate missing');
+  if (!/id="btn-login-start"/.test(gate[0])) throw new Error('gate has no Ingresar button');
+  if (/id="login-form"/.test(gate[0])) throw new Error('form is still inside the gate');
+  if (!/btn-login-start'\)\.addEventListener\('click'[\s\S]*?s-screen-login/.test(panelSrc)) {
+    throw new Error('gate does not open the form screen');
   }
-  if (!/function sHelloNo\(\)[\s\S]*?sSetLoginOpen_\(true\)/.test(panelSrc)) {
-    throw new Error('No soy yo does not reopen the form');
+  if (!/btn-login-back'\)\.addEventListener\('click'[\s\S]*?s-screen-mail/.test(panelSrc)) {
+    throw new Error('form has no back button');
+  }
+  if (!/S_SCREENS = \['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel'\]/.test(panelSrc)) {
+    throw new Error('login screen is not in S_SCREENS');
+  }
+  if (/id="login-form"[^>]*hidden/.test(panelHtml)) throw new Error('login form is hidden');
+  if (!/function sSalir\(\)[\s\S]*?s-screen-mail[\s\S]*?btn-login-start'\)\.focus\(\)/.test(panelSrc)) {
+    throw new Error('Salir does not return to the gate');
+  }
+  if (!/function sHelloNo\(\)[\s\S]*?s-screen-login[\s\S]*?input-mail'\)\.focus\(\)/.test(panelSrc)) {
+    throw new Error('No soy yo does not return to the form');
   }
   if (!/EsiClient\.isInstitutionalEmail\(email\)/.test(panelSrc)) {
     throw new Error('mail is not validated before the call');
+  }
+  if (!/function sLoginSubmit\(\)[\s\S]*?sLookup\(\)[\s\S]*?sLookupDni\(\)/.test(panelSrc)) {
+    throw new Error('login submit does not choose mail or DNI');
+  }
+  if (!/\$\('login-form'\)\.addEventListener\('submit'/.test(panelSrc)) {
+    throw new Error('login form has no submit handler');
   }
 });
 
@@ -1583,7 +1601,7 @@ t('Panel wipes student data on Salir and warns about shared phones', () => {
   if (!/function sClearStudentSession_\(\)[\s\S]*?'esi_session'[\s\S]*?'esi_student'[\s\S]*?ssDel/.test(panelSrc)) {
     throw new Error('session wipe helper');
   }
-  if (!/function sSalir\(\) \{[\s\S]*?sRevokeSession_\(\)[\s\S]*?sClearStudentSession_\(\)[\s\S]*?sEmptyState_\(\)[\s\S]*?sClearLoginFields_\(\)[\s\S]*?sSetLoginMode\('mail'\)/.test(panelSrc)) {
+  if (!/function sSalir\(\) \{[\s\S]*?sRevokeSession_\(\)[\s\S]*?sClearStudentSession_\(\)[\s\S]*?sEmptyState_\(\)[\s\S]*?sClearLoginFields_\(\)[\s\S]*?s-screen-mail/.test(panelSrc)) {
     throw new Error('Salir does not reset the login');
   }
   for (const needle of ['id="login-note"', 'Si el celular es compartido',
@@ -1829,6 +1847,34 @@ t('apiLookupDni accepts dots and a case-insensitive surname', () => {
   assertEq(replay.ok, false, 'ticket is single use');
 });
 
+t('apiLookupDni lets a unique DNI in without apellido', () => {
+  const services = dniRosterStub();
+  const api = backendApi(services, 'apiLookupDni, apiGetData');
+  const r = api.apiLookupDni('12.345.678', '');
+  assertEq(r.ok, true);
+  assertEq(r.needsApellido, false);
+  assertEq(r.apellido, 'Gómez');
+  const data = api.apiGetData('', '', '', '', '', r.login);
+  assertEq(data.ok, true);
+  assertEq(data.student.email, 'ana@secundariosalsipuedes.edu.ar');
+});
+
+t('apiLookupDni asks for apellido when the DNI repeats', () => {
+  const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso', 'dni'], [
+    ['ana@secundariosalsipuedes.edu.ar', 'Gómez', 'Ana', '2°B', '12345678'],
+    ['otra@secundariosalsipuedes.edu.ar', 'Pérez', 'Otra', '2°B', '12345678']
+  ]);
+  const api = backendApi(services, 'apiLookupDni');
+  const r = api.apiLookupDni('12345678', '');
+  assertEq(r.ok, false);
+  assertEq(r.needsApellido, true);
+  assertEq(r.message, 'Hay más de un alumno con ese DNI. Escribí el apellido.');
+  const hit = api.apiLookupDni('12345678', 'Pérez');
+  assertEq(hit.ok, true);
+  assertEq(hit.apellido, 'Pérez');
+});
+
 t('apiLookupDni gives the same shape and message for misses', () => {
   const services = dniRosterStub();
   const api = backendApi(services, 'apiLookupDni');
@@ -1856,11 +1902,15 @@ t('apiLookupDni blocks after five failures', () => {
   assertEq(blocked.message, 'Demasiados intentos. Esperá dos minutos.');
 });
 
-t('Panel logs in with DNI and apellido against the public endpoint', () => {
+t('Panel logs in with DNI, with or without apellido', () => {
   if (!/call\('apiLookupDni', \[dni, apellido\]\)/.test(panelSrc)) throw new Error('dni call missing');
   if (!/id="input-dni"/.test(panelHtml) || !/id="input-apellido"/.test(panelHtml)) throw new Error('dni inputs missing');
-  if (!/id="login-dni"/.test(panelHtml) || !/id="login-mail"/.test(panelHtml)) throw new Error('login toggle missing');
   if (!/function sLookupDni\(/.test(panelSrc)) throw new Error('sLookupDni missing');
+  if (!/function sLoginSubmit\(\)[\s\S]*?sLookupDni\(\)/.test(panelSrc)) throw new Error('login does not use DNI');
+  if (!/if \(apellido && !EsiClient\.isValidName\(apellido\)\)/.test(panelSrc)) {
+    throw new Error('apellido is still required before the DNI call');
+  }
+  if (!/resp\.needsApellido/.test(panelSrc)) throw new Error('panel ignores needsApellido');
 });
 
 t('Panel stores only an opaque student token and resumes or revokes it', () => {

@@ -1543,7 +1543,8 @@ function apiLookupDni(dni, apellido) {
   try {
     var norm = EsiCore.normalizeDni(dni);
     var ap = EsiCore.normalizeText(apellido);
-    var valid = EsiCore.isValidDni(norm) && ap.length >= 2 && ap.length <= 60;
+    var hasAp = ap.length >= 2 && ap.length <= 60;
+    var valid = EsiCore.isValidDni(norm) && (ap === '' || hasAp);
     var roster = readStudentsCached_();
     var out = {
       ok: false,
@@ -1552,6 +1553,7 @@ function apiLookupDni(dni, apellido) {
       login: '',
       rosterLoaded: roster.length > 0,
       needsNombre: false,
+      needsApellido: false,
       needsCurso: false,
       apellido: '',
       nombreCompleto: '',
@@ -1565,8 +1567,19 @@ function apiLookupDni(dni, apellido) {
       for (var i = 0; i < roster.length; i++) {
         if (roster[i].dni && roster[i].dni === norm) matches.push(roster[i]);
       }
-      var entry = matches.length === 1 ? matches[0] : null;
-      if (!entry || EsiCore.normalizeText(entry.apellido) !== ap) {
+      var entry = null;
+      if (hasAp) {
+        for (var j = 0; j < matches.length; j++) {
+          if (EsiCore.normalizeText(matches[j].apellido) === ap) {
+            entry = matches[j];
+            break;
+          }
+        }
+      } else if (matches.length === 1) {
+        entry = matches[0];
+      }
+      if (!entry) {
+        if (!hasAp && matches.length > 1) return { needsApellido: true };
         noteDniFailure_(norm);
         return { entry: null };
       }
@@ -1579,6 +1592,11 @@ function apiLookupDni(dni, apellido) {
     }
     if (lookup.blocked) {
       out.message = 'Demasiados intentos. Esperá dos minutos.';
+      return out;
+    }
+    if (lookup.needsApellido) {
+      out.message = 'Hay más de un alumno con ese DNI. Escribí el apellido.';
+      out.needsApellido = true;
       return out;
     }
     var entry = lookup.entry;
@@ -1598,6 +1616,7 @@ function apiLookupDni(dni, apellido) {
       login: login,
       rosterLoaded: true,
       needsNombre: !nombreCompleto,
+      needsApellido: false,
       needsCurso: !pc,
       apellido: entry.apellido || '',
       nombreCompleto: nombreCompleto,
