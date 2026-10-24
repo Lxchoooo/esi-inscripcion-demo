@@ -1657,6 +1657,11 @@ t('Report tables turn into cards on narrow screens', () => {
   if (!block.includes('.report-table thead { display: none; }')) throw new Error('report head not hidden');
   if (!block.includes('.report-table td::before')) throw new Error('report labels missing');
   if (!/\.report-table \.present-mini \{[^}]*min-height: 44px/.test(block)) throw new Error('touch size missing');
+  if (!/\.report-table\.is-cards table/.test(panelHtml)) throw new Error('container card mode missing');
+  if (!/function aSyncTableCards_\(\)/.test(panelSrc)) throw new Error('container card mode not wired');
+  if (!/\$\('a-table'\)\.innerHTML = rows;[\s\S]{0,80}aSyncTableCards_\(\)/.test(panelSrc)) {
+    throw new Error('roster table does not sync card mode');
+  }
 });
 
 

@@ -821,6 +821,29 @@
       .report-table td .present-mini { width: 100%; }
     }
 
+    /* Modo tarjeta por ancho real del contenedor, no solo por viewport. */
+    .report-table.is-cards table, .report-table.is-cards tbody,
+    #a-table.is-cards table, #a-table.is-cards tbody { display: block; }
+    .report-table.is-cards thead, #a-table.is-cards thead { display: none; }
+    .report-table.is-cards tr, #a-table.is-cards tr {
+      display: block; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--surface); margin: 10px 0; padding: 6px 14px;
+    }
+    .report-table.is-cards td, #a-table.is-cards td { display: block; border: 0; padding: 4px 0; }
+    .report-table.is-cards td::before, #a-table.is-cards td::before {
+      content: attr(data-label); display: inline-block; min-width: 82px;
+      color: var(--muted); font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .report-table.is-cards td[data-label=""], #a-table.is-cards td[data-label=""] { padding-top: 10px; }
+    .report-table.is-cards td[data-label=""]::before,
+    #a-table.is-cards td[data-label=""]::before { display: none; }
+    .report-table.is-cards td[data-label=""] .btn,
+    #a-table.is-cards td[data-label=""] .btn { width: 100%; }
+    .report-table.is-cards td.num, #a-table.is-cards td.num { width: auto; }
+    .report-table.is-cards .present-mini { min-height: 44px; padding: 8px 14px; }
+    .report-table.is-cards td .present-mini { width: 100%; }
+
     @media (max-width: 380px) {
       .nav { padding-left: 14px; padding-right: 14px; gap: 12px; }
       .wrap { padding-left: 14px; padding-right: 14px; }
@@ -4760,6 +4783,7 @@
         html = '<div class="empty-state"><p class="es-title">No hay alumnos en este curso.</p></div>';
       }
       out.innerHTML = html;
+      aSyncTableCards_();
     }
 
     function aOnReportPresent(signupId, present) {
@@ -4830,6 +4854,7 @@
         html += '<p class="hint-line">Todavía no hay inscriptos en esta charla.</p>';
       }
       out.innerHTML = html;
+      aSyncTableCards_();
     }
 
     function aRenderTotalReport() {
@@ -4875,6 +4900,7 @@
           + ' presentes, ' + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
       }
       $('rep-out').innerHTML = html;
+      aSyncTableCards_();
     }
 
     function printDate_() {
@@ -5230,6 +5256,7 @@
       }
       if (name === 'mails' && !aMailPreview) aLoadMailPreview();
       aRefreshView();
+      aSyncTableCards_();
     }
 
     function aIsTyping_(el) {
@@ -5271,6 +5298,19 @@
       if ((name === 'inscriptos' || name === 'mails' || name === 'corr') && aRole !== 'admin') return;
       ev.preventDefault();
       aTab(name);
+    }
+
+    function aSyncTableCards_() {
+      var nodes = [];
+      try { nodes = document.querySelectorAll('.report-table, #a-table'); } catch (e) { return; }
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (!el || !el.classList) continue;
+        var w = el.clientWidth || 0;
+        if (!w) continue;
+        if (w < 680) el.classList.add('is-cards');
+        else el.classList.remove('is-cards');
+      }
     }
 
     function aRenderTable() {
@@ -5317,6 +5357,7 @@
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
       $('a-table').innerHTML = rows;
+      aSyncTableCards_();
     }
 
     function aImportMsg(text, type) {
@@ -6058,6 +6099,7 @@
         }
       });
       document.addEventListener('keydown', aOnKey_);
+      window.addEventListener('resize', aSyncTableCards_);
 
       if (adminCred) {
         showScreen(A_SCREENS, 'a-screen-panel');
