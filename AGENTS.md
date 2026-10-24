@@ -9,9 +9,9 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: ronda 12 y auditoria publicadas en `main`; tests 125/0, smoke OK.
-  Inicio renovado y fix de sesion en curso. CI y Pages se verifican tras el push.
-  Backend real, MailApp y dispositivo siguen sin probarse.
+- Estado: ronda 12, auditoria y rediseño de inicio publicados en `main`;
+  tests 125/0, smoke OK, CI y Pages verdes. El registro de una segunda franja
+  conserva la sesión. Backend real, MailApp y dispositivo siguen sin probarse.
 
 ## Donde trabajar
 
