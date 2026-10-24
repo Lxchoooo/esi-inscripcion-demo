@@ -94,7 +94,7 @@ const ui = new Function('window', 'document', src + `
 return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
-  sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir, sSubmitDatos: sSubmitDatos, sSetDniAvailable_: sSetDniAvailable_, sSetLoginOpen_: sSetLoginOpen_, sRegister: sRegister,
+  sLookup: sLookup, sLookupDni: sLookupDni, sLoginSubmit: sLoginSubmit, sSalir: sSalir, sRegister: sRegister,
   sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
@@ -237,26 +237,16 @@ function tick() {
 }
 
 (async function () {
-  document.getElementById('input-mail').value = 'ana@secundariosalsipuedes.edu.ar';
-  ui.sLookup();
-  await tick();
-  assert(document.body.getAttribute('data-screen') === 's-screen-datos', 'pantalla de datos');
-  assert(document.getElementById('fieldset-apellido').style.display === 'grid', 'pide apellido');
-  document.getElementById('input-apellido-datos').value = 'Gomez';
   document.getElementById('input-nombre').value = 'Ana';
+  document.getElementById('input-apellido').value = 'Gomez';
   document.getElementById('select-anio').value = '2';
   document.getElementById('select-division').value = 'B';
-  ui.sSubmitDatos();
+  document.getElementById('input-mail').value = 'ana@secundariosalsipuedes.edu.ar';
+  ui.sLoginSubmit();
   await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'entra con mail');
   assert(ui.sState.email === 'ana@secundariosalsipuedes.edu.ar', 'mail guardado');
   assert(ui.sState.apellido === 'Gomez', 'apellido guardado');
-  ui.sSetDniAvailable_(false);
-  assert(document.getElementById('login-dni').hidden === true, 'dni oculto sin pedido');
-  ui.sSetDniAvailable_(true);
-  ui.sSetLoginMode('dni');
-  assert(document.getElementById('login-dni-box').hidden === false, 'pane dni visible con roster');
-  assert(document.getElementById('login-mail-box').hidden === true, 'pane mail oculto');
   document.getElementById('input-dni').value = '30.111.222';
   document.getElementById('input-apellido').value = 'gomez';
   ui.sLookupDni();
@@ -286,30 +276,26 @@ function tick() {
   assert(document.getElementById('input-mail').value === '', 'salir limpia el mail');
   assert(document.getElementById('input-dni').value === '', 'salir limpia el dni');
   assert(document.getElementById('input-apellido').value === '', 'salir limpia el apellido');
+  assert(document.getElementById('input-nombre').value === '', 'salir limpia el nombre');
   assert(document.getElementById('summary').innerHTML === '', 'salir limpia el resumen');
   assert(document.getElementById('hello-text').textContent === 'Hola. ¿Sos vos?', 'salir limpia el saludo');
-  assert(document.getElementById('login-mail-box').hidden === false, 'salir vuelve al mail');
-  assert(document.getElementById('login-dni-box').hidden === true, 'salir oculta el dni');
   assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'salir vuelve al ingreso');
-  ui.sSetLoginMode('mail');
-  ui.sSetLoginMode('dni');
-  assert(document.getElementById('login-title').textContent === 'Ingresar', 'titulo generico');
-  ui.sSetLoginOpen_(true);
-  assert(document.getElementById('login-form').hidden === false, 'formulario abierto');
-  assert(document.getElementById('btn-login-start').hidden === true, 'boton de ingreso oculto');
-  ui.sSetLoginOpen_(false);
-  assert(document.getElementById('login-form').hidden === true, 'formulario cerrado');
-  assert(document.getElementById('btn-login-start').hidden === false, 'boton de ingreso visible');
-  ui.sSetLoginOpen_(true);
+  assert(document.getElementById('btn-login').disabled === false, 'boton de ingreso activo');
+  document.getElementById('input-dni').value = '30.111.222';
+  document.getElementById('input-apellido').value = '';
+  ui.sLookupDni();
+  await tick();
+  assert(document.getElementById('hello-text').textContent === 'Hola, Ana. ¿Sos de 2°B?', 'entra solo con dni');
+  ui.sHelloYes();
+  await tick();
+  assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'panel solo con dni');
+  ui.sSalir();
+  await tick();
+  assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'vuelve al ingreso tras dni');
   document.getElementById('input-mail').value = 'nadie@gmail.com';
-  ui.sLookup();
+  ui.sLoginSubmit();
   assert(document.getElementById('s-banner').textContent.includes('@secundariosalsipuedes.edu.ar'), 'mail externo rechazado en cliente');
   assert(document.getElementById('mail-hint').hidden === false, 'error de mail visible');
-  ui.sSetLoginOpen_(false);
-  assert(document.getElementById('hint-mail').textContent === 'Usá tu mail del colegio o tu DNI.', 'ayuda corta');
-  assert(document.getElementById('login-dni').getAttribute('aria-pressed') === 'true', 'selector dni activo');
-  ui.sSetLoginMode('mail');
-  assert(document.getElementById('login-mail').getAttribute('aria-pressed') === 'true', 'selector mail activo');
 
   ui.setTalk({
     ok: true, role: 'admin', talk: { id: 'B1', titulo: 'Ansiedad', cupo: 40 },
