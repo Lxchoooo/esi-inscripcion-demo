@@ -91,7 +91,7 @@ const ui = new Function('window', 'document', src + `
 return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
-  sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir, sSubmitDatos: sSubmitDatos, sSetDniAvailable_: sSetDniAvailable_,
+  sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir, sSubmitDatos: sSubmitDatos, sSetDniAvailable_: sSetDniAvailable_, sSetLoginOpen_: sSetLoginOpen_,
   sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
@@ -285,7 +285,19 @@ function tick() {
   assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'salir vuelve al ingreso');
   ui.sSetLoginMode('mail');
   ui.sSetLoginMode('dni');
-  assert(document.getElementById('login-title').textContent === 'Entrá', 'titulo generico');
+  assert(document.getElementById('login-title').textContent === 'Ingresar', 'titulo generico');
+  ui.sSetLoginOpen_(true);
+  assert(document.getElementById('login-form').hidden === false, 'formulario abierto');
+  assert(document.getElementById('btn-login-start').hidden === true, 'boton de ingreso oculto');
+  ui.sSetLoginOpen_(false);
+  assert(document.getElementById('login-form').hidden === true, 'formulario cerrado');
+  assert(document.getElementById('btn-login-start').hidden === false, 'boton de ingreso visible');
+  ui.sSetLoginOpen_(true);
+  document.getElementById('input-mail').value = 'nadie@gmail.com';
+  ui.sLookup();
+  assert(document.getElementById('s-banner').textContent.includes('@secundariosalsipuedes.edu.ar'), 'mail externo rechazado en cliente');
+  assert(document.getElementById('mail-hint').hidden === false, 'error de mail visible');
+  ui.sSetLoginOpen_(false);
   assert(document.getElementById('hint-mail').textContent === 'Usá tu mail del colegio o tu DNI.', 'ayuda corta');
   assert(document.getElementById('login-dni').getAttribute('aria-pressed') === 'true', 'selector dni activo');
   ui.sSetLoginMode('mail');
