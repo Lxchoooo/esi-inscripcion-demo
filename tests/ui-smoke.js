@@ -233,7 +233,7 @@ function tick() {
   ui.sLookup();
   await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-datos', 'pantalla de datos');
-  assert(document.getElementById('fieldset-nombre').style.display === 'block', 'pide apellido');
+  assert(document.getElementById('fieldset-apellido').style.display === 'grid', 'pide apellido');
   document.getElementById('input-apellido-datos').value = 'Gomez';
   document.getElementById('input-nombre').value = 'Ana';
   document.getElementById('select-anio').value = '2';

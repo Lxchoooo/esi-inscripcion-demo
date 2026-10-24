@@ -926,6 +926,32 @@ function backendApi(services, names) {
     services.SpreadsheetApp, services.Utilities, services.MailApp);
 }
 
+t('Landing opens with the event poster and a primary call to action', () => {
+  for (const needle of ['id="btn-hero-start"', 'Reservar mi lugar', 'class="hero-poster"',
+    'class="poster-day">04', '10:30', '11:30', '12:30', 'Elegí tus charlas.']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/btn-hero-start[\s\S]*?sSetLoginOpen_\(true\)/.test(panelSrc)) {
+    throw new Error('hero CTA does not open the login form');
+  }
+  if (!/\.hero-grid \{[^}]*display: grid/s.test(panelHtml)) throw new Error('hero grid missing');
+});
+
+t('Datos asks for nombre before apellido', () => {
+  const nombre = panelHtml.indexOf('id="fieldset-nombre"');
+  const apellido = panelHtml.indexOf('id="fieldset-apellido"');
+  if (nombre < 0 || apellido < 0 || nombre > apellido) {
+    throw new Error('nombre must come before apellido');
+  }
+  if (!/if \(needsNombre\) \{[\s\S]*?input-nombre'\)\.focus\(\);[\s\S]*?else if \(needsApellido\)/s.test(panelSrc)) {
+    throw new Error('focus order does not start with nombre');
+  }
+  if (!/fieldset-nombre'\)\.style\.display = needsNombre/s.test(panelSrc)
+    || !/fieldset-apellido'\)\.style\.display = needsApellido/s.test(panelSrc)) {
+    throw new Error('field visibility is not aligned with nombre/apellido');
+  }
+});
+
 t('Access screen starts with an Ingresar gate and inline mail validation', () => {
   for (const needle of ['id="btn-login-start"', 'id="login-form" class="login-form" hidden',
     'id="login-intro"', 'id="btn-login-back"', 'aria-expanded="false"', 'role="status" aria-live="polite"',
