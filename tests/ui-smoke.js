@@ -424,6 +424,9 @@ function tick() {
   assert(rep.includes('data-mail="beto@esc.edu.ar"'), 'mail disponible en el reporte');
   assert(!rep.includes('row-mail'), 'mail no ocupa la tabla');
   assert(cardProbe.classList.contains('is-cards'), 'tabla angosta en modo tarjeta');
+  cardProbe.clientWidth = 800;
+  ui.aSyncTableCards_();
+  assert(cardProbe.classList.contains('is-cards'), 'tabla de 800px en modo tarjeta');
   cardProbe.clientWidth = 900;
   ui.aSyncTableCards_();
   assert(!cardProbe.classList.contains('is-cards'), 'tabla ancha en modo tabla');

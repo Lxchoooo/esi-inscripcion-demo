@@ -1652,11 +1652,16 @@ t('Reports hide mails for guides even if the payload leaks one', () => {
 });
 
 t('Report tables turn into cards on narrow screens', () => {
-  const block = panelHtml.slice(panelHtml.indexOf('@media (max-width: 640px)'));
+  const block = panelHtml.slice(panelHtml.indexOf('@media (max-width: 900px)'));
   if (!/\.report-table tr \{[^}]*display: block/.test(block)) throw new Error('report rows are not cards');
   if (!block.includes('.report-table thead { display: none; }')) throw new Error('report head not hidden');
   if (!block.includes('.report-table td::before')) throw new Error('report labels missing');
   if (!/\.report-table \.present-mini \{[^}]*min-height: 44px/.test(block)) throw new Error('touch size missing');
+  const chartBars = panelSrc.slice(panelSrc.indexOf('function chartBars_'), panelSrc.indexOf('function aCharts_'));
+  if (!chartBars.includes("'</div>' + table + '</table></figure>'")) throw new Error('chart bars table is not closed');
+  const chartTables = (chartBars.match(/<table/g) || []).length;
+  const chartTableEnds = (chartBars.match(/<\/table>/g) || []).length;
+  if (chartTables !== chartTableEnds) throw new Error('chart bars table tags are unbalanced');
   if (!/\.report-table\.is-cards table/.test(panelHtml)) throw new Error('container card mode missing');
   if (!/function aSyncTableCards_\(\)/.test(panelSrc)) throw new Error('container card mode not wired');
   if (!/\$\('a-table'\)\.innerHTML = rows;[\s\S]{0,80}aSyncTableCards_\(\)/.test(panelSrc)) {
