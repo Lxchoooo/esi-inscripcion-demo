@@ -9,9 +9,9 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: ronda 12, auditoria y rediseño de inicio publicados en `main`;
-  tests 125/0, smoke OK, CI y Pages verdes. El registro de una segunda franja
-  conserva la sesión. Backend real, MailApp y dispositivo siguen sin probarse.
+- Estado: ronda 13, panel de profes con nombres primarios y conteos separados,
+  publicada en `main`; tests 126/0, smoke OK, CI tests y Pages verdes sobre
+  `e3535b8`. Backend real, MailApp y dispositivo siguen sin probarse.
 
 ## Donde trabajar
 
@@ -98,6 +98,9 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   `/exec?admin=1`; no usar `?api=` de Pages para administrar.
 - Modo ensayo: `modo_prueba=si` marca filas `prueba=true`; el borrado de
   prueba exige `BORRAR PRUEBA` y no toca datos reales.
+- Panel de profes: nombre como `Apellido, Nombre`; el mail se abre con un toque
+  para leerlo o copiarlo y solo existe en el DOM para admin. `Alumnos` cuenta
+  mails unicos y `Reservas` cuenta filas de `Signups`.
 - Offline: la copia por charla no guarda mails; la cola de presentes guarda
   solo ID y estado.
 
@@ -118,8 +121,10 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   `Signups`, `Sessions` y `Students`; mover solo dentro del mismo horario;
   fusionar conserva un mail y revoca la sesion descartada; borrar elimina filas
   y sesion.
-- Reportes se calculan desde `Signups`, no desde `Students`: inscriptos = mails
-  unicos; completos = 3 franjas; incompletos = 1 o 2. La guia nunca recibe mails.
+- Reportes se calculan desde `Signups`, no desde `Students`: alumnos = mails
+  unicos; reservas = filas; completos = 3 franjas; faltan charlas = 1 o 2.
+  `apiAdminGetData.total` y `apiAdminStatus.total` siguen siendo reservas;
+  `studentCount` y `student_count` son alumnos unicos. La guia nunca recibe mails.
 - Recordatorios solo opt-in, tandas de 20 con maximo 40, `Mails` deduplica por
   mail + asunto. `MailApp` real sigue sin probarse. El respaldo y las escrituras
   administrativas comparten el lock global.
