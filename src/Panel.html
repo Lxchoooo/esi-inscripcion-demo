@@ -261,6 +261,9 @@
     .field label { margin: 0; }
     .login-fields { display: grid; gap: 16px; }
     .login-fields[hidden] { display: none; }
+    .login-form[hidden], .login-start[hidden] { display: none; }
+    .login-form { margin-top: 4px; }
+    .login-form .seg { margin-bottom: 14px; }
     .login-fields .btn.full { margin: 0; }
     .login-alt { justify-self: start; margin: 0; padding-left: 0; padding-right: 0; }
     input[type=text], input[type=password], input[type=email], select, textarea {
@@ -467,7 +470,7 @@
     .landing { display: none; }
     body[data-screen="s-screen-mail"] .landing { display: block; }
     body.admin .landing { display: none !important; }
-    #faq { scroll-margin-top: 86px; }
+    #como, #esi, #faq { scroll-margin-top: 86px; }
 
     .reveal.reveal-armed { opacity: 0; transform: translateY(14px); }
     .reveal.reveal-in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
@@ -957,6 +960,7 @@
         </div>
       </a>
       <nav class="nav-links" aria-label="Secciones">
+        <a href="#como">Cómo funciona</a>
         <a href="#esi">ESI</a>
         <a href="#faq">Dudas</a>
       </nav>
@@ -969,9 +973,14 @@
       <p class="hero-eyebrow">Jornada ESI 2026</p>
       <h2 id="hero-title">Inscripción a las charlas</h2>
       <p>Elegí una charla por horario.</p>
+      <div class="hero-meta">
+        <span>4 de noviembre</span>
+        <span>3 horarios</span>
+        <span>Instituto Secundario Salsipuedes</span>
+      </div>
     </section>
 
-    <div id="s-banner" class="banner"></div>
+    <div id="s-banner" class="banner" role="status" aria-live="polite"></div>
 
     <section id="setup-warning" class="card setup-warning" hidden>
       <div class="steps">Configuración</div>
@@ -982,53 +991,59 @@
 
     <section id="s-screen-mail" class="screen card">
       <div class="steps">1 de 3</div>
-      <h2 class="intro" id="login-title">Entrá</h2>
-      <p class="hint" id="hint-mail">Usá tu mail institucional.</p>
-      <div class="seg" role="group" aria-label="Cómo entrás">
-        <button id="login-mail" class="seg-btn active" type="button" aria-pressed="true">Con mail</button>
-        <button id="login-dni" class="seg-btn" type="button" aria-pressed="false" hidden>Con DNI</button>
-      </div>
-      <div id="login-mail-box" class="login-fields">
-        <div class="field">
-          <label for="input-mail">Mail institucional</label>
-          <input id="input-mail" type="email" autocomplete="off" maxlength="120"
-            placeholder="usuario@secundariosalsipuedes.edu.ar">
+      <h2 class="intro" id="login-title">Ingresar</h2>
+      <p class="hint" id="login-intro">Vas a necesitar tu mail institucional o tu DNI.</p>
+      <button id="btn-login-start" class="btn full" type="button" aria-controls="login-form" aria-expanded="false">Ingresar</button>
+      <div id="login-form" class="login-form" hidden>
+        <div class="seg" role="group" aria-label="Cómo entrás">
+          <button id="login-mail" class="seg-btn active" type="button" aria-pressed="true">Con mail</button>
+          <button id="login-dni" class="seg-btn" type="button" aria-pressed="false" hidden>Con DNI</button>
         </div>
-        <button id="btn-mail" class="btn full" type="button">Continuar</button>
-        <details class="mail-help" id="mail-help">
-          <summary>¿No te acordás tu mail?</summary>
-          <p>Tu mail es tu apellido, tu nombre y tu año de egreso, todo junto, en minúsculas, sin tildes y sin ñ, y termina en @secundariosalsipuedes.edu.ar.</p>
-          <p>Ejemplo: <strong>gomezperezmaria2029@secundariosalsipuedes.edu.ar</strong></p>
-          <p>Tu año de egreso: 6° 2026, 5° 2027, 4° 2028, 3° 2029, 2° 2030, 1° 2031.</p>
-          <p>Si repetiste o tu caso es distinto, preguntale a un preceptor.</p>
-          <div class="mail-year">
-            <label for="select-mail-year">¿En qué año estás?</label>
-            <select id="select-mail-year">
-              <option value="">Elegí...</option>
-              <option value="6">6°</option><option value="5">5°</option>
-              <option value="4">4°</option><option value="3">3°</option>
-              <option value="2">2°</option><option value="1">1°</option>
-            </select>
-            <span id="mail-year-out" class="hint-line"></span>
+        <p class="hint" id="hint-mail">Usá tu mail institucional.</p>
+        <div id="login-mail-box" class="login-fields">
+          <div class="field">
+            <label for="input-mail">Mail institucional</label>
+            <input id="input-mail" type="email" inputmode="email" autocomplete="off" maxlength="120"
+              spellcheck="false" autocapitalize="none" enterkeyhint="go"
+              aria-describedby="mail-hint" placeholder="usuario@secundariosalsipuedes.edu.ar">
           </div>
-          <button id="btn-prefer-dni" class="btn link" type="button" hidden>Prefiero usar mi DNI</button>
-        </details>
-        <button id="btn-use-dni" class="btn link login-alt" type="button" hidden>Usar mi DNI</button>
-        <p class="hint-line" id="mail-hint" hidden>Revisá el mail institucional.</p>
-      </div>
-      <div id="login-dni-box" class="login-fields" hidden>
-        <div class="field">
-          <label for="input-dni">DNI</label>
-          <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
-            placeholder="Solo números">
+          <button id="btn-mail" class="btn full" type="button">Continuar</button>
+          <details class="mail-help" id="mail-help">
+            <summary>¿No te acordás tu mail?</summary>
+            <p>Tu mail es tu apellido, tu nombre y tu año de egreso, todo junto, en minúsculas, sin tildes y sin ñ, y termina en @secundariosalsipuedes.edu.ar.</p>
+            <p>Ejemplo: <strong>gomezperezmaria2029@secundariosalsipuedes.edu.ar</strong></p>
+            <p>Tu año de egreso: 6° 2026, 5° 2027, 4° 2028, 3° 2029, 2° 2030, 1° 2031.</p>
+            <p>Si repetiste o tu caso es distinto, preguntale a un preceptor.</p>
+            <div class="mail-year">
+              <label for="select-mail-year">¿En qué año estás?</label>
+              <select id="select-mail-year">
+                <option value="">Elegí...</option>
+                <option value="6">6°</option><option value="5">5°</option>
+                <option value="4">4°</option><option value="3">3°</option>
+                <option value="2">2°</option><option value="1">1°</option>
+              </select>
+              <span id="mail-year-out" class="hint-line"></span>
+            </div>
+            <button id="btn-prefer-dni" class="btn link" type="button" hidden>Prefiero usar mi DNI</button>
+          </details>
+          <button id="btn-use-dni" class="btn link login-alt" type="button" hidden>Usar mi DNI</button>
+          <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
         </div>
-        <div class="field">
-          <label for="input-apellido">Apellido</label>
-          <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
-            placeholder="Tu apellido">
+        <div id="login-dni-box" class="login-fields" hidden>
+          <div class="field">
+            <label for="input-dni">DNI</label>
+            <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
+              enterkeyhint="next" placeholder="Solo números">
+          </div>
+          <div class="field">
+            <label for="input-apellido">Apellido</label>
+            <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
+              autocapitalize="words" enterkeyhint="go" placeholder="Tu apellido">
+          </div>
+          <button id="btn-dni" class="btn full" type="button">Continuar</button>
+          <p class="hint-line">Si no estás en la lista con DNI, entrá con tu mail.</p>
         </div>
-        <button id="btn-dni" class="btn full" type="button">Continuar</button>
-        <p class="hint-line">Si no estás en la lista con DNI, entrá con tu mail.</p>
+        <button id="btn-login-back" class="btn link" type="button">Volver</button>
       </div>
       <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: entren por la URL /exec del Apps Script, con la clave en el formulario. Este acceso es solo para alumnos.</p>
       <p class="hint-line login-note" id="login-note">Si el celular es compartido, tocá "Salir" al terminar.</p>
@@ -1285,6 +1300,29 @@
           </div>
           <div id="mail-send-msg" class="banner"></div>
         </div>
+      </div>
+    </section>
+
+    <section class="section landing" id="como" aria-labelledby="como-title">
+      <p class="eyebrow">Cómo funciona</p>
+      <h2 id="como-title">Tres pasos.</h2>
+      <p class="lead">Entrás, elegís y listo. Podés volver a entrar con el mismo mail o DNI hasta que cierre la inscripción.</p>
+      <div class="how-grid">
+        <article class="how-card">
+          <span class="how-num">01</span>
+          <h3>Ingresá</h3>
+          <p>Usá tu mail institucional o tu DNI y apellido. Si falta algún dato, te lo pedimos una vez.</p>
+        </article>
+        <article class="how-card">
+          <span class="how-num">02</span>
+          <h3>Elegí</h3>
+          <p>Una charla por horario. Si una se llena, vas a ver los lugares que quedan antes de confirmar.</p>
+        </article>
+        <article class="how-card">
+          <span class="how-num">03</span>
+          <h3>Guardá</h3>
+          <p>Agregá las charlas a tu calendario. El día de la jornada, la guía marca tu presencia.</p>
+        </article>
       </div>
     </section>
 
@@ -3051,7 +3089,33 @@
       student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
     };
     var sLoginMode = 'mail';
+    var sLoginOpen = false;
     var sDniAvailable = false;
+
+    function sSetLoginOpen_(open) {
+      sLoginOpen = !!open;
+      var start = $('btn-login-start');
+      var form = $('login-form');
+      var intro = $('login-intro');
+      if (start) {
+        start.hidden = sLoginOpen;
+        start.setAttribute('aria-expanded', sLoginOpen ? 'true' : 'false');
+      }
+      if (form) form.hidden = !sLoginOpen;
+      if (intro) intro.hidden = sLoginOpen;
+      if (sLoginOpen) {
+        sSetLoginMode(sLoginMode);
+      } else {
+        sBanner('');
+      }
+    }
+
+    function sSetLoginBusy_(id, busy, label, normal) {
+      var btn = $(id);
+      if (!btn) return;
+      btn.disabled = !!busy;
+      btn.textContent = busy ? label : normal;
+    }
 
     function sSetDniAvailable_(available) {
       sDniAvailable = !!available;
@@ -3082,10 +3146,11 @@
       $('login-dni').classList.toggle('active', !mail);
       $('login-mail').setAttribute('aria-pressed', mail ? 'true' : 'false');
       $('login-dni').setAttribute('aria-pressed', mail ? 'false' : 'true');
-      $('login-title').textContent = 'Entrá';
+      $('login-title').textContent = 'Ingresar';
       $('hint-mail').textContent = sDniAvailable ? 'Usá tu mail del colegio o tu DNI.' : 'Usá tu mail institucional.';
       $('mail-hint').hidden = true;
       sBanner('');
+      if (!sLoginOpen) return;
       if (mail) $('input-mail').focus(); else $('input-dni').focus();
     }
 
@@ -3519,22 +3584,39 @@
         });
     }
 
+    function sMailError_(msg) {
+      sBanner(msg, 'err');
+      $('mail-hint').textContent = msg;
+      $('mail-hint').hidden = false;
+      $('input-mail').setAttribute('aria-invalid', 'true');
+      try { $('input-mail').focus(); } catch (e) { }
+    }
+
     function sLookup() {
       if (sState.busy) return;
-      var email = $('input-mail').value;
+      var email = EsiClient.normalizeEmail($('input-mail').value);
+      if (!email) {
+        sMailError_('Escribí tu mail institucional.');
+        return;
+      }
+      if (!EsiClient.isInstitutionalEmail(email)) {
+        sMailError_('Usá tu mail @secundariosalsipuedes.edu.ar.');
+        return;
+      }
       sState.busy = true;
+      sSetLoginBusy_('btn-mail', true, 'Buscando...', 'Continuar');
+      $('input-mail').setAttribute('aria-invalid', 'false');
       sBanner('Buscando...', 'ok');
       call('apiLookup', [email])
         .then(function (resp) {
           sState.busy = false;
+          sSetLoginBusy_('btn-mail', false, 'Buscando...', 'Continuar');
           if (!resp.ok) {
-            var msg = resp.message || 'No se pudo validar el mail.';
-            sBanner(msg, 'err');
-            $('mail-hint').hidden = false;
+            sMailError_(resp.message || 'No se pudo validar el mail.');
             return;
           }
           sBanner('');
-          sState.email = email.replace(/\s/g, '').toLowerCase();
+          sState.email = email;
           sState.login = '';
           sState.lookup = resp;
           sState.nombre = resp.nombreCompleto || resp.nombre || '';
@@ -3542,6 +3624,7 @@
           sState.greeting = resp.nombre || '';
           sState.curso = resp.curso || '';
           $('mail-hint').hidden = true;
+          $('input-mail').setAttribute('aria-invalid', 'false');
           if (resp.nombre) {
             sShowHello();
             return;
@@ -3554,7 +3637,8 @@
         })
         .catch(function () {
           sState.busy = false;
-          sBanner('Sin conexión. Probá de nuevo.', 'err');
+          sSetLoginBusy_('btn-mail', false, 'Buscando...', 'Continuar');
+          sMailError_('Sin conexión. Probá de nuevo.');
         });
     }
 
@@ -3571,13 +3655,25 @@
 
     function sLookupDni() {
       if (sState.busy) return;
-      var dni = $('input-dni').value;
-      var apellido = $('input-apellido').value;
+      var dni = EsiClient.normalizeDni($('input-dni').value);
+      var apellido = EsiClient.sanitizeName($('input-apellido').value);
+      if (!EsiClient.isValidDni(dni)) {
+        sBanner('Revisá el DNI: solo números, 7 u 8 dígitos.', 'err');
+        try { $('input-dni').focus(); } catch (e) { }
+        return;
+      }
+      if (!EsiClient.isValidName(apellido)) {
+        sBanner('Escribí tu apellido como figura en el DNI.', 'err');
+        try { $('input-apellido').focus(); } catch (e) { }
+        return;
+      }
       sState.busy = true;
+      sSetLoginBusy_('btn-dni', true, 'Buscando...', 'Continuar');
       sBanner('Buscando...', 'ok');
       call('apiLookupDni', [dni, apellido])
         .then(function (resp) {
           sState.busy = false;
+          sSetLoginBusy_('btn-dni', false, 'Buscando...', 'Continuar');
           if (!resp.ok) {
             sBanner(resp.message || 'No pudimos entrar.', 'err');
             return;
@@ -3606,6 +3702,7 @@
         })
         .catch(function () {
           sState.busy = false;
+          sSetLoginBusy_('btn-dni', false, 'Buscando...', 'Continuar');
           sBanner('Sin conexión. Probá de nuevo.', 'err');
         });
     }
@@ -3628,8 +3725,9 @@
       sState.login = '';
       sState.lookup = null;
       sClearLoginFields_();
-      sBanner(sLoginMode === 'dni' ? 'Probá de nuevo con tu DNI.' : 'Escribí tu mail de nuevo.', 'err');
       showScreen(S_SCREENS, 's-screen-mail');
+      sSetLoginOpen_(true);
+      sBanner(sLoginMode === 'dni' ? 'Probá de nuevo con tu DNI.' : 'Escribí tu mail de nuevo.', 'err');
       if (sLoginMode === 'dni') $('input-dni').focus(); else $('input-mail').focus();
     }
 
@@ -3646,9 +3744,10 @@
       $('sel-count').textContent = '0 de 3 elegidas';
       $('sel-hint').hidden = true;
       showScreen(S_SCREENS, 's-screen-mail');
+      sSetLoginOpen_(false);
       sSetLoginMode('mail');
       sBanner('');
-      $('input-mail').focus();
+      $('btn-login-start').focus();
     }
 
     function sFillDivisions(year, selected) {
@@ -3732,6 +3831,12 @@
       }
       $('hdr-title').textContent = 'Inscripción a las charlas';
       $('hdr-sub').textContent = EVENT_NAME;
+      sSetLoginOpen_(false);
+      $('btn-login-start').addEventListener('click', function () { sSetLoginOpen_(true); });
+      $('btn-login-back').addEventListener('click', function () {
+        sSetLoginOpen_(false);
+        $('btn-login-start').focus();
+      });
       $('btn-mail').addEventListener('click', sLookup);
       $('btn-use-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
       $('btn-prefer-dni').addEventListener('click', function () { sSetLoginMode('dni'); });
@@ -3764,6 +3869,7 @@
       $('btn-datos').addEventListener('click', sSubmitDatos);
       $('btn-datos-volver').addEventListener('click', function () {
         showScreen(S_SCREENS, 's-screen-mail');
+        sSetLoginOpen_(true);
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
       $('btn-ics').addEventListener('click', sDownloadIcs_);
@@ -3779,6 +3885,7 @@
         sClearLoginFields_();
         sBanner('');
         showScreen(S_SCREENS, 's-screen-mail');
+        sSetLoginOpen_(true);
       });
 
       showPagesNotice_();

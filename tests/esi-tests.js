@@ -778,7 +778,7 @@ t('Panel stays usable at 360px with 44px targets and safe overflow', () => {
 t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
   for (const needle of ['class="login-fields"', 'class="field"', 'id="btn-use-dni"',
     'placeholder="usuario@secundariosalsipuedes.edu.ar"', 'placeholder="Solo números"',
-    '<h2 class="intro" id="login-title">Entrá</h2>',
+    '<h2 class="intro" id="login-title">Ingresar</h2>',
     'Usá tu mail del colegio o tu DNI.',
     '.login-fields { display: grid; gap: 16px; }',
     '.login-fields[hidden] { display: none; }',
@@ -925,6 +925,25 @@ function backendApi(services, names) {
     services.PropertiesService, services.LockService, services.CacheService,
     services.SpreadsheetApp, services.Utilities, services.MailApp);
 }
+
+t('Access screen starts with an Ingresar gate and inline mail validation', () => {
+  for (const needle of ['id="btn-login-start"', 'id="login-form" class="login-form" hidden',
+    'id="login-intro"', 'id="btn-login-back"', 'aria-expanded="false"', 'role="status" aria-live="polite"',
+    'aria-describedby="mail-hint"', 'enterkeyhint="go"', 'function sSetLoginOpen_',
+    'function sSetLoginBusy_', 'function sMailError_', 'aria-invalid']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/id="login-form"[^>]*hidden/.test(panelHtml)) throw new Error('login form starts hidden');
+  if (!/function sSalir\(\)[\s\S]*?sSetLoginOpen_\(false\)/.test(panelSrc)) {
+    throw new Error('Salir keeps the gate open');
+  }
+  if (!/function sHelloNo\(\)[\s\S]*?sSetLoginOpen_\(true\)/.test(panelSrc)) {
+    throw new Error('No soy yo does not reopen the form');
+  }
+  if (!/EsiClient\.isInstitutionalEmail\(email\)/.test(panelSrc)) {
+    throw new Error('mail is not validated before the call');
+  }
+});
 
 t('Code.gs has two roles and a separate guide key', () => {
   if (!/GUIDE_PIN_PROP\s*=\s*'GUIDE_PIN'/.test(codeSrc)) throw new Error('guide pin property missing');
