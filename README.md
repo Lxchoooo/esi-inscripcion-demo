@@ -17,6 +17,7 @@ no desde GitHub Pages. La documentacion tecnica completa esta en
 
 ## Que incluye
 
+- Inicio con fecha, horarios y acceso directo a la inscripcion.
 - Acceso con mail institucional sin necesidad de padron.
 - Acceso por DNI + apellido si se carga la hoja `Students`.
 - Validacion de nombre y apellido: letras, espacios, apóstrofe y guion.
@@ -64,7 +65,7 @@ Si la planilla ya existia, volver a ejecutar `setup()` para crear `Log`,
 ## Acceso
 
 El camino principal es el mail `@secundariosalsipuedes.edu.ar`. El alumno
-escribe apellido, nombre, año y división; el sistema arma el curso. El mail no
+escribe nombre, apellido, año y división; el sistema arma el curso. El mail no
 se valida contra una lista.
 
 Si se carga `Students`, tambien se habilita DNI + apellido como respaldo. Sin

@@ -944,6 +944,63 @@
     .esi-card h3 { font-size: 16px; margin: 0 0 8px; }
     .esi-card p { margin: 0; line-height: 1.55; font-size: 14.5px; }
     .esi-card a { color: var(--brand-dark); font-weight: 700; }
+    /* Inicio editorial y ajustes del formulario */
+    .btn.accent { background: var(--accent); color: var(--paper); }
+    .btn.accent:hover { background: var(--accent-strong); color: var(--paper); }
+    .hero h2 { font-size: clamp(34px, 7vw, 44px); max-width: 16ch; }
+    .hero-grid { display: grid; gap: 26px; align-items: start; }
+    .hero-copy > p:not(.hero-eyebrow) {
+      font-size: 16.5px; line-height: 1.65; color: var(--muted);
+      max-width: 50ch; margin: 0 0 22px;
+    }
+    .hero-copy .hero-actions { margin: 0 0 20px; }
+    .hero-copy .hero-meta { margin: 0; }
+    .hero-poster {
+      position: relative; isolation: isolate; overflow: hidden;
+      padding: 22px; border-radius: 24px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(255, 255, 255, .2), transparent 38%),
+        linear-gradient(155deg, #173D27 0%, #1F6B3F 58%, #2B7A49 100%);
+      color: #F7F4EC;
+      box-shadow: 0 22px 50px rgba(20, 80, 45, .22);
+    }
+    .hero-poster::after {
+      content: ""; position: absolute; z-index: -1; right: -54px; bottom: -72px;
+      width: 180px; height: 180px; border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .2);
+    }
+    .poster-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .poster-date { display: flex; align-items: flex-end; gap: 8px; }
+    .poster-day { font-size: 62px; line-height: .82; font-weight: 600; letter-spacing: -.055em; }
+    .poster-month { padding-bottom: 5px; font-size: 10px; line-height: 1.25; font-weight: 700; letter-spacing: .16em; }
+    .poster-tag {
+      flex: 0 0 auto; padding: 6px 9px; border: 1px solid rgba(255, 255, 255, .28);
+      border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .poster-kicker { margin: 24px 0 18px; font-size: 18px; line-height: 1.3; font-weight: 600; letter-spacing: -.02em; }
+    .poster-times { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .poster-times li {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .2);
+    }
+    .poster-times span { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .poster-times small { color: rgba(247, 244, 236, .72); font-size: 10px; font-weight: 600; }
+    .poster-place { margin: 20px 0 0; font-size: 10.5px; line-height: 1.45; font-weight: 600; color: rgba(247, 244, 236, .78); }
+    @media (min-width: 680px) {
+      .hero-grid { grid-template-columns: minmax(0, 1.3fr) minmax(210px, .7fr); gap: 32px; }
+    }
+    @media (max-width: 679px) {
+      .hero-poster { max-width: 420px; }
+    }
+    #s-screen-mail { scroll-margin-top: 82px; }
+    .field-row { display: flex; gap: 10px; }
+    .field-row > div { flex: 1; min-width: 0; }
+    .field-row label { margin: 0 0 7px; }
+    #s-screen-datos .field + .field { margin-top: 16px; }
+    #s-screen-datos .field-row { margin-top: 16px; }
+    #s-screen-datos .btn.full { margin-top: 20px; }
+    .login-form:not([hidden]) { animation: rise .22s ease both; }
   </style>
 </head>
 <body>
@@ -970,13 +1027,37 @@
   </header>
   <div class="wrap" id="top">
     <section class="hero landing" aria-labelledby="hero-title">
-      <p class="hero-eyebrow">Jornada ESI 2026</p>
-      <h2 id="hero-title">Inscripción a las charlas</h2>
-      <p>Elegí una charla por horario.</p>
-      <div class="hero-meta">
-        <span>4 de noviembre</span>
-        <span>3 horarios</span>
-        <span>Instituto Secundario Salsipuedes</span>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="hero-eyebrow">Jornada ESI 2026</p>
+          <h2 id="hero-title">Elegí tus charlas.<br>Armá tu jornada.</h2>
+          <p>Tres horarios para hablar de salud, vínculos, diversidad y derechos. Entrá con tu mail institucional o tu DNI y reservá tu lugar.</p>
+          <div class="hero-actions">
+            <button id="btn-hero-start" class="btn accent" type="button">Reservar mi lugar</button>
+            <a class="btn secondary" href="#como">Cómo funciona</a>
+          </div>
+          <div class="hero-meta">
+            <span>4 de noviembre</span>
+            <span>3 horarios</span>
+            <span>Instituto Secundario Salsipuedes</span>
+          </div>
+        </div>
+        <aside class="hero-poster" aria-label="La jornada en breve">
+          <div class="poster-top">
+            <div class="poster-date" aria-hidden="true">
+              <span class="poster-day">04</span>
+              <span class="poster-month">NOV<br>2026</span>
+            </div>
+            <span class="poster-tag">ESI 2026</span>
+          </div>
+          <p class="poster-kicker">Un día para elegir<br>de qué hablar.</p>
+          <ul class="poster-times">
+            <li><span>10:30</span><small>Primer horario</small></li>
+            <li><span>11:30</span><small>Segundo horario</small></li>
+            <li><span>12:30</span><small>Tercer horario</small></li>
+          </ul>
+          <p class="poster-place">Instituto Secundario<br>Salsipuedes</p>
+        </aside>
       </div>
     </section>
 
@@ -1060,16 +1141,18 @@
     <section id="s-screen-datos" class="screen card">
       <div class="steps">2 de 3</div>
       <h2 class="intro">Tus datos</h2>
-      <div id="fieldset-nombre">
-        <label for="input-apellido-datos">Apellido</label>
-        <input id="input-apellido-datos" type="text" autocomplete="off" maxlength="60">
-      </div>
-      <div id="fieldset-nombre-pila">
+      <div id="fieldset-nombre" class="field">
         <label for="input-nombre">Nombre</label>
-        <input id="input-nombre" type="text" autocomplete="off" maxlength="60">
+        <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
+          autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
       </div>
-      <div id="fieldset-anio" style="display:flex;gap:10px">
-        <div style="flex:1">
+      <div id="fieldset-apellido" class="field">
+        <label for="input-apellido-datos">Apellido</label>
+        <input id="input-apellido-datos" type="text" autocomplete="off" maxlength="60"
+          autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
+      </div>
+      <div id="fieldset-anio" class="field-row">
+        <div>
           <label for="select-anio">Año</label>
           <select id="select-anio">
             <option value="">Elegí...</option>
@@ -1081,7 +1164,7 @@
             <option value="6">6°</option>
           </select>
         </div>
-        <div style="flex:1">
+        <div>
           <label for="select-division">División</label>
           <select id="select-division"></select>
         </div>
@@ -3766,8 +3849,8 @@
       var needsApellido = sState.lookup.needsApellido;
       var needsCurso = sState.lookup.needsCurso;
       document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
-      $('fieldset-nombre').style.display = needsApellido ? 'block' : 'none';
-      $('fieldset-nombre-pila').style.display = needsNombre ? 'block' : 'none';
+      $('fieldset-nombre').style.display = needsNombre ? 'grid' : 'none';
+      $('fieldset-apellido').style.display = needsApellido ? 'grid' : 'none';
       $('select-anio').value = '';
       var pc = EsiClient.parseCurso(sState.curso || '');
       var yearSel = '';
@@ -3785,10 +3868,10 @@
       $('input-nombre').readOnly = !needsNombre;
       $('btn-datos').textContent = (needsNombre || needsApellido || needsCurso) ? 'Ver las charlas' : 'Continuar';
       showScreen(S_SCREENS, 's-screen-datos');
-      if (needsApellido) {
-        $('input-apellido-datos').focus();
-      } else if (needsNombre) {
+      if (needsNombre) {
         $('input-nombre').focus();
+      } else if (needsApellido) {
+        $('input-apellido-datos').focus();
       } else if (needsCurso) {
         $('select-anio').focus();
       }
@@ -3832,6 +3915,15 @@
       $('hdr-title').textContent = 'Inscripción a las charlas';
       $('hdr-sub').textContent = EVENT_NAME;
       sSetLoginOpen_(false);
+      $('btn-hero-start').addEventListener('click', function () {
+        sSetLoginOpen_(true);
+        var card = $('s-screen-mail');
+        if (card && card.scrollIntoView) {
+          try {
+            card.scrollIntoView({ behavior: sReduceMotion() ? 'auto' : 'smooth', block: 'start' });
+          } catch (e) { }
+        }
+      });
       $('btn-login-start').addEventListener('click', function () { sSetLoginOpen_(true); });
       $('btn-login-back').addEventListener('click', function () {
         sSetLoginOpen_(false);
