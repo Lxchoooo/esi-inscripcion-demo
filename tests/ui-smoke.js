@@ -95,6 +95,7 @@ return {
   sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
+  aShowMail_: aShowMail_, aCopyText_: aCopyText_, closeSheet: closeSheet,
   aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
   retryTransient_: retryTransient_,
   setReports: function (v) { aReports = v; },
@@ -183,11 +184,14 @@ ui.setA({
 });
 ui.aRender();
 const totals = document.getElementById('a-totals');
-assert(totals.innerHTML.includes('Inscriptos'), 'stat inscriptos');
+assert(totals.innerHTML.includes('Alumnos'), 'stat alumnos');
+assert(totals.innerHTML.includes('Reservas'), 'stat reservas');
 assert(totals.innerHTML.includes('Abierta'), 'estado abierta');
-assert(document.getElementById('a-roster-info').textContent === 'Sin lista cargada', 'roster sin cargar');
+assert(document.getElementById('a-roster-info').textContent === 'Sin lista cargada · el acceso por mail sigue funcionando', 'roster sin cargar');
 assert(document.getElementById('a-cupos').innerHTML.includes('Cupos por charla'), 'cupos titulo');
 assert(document.getElementById('a-table').innerHTML.includes('Ana'), 'tabla con inscriptos');
+assert(document.getElementById('a-table').innerHTML.includes('data-mail="ana@esc.edu.ar"'), 'mail disponible en inscriptos');
+assert(document.getElementById('a-table-count').textContent === '2 de 2 reservas', 'contador de reservas');
 assert(document.getElementById('filter-curso').innerHTML.includes('2°B'), 'filtro curso');
 assert(document.getElementById('filter-division').innerHTML.includes('Turismo'), 'filtro division');
 
@@ -215,7 +219,7 @@ ui.setA({
 });
 ui.aRender();
 assert(document.getElementById('a-table').innerHTML.includes('Todavía no hay inscriptos'), 'estado vacio');
-assert(document.getElementById('a-roster-info').textContent === '4 mails', 'roster cargado');
+assert(document.getElementById('a-roster-info').textContent === '4 mails cargados · habilitan DNI y recordatorios', 'roster cargado');
 
 ui.aTab('mails');
 assert(document.getElementById('pane-mails').hidden === false, 'tab mails visible');
@@ -325,7 +329,15 @@ function tick() {
   ui.aRenderTalk();
   const conMail = document.getElementById('charla-list').innerHTML;
   assert(conMail.includes('Gómez, Ana'), 'apellido primero');
-  assert(conMail.includes('ana@esc.edu.ar'), 'mail secundario para profe');
+  assert(conMail.includes('student-mail-btn'), 'mail detras del nombre');
+  assert(conMail.includes('data-mail="ana@esc.edu.ar"'), 'mail disponible al tocar');
+  assert(!conMail.includes('roster-mail'), 'mail no ocupa la fila');
+  ui.aShowMail_('ana@esc.edu.ar', 'Gómez, Ana', '2°B');
+  assert(document.getElementById('sheet-title').textContent === 'Mail del alumno', 'sheet del mail');
+  assert(document.getElementById('sheet-body').innerHTML.includes('ana@esc.edu.ar'), 'mail completo en el sheet');
+  assert(document.getElementById('sheet-body').innerHTML.includes('Gómez, Ana'), 'nombre en el sheet');
+  assert(document.getElementById('sheet-confirm').textContent === 'Copiar mail', 'accion de copiar');
+  ui.closeSheet();
   ui.setRole('guide');
   ui.aApplyRole();
   ui.aRenderTalk();
@@ -347,7 +359,7 @@ function tick() {
     ]
   });
   ui.aRenderTalk();
-  assert(document.getElementById('charla-count').textContent === '2 de 40', 'contador por charla');
+  assert(document.getElementById('charla-count').textContent === '2 de 40 lugares', 'contador por charla');
   const lista = document.getElementById('charla-list').innerHTML;
   assert(lista.includes('Ana Gomez'), 'lista por charla');
   assert(!lista.includes('@'), 'la vista por charla no muestra mails');
@@ -362,7 +374,7 @@ function tick() {
     students: [{ nombre: 'Ana Gomez', curso: '2°B', faltan: ['2da', '3ra'] }]
   });
   ui.aRenderPending();
-  assert(document.getElementById('pend-count').textContent === '1 incompletos de 10', 'contador incompletos');
+  assert(document.getElementById('pend-count').textContent === '1 alumno con charlas pendientes de 10', 'contador incompletos');
   assert(document.getElementById('pend-list').innerHTML.includes('Falta 2da y 3ra'), 'horarios que faltan');
 
   const repCourses = [{
@@ -404,7 +416,9 @@ function tick() {
   assert(rep.includes('Completos'), 'totales del curso');
   assert(rep.includes('Presentes por franja'), 'presentes por franja');
   assert(rep.includes('Sin anotar'), 'charla sin anotar en el reporte');
-  assert(rep.includes('beto@esc.edu.ar'), 'mail secundario para profe');
+  assert(rep.includes('student-mail-btn'), 'mail detras del nombre en el reporte');
+  assert(rep.includes('data-mail="beto@esc.edu.ar"'), 'mail disponible en el reporte');
+  assert(!rep.includes('row-mail'), 'mail no ocupa la tabla');
   ui.setRole('guide');
   ui.setReports({
     ok: true, role: 'guide',
@@ -437,11 +451,13 @@ function tick() {
   });
   ui.aRepSetType('charla');
   let repTalk = document.getElementById('rep-out').innerHTML;
-  assert(repTalk.includes('Inscriptos'), 'stat de inscriptos');
+  assert(repTalk.includes('Reservas'), 'stat de reservas');
   assert(repTalk.includes('Ausentes'), 'stat de ausentes');
   assert(repTalk.includes('Por curso: 2°B 3'), 'desglose por curso');
   assert(repTalk.includes('Díaz, Beto'), 'alumno en la charla');
-  assert(repTalk.includes('beto@esc.edu.ar'), 'mail solo para profe en la charla');
+  assert(repTalk.includes('student-mail-btn'), 'mail detras del nombre en la charla');
+  assert(repTalk.includes('data-mail="beto@esc.edu.ar"'), 'mail disponible en la charla');
+  assert(!repTalk.includes('row-mail'), 'mail no ocupa la tabla de la charla');
   ui.setRole('guide');
   ui.setReports({
     ok: true, role: 'guide',
@@ -476,9 +492,9 @@ function tick() {
   });
   ui.aRepSetType('total');
   let repTotal = document.getElementById('rep-out').innerHTML;
-  assert(repTotal.includes('Inscriptos'), 'totales generales');
+  assert(repTotal.includes('Alumnos'), 'totales generales');
   assert(repTotal.includes('Presentes por franja'), 'presentes por franja en el total');
-  assert(repTotal.includes('Total: 3 inscriptos, 1 presentes'), 'resumen del total');
+  assert(repTotal.includes('Total: 3 reservas, 1 presentes'), 'resumen del total');
   assert(repTotal.includes('Básico'), 'ciclo en la tabla total');
 
   ui.setReports({
@@ -525,7 +541,7 @@ function tick() {
   ui.aBuildPrint();
   printHtml = document.getElementById('print-area').innerHTML;
   assert(printHtml.includes('Reporte total'), 'encabezado del total');
-  assert(printHtml.includes('Inscriptos'), 'tabla total en el PDF');
+  assert(printHtml.includes('Reservas'), 'tabla total en el PDF');
   ui.aRepSetType('curso');
 
   let tries = 0;
