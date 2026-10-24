@@ -24,7 +24,7 @@ no desde GitHub Pages. La documentacion tecnica completa esta en
 - Eleccion de tres charlas, una por horario, con control de cupo.
 - Sesion opaca: el navegador guarda solo un token, no la identidad.
 - Ticket de login de un solo uso para quien ya tiene inscripciones.
-- Panel de profes con cupos, inscriptos, incompletos, reportes y graficos.
+- Panel de profes con cupos, alumnos, reservas, faltan charlas, reportes y graficos.
 - Asistencia movil con filtros, deshacer y cola offline.
 - Impresion A4 y exportacion CSV.
 - Archivo `.ics` con las tres charlas y recordatorio 10 minutos antes.
@@ -33,6 +33,7 @@ no desde GitHub Pages. La documentacion tecnica completa esta en
 - Configuracion de fecha, zona horaria, remitente, modo ensayo y respaldo.
 - Pestana Estado con servidor, ultima inscripcion, sesiones y cuota.
 - Pestana Correcciones para agregar, corregir, mover, fusionar o borrar alumnos.
+- Nombres como "Apellido, Nombre"; el mail queda detras de un toque para copiarlo.
 - Copia de solo lectura por charla para seguir marcando presentes sin conexion.
 - Cierre del evento y borrado de datos personales con confirmacion.
 
@@ -90,9 +91,14 @@ tiene inscripciones. Los mails nuevos sin padron siguen siendo autodeclarados.
 ## Paneles
 
 - Alumnos: elegir charlas, confirmar, descargar `.ics` y salir.
-- Profes: por charla, incompletos, reportes, estado, inscriptos, lista de
-  mails, correcciones, asistencia, configuracion y recordatorios.
-- Guias: por charla, incompletos y reportes sin mails.
+- Profes: por charla, faltan charlas, reportes, estado, inscriptos (reservas),
+  accesos y mails, correcciones, asistencia, configuracion y recordatorios.
+- Guias: por charla, faltan charlas y reportes sin mails.
+
+En el panel, "Alumnos" cuenta mails unicos y "Reservas" cuenta filas de
+inscripcion: un alumno puede tener hasta tres reservas. Los nombres se ven
+como "Apellido, Nombre" y el mail no ocupa la fila; se abre con un toque para
+leerlo o copiarlo. Las guias nunca reciben mails.
 
 La asistencia funciona en celular a 360 px. El boton de presente vibra, se
 puede deshacer durante 5 segundos y los toques sin conexion se reintentan. La
@@ -103,7 +109,7 @@ corta la conexion; el aviso indica la antiguedad de los datos.
 
 La pestana Correcciones es solo para profes. Permite:
 
-- Agregar un alumno con apellido, nombre, mail institucional, curso y una
+- Agregar un alumno con apellido, nombre, curso, mail institucional y una
   charla por horario, respetando ciclo y cupo.
 - Corregir nombre, apellido o curso sin cambiar el mail.
 - Mover una inscripcion a otra charla del mismo horario.
