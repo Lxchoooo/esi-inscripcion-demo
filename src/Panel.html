@@ -3500,7 +3500,7 @@
       var slotId = target ? target.slot_id : null;
       var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
       sState.busy = true;
-      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido])
+      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_()])
         .then(function (resp) {
           sState.busy = false;
           if (resp.data) sState.data = resp.data;

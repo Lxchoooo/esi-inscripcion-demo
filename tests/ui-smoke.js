@@ -91,7 +91,7 @@ const ui = new Function('window', 'document', src + `
 return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
-  sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir, sSubmitDatos: sSubmitDatos, sSetDniAvailable_: sSetDniAvailable_, sSetLoginOpen_: sSetLoginOpen_,
+  sLookup: sLookup, sLookupDni: sLookupDni, sSetLoginMode: sSetLoginMode, sSalir: sSalir, sSubmitDatos: sSubmitDatos, sSetDniAvailable_: sSetDniAvailable_, sSetLoginOpen_: sSetLoginOpen_, sRegister: sRegister,
   sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
@@ -580,6 +580,31 @@ function tick() {
   assert(demoPreview.sample.body.includes('Tus charlas:'), 'demo mail body');
   const demoSent = await ui.demoCall('apiAdminSendReminders', ['demo', 0, 20]);
   assert(demoSent.ok && demoSent.done, 'demo reminders send');
+
+  const regEmail = 'nueva.registro@secundariosalsipuedes.edu.ar';
+  const regLogin = await ui.demoCall('apiGetData', [regEmail, 'Nueva Registro', '2°B']);
+  assert(regLogin.ok && regLogin.session, 'sesion para registrar');
+  store.esi_session = regLogin.session;
+  const regState = ui.getState();
+  regState.email = regEmail;
+  regState.nombre = 'Nueva Registro';
+  regState.curso = '2°B';
+  regState.apellido = 'Registro';
+  regState.data = {
+    slots: [
+      { id: 1, label: '10:30 a 11:20' },
+      { id: 2, label: '11:30 a 12:20' },
+      { id: 3, label: '12:30 a 13:30' }
+    ],
+    talks: ui.DEMO_TALKS.slice(),
+    mine: {}
+  };
+  ui.sRegister('B1');
+  await tick();
+  ui.sRegister('B5');
+  await tick();
+  assert(regState.data.mine[1] === 'B1', 'primer horario registrado');
+  assert(regState.data.mine[2] === 'B5', 'segundo horario con la misma sesion');
 
   const icsState = ui.getState();
   icsState.data = {
