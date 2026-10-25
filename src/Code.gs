@@ -900,8 +900,12 @@ function pruneBackup_(sh) {
   var keep = order.slice(-BACKUP_KEEP);
   var out = [vals[0]];
   for (var k = 0; k < keep.length; k++) out = out.concat(groups[keep[k]]);
-  sh.clearContent();
+  var lastRow = sh.getLastRow();
+  var width = Math.max(out[0].length, sh.getLastColumn());
   sh.getRange(1, 1, out.length, out[0].length).setValues(out);
+  if (lastRow > out.length) {
+    sh.getRange(out.length + 1, 1, lastRow - out.length, width).clearContent();
+  }
   return keep.length;
 }
 
@@ -2049,21 +2053,23 @@ function adminAuth_(cred) {
     return adminTokenAuth_(given);
   }
   var props = PropertiesService.getScriptProperties();
+  var adminPin = getAdminPin_();
+  var guidePin = getGuidePin_();
+  if (!adminPin && !guidePin) {
+    return { ok: false, message: 'Clave no configurada. Ejecutá setup().' };
+  }
+  if (given && given === adminPin) {
+    resetAdminFailures_();
+    return { ok: true, role: ROLE_ADMIN };
+  }
+  if (given && given === guidePin) {
+    resetAdminFailures_();
+    return { ok: true, role: ROLE_GUIDE };
+  }
   var now = Date.now();
   var blockedUntil = Number(props.getProperty(ADMIN_BLOCK_PROP) || 0);
   if (blockedUntil > now) {
     return { ok: false, message: 'Demasiados intentos. Esperá 15 minutos.' };
-  }
-  if (!getAdminPin_() && !getGuidePin_()) {
-    return { ok: false, message: 'Clave no configurada. Ejecutá setup().' };
-  }
-  if (given && given === getAdminPin_()) {
-    resetAdminFailures_();
-    return { ok: true, role: ROLE_ADMIN };
-  }
-  if (given && given === getGuidePin_()) {
-    resetAdminFailures_();
-    return { ok: true, role: ROLE_GUIDE };
   }
   noteAdminFailure_(now);
   return { ok: false, message: 'Clave incorrecta.' };
@@ -2737,6 +2743,31 @@ function apiAdminCloseEvent(cred) {
   });
 }
 
+function csvCell_(value) {
+  var v = String(value == null ? '' : value);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+function exportPersonalData_(signups) {
+  if (typeof DriveApp === 'undefined') return { ok: false, skipped: true };
+  try {
+    var head = ['email', 'nombre', 'apellido', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'recordatorio', 'prueba'];
+    var lines = [head.join(',')];
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      lines.push([
+        s.email, s.nombre, s.apellido, s.curso, s.ciclo, s.slot_id, s.talk_id,
+        s.presente ? 'si' : 'no', s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
+      ].map(csvCell_).join(','));
+    }
+    var name = 'esi-datos-' + new Date().toISOString().replace(/[:.]/g, '-') + '.csv';
+    var file = DriveApp.createFile(name, lines.join('\n'), 'text/csv');
+    return { ok: true, name: name, fileId: file.getId() };
+  } catch (e) {
+    return { ok: false, message: e && e.message ? e.message : String(e) };
+  }
+}
+
 function apiAdminErasePersonalData(cred, confirmation) {
   var auth = adminAuth_(cred);
   var perm = requireAdmin_(auth);
@@ -2760,6 +2791,11 @@ function apiAdminErasePersonalData(cred, confirmation) {
       var sessions = readSessions_();
       var mailsSh = sheet_(SENT_MAILS_SHEET);
       var mailCount = Math.max(0, mailsSh.getLastRow() - 1);
+
+      var dump = exportPersonalData_(signups);
+      if (!dump.ok && !dump.skipped) {
+        return { ok: false, message: 'No se pudo exportar antes de borrar: ' + (dump.message || 'error') };
+      }
 
       var ss = SpreadsheetApp.getActive();
       var signupsSh = sheet_(SIGNUPS_SHEET);
@@ -2802,7 +2838,10 @@ function apiAdminErasePersonalData(cred, confirmation) {
       writeConfig_(CONFIG_DATA_ERASED, 'si');
       logAction_('erase_personal_data', '', 'signups=' + signups.length + ';sessions=' + sessions.length + ';mails=' + mailCount);
       invalidateDataCache_();
-      return { ok: true, signups: signups.length, sessions: sessions.length, mails: mailCount, talks: order.length };
+      return {
+        ok: true, signups: signups.length, sessions: sessions.length, mails: mailCount,
+        talks: order.length, export: dump.name || ''
+      };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
