@@ -3261,10 +3261,10 @@
         return Promise.resolve({ ok: true, recordatorio: !!a[1], updated: remUpdated });
       }
       if (fn === 'apiRegister') {
-        var regEmail = EsiClient.normalizeEmail(a[0]);
         var regSess = a[5] ? demoSession_(a[5]) : null;
+        var regEmail = EsiClient.normalizeEmail(a[0]) || (regSess ? regSess.email : '');
         var regTicket = a[6] ? demoLoginTicket_(a[6]) : null;
-        if (a[5] && (!regSess || regSess.email !== regEmail)) {
+        if (a[5] && (!regSess || (regEmail && regSess.email !== regEmail))) {
           return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
         }
         if (regTicket && regTicket.email !== regEmail) {
@@ -3273,7 +3273,7 @@
         if (!regSess && !regTicket && demoHasSignups_(regEmail)) {
           return Promise.resolve({ ok: false, needsLogin: true, message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.' });
         }
-        return demoRegister(a[0], a[1], a[2], a[3], a[4]).then(function (resp) {
+        return demoRegister(regEmail, a[1], a[2], a[3], a[4]).then(function (resp) {
           if (!resp || !resp.ok) return resp;
           var keep = regSess ? String(a[5]) : '';
           demoRevokeSessionsForEmail_(regEmail, keep);
