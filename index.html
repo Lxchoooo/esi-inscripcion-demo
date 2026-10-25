@@ -75,7 +75,7 @@
       }
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: light dark; }
     body {
       margin: 0;
       min-height: 100vh;
@@ -93,10 +93,11 @@
     body.sheet-open { overflow: hidden; }
     ::selection { background: var(--accent-fill); color: var(--ink); }
     .demo-strip {
-      display: none; padding: 8px 16px; text-align: center;
-      background: var(--warn-soft); color: var(--warn);
-      border-bottom: 1px solid var(--warn-line);
-      font-size: 12px; font-weight: 700; letter-spacing: .04em;
+      display: none; width: fit-content; max-width: calc(100% - 40px);
+      margin: -2px auto 10px; padding: 4px 12px;
+      border: 1px solid var(--line-strong); border-radius: 999px;
+      background: var(--surface); color: var(--muted);
+      font-size: 11.5px; font-weight: 600; text-align: center;
     }
     body.demo .demo-strip { display: block; }
     .test-strip {
@@ -776,8 +777,12 @@
       padding: 0 8px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
       text-transform: uppercase; color: var(--muted);
     }
+    .nav-ico { width: 18px; height: 18px; flex: 0 0 auto; opacity: .78; }
+    .btn .nav-ico { width: 17px; height: 17px; opacity: .9; }
+    .side .tab.active .nav-ico { color: var(--accent); opacity: 1; }
+    .side-action .nav-ico { width: 17px; height: 17px; }
     .side .tab {
-      display: flex; align-items: center; min-height: 42px; margin: 0; padding: 10px;
+      display: flex; align-items: center; gap: 10px; min-height: 42px; margin: 0; padding: 10px;
       border: 0; border-radius: 10px; background: none; text-align: left;
       font-family: inherit; font-size: 14px; font-weight: 600; color: var(--muted);
       cursor: pointer; white-space: normal;
@@ -788,7 +793,7 @@
     .side .tab:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .side-session { padding-top: 12px; border-top: 1px solid var(--line); }
     .side-action {
-      display: flex; align-items: center; min-height: 40px; padding: 8px 10px;
+      display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px;
       border: 0; border-radius: 10px; background: none; text-align: left;
       font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer;
     }
@@ -823,6 +828,17 @@
     .admin-actions .btn { gap: 6px; }
     .icon { width: 16px; height: 16px; flex: 0 0 auto; }
     #ta-roster { min-height: 128px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; }
+    .roster-status { margin: 6px 0 10px; font-size: 12.5px; font-weight: 600; color: var(--accent); }
+    .roster-one { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .form-title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .roster-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 720px) { .roster-grid { grid-template-columns: 1.7fr 1fr 1fr; } }
+    .roster-grid label { display: grid; gap: 6px; margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+    .roster-grid input, .roster-grid select { min-height: 44px; font-size: 15px; }
+    .bulk-box { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .bulk-box summary { display: flex; align-items: center; min-height: 44px; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .bulk-box summary::marker { color: var(--accent); }
+    .bulk-box #ta-roster { margin-top: 8px; }
     .hint-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
     .login-note { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
     .kbd-hint { display: none; align-items: center; gap: 5px; margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
@@ -1134,7 +1150,7 @@
         <a href="#faq">Dudas</a>
       </nav>
     </div>
-    <div id="demo-strip" class="demo-strip" role="status">MODO DEMO · Los datos quedan en este navegador.</div>
+    <div id="demo-strip" class="demo-strip" role="status">Versión de prueba · los datos quedan en este navegador.</div>
     <div id="test-strip" class="test-strip" role="status">MODO ENSAYO · Los datos no son reales.</div>
   </header>
   <div class="wrap" id="top">
@@ -1329,8 +1345,14 @@
           <strong>Panel de profes</strong>
         </div>
         <div class="panel-bar-actions">
-          <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
-          <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
+          <button id="btn-arefresh" class="btn secondary small" type="button">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+            Actualizar
+          </button>
+          <button id="btn-salir" class="btn secondary small" type="button">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Salir
+          </button>
         </div>
       </div>
 
@@ -1340,28 +1362,58 @@
           aria-orientation="vertical" tabindex="-1">
           <div class="side-group" role="presentation">
             <span class="side-label">Asistencia</span>
-            <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">Por charla</button>
-            <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend" tabindex="-1">Faltan charlas</button>
+            <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>Tomar asistencia</span>
+            </button>
+            <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.3 2.9-6 6.5-6 1.4 0 2.7.4 3.8 1.1"/><circle cx="18" cy="18" r="3.2"/><path d="M18 16.4v1.8l1.2.8"/></svg>
+              <span>Sin completar</span>
+            </button>
           </div>
           <div class="side-group" role="presentation">
             <span class="side-label">Análisis</span>
-            <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes" tabindex="-1">Reportes</button>
-            <button id="tab-estado" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-estado" tabindex="-1">Estado</button>
+            <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+              <span>Reportes</span>
+            </button>
+            <button id="tab-estado" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-estado" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>
+              <span>Estado del evento</span>
+            </button>
           </div>
           <div class="side-group admin-only" role="presentation">
             <span class="side-label">Gestión</span>
-            <button id="tab-inscriptos" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos" tabindex="-1">Inscriptos</button>
-            <button id="tab-mails" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-mails" tabindex="-1">Accesos y mails</button>
-            <button id="tab-corr" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-corr" tabindex="-1">Correcciones</button>
+            <button id="tab-inscriptos" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".7"/><circle cx="3.5" cy="12" r=".7"/><circle cx="3.5" cy="18" r=".7"/></svg>
+              <span>Inscripciones</span>
+            </button>
+            <button id="tab-mails" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-mails" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+              <span>Lista y recordatorios</span>
+            </button>
+            <button id="tab-corr" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-corr" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>
+              <span>Arreglar datos</span>
+            </button>
           </div>
           <div class="side-group admin-only" role="presentation">
             <span class="side-label">Ajustes</span>
-            <button id="tab-config" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-config" tabindex="-1">Configuración</button>
+            <button id="tab-config" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-config" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+              <span>Configuración</span>
+            </button>
           </div>
           <div class="side-group side-session" role="presentation">
             <span class="side-label">Sesión</span>
-            <button id="btn-copiar-link" class="side-action admin-only" type="button">Copiar link</button>
-            <button id="btn-csv" class="side-action admin-only" type="button">Descargar CSV</button>
+            <button id="btn-copiar-link" class="side-action admin-only" type="button">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+              <span>Copiar link</span>
+            </button>
+            <button id="btn-csv" class="side-action admin-only" type="button">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+              <span>Descargar CSV</span>
+            </button>
             <span class="kbd-hint" id="kbd-hint">Atajos <kbd>1-8</kbd> secciones <kbd>/</kbd> buscar</span>
           </div>
         </nav>
@@ -1421,7 +1473,10 @@
           <div class="filters rep-filters">
             <select id="rep-curso" aria-label="Curso"></select>
             <select id="rep-charla" aria-label="Charla" hidden></select>
-            <button id="btn-print" class="btn small" type="button">Imprimir o guardar PDF</button>
+            <button id="btn-print" class="btn small" type="button">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 17h12v4H6z"/></svg>
+              Imprimir o guardar PDF
+            </button>
           </div>
           <div id="rep-out"></div>
         </div>
@@ -1483,17 +1538,57 @@
 
       <div id="pane-mails" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-mails" hidden>
         <div class="card">
-          <h3>Lista base de alumnos</h3>
-          <div class="totals" id="a-roster-info"></div>
-          <p class="hint-line">Estos mails habilitan el ingreso por DNI y alimentan los recordatorios. No es la lista de inscriptos.</p>
-          <label class="sr-only" for="ta-roster">Lista base de alumnos</label>
-          <textarea id="ta-roster" rows="6" placeholder="mail;apellido;nombre;curso;dni"></textarea>
-          <p class="hint-line">Una línea por alumno. El DNI es opcional y va al final. También sirve mail;nombre completo;curso.</p>
-          <div class="toolbar" style="margin-top:10px">
-            <button id="btn-import-add" class="btn small" type="button">Agregar</button>
-            <button id="btn-import-rep" class="btn red small" type="button">Reemplazar</button>
-          </div>
-          <div id="a-import-msg" class="banner" role="status" aria-live="polite"></div>
+          <h3>Lista de alumnos</h3>
+          <p class="roster-status" id="a-roster-info"></p>
+          <p class="hint-line">Los mails de esta lista habilitan el ingreso con DNI y los recordatorios. Agregar a la lista no inscribe a nadie: después cada alumno elige sus charlas.</p>
+
+          <form id="roster-one" class="roster-one" novalidate>
+            <p class="form-title">Agregar un alumno</p>
+            <div class="roster-grid">
+              <label for="roster-mail">Mail institucional
+                <input id="roster-mail" type="email" inputmode="email" autocomplete="off" maxlength="120"
+                  spellcheck="false" autocapitalize="none" placeholder="usuario@secundariosalsipuedes.edu.ar">
+              </label>
+              <label for="roster-apellido">Apellido
+                <input id="roster-apellido" type="text" autocomplete="off" maxlength="60" autocapitalize="words" placeholder="Apellido">
+              </label>
+              <label for="roster-nombre">Nombre
+                <input id="roster-nombre" type="text" autocomplete="off" maxlength="60" autocapitalize="words" placeholder="Nombre">
+              </label>
+              <label for="roster-anio">Año
+                <select id="roster-anio">
+                  <option value="">Elegí...</option>
+                  <option value="1">1°</option><option value="2">2°</option>
+                  <option value="3">3°</option><option value="4">4°</option>
+                  <option value="5">5°</option><option value="6">6°</option>
+                </select>
+              </label>
+              <label for="roster-division">División
+                <select id="roster-division"><option value="">Elegí...</option></select>
+              </label>
+              <label for="roster-dni">DNI (opcional)
+                <input id="roster-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Solo números">
+              </label>
+            </div>
+            <button id="btn-roster-add" class="btn small" type="submit">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.3 2.9-6 6.5-6 1.4 0 2.7.4 3.8 1.1"/><path d="M19 8v6M22 11h-6"/></svg>
+              Agregar a la lista
+            </button>
+            <div id="roster-add-msg" class="banner" role="status" aria-live="polite"></div>
+          </form>
+
+          <details class="bulk-box">
+            <summary>Pegar varios alumnos de una vez</summary>
+            <p class="hint-line">Un alumno por línea: <code>mail;apellido;nombre;curso;dni</code>. El DNI es opcional.</p>
+            <label class="sr-only" for="ta-roster">Lista de alumnos</label>
+            <textarea id="ta-roster" rows="6" placeholder="gomezana2030@secundariosalsipuedes.edu.ar;Gómez;Ana;2°B;30111222"></textarea>
+            <p class="hint-line" id="roster-lines">0 líneas</p>
+            <div class="toolbar">
+              <button id="btn-import-add" class="btn small" type="button">Sumar a la lista</button>
+              <button id="btn-import-rep" class="btn red small" type="button">Reemplazar la lista</button>
+            </div>
+            <div id="a-import-msg" class="banner" role="status" aria-live="polite"></div>
+          </details>
         </div>
         <div class="card">
           <h3>Recordatorio por mail</h3>
@@ -1518,7 +1613,10 @@
             <label class="check-row" for="cfg-modo-prueba"><input id="cfg-modo-prueba" type="checkbox">Modo ensayo</label>
             <label class="check-row" for="cfg-backup"><input id="cfg-backup" type="checkbox">Respaldo automático cada 30 min</label>
           </div>
-          <button id="btn-save-config" class="btn secondary small" type="button">Guardar configuración</button>
+          <button id="btn-save-config" class="btn secondary small" type="button">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+            Guardar configuración
+          </button>
           <div id="cfg-msg" class="banner"></div>
         </div>
       </div>
@@ -2288,7 +2386,13 @@
       if (v.modo_prueba != null) demoWrite('esi_demo_modo', !!v.modo_prueba);
       if (v.backup_activo != null) demoWrite('esi_demo_backup', !!v.backup_activo);
       lsSet('esi_demo_event', JSON.stringify(ev));
-      return { ok: true, evento_abierto: demoOpen(), event: ev };
+      return {
+        ok: true,
+        evento_abierto: demoOpen(),
+        event: ev,
+        mail_remitente: ev.remitente || '',
+        backup_activo: demoRead('esi_demo_backup', true)
+      };
     }
     function demoPublicData(ciclo, mine) {
       var counts = {};
@@ -5527,6 +5631,92 @@
       aSyncTableCards_();
     }
 
+    function aRosterMsg_(text, type) {
+      var el = $('roster-add-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function aRosterDivisions_() {
+      var sel = $('roster-division');
+      if (!sel) return;
+      var anio = $('roster-anio') ? $('roster-anio').value : '';
+      var list = EsiClient.divisionsForYear(anio);
+      var html = '<option value="">Elegí...</option>';
+      for (var i = 0; i < list.length; i++) {
+        html += '<option value="' + esc(list[i]) + '">' + esc(list[i]) + '</option>';
+      }
+      sel.innerHTML = html;
+    }
+
+    function aRosterLines_() {
+      var el = $('ta-roster');
+      var out = $('roster-lines');
+      if (!el || !out) return;
+      var lines = el.value.split('\n');
+      var n = 0;
+      for (var i = 0; i < lines.length; i++) if (lines[i].trim()) n++;
+      out.textContent = n === 1 ? '1 línea' : n + ' líneas';
+    }
+
+    function aRosterAdd_(ev) {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (aBusy) return;
+      var mail = $('roster-mail').value;
+      var apellido = $('roster-apellido').value;
+      var nombre = $('roster-nombre').value;
+      var anio = $('roster-anio').value;
+      var division = $('roster-division').value;
+      var dni = EsiClient.normalizeDni($('roster-dni').value);
+      if (!EsiClient.isValidEmail(mail)) {
+        aRosterMsg_('Revisá el mail institucional.', 'err');
+        try { $('roster-mail').focus(); } catch (e) { }
+        return;
+      }
+      if (!EsiClient.isValidName(nombre)) {
+        aRosterMsg_('Escribí el nombre del alumno.', 'err');
+        try { $('roster-nombre').focus(); } catch (e2) { }
+        return;
+      }
+      if (!EsiClient.isValidName(apellido)) {
+        aRosterMsg_('Escribí el apellido del alumno.', 'err');
+        try { $('roster-apellido').focus(); } catch (e3) { }
+        return;
+      }
+      var curso = EsiClient.cursoFromParts(anio, division);
+      if (!curso) {
+        aRosterMsg_('Elegí año y división.', 'err');
+        return;
+      }
+      if (dni && !EsiClient.isValidDni(dni)) {
+        aRosterMsg_('El DNI tiene 7 u 8 números, sin puntos.', 'err');
+        try { $('roster-dni').focus(); } catch (e4) { }
+        return;
+      }
+      var row = EsiClient.normalizeEmail(mail) + ';' + EsiClient.sanitizeName(apellido) + ';'
+        + EsiClient.sanitizeName(nombre) + ';' + curso + (dni ? ';' + dni : '');
+      aBusy = true;
+      aRosterMsg_('Agregando...', 'ok');
+      call('apiAdminImportRoster', [adminCred, row, 'agregar']).then(function (resp) {
+        aBusy = false;
+        if (!resp.ok) {
+          aRosterMsg_(resp.message || 'No se pudo agregar.', 'err');
+          return;
+        }
+        var msg = 'Alumno agregado a la lista.';
+        if (resp.dnisDuplicados) msg += ' Ese DNI ya estaba en otro alumno: no va a poder entrar por DNI.';
+        aRosterMsg_(msg, 'ok');
+        var ids = ['roster-mail', 'roster-apellido', 'roster-nombre', 'roster-dni'];
+        for (var i = 0; i < ids.length; i++) if ($(ids[i])) $(ids[i]).value = '';
+        aLoad(true);
+      }).catch(function () {
+        aBusy = false;
+        aRosterMsg_('Sin conexión.', 'err');
+      });
+    }
+
     function aImportMsg(text, type) {
       var el = $('a-import-msg');
       el.textContent = text || '';
@@ -5568,6 +5758,7 @@
             }
             aImportMsg(okMsg, 'ok');
             $('ta-roster').value = '';
+            aRosterLines_();
             aLoad(true);
           } else {
             if (aAuthLost(resp)) return;
@@ -6201,9 +6392,12 @@
       window.addEventListener('resize', function () {
         if (aMenuOpen && window.innerWidth >= 960) aMenuSet_(false);
       });
-      $('tab-charla').addEventListener('click', function () { aTab('charla'); });
-      $('tab-pend').addEventListener('click', function () { aTab('pend'); });
-      $('tab-reportes').addEventListener('click', function () { aTab('reportes'); });
+      for (var tabIdx = 0; tabIdx < A_TAB_ORDER.length; tabIdx++) {
+        (function (tabName, tabId) {
+          var tabEl = $(tabId);
+          if (tabEl) tabEl.addEventListener('click', function () { aTab(tabName); });
+        })(A_TAB_ORDER[tabIdx][0], A_TAB_ORDER[tabIdx][1]);
+      }
       $('rep-tab-curso').addEventListener('click', function () { aRepSetType('curso'); });
       $('rep-tab-charla').addEventListener('click', function () { aRepSetType('charla'); });
       $('rep-tab-total').addEventListener('click', function () { aRepSetType('total'); });
@@ -6214,10 +6408,6 @@
         var btn = ev.target && ev.target.classList && ev.target.classList.contains('present-mini') ? ev.target : null;
         if (btn) aOnReportPresent(btn.getAttribute('data-signup'), btn.getAttribute('data-present') === 'true');
       });
-      $('tab-inscriptos').addEventListener('click', function () { aTab('inscriptos'); });
-      $('tab-mails').addEventListener('click', function () { aTab('mails'); });
-      $('tab-estado').addEventListener('click', function () { aTab('estado'); });
-      $('tab-corr').addEventListener('click', function () { aTab('corr'); });
       $('btn-refresh-estado').addEventListener('click', aLoadStatus);
       $('btn-corr-dup').addEventListener('click', aCorrDuplicates_);
       $('btn-corr-add').addEventListener('click', aCorrAdd_);
@@ -6272,6 +6462,11 @@
       $('btn-mail-send').addEventListener('click', aSendReminders);
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
+      if ($('roster-anio')) $('roster-anio').addEventListener('change', aRosterDivisions_);
+      if ($('roster-one')) $('roster-one').addEventListener('submit', aRosterAdd_);
+      if ($('ta-roster')) $('ta-roster').addEventListener('input', aRosterLines_);
+      aRosterDivisions_();
+      aRosterLines_();
       document.addEventListener('click', function (ev) {
         var el = ev.target;
         while (el && el !== document) {

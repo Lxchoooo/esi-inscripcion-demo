@@ -108,6 +108,8 @@ return {
   setTalk: function (v) { aTalkData = v; }, setTalkFilter: function (v) { aTalkFilter = v; aRenderTalk(); }, aSaveConfig: aSaveConfig,
   setPending: function (v) { aPendingData = v; },
   setRole: function (r) { aRole = r; },
+  aRosterAdd_: aRosterAdd_, aRosterDivisions_: aRosterDivisions_, aRosterLines_: aRosterLines_,
+  aMenuSet_: aMenuSet_,
   DEMO_TALKS: DEMO_TALKS, DEMO_SLOTS: DEMO_SLOTS
 };`)(window, document);
 
@@ -637,6 +639,34 @@ function tick() {
   assert(!ics.includes('ana@'), 'ics has no mail');
   ui.sConfirmar();
   assert(document.getElementById('btn-ics-confirm'), 'ics button in confirmation');
+
+  ui.setRole('admin');
+  ui.setCred('demo');
+  const tabNames = ['charla', 'pend', 'reportes', 'estado', 'inscriptos', 'mails', 'corr', 'config'];
+  for (const name of tabNames) {
+    ui.aTab(name);
+    assert(!document.getElementById('pane-' + name).hidden, 'pane ' + name + ' visible');
+    assert(document.getElementById('tab-' + name).attrs['aria-selected'] === 'true',
+      'tab ' + name + ' seleccionada');
+  }
+  await tick();
+  await tick();
+
+  document.getElementById('roster-mail').value = 'nuevo.alumno@secundariosalsipuedes.edu.ar';
+  document.getElementById('roster-apellido').value = 'Nuevo';
+  document.getElementById('roster-nombre').value = 'Alumno';
+  document.getElementById('roster-anio').value = '2';
+  ui.aRosterDivisions_();
+  document.getElementById('roster-division').value = 'B';
+  document.getElementById('roster-dni').value = '31222333';
+  ui.aRosterAdd_(null);
+  await tick();
+  await tick();
+  assert(/Agregado|agregado/.test(document.getElementById('roster-add-msg').textContent),
+    'alta de alumno en la lista');
+  const rosterNow = JSON.parse(store.esi_demo_roster || '[]');
+  assert(rosterNow.some((r) => r.email === 'nuevo.alumno@secundariosalsipuedes.edu.ar'),
+    'alumno nuevo en la lista');
 
   console.log('UI smoke: OK');
 })().catch((e) => {
