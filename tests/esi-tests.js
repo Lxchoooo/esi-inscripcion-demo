@@ -881,7 +881,7 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
     'id="select-anio"', 'id="select-division"',
     'placeholder="usuario@secundariosalsipuedes.edu.ar"', 'placeholder="Solo números"',
     '<h2 class="intro" id="login-title">Ingresar</h2>',
-    'Completá tus datos. Si ya te inscribiste, alcanza con el mail o el DNI.',
+    'Elegí una sola forma. Si es tu primera vez, el sistema te va a pedir tus datos.',
     '.login-fields { display: grid; gap: 16px; }',
     '.field { display: grid; gap: 8px; }',
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
@@ -1046,6 +1046,103 @@ t('Login asks for nombre before apellido', () => {
   }
   if (!/function sUseLoginData_[\s\S]*?needsNombre[\s\S]*?input-nombre'\)\.focus\(\)/s.test(panelSrc)) {
     throw new Error('focus order does not start with nombre');
+  }
+});
+
+t('El login arranca con mail o DNI y pliega los datos del alumno', () => {
+  const order = ['id="input-mail"', 'id="input-dni"', 'id="first-time"',
+    'id="input-nombre"', 'id="input-apellido"'];
+  let last = -1;
+  for (const needle of order) {
+    const at = panelHtml.indexOf(needle);
+    if (at < 0) throw new Error('missing ' + needle);
+    if (at < last) throw new Error(needle + ' out of order');
+    last = at;
+  }
+  if (!/function sOpenLoginExtra_[\s\S]*?first-time/.test(panelSrc)) {
+    throw new Error('no auto-open helper');
+  }
+  if (!/function sUseLoginData_[\s\S]*?sOpenLoginExtra_\(\)/.test(panelSrc)) {
+    throw new Error('extra data is not opened when needed');
+  }
+  if (!/resp\.needsApellido[\s\S]{0,160}sOpenLoginExtra_\(\)/.test(panelSrc)) {
+    throw new Error('DNI help is not opened');
+  }
+});
+
+t('Cambiar de pantalla mueve el foco y vuelve al inicio', () => {
+  for (const id of ['s-screen-mail', 's-screen-login', 's-screen-hello',
+    's-screen-panel', 'a-screen-gate', 'a-screen-panel']) {
+    if (!new RegExp('id="' + id + '"[^>]*tabindex="-1"').test(panelHtml)) {
+      throw new Error(id + ' is not focusable');
+    }
+  }
+  if (!/function showScreen[\s\S]*?prev !== activeId[\s\S]*?\.focus\(/.test(panelSrc)) {
+    throw new Error('showScreen does not focus the new screen');
+  }
+  if (!/function showScreen[\s\S]*?window\.scrollTo\(0, 0\)/.test(panelSrc)) {
+    throw new Error('showScreen does not scroll to the top');
+  }
+});
+
+t('La búsqueda ignora tildes y el orden de las palabras', () => {
+  if (!Client.searchMatch('Gómez Ana 2°B', 'gomez')) throw new Error('accent-insensitive miss');
+  if (!Client.searchMatch('Gómez Ana 2°B', 'ana gomez')) throw new Error('word order miss');
+  if (Client.searchMatch('Gómez Ana', 'perez')) throw new Error('false positive');
+  if (!Client.searchMatch('Gómez Ana', '')) throw new Error('empty query must match');
+  if (!/EsiClient\.searchMatch\(aSearch_\(st\), q\)/.test(panelSrc)) {
+    throw new Error('roster search does not use searchMatch');
+  }
+  if (!/EsiClient\.searchMatch\(hay, q\)/.test(panelSrc)) {
+    throw new Error('table search does not use searchMatch');
+  }
+});
+
+t('Las pestañas del panel se recorren con flechas', () => {
+  if (!/id="admin-tabs"/.test(panelHtml)) throw new Error('tablist has no id');
+  if (!/function aOnTabKey_/.test(panelSrc)) throw new Error('no arrow key handler');
+  if (!/addEventListener\('keydown', aOnTabKey_\)/.test(panelSrc)) {
+    throw new Error('arrow key handler not bound');
+  }
+  if (!/tab\.tabIndex = on \? 0 : -1/.test(panelSrc)) throw new Error('no roving tabindex');
+  if (!/scrollIntoView\(\{ block: 'nearest', inline: 'center' \}\)/.test(panelSrc)) {
+    throw new Error('active tab is not scrolled into view');
+  }
+  if (!/Atajos <kbd>1-8<\/kbd>/.test(panelHtml)) throw new Error('shortcut hint is outdated');
+});
+
+t('El panel agrupa las secciones en un menú lateral', () => {
+  for (const needle of ['id="btn-menu"', 'aria-controls="admin-tabs"',
+    'id="menu-backdrop"', 'class="tabs side"', 'aria-orientation="vertical"',
+    'class="side-label">Asistencia<', 'class="side-label">Análisis<',
+    'class="side-label">Gestión<', 'class="side-label">Ajustes<',
+    'class="side-label">Sesión<', 'id="tab-config"', 'id="pane-config"']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/function aMenuSet_/.test(panelSrc)) throw new Error('no drawer helper');
+  if (!/function aMenuSet_[\s\S]*?aria-expanded/.test(panelSrc)) throw new Error('drawer state not exposed');
+  if (!/aMenuSet_\(false\);[\s\S]{0,120}paneEl\.focus/.test(panelSrc)) {
+    throw new Error('drawer does not close and focus the pane');
+  }
+  if (!/ev\.key === 'Escape' && aMenuOpen/.test(panelSrc)) throw new Error('Escape does not close');
+  if (!/window\.innerWidth >= 960/.test(panelSrc)) throw new Error('drawer not closed on resize');
+  if (!/\.side\.open \{ transform: none; visibility: visible; \}/.test(panelHtml)) {
+    throw new Error('drawer style missing');
+  }
+});
+
+t('El botón de presente anuncia la acción contraria', () => {
+  if (!/st\.presente \? 'Quitar presente a ' : 'Marcar presente a '/.test(panelSrc)) {
+    throw new Error('roster button label does not toggle');
+  }
+  if (!/tk\.presente \? 'Quitar presente en ' : 'Marcar presente en '/.test(panelSrc)) {
+    throw new Error('report button label does not toggle');
+  }
+});
+
+t('Las variables de color del panel están definidas', () => {
+  for (const name of ['--card:', '--brand-dark:']) {
+    if (!panelHtml.includes(name)) throw new Error('missing ' + name);
   }
 });
 
