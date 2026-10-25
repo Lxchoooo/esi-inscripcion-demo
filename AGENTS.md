@@ -119,7 +119,9 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
 - Validacion de nombre/apellido: 2-60 caracteres, letras con tildes/ñ, espacios,
   apostrofe y guion; rechazar digitos, HTML, URLs, saltos y prefijos `= + - @`.
 - `Sessions` guarda el hash del token, nunca el token crudo; vence a los 7 dias
-  o 24 h despues del evento. `Log` no guarda mails completos.
+  o 24 h despues del evento. Se lee y escribe por encabezado, no por columna
+  fija. El ingreso con DNI y cada inscripcion cierran las otras sesiones del
+  mismo mail; la del que escribe se conserva. `Log` no guarda mails completos.
 - Correcciones admin: agregar respeta ciclo/cupo/horario; corregir actualiza
   `Signups`, `Sessions` y `Students`; mover solo dentro del mismo horario;
   fusionar conserva un mail y revoca la sesion descartada; borrar elimina filas

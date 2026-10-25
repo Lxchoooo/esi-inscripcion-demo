@@ -1698,7 +1698,11 @@ function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
         message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.'
       };
     }
-    var session = current ? '' : issueStudentSession_(s);
+    var session = '';
+    if (!current) {
+      if (ticket) revokeSessionsForEmail_(s.email, '');
+      session = issueStudentSession_(s);
+    }
     if (ticket) consumeLoginTicket_(loginToken);
     return {
       ok: true,
@@ -1790,25 +1794,39 @@ function sessionDateMs_(value) {
 function readSessions_() {
   var sh = sessionsSheet_();
   var vals = sh.getDataRange().getValues();
-  if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return [];
-  var apellidoCol = -1;
+  if (!vals.length) return [];
+  var idx = {};
   for (var h = 0; h < vals[0].length; h++) {
-    if (EsiCore.normalizeText(vals[0][h]) === 'apellido') { apellidoCol = h; break; }
+    idx[EsiCore.normalizeText(vals[0][h])] = h;
   }
+  if (idx.token_hash == null) return [];
+  var col = function (name, fallback) {
+    return idx[name] == null ? fallback : idx[name];
+  };
+  var hashCol = col('token_hash', 0);
+  var emailCol = col('email', 1);
+  var nombreCol = col('nombre', 2);
+  var cursoCol = col('curso', 3);
+  var cicloCol = col('ciclo', 4);
+  var createdCol = col('created_at', 5);
+  var expiresCol = col('expires_at', 6);
+  var revokedCol = col('revoked', 7);
+  var apellidoCol = col('apellido', -1);
   var rows = [];
   for (var i = 1; i < vals.length; i++) {
-    if (!String(vals[i][0] || '').trim()) continue;
+    if (!String(vals[i][hashCol] || '').trim()) continue;
     rows.push({
       row: i + 1,
-      hash: String(vals[i][0]).trim(),
-      email: EsiCore.normalizeEmail(vals[i][1]),
-      nombre: String(vals[i][2] == null ? '' : vals[i][2]).replace(/\s+/g, ' ').trim(),
-      curso: EsiCore.parseCurso(vals[i][3]) || String(vals[i][3] == null ? '' : vals[i][3]).trim(),
-      ciclo: String(vals[i][4] == null ? '' : vals[i][4]).trim().toLowerCase(),
+      hash: String(vals[i][hashCol]).trim(),
+      email: EsiCore.normalizeEmail(vals[i][emailCol]),
+      nombre: String(vals[i][nombreCol] == null ? '' : vals[i][nombreCol]).replace(/\s+/g, ' ').trim(),
+      curso: EsiCore.parseCurso(vals[i][cursoCol]) || String(vals[i][cursoCol] == null ? '' : vals[i][cursoCol]).trim(),
+      ciclo: String(vals[i][cicloCol] == null ? '' : vals[i][cicloCol]).trim().toLowerCase(),
       apellido: apellidoCol >= 0 ? String(vals[i][apellidoCol] == null ? '' : vals[i][apellidoCol]).replace(/\s+/g, ' ').trim() : '',
-      created: sessionDateMs_(vals[i][5]),
-      expires: sessionDateMs_(vals[i][6]),
-      revoked: convertBool_(vals[i][7])
+      created: sessionDateMs_(vals[i][createdCol]),
+      expires: sessionDateMs_(vals[i][expiresCol]),
+      revoked: convertBool_(vals[i][revokedCol]),
+      revokedCol: revokedCol + 1
     });
   }
   return rows;
@@ -1834,17 +1852,25 @@ function issueStudentSession_(student) {
   var expires = studentSessionExpiry_(now);
   if (!(expires > now)) return '';
   var raw = STUDENT_TOKEN_PREFIX + (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
-  sessionsSheet_().appendRow([
-    studentTokenHash_(raw),
-    EsiCore.normalizeEmail(student.email),
-    String(student.nombre || '').trim(),
-    String(student.curso || '').trim(),
-    String(student.ciclo || '').trim(),
-    new Date(now),
-    new Date(expires),
-    false,
-    String(student.apellido || '').trim()
-  ]);
+  var sh = sessionsSheet_();
+  var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+  var values = {
+    token_hash: studentTokenHash_(raw),
+    email: EsiCore.normalizeEmail(student.email),
+    nombre: String(student.nombre || '').trim(),
+    curso: String(student.curso || '').trim(),
+    ciclo: String(student.ciclo || '').trim(),
+    created_at: new Date(now),
+    expires_at: new Date(expires),
+    revoked: false,
+    apellido: String(student.apellido || '').trim()
+  };
+  var row = [];
+  for (var i = 0; i < head.length; i++) {
+    var key = EsiCore.normalizeText(head[i]);
+    row.push(Object.prototype.hasOwnProperty.call(values, key) ? values[key] : '');
+  }
+  sh.appendRow(row);
   return raw;
 }
 
@@ -1855,10 +1881,28 @@ function revokeStudentSession_(token) {
   var rows = readSessions_();
   for (var i = 0; i < rows.length; i++) {
     if (rows[i].hash !== hash) continue;
-    sessionsSheet_().getRange(rows[i].row, 8).setValue(true);
+    sessionsSheet_().getRange(rows[i].row, rows[i].revokedCol).setValue(true);
     return true;
   }
   return false;
+}
+
+// Cierra las sesiones abiertas de un mail. `keepHash` conserva la del que
+// escribe; sin hash, las cierra todas (ingreso con DNI).
+function revokeSessionsForEmail_(email, keepHash) {
+  var key = EsiCore.normalizeEmail(email);
+  if (!key) return 0;
+  var rows = readSessions_();
+  var sh = null;
+  var count = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].email !== key || rows[i].revoked) continue;
+    if (keepHash && rows[i].hash === keepHash) continue;
+    if (!sh) sh = sessionsSheet_();
+    sh.getRange(rows[i].row, rows[i].revokedCol).setValue(true);
+    count++;
+  }
+  return count;
 }
 
 function studentSessionExpired_() {
@@ -2012,6 +2056,12 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       message = 'Ya estabas anotado.';
     }
 
+    var rotated = '';
+    if (plan.action === 'insert' || plan.action === 'change') {
+      var keepHash = current && sessionToken ? studentTokenHash_(sessionToken) : '';
+      revokeSessionsForEmail_(s.email, keepHash);
+      if (!current) rotated = issueStudentSession_(s);
+    }
     if (ticket) consumeLoginTicket_(loginToken);
     var fresh = readSignups_();
     invalidateDataCache_();
@@ -2020,7 +2070,8 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       message: message,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
       data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh),
-      recordatorio: reminderOptIn_(fresh, s.email)
+      recordatorio: reminderOptIn_(fresh, s.email),
+      session: rotated
     };
   } catch (err) {
     return { ok: false, message: 'Error inesperado: ' + (err && err.message ? err.message : err) };
@@ -2375,37 +2426,15 @@ function updateRosterStudent_(student) {
   } catch (e) { }
 }
 
-function revokeSessionsForEmail_(email) {
-  try {
-    var key = EsiCore.normalizeEmail(email);
-    var sh = sessionsSheet_();
-    var vals = sh.getDataRange().getValues();
-    if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return 0;
-    var count = 0;
-    for (var i = 1; i < vals.length; i++) {
-      if (EsiCore.normalizeEmail(vals[i][1]) !== key) continue;
-      if (!convertBool_(vals[i][7])) {
-        sh.getRange(i + 1, 8).setValue(true);
-        count++;
-      }
-    }
-    return count;
-  } catch (e) {
-    return 0;
-  }
-}
-
 function revokeAllStudentSessions_() {
   try {
+    var rows = readSessions_();
     var sh = sessionsSheet_();
-    var vals = sh.getDataRange().getValues();
-    if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return 0;
     var count = 0;
-    for (var i = 1; i < vals.length; i++) {
-      if (!convertBool_(vals[i][7])) {
-        sh.getRange(i + 1, 8).setValue(true);
-        count++;
-      }
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].revoked) continue;
+      sh.getRange(rows[i].row, rows[i].revokedCol).setValue(true);
+      count++;
     }
     return count;
   } catch (e) {

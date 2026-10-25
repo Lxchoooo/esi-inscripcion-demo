@@ -2111,6 +2111,13 @@
       }
       return sess;
     }
+    function demoRevokeSessionsForEmail_(email, keep) {
+      var key = EsiClient.normalizeEmail(email);
+      Object.keys(DEMO_SESSIONS).forEach(function (k) {
+        if (k === keep) return;
+        if (EsiClient.normalizeEmail(DEMO_SESSIONS[k].email) === key) delete DEMO_SESSIONS[k];
+      });
+    }
     function demoIssueSession_(student) {
       var raw = 's_demo_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
       DEMO_SESSIONS[raw] = {
@@ -2988,6 +2995,7 @@
         if (!current && !ticket && demoHasSignups_(s.email)) {
           return Promise.resolve({ ok: false, needsLogin: true, message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.' });
         }
+        if (!current && ticket) demoRevokeSessionsForEmail_(s.email, '');
         var session = current ? '' : demoIssueSession_(s);
         if (ticket) delete DEMO_LOGIN_TICKETS[String(a[5])];
         return Promise.resolve({
@@ -3042,7 +3050,16 @@
         if (!regSess && !regTicket && demoHasSignups_(regEmail)) {
           return Promise.resolve({ ok: false, needsLogin: true, message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.' });
         }
-        return demoRegister(a[0], a[1], a[2], a[3], a[4]);
+        return demoRegister(a[0], a[1], a[2], a[3], a[4]).then(function (resp) {
+          if (!resp || !resp.ok) return resp;
+          var keep = regSess ? String(a[5]) : '';
+          demoRevokeSessionsForEmail_(regEmail, keep);
+          if (!keep) {
+            var st = demoStudent(regEmail, a[1], a[2], a[4]);
+            if (st.ok) resp.session = demoIssueSession_(st);
+          }
+          return resp;
+        });
       }
       if (fn === 'apiAdminLogin') {
         var role = String(a[0] || '').toLowerCase() === 'guia' ? 'guide' : 'admin';
@@ -3611,6 +3628,7 @@
           if (resp.data) sState.data = resp.data;
           if (resp.student) sState.student = resp.student;
           if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
+          if (resp.session) sSetSession_(resp.session);
           toast(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
           if (resp.ok) sRenderChange(slotId, prevId, talkId);
           else sRender();

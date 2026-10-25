@@ -1851,6 +1851,58 @@ t('Panel sends the session when registering a second slot', () => {
   if (!/call\('apiRegister', \[sState\.email, sState\.nombre, sState\.curso, talkId, sState\.apellido, sSessionToken_\(\)\]\)/.test(panelSrc)) {
     throw new Error('apiRegister call drops the session token');
   }
+  if (!/if \(resp\.session\) sSetSession_\(resp\.session\)/.test(panelSrc)) {
+    throw new Error('panel ignores the session returned by apiRegister');
+  }
+});
+
+t('Registering closes the other sessions of the same mail', () => {
+  const services = backendStub({}, { students: [], signups: [] });
+  const api = backendApi(services, 'apiGetData, apiRegister');
+  const first = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A');
+  const second = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A');
+  assertEq(first.ok, true, 'first session');
+  assertEq(second.ok, true, 'second session');
+  if (!first.session || !second.session) throw new Error('session missing');
+  if (first.session === second.session) throw new Error('sessions are not distinct');
+  const reg = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', 'B1', '', first.session);
+  assertEq(reg.ok, true, 'register ok');
+  const stolen = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', second.session);
+  assertEq(stolen.ok, false, 'the session opened with just the mail is closed');
+  assertEq(stolen.expired, true, 'closed session looks expired');
+  const own = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', first.session);
+  assertEq(own.ok, true, 'the session that registered survives');
+});
+
+t('A ticket login closes sessions opened with just the mail', () => {
+  const services = backendStub({}, { students: [], signups: [] });
+  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso', 'dni'], [
+    ['ana@secundariosalsipuedes.edu.ar', 'Gómez', 'Ana', '2°B', '12345678']
+  ]);
+  const api = backendApi(services, 'apiLookupDni, apiGetData');
+  const free = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  assertEq(free.ok, true, 'mail-only session');
+  const looked = api.apiLookupDni('12345678', 'Gómez');
+  const login = api.apiGetData('', '', '', '', '', looked.login);
+  assertEq(login.ok, true, 'ticket login');
+  const stolen = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', free.session);
+  assertEq(stolen.ok, false, 'the mail-only session is closed by the ticket');
+});
+
+t('Sessions are read and revoked by header, not by fixed column', () => {
+  const services = backendStub({}, { students: [], signups: [] });
+  services.sheets.Sessions = fakeSheet('Sessions',
+    ['email', 'apellido', 'token_hash', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
+  const api = backendApi(services, 'apiGetData, apiStudentLogout');
+  const login = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A');
+  assertEq(login.ok, true, 'login');
+  assertEq(api.apiStudentLogout(login.session).ok, true, 'logout');
+  const head = services.sheets.Sessions.data[0];
+  const row = services.sheets.Sessions.data[1];
+  assertEq(row[head.indexOf('email')], 'nueva@secundariosalsipuedes.edu.ar', 'email in its column');
+  assertEq(row[head.indexOf('revoked')], true, 'revoked flag in its column');
+  const again = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A', login.session);
+  assertEq(again.ok, false, 'revoked by header');
 });
 
 t('A login ticket cannot be replayed through apiRegister', () => {
