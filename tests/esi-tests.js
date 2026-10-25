@@ -1158,6 +1158,22 @@ t('Cada sección del panel tiene su listener', () => {
   }
 });
 
+t('El panel de profes se reconoce desde el servidor', () => {
+  if (!/data-admin="<\?= IS_ADMIN \? '1' : '0' \?>"/.test(panelHtml)) {
+    throw new Error('body lacks the server admin flag');
+  }
+  if (!/t\.IS_ADMIN = admin/.test(codeSrc)) throw new Error('doGet does not pass admin');
+  if (!/getAttribute\('data-admin'\)/.test(panelSrc)) throw new Error('panel ignores the flag');
+});
+
+t('El botón de confirmar desaparece cuando ya está anotado', () => {
+  if (!/id="sel-bar"/.test(panelHtml)) throw new Error('sel-bar has no id');
+  if (!/'Ya estás anotado'/.test(panelSrc)) throw new Error('no done state');
+  if (!/confirmBtn\.style\.display = canConfirm \? '' : 'none'/.test(panelSrc)) {
+    throw new Error('confirm button is not hidden');
+  }
+});
+
 t('Los iconos del panel siguen el color del tema', () => {
   const icons = (panelHtml.match(/class="nav-ico"/g) || []).length;
   if (icons < 10) throw new Error('faltan iconos: ' + icons);

@@ -1130,7 +1130,7 @@
     .login-form { animation: rise .22s ease both; }
   </style>
 </head>
-<body>
+<body data-admin="<?= IS_ADMIN ? '1' : '0' ?>">
   <header id="nav">
     <div class="nav">
       <a class="brand" href="#top" aria-label="Inicio, Instituto Secundario Salsipuedes">
@@ -1308,7 +1308,7 @@
       <div class="chips" id="chips" hidden></div>
       <div id="slots-container"></div>
     </section>
-    <div class="sel-bar">
+    <div class="sel-bar" id="sel-bar">
       <div class="sel-bar-inner">
         <div class="sel-info">
           <span class="sel-count" id="sel-count" aria-live="polite">0 de 3 elegidas</span>
@@ -1715,7 +1715,9 @@
   </div>
 
   <script>
-    var IS_ADMIN = /(^|[?&])admin=1(&|$)/.test(window.location.search);
+    var IS_ADMIN = (document.body && typeof document.body.getAttribute === 'function'
+      && document.body.getAttribute('data-admin') === '1')
+      || /(^|[?&])admin=1(&|$)/.test(window.location.search);
     var SCHOOL_NAME = 'Instituto Secundario Salsipuedes (ISS)';
     var EVENT_NAME = 'Jornada ESI 2026';
     var TEXTO_DIRECCION = '';
@@ -3578,8 +3580,17 @@
       }
       $('summary').innerHTML = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
         + '<div class="email">' + esc(st.email) + '</div>';
+      var done = slots.length > 0 && chosenCount >= slots.length && !missing.length;
+      var bar = $('sel-bar');
+      if (bar) bar.style.display = '';
+      var confirmBtn = $('btn-confirmar');
+      var canConfirm = !!d.evento_abierto && !done;
+      if (confirmBtn) confirmBtn.style.display = canConfirm ? '' : 'none';
       var countEl = $('sel-count');
-      if (countEl) countEl.textContent = chosenCount + ' de ' + slots.length + ' elegidas';
+      if (countEl) {
+        countEl.textContent = done ? 'Ya estás anotado'
+          : (!d.evento_abierto ? 'Inscripción cerrada' : chosenCount + ' de ' + slots.length + ' elegidas');
+      }
       sRenderNextTalk_();
 
       var cont = $('slots-container');
