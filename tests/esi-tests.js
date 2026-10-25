@@ -1940,7 +1940,7 @@ t('Cached reads are invalidated by writes', () => {
   services.cache.set('signups_v2', JSON.stringify([]));
   const api = backendApi(services, 'apiGetData, apiRegister, apiAdminSetOpen');
   let r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
-  assertEq(r.ok, true, 'getData ok');
+  assertEq(r.ok, true, 'getData ok: ' + r.message);
   assertEq(r.data.mine[1], undefined, 'stale cache hides the row');
   const session = r.session;
   const reg = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B1', '', session);
@@ -1957,6 +1957,18 @@ t('Cached reads are invalidated by writes', () => {
   assertEq(blocked.ok, false, 'closed signup rejected');
 });
 
+
+t('Slots read as text keep HH:mm when Sheets returns a time', () => {
+  const services = backendStub({});
+  services.sheets.Slots.data[1][2] = new Date(Date.UTC(1899, 11, 30, 10, 30, 0));
+  services.sheets.Slots.data[1][3] = new Date(Date.UTC(1899, 11, 30, 11, 20, 0));
+  const api = backendApi(services, 'apiGetData');
+  const r = api.apiGetData('nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '2°B');
+  assertEq(r.ok, true, 'getData ok');
+  assertEq(r.data.slots[0].inicio, '10:30', 'start time');
+  assertEq(r.data.slots[0].fin, '11:20', 'end time');
+  assertEq(r.data.slots[0].label, '10:30 a 11:20', 'label');
+});
 
 t('A ticket with an empty course or name takes the typed values', () => {
   const services = backendStub({}, {
