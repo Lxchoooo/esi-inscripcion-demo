@@ -762,7 +762,9 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   if (String(p.fn || '')) return apiJsonp_(p);
   var admin = String(p.admin || '') === '1';
-  var out = HtmlService.createTemplateFromFile('Panel').evaluate();
+  var t = HtmlService.createTemplateFromFile('Panel');
+  t.IS_ADMIN = admin;
+  var out = t.evaluate();
   out.setTitle(admin ? 'ESI - Panel de profes' : 'ESI - Inscripción a charlas');
   out.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   return out;
