@@ -41,6 +41,8 @@
       --toast-ink: #FAF8F5;
       --radius: 16px;
       --radius-sm: 12px;
+      --card: var(--surface);
+      --brand-dark: var(--accent-strong);
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -281,6 +283,15 @@
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
     input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
+    .screen:focus { outline: none; }
+    .login-or {
+      display: flex; align-items: center; gap: 12px;
+      color: var(--muted); font-size: 12px; font-weight: 600;
+    }
+    .login-or::before, .login-or::after {
+      content: ""; flex: 1; height: 1px; background: var(--line-strong);
+    }
+    .first-time .field, .first-time .field-row, .first-time p { margin-top: 12px; }
 
     .banner {
       display: none; padding: 12px 14px; border-radius: 10px;
@@ -741,16 +752,68 @@
     }
     .present-mini.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
     .present-mini:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
-    .tabs { display: flex; gap: 2px; margin: 18px 0 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
-    .tab {
-      min-height: 44px; margin-bottom: -1px; padding: 12px 14px; border: 0; border-bottom: 2px solid transparent;
-      background: none; font-family: inherit; font-size: 14px; font-weight: 600;
-      color: var(--muted); cursor: pointer; white-space: nowrap;
-      transition: color .16s ease, border-color .16s ease;
+    .panel-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .panel-bar-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .panel-bar-title strong { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+    .panel-bar-title .steps { margin: 0; }
+    .panel-bar-actions { display: flex; gap: 8px; margin-left: auto; }
+    .menu-toggle { display: none; width: 44px; height: 44px; padding: 0; align-items: center; justify-content: center; flex: 0 0 auto; }
+    .menu-bars, .menu-bars::before, .menu-bars::after {
+      display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; content: "";
     }
-    .tab:hover { color: var(--ink); }
-    .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
-    .tab:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px var(--accent); }
+    .menu-bars { position: relative; }
+    .menu-bars::before { position: absolute; top: -6px; left: 0; }
+    .menu-bars::after { position: absolute; top: 6px; left: 0; }
+    .panel-shell { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+    .workspace { min-width: 0; }
+    .side {
+      display: flex; flex-direction: column; gap: 16px;
+      padding: 14px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .side-group { display: flex; flex-direction: column; gap: 2px; }
+    .side-label {
+      padding: 0 8px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .side .tab {
+      display: flex; align-items: center; min-height: 42px; margin: 0; padding: 10px;
+      border: 0; border-radius: 10px; background: none; text-align: left;
+      font-family: inherit; font-size: 14px; font-weight: 600; color: var(--muted);
+      cursor: pointer; white-space: normal;
+      transition: color .16s ease, background .16s ease;
+    }
+    .side .tab:hover { color: var(--ink); background: var(--surface-2); }
+    .side .tab.active { color: var(--ink); background: var(--accent-soft); }
+    .side .tab:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .side-session { padding-top: 12px; border-top: 1px solid var(--line); }
+    .side-action {
+      display: flex; align-items: center; min-height: 40px; padding: 8px 10px;
+      border: 0; border-radius: 10px; background: none; text-align: left;
+      font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer;
+    }
+    .side-action:hover { color: var(--ink); background: var(--surface-2); }
+    .side-action:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .side .kbd-hint { display: block; padding: 8px 10px 0; font-size: 11px; line-height: 1.7; }
+    .menu-backdrop { position: fixed; z-index: 70; inset: 0; background: rgba(12, 14, 12, .5); }
+    @media (min-width: 960px) {
+      .panel-shell { grid-template-columns: 224px minmax(0, 1fr); gap: 24px; }
+      .side { position: sticky; top: 78px; max-height: calc(100dvh - 94px); overflow-y: auto; }
+    }
+    @media (max-width: 959px) {
+      .menu-toggle { display: inline-flex; }
+      .side {
+        position: fixed; z-index: 80; top: 0; bottom: 0; left: 0;
+        width: min(84vw, 300px); max-height: 100dvh; overflow-y: auto;
+        border-left: 0; border-radius: 0 18px 18px 0;
+        transform: translateX(-102%); visibility: hidden;
+        transition: transform .22s ease;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .3);
+      }
+      .side.open { transform: none; visibility: visible; }
+      body.menu-open { overflow: hidden; }
+      .workspace { min-width: 0; }
+    }
     .tabpanel { padding-top: 4px; }
     .filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
     @media (min-width: 720px) { .filters { grid-template-columns: 1.4fr 1fr 1fr 1.4fr; } }
@@ -864,11 +927,7 @@
     @media (min-width: 1024px) {
       .nav { max-width: 1240px; }
       body.admin .wrap { max-width: 1240px; padding: 24px 28px 36px; }
-      body.admin .tabs {
-        position: sticky; top: 62px; z-index: 30;
-        background: var(--paper); padding-top: 4px;
-      }
-      body.admin .tab { min-height: 46px; padding: 12px 18px; }
+      body.admin .side .tab { min-height: 44px; }
       body.admin .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       body.admin .filters > * { flex: 0 1 220px; min-width: 160px; }
       body.admin .filters > input[type="text"] { flex: 1 1 320px; }
@@ -1123,7 +1182,7 @@
       <button id="btn-demo" class="btn full" type="button">Usar modo prueba</button>
     </section>
 
-    <section id="s-screen-mail" class="screen card">
+    <section id="s-screen-mail" class="screen card" tabindex="-1" aria-labelledby="login-title">
       <div class="steps">1 de 3</div>
       <h2 class="intro" id="login-title">Ingresar</h2>
       <p class="hint">Vas a necesitar tu mail institucional o tu DNI.</p>
@@ -1132,40 +1191,12 @@
       <p class="hint-line login-note" id="login-note">Si el celular es compartido, tocá "Salir" al terminar.</p>
     </section>
 
-    <section id="s-screen-login" class="screen card">
+    <section id="s-screen-login" class="screen card" tabindex="-1" aria-labelledby="login-form-title">
       <div class="steps">2 de 3</div>
-      <h2 class="intro">Ingresá tus datos</h2>
-      <p class="hint" id="login-intro">Completá tus datos. Si ya te inscribiste, alcanza con el mail o el DNI.</p>
+      <h2 class="intro" id="login-form-title">Ingresá con tu mail o tu DNI</h2>
+      <p class="hint" id="login-intro">Elegí una sola forma. Si es tu primera vez, el sistema te va a pedir tus datos.</p>
       <form id="login-form" class="login-form" novalidate>
         <div class="login-fields">
-          <div class="field">
-            <label for="input-nombre">Nombre</label>
-            <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
-              autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
-          </div>
-          <div class="field">
-            <label for="input-apellido">Apellido</label>
-            <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
-              autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
-          </div>
-          <div class="field-row">
-            <div>
-              <label for="select-anio">Año</label>
-              <select id="select-anio">
-                <option value="">Elegí...</option>
-                <option value="1">1°</option>
-                <option value="2">2°</option>
-                <option value="3">3°</option>
-                <option value="4">4°</option>
-                <option value="5">5°</option>
-                <option value="6">6°</option>
-              </select>
-            </div>
-            <div>
-              <label for="select-division">División</label>
-              <select id="select-division"></select>
-            </div>
-          </div>
           <div class="field">
             <label for="input-mail">Mail institucional</label>
             <input id="input-mail" type="email" inputmode="email" autocomplete="off" maxlength="120"
@@ -1189,12 +1220,45 @@
               <span id="mail-year-out" class="hint-line"></span>
             </div>
           </details>
+          <div class="login-or" aria-hidden="true">o</div>
           <div class="field">
             <label for="input-dni">DNI</label>
             <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
               enterkeyhint="go" placeholder="Solo números">
+            <p class="hint-line">Sin puntos. Si hay más de un alumno con ese DNI, te vamos a pedir el apellido.</p>
           </div>
-          <p class="hint-line">Usá el mail o el DNI. Si el DNI se repite, agregá el apellido.</p>
+          <details class="mail-help first-time" id="first-time">
+            <summary>Completá tus datos si el sistema te los pide</summary>
+            <p class="hint-line">Hace falta la primera vez o si tu DNI se repite. Podés dejarlo cerrado.</p>
+            <div class="field">
+              <label for="input-nombre">Nombre</label>
+              <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
+                autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
+            </div>
+            <div class="field">
+              <label for="input-apellido">Apellido</label>
+              <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
+                autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
+            </div>
+            <div class="field-row">
+              <div>
+                <label for="select-anio">Año</label>
+                <select id="select-anio">
+                  <option value="">Elegí...</option>
+                  <option value="1">1°</option>
+                  <option value="2">2°</option>
+                  <option value="3">3°</option>
+                  <option value="4">4°</option>
+                  <option value="5">5°</option>
+                  <option value="6">6°</option>
+                </select>
+              </div>
+              <div>
+                <label for="select-division">División</label>
+                <select id="select-division"></select>
+              </div>
+            </div>
+          </details>
           <button id="btn-login" class="btn full" type="submit">Ingresar</button>
           <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
         </div>
@@ -1202,19 +1266,19 @@
       <button id="btn-login-back" class="btn link" type="button">Volver</button>
     </section>
 
-    <section id="s-screen-hello" class="screen card">
+    <section id="s-screen-hello" class="screen card" tabindex="-1" aria-labelledby="hello-title">
       <div class="steps">2 de 3</div>
-      <h2 class="intro">Confirmá tus datos</h2>
+      <h2 class="intro" id="hello-title">Confirmá tus datos</h2>
       <p class="hint" id="hello-text">Hola. ¿Sos vos?</p>
       <button id="btn-hello-yes" class="btn full" type="button">Sí</button>
       <button id="btn-hello-no" class="btn secondary full" type="button">No soy yo</button>
     </section>
 
-    <section id="s-screen-panel" class="screen">
+    <section id="s-screen-panel" class="screen" tabindex="-1" aria-labelledby="panel-title">
       <div class="panel-head">
         <div>
           <div class="steps">3 de 3</div>
-          <h2 class="intro">Elegí tus charlas</h2>
+          <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
         </div>
         <div class="head-actions">
@@ -1238,9 +1302,9 @@
       </div>
     </div>
 
-    <section id="a-screen-gate" class="screen">
+    <section id="a-screen-gate" class="screen" tabindex="-1" aria-labelledby="gate-title">
       <div class="card">
-        <h2 class="intro">Panel de profes</h2>
+        <h2 class="intro" id="gate-title">Panel de profes</h2>
         <p class="hint-line" id="gate-notice" hidden>Entrá por la URL /exec?admin=1 del Apps Script. No uses el enlace ?api= de GitHub Pages.</p>
         <div class="gate-form">
           <div class="field">
@@ -1254,46 +1318,62 @@
       </div>
     </section>
 
-    <section id="a-screen-panel" class="screen">
-      <div class="card">
-        <div id="a-totals"></div>
-        <div id="a-toggle-box"></div>
-        <div id="a-msg" class="banner" role="status" aria-live="polite"></div>
-      </div>
-
-      <details class="card admin-only config-card" id="a-config-card">
-        <summary>Configuración del evento<span class="summary-hint">Fecha, zona, mails y respaldo</span></summary>
-        <div class="config-grid">
-          <label for="cfg-fecha">Fecha<input id="cfg-fecha" type="date" autocomplete="off"></label>
-          <label for="cfg-zona">Zona horaria<input id="cfg-zona" type="text" spellcheck="false" placeholder="America/Argentina/Cordoba"></label>
-          <label for="cfg-remitente">Remitente de los mails<input id="cfg-remitente" type="email" autocomplete="off" placeholder="Opcional: recordatorios@secundariosalsipuedes.edu.ar"></label>
-          <label class="check-row" for="cfg-modo-prueba"><input id="cfg-modo-prueba" type="checkbox">Modo ensayo</label>
-          <label class="check-row" for="cfg-backup"><input id="cfg-backup" type="checkbox">Respaldo automático cada 30 min</label>
+    <section id="a-screen-panel" class="screen" tabindex="-1" aria-label="Panel de profes">
+      <div class="panel-bar">
+        <button id="btn-menu" class="btn secondary menu-toggle" type="button"
+          aria-expanded="false" aria-controls="admin-tabs" aria-label="Abrir menú">
+          <span class="menu-bars" aria-hidden="true"></span>
+        </button>
+        <div class="panel-bar-title">
+          <span class="steps">3 de 3</span>
+          <strong>Panel de profes</strong>
         </div>
-        <p class="hint-line">El modo ensayo marca las inscripciones nuevas como datos de prueba.</p>
-        <button id="btn-save-config" class="btn secondary small" type="button">Guardar configuración</button>
-        <div id="cfg-msg" class="banner"></div>
-      </details>
-
-      <div class="admin-actions top">
-        <button id="btn-copiar-link" class="btn secondary small admin-only" type="button">Copiar link</button>
-        <button id="btn-csv" class="btn secondary small admin-only" type="button">CSV</button>
-        <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
-        <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
-        <span class="kbd-hint" id="kbd-hint" aria-hidden="true">Atajos <kbd>1-5</kbd> pestañas <kbd>/</kbd> buscar</span>
+        <div class="panel-bar-actions">
+          <button id="btn-arefresh" class="btn secondary small" type="button">Actualizar</button>
+          <button id="btn-salir" class="btn secondary small" type="button">Salir</button>
+        </div>
       </div>
 
-      <div class="tabs" role="tablist" aria-label="Panel">
-        <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">Por charla</button>
-        <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend">Faltan charlas</button>
-        <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes">Reportes</button>
-        <button id="tab-estado" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-estado">Estado</button>
-        <button id="tab-inscriptos" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos">Inscriptos</button>
-        <button id="tab-mails" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-mails">Accesos y mails</button>
-        <button id="tab-corr" class="tab admin-only" type="button" role="tab" aria-selected="false" aria-controls="pane-corr">Correcciones</button>
-      </div>
+      <div class="panel-shell">
+        <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+        <nav id="admin-tabs" class="tabs side" role="tablist" aria-label="Secciones del panel"
+          aria-orientation="vertical" tabindex="-1">
+          <div class="side-group" role="presentation">
+            <span class="side-label">Asistencia</span>
+            <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">Por charla</button>
+            <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend" tabindex="-1">Faltan charlas</button>
+          </div>
+          <div class="side-group" role="presentation">
+            <span class="side-label">Análisis</span>
+            <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes" tabindex="-1">Reportes</button>
+            <button id="tab-estado" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-estado" tabindex="-1">Estado</button>
+          </div>
+          <div class="side-group admin-only" role="presentation">
+            <span class="side-label">Gestión</span>
+            <button id="tab-inscriptos" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos" tabindex="-1">Inscriptos</button>
+            <button id="tab-mails" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-mails" tabindex="-1">Accesos y mails</button>
+            <button id="tab-corr" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-corr" tabindex="-1">Correcciones</button>
+          </div>
+          <div class="side-group admin-only" role="presentation">
+            <span class="side-label">Ajustes</span>
+            <button id="tab-config" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-config" tabindex="-1">Configuración</button>
+          </div>
+          <div class="side-group side-session" role="presentation">
+            <span class="side-label">Sesión</span>
+            <button id="btn-copiar-link" class="side-action admin-only" type="button">Copiar link</button>
+            <button id="btn-csv" class="side-action admin-only" type="button">Descargar CSV</button>
+            <span class="kbd-hint" id="kbd-hint">Atajos <kbd>1-8</kbd> secciones <kbd>/</kbd> buscar</span>
+          </div>
+        </nav>
 
-      <div id="pane-charla" class="tabpanel" role="tabpanel" aria-labelledby="tab-charla">
+        <div class="workspace">
+          <div class="card">
+            <div id="a-totals"></div>
+            <div id="a-toggle-box"></div>
+            <div id="a-msg" class="banner" role="status" aria-live="polite"></div>
+          </div>
+
+      <div id="pane-charla" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-charla">
         <div class="card">
           <div class="filters">
             <select id="select-charla" aria-label="Charla"></select>
@@ -1315,7 +1395,7 @@
         </div>
       </div>
 
-      <div id="pane-pend" class="tabpanel" role="tabpanel" aria-labelledby="tab-pend" hidden>
+      <div id="pane-pend" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-pend" hidden>
         <div class="card">
           <div class="filters">
             <input id="input-buscar-pend" type="text" autocomplete="off" placeholder="Buscar por nombre" aria-label="Buscar por nombre">
@@ -1331,7 +1411,7 @@
         </div>
       </div>
 
-      <div id="pane-reportes" class="tabpanel" role="tabpanel" aria-labelledby="tab-reportes" hidden>
+      <div id="pane-reportes" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-reportes" hidden>
         <div class="card">
           <div class="seg" role="group" aria-label="Tipo de reporte">
             <button id="rep-tab-curso" class="seg-btn active" type="button" aria-pressed="true">Por curso</button>
@@ -1347,7 +1427,7 @@
         </div>
       </div>
 
-      <div id="pane-estado" class="tabpanel" role="tabpanel" aria-labelledby="tab-estado" hidden>
+      <div id="pane-estado" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-estado" hidden>
         <div class="card">
           <div class="view-head">
             <span class="view-count">Estado del servidor</span>
@@ -1358,7 +1438,7 @@
         </div>
       </div>
 
-      <div id="pane-inscriptos" class="tabpanel admin-only" role="tabpanel" aria-labelledby="tab-inscriptos" hidden>
+      <div id="pane-inscriptos" class="tabpanel admin-only" tabindex="-1" role="tabpanel" aria-labelledby="tab-inscriptos" hidden>
         <div class="card" id="a-cupos"></div>
         <div class="card">
           <div class="filters">
@@ -1375,7 +1455,7 @@
         </div>
       </div>
 
-      <div id="pane-corr" class="tabpanel admin-only" role="tabpanel" aria-labelledby="tab-corr" hidden>
+      <div id="pane-corr" class="tabpanel admin-only" tabindex="-1" role="tabpanel" aria-labelledby="tab-corr" hidden>
         <div class="card">
           <h3>Corrección manual</h3>
           <p class="hint-line">Usá estas acciones solo para corregir datos cargados mal. Queda registro de cada cambio.</p>
@@ -1401,7 +1481,7 @@
         </details>
       </div>
 
-      <div id="pane-mails" class="tabpanel" role="tabpanel" aria-labelledby="tab-mails" hidden>
+      <div id="pane-mails" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-mails" hidden>
         <div class="card">
           <h3>Lista base de alumnos</h3>
           <div class="totals" id="a-roster-info"></div>
@@ -1424,6 +1504,24 @@
             <button id="btn-mail-send" class="btn small" type="button">Enviar recordatorios</button>
           </div>
           <div id="mail-send-msg" class="banner" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div id="pane-config" class="tabpanel admin-only" tabindex="-1" role="tabpanel" aria-labelledby="tab-config" hidden>
+        <div class="card">
+          <h3>Configuración del evento</h3>
+          <p class="hint-line">Fecha, zona, remitente y respaldo. El modo ensayo marca las inscripciones nuevas como datos de prueba.</p>
+          <div class="config-grid">
+            <label for="cfg-fecha">Fecha<input id="cfg-fecha" type="date" autocomplete="off"></label>
+            <label for="cfg-zona">Zona horaria<input id="cfg-zona" type="text" spellcheck="false" placeholder="America/Argentina/Cordoba"></label>
+            <label for="cfg-remitente">Remitente de los mails<input id="cfg-remitente" type="email" autocomplete="off" placeholder="Opcional: recordatorios@secundariosalsipuedes.edu.ar"></label>
+            <label class="check-row" for="cfg-modo-prueba"><input id="cfg-modo-prueba" type="checkbox">Modo ensayo</label>
+            <label class="check-row" for="cfg-backup"><input id="cfg-backup" type="checkbox">Respaldo automático cada 30 min</label>
+          </div>
+          <button id="btn-save-config" class="btn secondary small" type="button">Guardar configuración</button>
+          <div id="cfg-msg" class="banner"></div>
+        </div>
+      </div>
         </div>
       </div>
     </section>
@@ -1587,6 +1685,12 @@
       if ($('select-anio')) $('select-anio').value = '';
       if ($('select-division')) $('select-division').innerHTML = '<option value="">Elegí...</option>';
       if ($('mail-hint')) $('mail-hint').hidden = true;
+      if ($('first-time')) $('first-time').open = false;
+    }
+
+    function sOpenLoginExtra_() {
+      var d = $('first-time');
+      if (d && !d.open) d.open = true;
     }
 
     function sEmptyState_() {
@@ -1878,8 +1982,21 @@
         if (full) return { error: 'full' };
         return { action: 'insert' };
       }
+
+      function searchMatch(haystack, query) {
+        var q = normalizeText(query);
+        if (!q) return true;
+        var text = normalizeText(haystack);
+        var parts = q.split(' ');
+        for (var i = 0; i < parts.length; i++) {
+          if (text.indexOf(parts[i]) < 0) return false;
+        }
+        return true;
+      }
+
       return {
         normalizeText: normalizeText,
+        searchMatch: searchMatch,
         esc: esc,
         sanitizeName: sanitizeName,
         isValidName: isValidName,
@@ -3168,10 +3285,21 @@
     }
 
     function showScreen(ids, activeId) {
+      var prev = document.body.getAttribute('data-screen') || '';
       for (var i = 0; i < ids.length; i++) {
         $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' : '');
       }
       document.body.setAttribute('data-screen', activeId || '');
+      if (aMenuOpen && activeId !== 'a-screen-panel') aMenuSet_(false);
+      if (prev && prev !== activeId) {
+        var target = activeId ? $(activeId) : null;
+        if (target && target.focus) {
+          try { target.focus({ preventScroll: true }); } catch (e) { try { target.focus(); } catch (e2) { } }
+        }
+        if (window.scrollTo) {
+          try { window.scrollTo(0, 0); } catch (e) { }
+        }
+      }
     }
 
     var toastTimer = null;
@@ -3799,6 +3927,7 @@
           if (!resp.ok) {
             sBanner(resp.message || 'No pudimos entrar.', 'err');
             if (resp.needsApellido) {
+              sOpenLoginExtra_();
               try { $('input-apellido').focus(); } catch (e) { }
             }
             return;
@@ -3895,6 +4024,7 @@
     function sUseLoginData_() {
       var lookup = sState.lookup;
       if (!lookup) return;
+      sOpenLoginExtra_();
       var form = sLoginData_();
       var needsNombre = !!lookup.needsNombre;
       var needsApellido = !!lookup.needsApellido;
@@ -4058,6 +4188,7 @@
     var aUpdatedAt = 0;
     var aOfflineAt = 0;
     var aTabName = 'charla';
+    var aMenuOpen = false;
     var aTimer = null;
     var aTicker = null;
 
@@ -4359,7 +4490,7 @@
       if (!d) return;
       var focusEl = document.activeElement;
       var focusId = focusEl && focusEl.getAttribute ? focusEl.getAttribute('data-id') : '';
-      var q = ($('input-buscar-charla') ? $('input-buscar-charla').value : '').replace(/\s+/g, ' ').trim().toLowerCase();
+      var q = $('input-buscar-charla') ? $('input-buscar-charla').value : '';
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
       $('charla-count').textContent = d.count + ' de ' + d.talk.cupo + ' lugares';
       var presentesEl = $('charla-presentes');
@@ -4373,12 +4504,13 @@
         if (fCurso && st.curso !== fCurso) continue;
         if (aTalkFilter === 'present' && !st.presente) continue;
         if (aTalkFilter === 'absent' && st.presente) continue;
-        if (q && aSearch_(st).indexOf(q) < 0) continue;
+        if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
         shown++;
         rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '">'
           + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
           + ' data-id="' + esc(st.id) + '" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
-          + ' aria-label="Marcar presente a ' + esc(aDisplay_(st, false)) + '">Presente</button>'
+          + ' aria-label="' + (st.presente ? 'Quitar presente a ' : 'Marcar presente a ')
+          + esc(aDisplay_(st, false)) + '">Presente</button>'
           + '<span class="roster-who">' + aAvatarHtml_(st)
           + aStudentNameHtml_(st, 'roster-name', aRole === 'admin') + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
@@ -4491,7 +4623,7 @@
     function aRenderPending() {
       var d = aPendingData;
       if (!d) return;
-      var q = ($('input-buscar-pend') ? $('input-buscar-pend').value : '').replace(/\s+/g, ' ').trim().toLowerCase();
+      var q = $('input-buscar-pend') ? $('input-buscar-pend').value : '';
       var fCurso = $('filter-curso-pend') ? $('filter-curso-pend').value : '';
       var fDiv = $('filter-division-pend') ? $('filter-division-pend').value : '';
       $('pend-count').textContent = d.pending + (d.pending === 1 ? ' alumno' : ' alumnos')
@@ -4510,7 +4642,7 @@
         }
         if (fCurso && st.curso !== fCurso) continue;
         if (fDiv && (!pc || pc.slice(2) !== fDiv)) continue;
-        if (q && aSearch_(st).indexOf(q) < 0) continue;
+        if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
         shown++;
         rows += '<div class="roster-row">'
           + '<span class="roster-who">' + aAvatarHtml_(st)
@@ -4732,7 +4864,8 @@
               + '<button class="present-mini' + (tk.presente ? ' on' : '') + '" type="button"'
               + ' data-signup="' + esc(tk.signup_id) + '" data-present="' + (tk.presente ? 'true' : 'false') + '"'
               + ' aria-pressed="' + (tk.presente ? 'true' : 'false') + '"'
-              + ' aria-label="Presente en ' + esc(tk.titulo) + '">Presente</button>';
+              + ' aria-label="' + (tk.presente ? 'Quitar presente en ' : 'Marcar presente en ')
+              + esc(tk.titulo) + '">Presente</button>';
           }
           html += '</td>';
         }
@@ -5017,8 +5150,8 @@
       var hint = $('kbd-hint');
       if (hint) {
         hint.innerHTML = admin
-          ? 'Atajos <kbd>1-7</kbd> pestañas <kbd>/</kbd> buscar'
-          : 'Atajos <kbd>1-4</kbd> pestañas <kbd>/</kbd> buscar';
+          ? 'Atajos <kbd>1-8</kbd> secciones <kbd>/</kbd> buscar'
+          : 'Atajos <kbd>1-4</kbd> secciones <kbd>/</kbd> buscar';
       }
     }
 
@@ -5157,7 +5290,7 @@
       var text = String(st.apellido || '') + ' ' + String(st.nombre || '') + ' '
         + String(st.nombreCompleto || '') + ' ' + String(st.curso || '');
       if (aRole === 'admin') text += ' ' + String(st.email || '');
-      return text.toLowerCase();
+      return text;
     }
 
     function fillFilter(id, values, allLabel) {
@@ -5194,29 +5327,98 @@
       fillFilter('filter-charla', charlas, 'Todas las charlas');
     }
 
+    var A_ADMIN_TABS = ['inscriptos', 'mails', 'corr', 'config'];
+    var A_TAB_ORDER = [
+      ['charla', 'tab-charla'], ['pend', 'tab-pend'], ['reportes', 'tab-reportes'],
+      ['estado', 'tab-estado'], ['inscriptos', 'tab-inscriptos'],
+      ['mails', 'tab-mails'], ['corr', 'tab-corr'], ['config', 'tab-config']
+    ];
+
+    function aTabList_() {
+      var out = [];
+      for (var i = 0; i < A_TAB_ORDER.length; i++) {
+        var name = A_TAB_ORDER[i][0];
+        if (A_ADMIN_TABS.indexOf(name) >= 0 && aRole !== 'admin') continue;
+        var el = $(A_TAB_ORDER[i][1]);
+        if (el) out.push({ name: name, el: el });
+      }
+      return out;
+    }
+
+    function aMenuSet_(open, returnFocus) {
+      var side = $('admin-tabs');
+      var btn = $('btn-menu');
+      var back = $('menu-backdrop');
+      if (!side || !btn) return;
+      aMenuOpen = !!open;
+      side.classList.toggle('open', aMenuOpen);
+      btn.setAttribute('aria-expanded', aMenuOpen ? 'true' : 'false');
+      btn.setAttribute('aria-label', aMenuOpen ? 'Cerrar menú' : 'Abrir menú');
+      if (back) back.hidden = !aMenuOpen;
+      if (document.body.classList) document.body.classList.toggle('menu-open', aMenuOpen);
+      if (aMenuOpen) {
+        var active = side.querySelector ? side.querySelector('.tab.active') : null;
+        try { (active || side).focus(); } catch (e) { }
+      } else if (returnFocus) {
+        try { btn.focus(); } catch (e) { }
+      }
+    }
+
     function aTab(name) {
       aTabName = name;
       var panes = [['pane-charla', name === 'charla'], ['pane-pend', name === 'pend'],
         ['pane-reportes', name === 'reportes'], ['pane-estado', name === 'estado'],
         ['pane-inscriptos', name === 'inscriptos'], ['pane-mails', name === 'mails'],
-        ['pane-corr', name === 'corr']];
+        ['pane-corr', name === 'corr'], ['pane-config', name === 'config']];
       for (var i = 0; i < panes.length; i++) {
         var pane = $(panes[i][0]);
         if (pane) pane.hidden = !panes[i][1];
       }
-      var tabs = [['tab-charla', name === 'charla'], ['tab-pend', name === 'pend'],
-        ['tab-reportes', name === 'reportes'], ['tab-estado', name === 'estado'],
-        ['tab-inscriptos', name === 'inscriptos'], ['tab-mails', name === 'mails'],
-        ['tab-corr', name === 'corr']];
+      var tabs = aTabList_();
+      var activeEl = null;
       for (var j = 0; j < tabs.length; j++) {
-        var tab = $(tabs[j][0]);
-        if (!tab) continue;
-        tab.classList.toggle('active', tabs[j][1]);
-        tab.setAttribute('aria-selected', tabs[j][1] ? 'true' : 'false');
+        var tab = tabs[j].el;
+        var on = tabs[j].name === name;
+        tab.classList.toggle('active', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+        if (on) activeEl = tab;
+      }
+      if (activeEl && activeEl.scrollIntoView) {
+        try { activeEl.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { }
+      }
+      if (aMenuOpen) {
+        aMenuSet_(false);
+        var paneEl = $('pane-' + name);
+        if (paneEl && paneEl.focus) {
+          try { paneEl.focus({ preventScroll: true }); } catch (e3) { }
+        }
       }
       if (name === 'mails' && !aMailPreview) aLoadMailPreview();
       aRefreshView();
       aSyncTableCards_();
+    }
+
+    function aOnTabKey_(ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      var key = ev.key;
+      if (key !== 'ArrowRight' && key !== 'ArrowLeft' && key !== 'ArrowUp'
+        && key !== 'ArrowDown' && key !== 'Home' && key !== 'End') return;
+      var list = aTabList_();
+      if (!list.length) return;
+      var idx = -1;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].el === ev.target) { idx = i; break; }
+      }
+      if (idx < 0) return;
+      ev.preventDefault();
+      var next = idx;
+      if (key === 'ArrowRight' || key === 'ArrowDown') next = (idx + 1) % list.length;
+      else if (key === 'ArrowLeft' || key === 'ArrowUp') next = (idx - 1 + list.length) % list.length;
+      else if (key === 'Home') next = 0;
+      else next = list.length - 1;
+      aTab(list[next].name);
+      try { list[next].el.focus(); } catch (e) { }
     }
 
     function aIsTyping_(el) {
@@ -5246,16 +5448,21 @@
         return;
       }
       if (document.body.getAttribute('data-screen') !== 'a-screen-panel') return;
+      if (ev.key === 'Escape' && aMenuOpen) {
+        ev.preventDefault();
+        aMenuSet_(false, true);
+        return;
+      }
       if (document.body.classList && document.body.classList.contains('sheet-open')) return;
       if (ev.key === '/') {
         ev.preventDefault();
         aFocusSearch_();
         return;
       }
-      var names = { '1': 'charla', '2': 'pend', '3': 'reportes', '4': 'estado', '5': 'inscriptos', '6': 'mails', '7': 'corr' };
+      var names = { '1': 'charla', '2': 'pend', '3': 'reportes', '4': 'estado', '5': 'inscriptos', '6': 'mails', '7': 'corr', '8': 'config' };
       var name = names[ev.key];
       if (!name) return;
-      if ((name === 'inscriptos' || name === 'mails' || name === 'corr') && aRole !== 'admin') return;
+      if (A_ADMIN_TABS.indexOf(name) >= 0 && aRole !== 'admin') return;
       ev.preventDefault();
       aTab(name);
     }
@@ -5276,7 +5483,7 @@
     function aRenderTable() {
       var d = aData;
       if (!d) return;
-      var q = $('input-buscar').value.replace(/\s+/g, ' ').trim().toLowerCase();
+      var q = $('input-buscar').value;
       var fCurso = $('filter-curso') ? $('filter-curso').value : '';
       var fDiv = $('filter-division') ? $('filter-division').value : '';
       var fCharla = $('filter-charla') ? $('filter-charla').value : '';
@@ -5293,7 +5500,7 @@
         }
         if (fCharla && s.talkTitulo !== fCharla) continue;
         var hay = aSearch_(s) + ' ' + String(s.slotLabel || '') + ' ' + String(s.talkTitulo || '');
-        if (q && hay.toLowerCase().indexOf(q) < 0) continue;
+        if (!EsiClient.searchMatch(hay, q)) continue;
         shown++;
         rows += '<tr>'
           + '<td class="narrow" data-label="Fecha">' + esc(s.cuando) + '</td>'
@@ -5966,8 +6173,14 @@
       $('input-pin').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') $('btn-pin').click();
       });
-      $('btn-copiar-link').addEventListener('click', aCopyLink);
-      $('btn-csv').addEventListener('click', aDownloadCsv);
+      $('btn-copiar-link').addEventListener('click', function () {
+        aMenuSet_(false);
+        aCopyLink();
+      });
+      $('btn-csv').addEventListener('click', function () {
+        aMenuSet_(false);
+        aDownloadCsv();
+      });
       $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
       $('btn-salir').addEventListener('click', aLogout);
       var buscarTimer = 0;
@@ -5978,6 +6191,16 @@
       $('filter-curso').addEventListener('change', aRenderTable);
       $('filter-division').addEventListener('change', aRenderTable);
       $('filter-charla').addEventListener('change', aRenderTable);
+      if ($('admin-tabs')) $('admin-tabs').addEventListener('keydown', aOnTabKey_);
+      if ($('btn-menu')) $('btn-menu').addEventListener('click', function () {
+        aMenuSet_(!aMenuOpen, aMenuOpen);
+      });
+      if ($('menu-backdrop')) $('menu-backdrop').addEventListener('click', function () {
+        aMenuSet_(false, true);
+      });
+      window.addEventListener('resize', function () {
+        if (aMenuOpen && window.innerWidth >= 960) aMenuSet_(false);
+      });
       $('tab-charla').addEventListener('click', function () { aTab('charla'); });
       $('tab-pend').addEventListener('click', function () { aTab('pend'); });
       $('tab-reportes').addEventListener('click', function () { aTab('reportes'); });
