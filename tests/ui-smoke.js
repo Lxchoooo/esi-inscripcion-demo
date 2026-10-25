@@ -579,6 +579,13 @@ function tick() {
   } catch (e) { gaveUp = true; }
   assert(gaveUp && netTries === 3, 'network errors give up after three attempts');
 
+  const dniLogin = await ui.demoCall('apiLookupDni', ['30111222', 'Gomez']);
+  assert(dniLogin.ok && dniLogin.login, 'login por DNI');
+  const dniData = await ui.demoCall('apiGetData', ['', '', '', '', '', dniLogin.login]);
+  assert(dniData.ok && dniData.session, 'sesión por DNI');
+  const dniReg = await ui.demoCall('apiRegister', ['', 'Ana Gomez', '2°B', 'B2', 'Gomez', dniData.session]);
+  assert(dniReg.ok, 'inscripción con sesión de DNI');
+
   const pre = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B']);
   await ui.demoCall('apiRegister', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba', pre.session]);
   const demoStudent = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', pre.session, 'Prueba']);
