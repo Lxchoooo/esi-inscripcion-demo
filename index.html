@@ -631,7 +631,7 @@
       font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
     }
     @media (max-width: 719px) {
-      body.admin #pane-charla .filters { position: sticky; top: 0; z-index: 20; background: var(--paper); padding: 8px 0; }
+      body.admin #pane-charla .filters { position: sticky; top: calc(62px + env(safe-area-inset-top)); z-index: 20; background: var(--paper); padding: 8px 0; }
     }
     .roster-who { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
     .student-avatar {
@@ -1258,7 +1258,7 @@
       <div class="card">
         <div id="a-totals"></div>
         <div id="a-toggle-box"></div>
-        <div id="a-msg" class="banner"></div>
+        <div id="a-msg" class="banner" role="status" aria-live="polite"></div>
       </div>
 
       <details class="card admin-only config-card" id="a-config-card">
@@ -1385,7 +1385,7 @@
             <button id="btn-corr-edit" class="btn secondary small" type="button">Corregir alumno</button>
             <button id="btn-corr-del" class="btn red small" type="button">Borrar alumno</button>
           </div>
-          <div id="corr-msg" class="banner"></div>
+          <div id="corr-msg" class="banner" role="status" aria-live="polite"></div>
           <div id="corr-out"></div>
         </div>
         <details class="card danger-card">
@@ -1397,7 +1397,7 @@
             <button id="btn-erase" class="btn red small" type="button">Borrar datos personales</button>
             <button id="btn-guide" class="btn secondary small" type="button">Imprimir guía rápida</button>
           </div>
-          <div id="danger-msg" class="banner"></div>
+          <div id="danger-msg" class="banner" role="alert"></div>
         </details>
       </div>
 
@@ -1413,7 +1413,7 @@
             <button id="btn-import-add" class="btn small" type="button">Agregar</button>
             <button id="btn-import-rep" class="btn red small" type="button">Reemplazar</button>
           </div>
-          <div id="a-import-msg" class="banner"></div>
+          <div id="a-import-msg" class="banner" role="status" aria-live="polite"></div>
         </div>
         <div class="card">
           <h3>Recordatorio por mail</h3>
@@ -1423,7 +1423,7 @@
             <button id="btn-mail-preview" class="btn secondary small" type="button">Vista previa</button>
             <button id="btn-mail-send" class="btn small" type="button">Enviar recordatorios</button>
           </div>
-          <div id="mail-send-msg" class="banner"></div>
+          <div id="mail-send-msg" class="banner" role="status" aria-live="polite"></div>
         </div>
       </div>
     </section>
@@ -4273,7 +4273,11 @@
             aBanner('Sin conexión. Se reintentará.', 'err');
           });
       });
-      aUndoTimer = window.setTimeout(function () { aBanner('', 'ok'); }, 5000);
+      aUndoTimer = window.setTimeout(function () {
+        var focused = document.activeElement;
+        if (focused && el.contains && el.contains(focused)) return;
+        aBanner('', 'ok');
+      }, 5000);
     }
 
     function aReadQueue_() {
