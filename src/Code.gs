@@ -1080,6 +1080,15 @@ function isOpen_(cfg) {
   return v === 'abierto' || v === 'true';
 }
 
+function slotTime_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    return ('0' + v.getUTCHours()).slice(-2) + ':' + ('0' + v.getUTCMinutes()).slice(-2);
+  }
+  var s = String(v == null ? '' : v).trim();
+  var m = s.match(/^(\d{1,2}):(\d{2})/);
+  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : s;
+}
+
 function readSlots_() {
   var vals = sheet_(SLOTS_SHEET).getDataRange().getValues();
   var slots = [];
@@ -1088,8 +1097,8 @@ function readSlots_() {
     slots.push({
       id: Number(vals[i][0]),
       nombre: String(vals[i][1]),
-      inicio: String(vals[i][2]),
-      fin: String(vals[i][3]),
+      inicio: slotTime_(vals[i][2]),
+      fin: slotTime_(vals[i][3]),
       orden: Number(vals[i][4] || 0)
     });
   }
