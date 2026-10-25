@@ -126,9 +126,10 @@ var EsiCore = (function () {
     }
     var n = sanitizeName(nombre);
     var ap = sanitizeName(apellido);
-    var ciclo = cicloFromCurso(curso);
+    var c = parseCurso(curso);
+    if (!c) return { ok: false, error: 'curso' };
+    var ciclo = cicloFromCurso(c);
     if (!ciclo) return { ok: false, error: 'curso' };
-    var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
     var completa = n;
     if (ap && normalizeText(n).slice(-normalizeText(ap).length) !== normalizeText(ap)) completa = n + ' ' + ap;
     if (completa.length > 60) return { ok: false, error: 'nombre' };
@@ -726,6 +727,7 @@ function apiAdminSetConfig(cred, values) {
 var API_FN_MAP_ = {
   apiBootstrap: apiBootstrap,
   apiLookup: apiLookup,
+  apiLookupDni: apiLookupDni,
   apiGetData: apiGetData,
   apiResumeSession: apiResumeSession,
   apiStudentLogout: apiStudentLogout,
@@ -1677,7 +1679,7 @@ function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
     }
     var identity = current || ticket;
     var bs = identity
-      ? buildStudent_(identity.email, identity.nombre, identity.curso, identity.apellido)
+      ? buildStudent_(identity.email, identity.nombre || nombre, identity.curso || curso, identity.apellido || apellido)
       : buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
@@ -1911,7 +1913,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     }
     var identity = current || ticket;
     var bs = identity
-      ? buildStudent_(identity.email, identity.nombre, identity.curso, identity.apellido)
+      ? buildStudent_(identity.email, identity.nombre || nombre, identity.curso || curso, identity.apellido || apellido)
       : buildStudent_(email, nombre, curso, apellido);
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };

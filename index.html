@@ -644,7 +644,7 @@
     .roster-name, .row-name { font-weight: 600; }
     .student-mail-btn {
       display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
-      padding: 2px 0; border: 0; background: none; color: inherit;
+      min-height: 44px; padding: 10px 0; border: 0; background: none; color: inherit;
       font: inherit; text-align: left; cursor: pointer;
     }
     .student-mail-btn:focus-visible { outline: none; border-radius: 4px; box-shadow: 0 0 0 3px var(--accent); }
@@ -1060,7 +1060,8 @@
     <div class="nav">
       <a class="brand" href="#top" aria-label="Inicio, Instituto Secundario Salsipuedes">
         <span class="brand-mark" aria-hidden="true">
-          <img class="brand-logo" src="assets/logo.png" width="30" height="30" alt="">
+          <img class="brand-logo" src="assets/logo.png" width="30" height="30" alt=""
+               onerror="this.style.display='none'">
         </span>
         <div class="brand-text">
           <span class="brand-school">Instituto Secundario Salsipuedes</span>
@@ -1658,9 +1659,10 @@
         }
         var n = sanitizeName(nombre);
         var ap = sanitizeName(apellido);
-        var ciclo = cicloFromCurso(curso);
+        var c = parseCurso(curso);
+        if (!c) return { ok: false, error: 'curso' };
+        var ciclo = cicloFromCurso(c);
         if (!ciclo) return { ok: false, error: 'curso' };
-        var c = String(curso == null ? '' : curso).replace(/\s+/g, ' ').trim();
         var completa = n;
         if (ap && normalizeText(n).slice(-normalizeText(ap).length) !== normalizeText(ap)) completa = n + ' ' + ap;
         if (completa.length > 60) return { ok: false, error: 'nombre' };
@@ -1948,15 +1950,26 @@
       TRANSPORT = 'demo';
     }
 
+    function allowedApiUrl_(value) {
+      var v = String(value == null ? '' : value).trim();
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(\?[^#]*)?$/.test(v)) return null;
+      return v;
+    }
+
     function getApiUrl() {
       try {
         var params = new URLSearchParams(window.location.search);
         var v = params.get('api');
-        if (v) {
-          lsSet('esi_api', v);
-          return v;
+        if (v != null) {
+          var next = allowedApiUrl_(v);
+          if (next) {
+            lsSet('esi_api', next);
+            return next;
+          }
+          lsDel('esi_api');
+          return null;
         }
-        return lsGet('esi_api');
+        return allowedApiUrl_(lsGet('esi_api'));
       } catch (e) {
         return null;
       }
@@ -2963,9 +2976,9 @@
       if (fn === 'apiGetData') {
         var ticket = a[5] ? demoLoginTicket_(a[5]) : null;
         var email = ticket ? ticket.email : a[0];
-        var nombre = ticket ? ticket.nombre : a[1];
-        var curso = ticket ? ticket.curso : a[2];
-        var apellido = ticket ? ticket.apellido : a[4];
+        var nombre = ticket ? (ticket.nombre || a[1]) : a[1];
+        var curso = ticket ? (ticket.curso || a[2]) : a[2];
+        var apellido = ticket ? (ticket.apellido || a[4]) : a[4];
         var s = demoStudent(email, nombre, curso, apellido);
         if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
         var current = a[3] ? demoSession_(a[3]) : null;
@@ -5935,7 +5948,11 @@
       $('btn-csv').addEventListener('click', aDownloadCsv);
       $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
       $('btn-salir').addEventListener('click', aLogout);
-      $('input-buscar').addEventListener('input', aRenderTable);
+      var buscarTimer = 0;
+      $('input-buscar').addEventListener('input', function () {
+        window.clearTimeout(buscarTimer);
+        buscarTimer = window.setTimeout(aRenderTable, 180);
+      });
       $('filter-curso').addEventListener('change', aRenderTable);
       $('filter-division').addEventListener('change', aRenderTable);
       $('filter-charla').addEventListener('change', aRenderTable);

@@ -76,7 +76,8 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   y JS inline. `index.html` es la copia publicada para Pages.
 - El transporte real usa `google.script.run`; la demo usa JSONP/localStorage.
   `API_FN_MAP_` es la lista de APIs expuestas. Si agregas una API, sumala al
-  mapa y a los tests; hoy hay 30.
+  mapa y a los tests; hoy hay 31. El test compara el mapa contra las
+  `function api*` del fuente en las dos direcciones.
 - Cache en `CacheService` con TTL de 12 s. Toda escritura debe invalidarla.
   Las operaciones de escritura usan `LockService`; no leer datos crudos fuera
   del lock.
@@ -177,7 +178,8 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
 2. Ejecutar `setup()` y autorizar; crea/actualiza hojas, columnas y trigger.
 3. Implementar una nueva version de la aplicacion web.
 4. Abrir Pages una vez con `?api=<URL-/exec>` y compartir `/exec?admin=1` con
-   profes y guias.
+   profes y guias. Solo se acepta `https://script.google.com/macros/s/<id>/exec`;
+   cualquier otro valor se descarta y no se guarda. `?api=` vacio lo borra.
 5. Probar en una copia de la planilla: ticket de login, correcciones, modo
    ensayo, respaldo, cierre y borrado. Nunca probar el borrado sobre datos
    reales.
