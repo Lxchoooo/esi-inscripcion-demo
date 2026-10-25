@@ -6,12 +6,13 @@ dependencias. El alumno elige una charla por franja; el profe administra y la
 guia marca presentes sin ver mails.
 
 - Repo: `Lxchoooo/esi-inscripcion-demo`
+- `README.md` es la portada para personas; los agentes se guian por este archivo.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
 - Estado: ronda 13, panel de profes con nombres primarios y conteos separados,
-  publicada en `main`; tests 126/0, smoke OK, CI tests y Pages verdes en la
-  publicacion. Backend real, MailApp y dispositivo siguen sin probarse.
+  publicada en `main`; tests 148/0, smoke OK, CI tests y Pages verdes. Backend
+  real en preparacion; MailApp y dispositivo siguen sin probarse.
 
 ## Donde trabajar
 
