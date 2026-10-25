@@ -112,8 +112,10 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   por charla; el ciclo se deduce del año. No hay disertante: no inventar
   nombres.
 - `ADMIN_PIN` puede todo; `GUIDE_PIN` lee y marca presentes, sin mails ni
-  escrituras administrativas. PIN de 6 digitos; 5 fallos bloquean admin 15 min
-  y los intentos por DNI 2 min. El backend aplica permisos.
+  escrituras administrativas. PIN de 6 digitos; 5 fallos bloquean los intentos
+  incorrectos 15 min, pero la clave correcta sigue entrando (una guia no puede
+  dejar sin panel a los profes) y los intentos por DNI 2 min. El backend aplica
+  permisos.
 - Validacion de nombre/apellido: 2-60 caracteres, letras con tildes/ñ, espacios,
   apostrofe y guion; rechazar digitos, HTML, URLs, saltos y prefijos `= + - @`.
 - `Sessions` guarda el hash del token, nunca el token crudo; vence a los 7 dias
@@ -128,12 +130,14 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   `studentCount` y `student_count` son alumnos unicos. La guia nunca recibe mails.
 - Recordatorios solo opt-in, tandas de 20 con maximo 40, `Mails` deduplica por
   mail + asunto. `MailApp` real sigue sin probarse. El respaldo y las escrituras
-  administrativas comparten el lock global.
+  administrativas comparten el lock global. `pruneBackup_` reescribe las copias
+  que conserva y recien despues limpia el sobrante: nunca vacia la hoja primero.
 - `.ics`: un `VEVENT` por charla, alarma 10 min antes, UID sin datos personales.
-- Borrado de datos personales: exporta, limpia `Signups`, `Sessions`, `Mails`,
-  `Students` y `Backup`; conserva los encabezados de `Signups` y guarda los
-  contadores agregados en `Resumen`. `setup()` repara una `Signups` con
-  encabezado agregado viejo. Recomendado a los 30 dias.
+- Borrado de datos personales: primero exporta un CSV privado en Drive y aborta
+  si no puede; despues limpia `Signups`, `Sessions`, `Mails`, `Students` y
+  `Backup`; conserva los encabezados de `Signups` y guarda los contadores
+  agregados en `Resumen`. `setup()` repara una `Signups` con encabezado agregado
+  viejo. Recomendado a los 30 dias.
 - Riesgo residual: el token de alumno viaja por JSONP y los mails nuevos sin
   padron son autodeclarados.
 

@@ -607,13 +607,84 @@ t('Code.gs keeps the admin key in Script Properties and rate limits failures', (
     const r = api.adminAuth_('bad');
     assertEq(r.ok, false, 'bad pin');
   }
-  const blocked = api.adminAuth_('9876');
-  assertEq(blocked.ok, false, 'blocked after 5');
+  const blocked = api.adminAuth_('bad');
+  assertEq(blocked.ok, false, 'wrong pin blocked after 5');
   if (!/Demasiados intentos/.test(blocked.message)) throw new Error('block msg: ' + blocked.message);
+  const still = api.adminAuth_('9876');
+  assertEq(still.ok, true, 'valid pin still works during the block');
+  assertEq(still.role, 'admin', 'admin role kept');
   delete props.ADMIN_BLOCK_UNTIL;
   const ok = api.adminAuth_('9876');
   assertEq(ok.ok, true, 'valid pin after block');
   assertEq(props.ADMIN_PIN, '9876', 'pin kept in properties');
+});
+
+t('Backup prune writes the kept copies before clearing the tail', () => {
+  const services = backendStub({});
+  const head = ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'];
+  const rows = [];
+  for (let i = 0; i < 22; i++) {
+    rows.push([new Date(1700000000000 + i * 1000), 's' + i, new Date(), 'x@y.z', 'Ana', '2°B', 'basico', 1, 'B1', 'no', '', 'no', 'no']);
+  }
+  const sh = fakeSheet('Backup', head, rows);
+  services.sheets.Backup = sh;
+  const calls = [];
+  const getRange = sh.getRange.bind(sh);
+  sh.getRange = (r, c, nr, nc) => {
+    const range = getRange(r, c, nr, nc);
+    const write = range.setValues;
+    const clear = range.clearContent;
+    range.setValues = (v) => { calls.push('write'); write(v); };
+    range.clearContent = () => { calls.push('clear'); clear(); };
+    return range;
+  };
+  const api = backendApi(services, 'pruneBackup_');
+  const kept = api.pruneBackup_(sh);
+  assertEq(kept, 20, 'keeps the last 20 copies');
+  const alive = sh.data.slice(1).filter((r) => String(r[1] || '') !== '').length;
+  assertEq(alive, 20, 'twenty copies remain');
+  if (calls.indexOf('write') < 0) throw new Error('no write: ' + calls.join(','));
+  if (calls.indexOf('clear') >= 0 && calls.indexOf('write') > calls.indexOf('clear')) {
+    throw new Error('cleared before write: ' + calls.join(','));
+  }
+});
+
+t('Erase exports personal data before clearing and aborts if it fails', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminErasePersonalData');
+  const files = [];
+  global.DriveApp = {
+    createFile: (name, content, mime) => {
+      files.push({ name: name, content: content, mime: mime });
+      return { getId: () => 'file1' };
+    }
+  };
+  try {
+    const r = api.apiAdminErasePersonalData('1111', 'BORRAR');
+    assertEq(r.ok, true, 'erase ok: ' + r.message);
+    assertEq(files.length, 1, 'one export file');
+    assertEq(files[0].mime, 'text/csv', 'csv mime');
+    if (files[0].content.indexOf('ana@secundariosalsipuedes.edu.ar') < 0) {
+      throw new Error('export lacks the signups');
+    }
+    assertEq(r.export, files[0].name, 'export name returned');
+    assertEq(services.sheets.Signups.data.length, 1, 'signups cleared after export');
+  } finally {
+    delete global.DriveApp;
+  }
+
+  const failing = backendStub({ ADMIN_PIN: '1111' });
+  const api2 = backendApi(failing, 'apiAdminErasePersonalData');
+  global.DriveApp = { createFile: () => { throw new Error('sin cuota'); } };
+  try {
+    const before = failing.sheets.Signups.data.length;
+    const r2 = api2.apiAdminErasePersonalData('1111', 'BORRAR');
+    assertEq(r2.ok, false, 'erase aborted with a broken export');
+    if (!/exportar/.test(r2.message)) throw new Error('msg: ' + r2.message);
+    assertEq(failing.sheets.Signups.data.length, before, 'rows kept when export fails');
+  } finally {
+    delete global.DriveApp;
+  }
 });
 
 t('Code.gs admin APIs reject invalid keys before reading data', () => {
