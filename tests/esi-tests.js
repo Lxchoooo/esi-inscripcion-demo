@@ -330,7 +330,7 @@ t('Panel.html has demo mode, JSONP transport and api persistence', () => {
   for (const needle of ["TRANSPORT = 'unconfigured'", 'TRANSPORT === \'jsonp\'', 'esi_api', 'esi_demo_signups']) {
     if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
   }
-  for (const needle of ['MODO DEMO', 'Sin servidor configurado', 'btn-demo']) {
+  for (const needle of ['Versión de prueba', 'Sin servidor configurado', 'btn-demo']) {
     if (!panelHtml.includes(needle)) throw new Error('missing markup ' + needle);
   }
 });
@@ -1128,6 +1128,56 @@ t('El panel agrupa las secciones en un menú lateral', () => {
   if (!/window\.innerWidth >= 960/.test(panelSrc)) throw new Error('drawer not closed on resize');
   if (!/\.side\.open \{ transform: none; visibility: visible; \}/.test(panelHtml)) {
     throw new Error('drawer style missing');
+  }
+});
+
+t('El panel permite agregar un alumno con un formulario claro', () => {
+  for (const needle of ['id="roster-one"', 'id="roster-mail"', 'id="roster-nombre"',
+    'id="roster-apellido"', 'id="roster-anio"', 'id="roster-division"',
+    'id="roster-dni"', 'id="btn-roster-add"', 'Agregar a la lista',
+    'Pegar varios alumnos de una vez', 'mail;apellido;nombre;curso;dni']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/function aRosterAdd_/.test(panelSrc)) throw new Error('no hay alta individual');
+  if (!/apiAdminImportRoster', \[adminCred, row, 'agregar'\]/.test(panelSrc)) {
+    throw new Error('el alta individual no usa la importación');
+  }
+  if (!/function aRosterDivisions_/.test(panelSrc)) throw new Error('divisiones no se cargan');
+  if (!/function aRosterLines_/.test(panelSrc)) throw new Error('no hay contador de líneas');
+});
+
+t('Cada sección del panel tiene su listener', () => {
+  if (!/for \(var tabIdx = 0; tabIdx < A_TAB_ORDER\.length; tabIdx\+\+\)/.test(panelSrc)) {
+    throw new Error('las pestañas se enlazan de a una');
+  }
+  if (!/A_TAB_ORDER\[tabIdx\]\[0\], A_TAB_ORDER\[tabIdx\]\[1\]/.test(panelSrc)) {
+    throw new Error('el listener no recorre la tabla');
+  }
+  if (/tab-config'\)\.addEventListener/.test(panelSrc)) {
+    throw new Error('quedó un listener suelto de configuración');
+  }
+});
+
+t('Los iconos del panel siguen el color del tema', () => {
+  const icons = (panelHtml.match(/class="nav-ico"/g) || []).length;
+  if (icons < 10) throw new Error('faltan iconos: ' + icons);
+  if (!/stroke="currentColor"/.test(panelHtml)) throw new Error('icons do not inherit color');
+  if (!/color-scheme: light dark/.test(panelHtml)) throw new Error('native controls lack color-scheme');
+});
+
+t('La prueba local se anuncia sin cartel de demo', () => {
+  if (/MODO DEMO/.test(panelHtml)) throw new Error('demo banner still shouts');
+  if (!/Versión de prueba · los datos quedan en este navegador/.test(panelHtml)) {
+    throw new Error('demo notice missing');
+  }
+});
+
+t('El demo devuelve la configuración completa', () => {
+  if (!/mail_remitente: ev\.remitente \|\| ''/.test(panelSrc)) {
+    throw new Error('demo does not return the sender');
+  }
+  if (!/backup_activo: demoRead\('esi_demo_backup', true\)/.test(panelSrc)) {
+    throw new Error('demo does not return the backup flag');
   }
 });
 
