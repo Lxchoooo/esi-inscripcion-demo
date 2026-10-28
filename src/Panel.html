@@ -1445,7 +1445,7 @@
             <div class="status-chips" id="charla-filtro" role="group" aria-label="Filtrar por asistencia">
               <button type="button" data-filter="all" class="active" aria-pressed="true">Todos</button>
               <button type="button" data-filter="present" aria-pressed="false">Presentes</button>
-              <button type="button" data-filter="absent" aria-pressed="false">Faltan</button>
+  
             </div>
             <span class="hint-line" id="charla-updated">Actualizado hace 0s</span>
             <button id="btn-refresh-charla" class="btn secondary small" type="button">Actualizar</button>
@@ -4623,7 +4623,7 @@
         if (st.curso) cursos[st.curso] = 1;
         if (fCurso && st.curso !== fCurso) continue;
         if (aTalkFilter === 'present' && !st.presente) continue;
-        if (aTalkFilter === 'absent' && st.presente) continue;
+        // Filtro 'Faltan' eliminado: solo se marcan presentes.
         if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
         shown++;
         rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '">'
