@@ -1543,7 +1543,15 @@ function dniCacheKey_(dni) {
 
 function dniFails_(dni) {
   try {
-    return Number(CacheService.getScriptCache().get(dniCacheKey_(dni)) || 0);
+    var raw = PropertiesService.getScriptProperties().getProperty(dniCacheKey_(dni));
+    if (!raw) return 0;
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.ts) return 0;
+    if (Date.now() - Number(obj.ts) > DNI_BLOCK_MS) {
+      PropertiesService.getScriptProperties().deleteProperty(dniCacheKey_(dni));
+      return 0;
+    }
+    return Number(obj.count || 0);
   } catch (e) {
     return 0;
   }
@@ -1551,15 +1559,16 @@ function dniFails_(dni) {
 
 function noteDniFailure_(dni) {
   try {
-    var cache = CacheService.getScriptCache();
+    var props = PropertiesService.getScriptProperties();
     var key = dniCacheKey_(dni);
-    cache.put(key, String(dniFails_(dni) + 1), Math.ceil(DNI_BLOCK_MS / 1000));
+    var count = dniFails_(dni) + 1;
+    props.setProperty(key, JSON.stringify({ count: count, ts: Date.now() }));
   } catch (e) { }
 }
 
 function clearDniFailures_(dni) {
   try {
-    CacheService.getScriptCache().remove(dniCacheKey_(dni));
+    PropertiesService.getScriptProperties().deleteProperty(dniCacheKey_(dni));
   } catch (e) { }
 }
 
