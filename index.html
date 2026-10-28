@@ -1314,7 +1314,7 @@
       </div>
       <div class="summary" id="summary"></div>
       <div class="next-talk" id="next-talk" hidden></div>
-      <div class="panel-tools"><button id="btn-ics" class="btn secondary small" type="button" disabled>Agregar a mi calendario</button></div>
+      <div class="panel-tools"></div>
       <div class="chips" id="chips" hidden></div>
       <div id="slots-container"></div>
     </section>
@@ -3763,8 +3763,7 @@
         var talk = mine[Number(d.slots[i].id)] ? sTalkById(mine[Number(d.slots[i].id)]) : null;
         if (talk) chosen.push({ slot: d.slots[i], talk: talk });
       }
-      var btn = $('btn-ics');
-      if (btn) btn.disabled = chosen.length !== (d.slots || []).length || !chosen.length;
+      // btn-ics eliminado.
       if (!chosen.length) { el.hidden = true; return; }
       var parts = ev.fecha.split('-');
       var day = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 0, 0, 0);
@@ -3821,7 +3820,7 @@
         lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
           + '<span>' + esc(chosen.titulo) + ' <span class="sheet-meta">· ' + esc(chosen.lugar) + '</span></span></p>';
       }
-      lines += '<button id="btn-ics-confirm" class="btn secondary full" type="button" style="margin-top:12px">Agregar a mi calendario</button>';
+      lines += '';
       lines += '<label class="sheet-check"><input type="checkbox" id="chk-recordatorio"'
         + (sState.recordatorio ? ' checked' : '') + '>'
         + '<span>Quiero recibir un mail de recordatorio</span></label>';
@@ -3841,8 +3840,7 @@
           toast('Listo, quedaste anotado.', 'ok');
         }
       });
-      var icsBtn = $('btn-ics-confirm');
-      if (icsBtn) icsBtn.addEventListener('click', sDownloadIcs_);
+      // Calendario (.ics) eliminado a pedido del usuario.
     }
 
     function sOnTalk(talk) {
@@ -4233,7 +4231,7 @@
         sFillDivisions(this.value, '');
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
-      $('btn-ics').addEventListener('click', sDownloadIcs_);
+      // btn-ics eliminado.
       $('btn-cambiar-datos').addEventListener('click', function () {
         var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;
         var ok = has
