@@ -790,7 +790,7 @@ function apiJsonp_(p) {
       } catch (err) {
         args = null;
       }
-      if (!args) {
+      if (!args || Object.prototype.toString.call(args) !== '[object Array]') {
         payload = { ok: false, message: 'Parametros invalidos.' };
       } else {
         try {
@@ -2591,6 +2591,7 @@ function apiAdminCorrectStudent(cred, email, data) {
   var d = data && typeof data === 'object' ? data : {};
   var v = EsiCore.validateStudentInput(email, d.nombre, d.curso, d.apellido);
   if (!v.ok) return { ok: false, message: STUDENT_ERRORS_[v.error] || 'Datos inválidos.' };
+  if (!EsiCore.isInstitutionalEmail(v.email)) return { ok: false, message: STUDENT_ERRORS_.email };
   return withScriptLock_(ADMIN_LOCK_MS, function () {
     try {
       var rows = signupRowsByEmail_(v.email);
@@ -2684,14 +2685,18 @@ function apiAdminMergeDuplicates(cred, keepEmail, dropEmail) {
       if (!keepRows.length || !dropRows.length) return { ok: false, message: 'Faltan inscripciones para fusionar.' };
       var keepSignup = keepRows[0].signup;
       var keepSlots = {};
-      for (var i = 0; i < keepRows.length; i++) keepSlots[Number(keepRows[i].signup.slot_id)] = true;
+      var keepTalks = {};
+      for (var i = 0; i < keepRows.length; i++) {
+        keepSlots[Number(keepRows[i].signup.slot_id)] = true;
+        keepTalks[String(keepRows[i].signup.talk_id)] = true;
+      }
       var sh = sheet_(SIGNUPS_SHEET);
       var map = signupsHeaderMap_(sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]);
       var deleted = [];
       var moved = 0;
       for (var j = 0; j < dropRows.length; j++) {
         var dr = dropRows[j];
-        if (keepSlots[Number(dr.signup.slot_id)]) {
+        if (keepSlots[Number(dr.signup.slot_id)] || keepTalks[String(dr.signup.talk_id)]) {
           deleted.push(dr.row);
           continue;
         }
