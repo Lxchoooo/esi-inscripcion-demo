@@ -950,6 +950,10 @@
       .nav { max-width: 1240px; }
       body.admin .wrap { max-width: 1240px; padding: 24px 28px 36px; }
       body.admin .side .tab { min-height: 44px; }
+    .student-actions { margin-top: 6px; }
+    .row-menu { margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+    .row-menu-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+    .row-menu-item:last-child { border-bottom: 0; }
       body.admin .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       body.admin .filters > * { flex: 0 1 220px; min-width: 160px; }
       body.admin .filters > input[type="text"] { flex: 1 1 320px; }
@@ -5654,15 +5658,26 @@
           return String(a.slotLabel || '').localeCompare(String(b.slotLabel || ''), 'es');
         });
         var charlasHtml = '';
+        var menuId = 'menu-' + String(g.key).replace(/[^a-z0-9]/gi, '');
         for (var ti = 0; ti < talks.length; ti++) {
           var t = talks[ti];
           charlasHtml += '<div class="student-talk">'
             + '<span class="student-talk-slot">' + esc(t.slotLabel) + '</span> '
-            + '<span class="student-talk-title">' + esc(t.talkTitulo) + '</span> '
-            + '<button class="btn secondary small" type="button" onclick="aOnMoveTalk(\'' + esc(t.id) + '\')">Mover</button> '
-            + '<button class="btn red small" type="button" onclick="aOnDelete(\'' + esc(t.id) + '\')">Borrar</button>'
+            + '<span class="student-talk-title">' + esc(t.talkTitulo) + '</span>'
             + '</div>';
         }
+        charlasHtml += '<div class="student-actions">'
+          + '<button class="btn secondary small" type="button" onclick="aToggleMenu_(\'' + esc(menuId) + '\')">⋯ Acciones</button>'
+          + '<div id="' + esc(menuId) + '" class="row-menu" hidden>';
+        for (var ti2 = 0; ti2 < talks.length; ti2++) {
+          var t2 = talks[ti2];
+          charlasHtml += '<div class="row-menu-item">'
+            + '<span>' + esc(t2.slotLabel) + ' · ' + esc(t2.talkTitulo) + '</span>'
+            + '<button class="btn secondary small" type="button" onclick="aOnMoveTalk(\'' + esc(t2.id) + '\')">Mover</button> '
+            + '<button class="btn red small" type="button" onclick="aOnDelete(\'' + esc(t2.id) + '\')">Borrar</button>'
+            + '</div>';
+        }
+        charlasHtml += '</div></div>';
         rows += '<tr>'
           + '<td class="narrow" data-label="Fecha">' + esc(s0.cuando) + '</td>'
           + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', aRole === 'admin')
@@ -5826,6 +5841,16 @@
         });
     }
 
+    window.aToggleMenu_ = function (menuId) {
+      var el = $(menuId);
+      if (!el) return;
+      // Cerrar otros menús abiertos.
+      var menus = document.querySelectorAll('.row-menu');
+      for (var mi = 0; mi < menus.length; mi++) {
+        if (menus[mi] !== el) menus[mi].hidden = true;
+      }
+      el.hidden = !el.hidden;
+    };
     window.aOnDelete = function (signupId) {
       if (aBusy) return;
       openSheet({
