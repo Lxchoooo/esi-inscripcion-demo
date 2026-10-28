@@ -774,6 +774,11 @@
       background: var(--surface);
     }
     .side-group { display: flex; flex-direction: column; gap: 2px; }
+    .side-label { cursor: pointer; user-select: none; }
+    .side-group.collapsed .tab,
+    .side-group.collapsed .side-action { display: none; }
+    .side-label::after { content: ' ▾'; font-size: 10px; opacity: .6; }
+    .side-group.collapsed .side-label::after { content: ' ▸'; }
     .side-label {
       padding: 0 8px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
       text-transform: uppercase; color: var(--muted);
@@ -5497,6 +5502,13 @@
         tab.tabIndex = on ? 0 : -1;
         if (on) activeEl = tab;
       }
+      // Expandir el grupo del tab activo y colapsar los demás.
+      var allGroups = document.querySelectorAll('.side-group');
+      for (var agi = 0; agi < allGroups.length; agi++) {
+        var grp = allGroups[agi];
+        if (activeEl && grp.contains(activeEl)) grp.classList.remove('collapsed');
+        else grp.classList.add('collapsed');
+      }
       if (activeEl && activeEl.scrollIntoView) {
         try { activeEl.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { }
       }
@@ -6409,6 +6421,24 @@
           var tabEl = $(tabId);
           if (tabEl) tabEl.addEventListener('click', function () { aTab(tabName); });
         })(A_TAB_ORDER[tabIdx][0], A_TAB_ORDER[tabIdx][1]);
+      }
+      // Colapsar grupos del sidebar: solo el grupo activo queda abierto.
+      var sideLabels = document.querySelectorAll('.side-label');
+      for (var sli = 0; sli < sideLabels.length; sli++) {
+        (function (lbl) {
+          lbl.addEventListener('click', function () {
+            var grp = lbl.parentNode;
+            if (grp) grp.classList.toggle('collapsed');
+          });
+        })(sideLabels[sli]);
+      }
+      // Colapsar todos los grupos excepto el del tab activo al cargar.
+      var activeTab = document.querySelector('.side .tab.active');
+      var groups = document.querySelectorAll('.side-group');
+      for (var gi = 0; gi < groups.length; gi++) {
+        var g = groups[gi];
+        if (activeTab && g.contains(activeTab)) continue;
+        g.classList.add('collapsed');
       }
       $('rep-tab-curso').addEventListener('click', function () { aRepSetType('curso'); });
       $('rep-tab-charla').addEventListener('click', function () { aRepSetType('charla'); });
