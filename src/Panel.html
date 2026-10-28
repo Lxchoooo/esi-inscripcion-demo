@@ -1371,7 +1371,7 @@
         <nav id="admin-tabs" class="tabs side" role="tablist" aria-label="Secciones del panel"
           aria-orientation="vertical" tabindex="-1">
           <div class="side-group" role="presentation">
-            <span class="side-label">Asistencia</span>
+            <span class="side-label" role="button" tabindex="0" aria-expanded="true">Asistencia</span>
             <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               <span>Tomar asistencia</span>
@@ -1382,7 +1382,7 @@
             </button>
           </div>
           <div class="side-group" role="presentation">
-            <span class="side-label">Reportes</span>
+            <span class="side-label" role="button" tabindex="0" aria-expanded="true">Reportes</span>
             <button id="tab-reportes" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-reportes" tabindex="-1">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
               <span>Reportes</span>
@@ -1393,7 +1393,7 @@
             </button>
           </div>
           <div class="side-group admin-only" role="presentation">
-            <span class="side-label">Inscriptos</span>
+            <span class="side-label" role="button" tabindex="0" aria-expanded="true">Inscriptos</span>
             <button id="tab-inscriptos" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos" tabindex="-1">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".7"/><circle cx="3.5" cy="12" r=".7"/><circle cx="3.5" cy="18" r=".7"/></svg>
               <span>Inscripciones</span>
@@ -1408,7 +1408,7 @@
             </button>
           </div>
           <div class="side-group admin-only" role="presentation">
-            <span class="side-label">Configuración</span>
+            <span class="side-label" role="button" tabindex="0" aria-expanded="true">Configuración</span>
             <button id="tab-config" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-config" tabindex="-1">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
               <span>Configuración</span>
@@ -6408,7 +6408,20 @@
         (function (lbl) {
           lbl.addEventListener('click', function () {
             var grp = lbl.parentNode;
-            if (grp) grp.classList.toggle('collapsed');
+            if (grp) {
+              grp.classList.toggle('collapsed');
+              lbl.setAttribute('aria-expanded', grp.classList.contains('collapsed') ? 'false' : 'true');
+            }
+          });
+          lbl.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              var grp = lbl.parentNode;
+              if (grp) {
+                grp.classList.toggle('collapsed');
+                lbl.setAttribute('aria-expanded', grp.classList.contains('collapsed') ? 'false' : 'true');
+              }
+            }
           });
         })(sideLabels[sli]);
       }

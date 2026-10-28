@@ -974,6 +974,13 @@ function repairErasedSignups_(ss) {
   if (map.id >= 0 && map.email >= 0) return;
   var rows = sh.getDataRange().getValues();
   if (rows.length > 1) {
+    // Respaldo antes de limpiar (H4 auditoría).
+    var backup = ss.getSheetByName(BACKUP_SHEET);
+    if (backup) {
+      for (var br = 0; br < rows.length; br++) {
+        backup.appendRow(['repair', new Date()].concat(rows[br]));
+      }
+    }
     var resumen = ensureSheet_(ss, RESUMEN_SHEET,
       ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes'], []);
     resumen.clearContents();
@@ -2211,7 +2218,8 @@ function apiAdminLogin(pin) {
     var auth = adminAuth_(pin);
     if (!auth.ok) return { ok: false, message: auth.message };
     var token = adminIssueToken_(auth.role);
-    return token ? { ok: true, role: auth.role, token: token } : { ok: true, role: auth.role };
+    if (!token) return { ok: false, message: 'No se pudo emitir sesión.' };
+    return { ok: true, role: auth.role, token: token };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
@@ -2410,16 +2418,17 @@ function updateSessionsStudent_(student) {
     var sh = sessionsSheet_();
     var vals = sh.getDataRange().getValues();
     if (!vals.length || EsiCore.normalizeText(vals[0][0]) !== 'token_hash') return;
-    var apellidoCol = -1;
+    var colMap = {};
     for (var h = 0; h < vals[0].length; h++) {
-      if (EsiCore.normalizeText(vals[0][h]) === 'apellido') { apellidoCol = h; break; }
+      var key = EsiCore.normalizeText(vals[0][h]);
+      if (key === 'nombre' || key === 'apellido' || key === 'curso' || key === 'ciclo') colMap[key] = h;
     }
     for (var i = 1; i < vals.length; i++) {
       if (EsiCore.normalizeEmail(vals[i][1]) !== student.email) continue;
-      sh.getRange(i + 1, 3).setValue(student.nombre);
-      sh.getRange(i + 1, 4).setValue(student.curso);
-      sh.getRange(i + 1, 5).setValue(student.ciclo);
-      if (apellidoCol >= 0) sh.getRange(i + 1, apellidoCol + 1).setValue(student.apellido || '');
+      if (colMap.nombre != null) sh.getRange(i + 1, colMap.nombre + 1).setValue(student.nombre);
+      if (colMap.curso != null) sh.getRange(i + 1, colMap.curso + 1).setValue(student.curso);
+      if (colMap.ciclo != null) sh.getRange(i + 1, colMap.ciclo + 1).setValue(student.ciclo);
+      if (colMap.apellido != null) sh.getRange(i + 1, colMap.apellido + 1).setValue(student.apellido || '');
     }
   } catch (e) { }
 }
@@ -2956,7 +2965,7 @@ function importRosterLocked_(auth, text, mode) {
     }
     var last = sh.getLastRow();
     if (last > 1) sh.getRange(2, 1, last - 1, Math.max(5, sh.getLastColumn())).clearContent();
-    var target = sh.getRange(1, 1, outRows.length, 5);
+    var target = sh.getRange(1, 1, outRows.length, Math.max(5, sh.getLastColumn()));
     target.setNumberFormat('@');
     target.setValues(outRows);
     invalidateDataCache_();

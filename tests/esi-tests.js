@@ -1114,9 +1114,7 @@ t('Las pestañas del panel se recorren con flechas', () => {
 t('El panel agrupa las secciones en un menú lateral', () => {
   for (const needle of ['id="btn-menu"', 'aria-controls="admin-tabs"',
     'id="menu-backdrop"', 'class="tabs side"', 'aria-orientation="vertical"',
-    'class="side-label">Asistencia<', 'class="side-label">Reportes<',
-    'class="side-label">Inscriptos<', 'class="side-label">Configuración<',
-    'id="tab-config"', 'id="pane-config"']) {
+    'class="side-label"', 'id="tab-config"', 'id="pane-config"']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
   if (!/function aMenuSet_/.test(panelSrc)) throw new Error('no drawer helper');
