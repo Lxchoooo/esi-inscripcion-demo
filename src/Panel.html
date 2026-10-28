@@ -1631,10 +1631,25 @@
       </div>
     </section>
 
+    <section id="s-screen-done" class="screen card" tabindex="-1" aria-labelledby="done-title" hidden>
+      <div class="panel-head">
+        <div>
+          <div class="steps">Listo</div>
+          <h2 class="intro" id="done-title">Ya estás anotado</h2>
+          <p class="hint">Guardá esta pantalla o anotá tus charlas. El día de la jornada, la guía marca tu presencia.</p>
+        </div>
+      </div>
+      <div id="done-list" class="card"></div>
+      <div class="toolbar" style="margin-top:16px">
+        <button id="btn-done-volver" class="btn secondary small" type="button">Volver a mis charlas</button>
+      </div>
+    </section>
+
     <section class="section landing" id="como" aria-labelledby="como-title">
       <p class="eyebrow">Cómo funciona</p>
       <h2 id="como-title">Tres pasos.</h2>
       <p class="lead">Entrás, elegís y listo. Podés volver a entrar con el mismo mail o DNI hasta que cierre la inscripción.</p>
+      <p class="lead">El día de la jornada, la guía marca tu presencia en cada charla. Si no podés asistir a alguna, avisá con tiempo para liberar el lugar.</p>
       <div class="how-grid">
         <article class="how-card">
           <span class="how-num">01</span>
@@ -3488,7 +3503,7 @@
       });
     }
 
-    var S_SCREENS = ['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel'];
+    var S_SCREENS = ['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel', 's-screen-done'];
     var A_SCREENS = ['a-screen-gate', 'a-screen-panel'];
 
     var sState = {
@@ -3556,6 +3571,24 @@
         }
       }
       return out;
+    }
+
+    function sRenderDone_() {
+      var d = sState.data || {};
+      var slots = d.slots || [];
+      var mine = d.mine || {};
+      var el = $('done-list');
+      if (!el) return;
+      var lines = '';
+      for (var i = 0; i < slots.length; i++) {
+        var talk = mine[Number(slots[i].id)] ? sTalkById(mine[Number(slots[i].id)]) : null;
+        if (!talk) continue;
+        lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
+          + '<span>' + esc(talk.titulo) + ' <span class="sheet-meta">· ' + esc(talk.lugar) + '</span></span></p>';
+      }
+      if (!lines) lines = '<p class="hint-line">Todavía no elegiste charlas.</p>';
+      el.innerHTML = lines;
+      showScreen(S_SCREENS, 's-screen-done');
     }
 
     function sRender() {
@@ -3785,6 +3818,7 @@
             });
           }
           toast('Listo, quedaste anotado.', 'ok');
+          sRenderDone_();
         }
       });
       // Calendario (.ics) eliminado a pedido del usuario.
@@ -4188,6 +4222,10 @@
         sFillDivisions(this.value, '');
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
+      if ($('btn-done-volver')) $('btn-done-volver').addEventListener('click', function () {
+        showScreen(S_SCREENS, 's-screen-panel');
+        sRender();
+      });
       // btn-ics eliminado.
       $('btn-cambiar-datos').addEventListener('click', function () {
         var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;

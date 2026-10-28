@@ -1229,7 +1229,7 @@ t('Access screen starts with one Ingresar gate and a separate form', () => {
   if (!/btn-login-back'\)\.addEventListener\('click'[\s\S]*?s-screen-mail/.test(panelSrc)) {
     throw new Error('form has no back button');
   }
-  if (!/S_SCREENS = \['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel'\]/.test(panelSrc)) {
+  if (!/S_SCREENS = \['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel', 's-screen-done'\]/.test(panelSrc)) {
     throw new Error('login screen is not in S_SCREENS');
   }
   if (/id="login-form"[^>]*hidden/.test(panelHtml)) throw new Error('login form is hidden');
