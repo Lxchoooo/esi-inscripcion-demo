@@ -1516,24 +1516,13 @@
           <p class="hint-line">Usá estas acciones solo para corregir datos cargados mal. Queda registro de cada cambio.</p>
           <div class="toolbar">
             <button id="btn-corr-dup" class="btn secondary small" type="button">Buscar duplicados</button>
-            <button id="btn-corr-add" class="btn small" type="button">Agregar alumno</button>
             <button id="btn-corr-edit" class="btn secondary small" type="button">Corregir alumno</button>
             <button id="btn-corr-del" class="btn red small" type="button">Borrar alumno</button>
           </div>
           <div id="corr-msg" class="banner" role="status" aria-live="polite"></div>
           <div id="corr-out"></div>
         </div>
-        <details class="card danger-card">
-          <summary>Datos de prueba y cierre<span class="summary-hint">Acciones irreversibles</span></summary>
-          <p class="hint-line">El cierre exporta el CSV antes de cerrar. El borrado de datos personales deja solo contadores.</p>
-          <div class="toolbar">
-            <button id="btn-test-del" class="btn red small" type="button">Borrar datos de prueba</button>
-            <button id="btn-close-event" class="btn red small" type="button">Exportar y cerrar evento</button>
-            <button id="btn-erase" class="btn red small" type="button">Borrar datos personales</button>
-            <button id="btn-guide" class="btn secondary small" type="button">Imprimir guía rápida</button>
-          </div>
-          <div id="danger-msg" class="banner" role="alert"></div>
-        </details>
+        <p class="hint-line">Las acciones irreversibles están en Configuración, sección Zona de peligro.</p>
       </div>
 
       <div id="pane-mails" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-mails" hidden>
@@ -1619,6 +1608,17 @@
           </button>
           <div id="cfg-msg" class="banner"></div>
         </div>
+        <details class="card danger-card">
+          <summary>Zona de peligro<span class="summary-hint">Acciones irreversibles</span></summary>
+          <p class="hint-line">El cierre exporta el CSV antes de cerrar. El borrado de datos personales deja solo contadores.</p>
+          <div class="toolbar">
+            <button id="btn-test-del" class="btn red small" type="button">Borrar datos de prueba</button>
+            <button id="btn-close-event" class="btn red small" type="button">Exportar y cerrar evento</button>
+            <button id="btn-erase" class="btn red small" type="button">Borrar datos personales</button>
+            <button id="btn-guide" class="btn secondary small" type="button">Imprimir guía rápida</button>
+          </div>
+          <div id="danger-msg" class="banner" role="alert"></div>
+        </details>
       </div>
         </div>
       </div>
@@ -5605,27 +5605,61 @@
       var rows = '<div class="table-wrap"><table><thead><tr>'
         + '<th>Fecha</th><th>Alumno</th><th>Curso</th><th>Horario</th><th>Charla</th><th></th>'
         + '</tr></thead><tbody>';
-      var shown = 0;
-      for (var i = 0; i < d.signups.length; i++) {
-        var s = d.signups[i];
-        if (fCurso && s.curso !== fCurso) continue;
-        if (fDiv) {
-          var pc = EsiClient.parseCurso(s.curso);
-          if (!pc || pc.slice(2) !== fDiv) continue;
+      // Agrupar por alumno: una fila por alumno, con sus charlas al lado.
+      var groups = {};
+      var groupOrder = [];
+      for (var gi = 0; gi < d.signups.length; gi++) {
+        var gs = d.signups[gi];
+        var key = String(gs.email || '').trim().toLowerCase() || (String(gs.apellido || '') + '|' + String(gs.nombre || '') + '|' + String(gs.curso || ''));
+        if (!groups[key]) {
+          groups[key] = { key: key, student: gs, signups: [] };
+          groupOrder.push(key);
         }
-        if (fCharla && s.talkTitulo !== fCharla) continue;
-        var hay = aSearch_(s) + ' ' + String(s.slotLabel || '') + ' ' + String(s.talkTitulo || '');
-        if (!EsiClient.searchMatch(hay, q)) continue;
+        groups[key].signups.push(gs);
+      }
+      var shown = 0;
+      for (var gi = 0; gi < groupOrder.length; gi++) {
+        var g = groups[groupOrder[gi]];
+        var s0 = g.student;
+        // Filtros: el alumno se muestra si al menos una de sus reservas cumple.
+        var match = false;
+        var filteredSignups = [];
+        for (var si = 0; si < g.signups.length; si++) {
+          var s = g.signups[si];
+          if (fCurso && s.curso !== fCurso) continue;
+          if (fDiv) {
+            var pc = EsiClient.parseCurso(s.curso);
+            if (!pc || pc.slice(2) !== fDiv) continue;
+          }
+          if (fCharla && s.talkTitulo !== fCharla) continue;
+          var hay = aSearch_(s) + ' ' + String(s.slotLabel || '') + ' ' + String(s.talkTitulo || '');
+          if (!EsiClient.searchMatch(hay, q)) continue;
+          filteredSignups.push(s);
+          match = true;
+        }
+        if (!match) continue;
         shown++;
+        // Ordenar charlas por horario.
+        var talks = g.signups.slice().sort(function (a, b) {
+          return String(a.slotLabel || '').localeCompare(String(b.slotLabel || ''), 'es');
+        });
+        var charlasHtml = '';
+        for (var ti = 0; ti < talks.length; ti++) {
+          var t = talks[ti];
+          charlasHtml += '<div class="student-talk">'
+            + '<span class="student-talk-slot">' + esc(t.slotLabel) + '</span> '
+            + '<span class="student-talk-title">' + esc(t.talkTitulo) + '</span> '
+            + '<button class="btn secondary small" type="button" onclick="aOnMoveTalk(\'' + esc(t.id) + '\')">Mover</button> '
+            + '<button class="btn red small" type="button" onclick="aOnDelete(\'' + esc(t.id) + '\')">Borrar</button>'
+            + '</div>';
+        }
         rows += '<tr>'
-          + '<td class="narrow" data-label="Fecha">' + esc(s.cuando) + '</td>'
-          + '<td data-label="Alumno">' + aStudentNameHtml_(s, 'row-name', aRole === 'admin')
+          + '<td class="narrow" data-label="Fecha">' + esc(s0.cuando) + '</td>'
+          + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', aRole === 'admin')
           + '</td>'
-          + '<td data-label="Curso">' + esc(s.curso) + '</td>'
-          + '<td data-label="Horario">' + esc(s.slotLabel) + '</td>'
-          + '<td data-label="Charla">' + esc(s.talkTitulo) + '</td>'
-          + '<td data-label=""><button class="btn secondary small" type="button" onclick="aOnMoveTalk(\'' + esc(s.id) + '\')">Mover</button> '
-          + '<button class="btn red small" type="button" onclick="aOnDelete(\'' + esc(s.id) + '\')">Borrar</button></td>'
+          + '<td data-label="Curso">' + esc(s0.curso) + '</td>'
+          + '<td data-label="Charlas" colspan="2">' + charlasHtml + '</td>'
+          + '<td data-label=""></td>'
           + '</tr>';
       }
       rows += '</tbody></table></div>';
@@ -6105,37 +6139,6 @@
       return html + '</div>';
     }
 
-    function aCorrAdd_() {
-      if (!aData || aBusy) return;
-      openSheet({
-        title: 'Agregar alumno',
-        body: aCorrFields_('corr-add', true),
-        confirm: 'Agregar',
-        onConfirm: function () {
-          var ids = [];
-          var sel = $('corr-add-talks');
-          if (sel) {
-            for (var i = 0; i < sel.options.length; i++) {
-              if (sel.options[i].selected) ids.push(sel.options[i].value);
-            }
-          }
-          aBusy = true;
-          call('apiAdminAddStudent', [adminCred, {
-            email: $('corr-add-email').value,
-            apellido: $('corr-add-apellido').value,
-            nombre: $('corr-add-nombre').value,
-            curso: $('corr-add-curso').value,
-            talkIds: ids
-          }]).then(function (resp) {
-            aBusy = false;
-            if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo agregar.', 'err'); return; }
-            aCorrMsg_('Alumno agregado.', 'ok');
-            aLoad(true);
-          }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
-        }
-      });
-    }
-
     function aCorrEdit_() {
       if (!aData || aBusy) return;
       openSheet({
@@ -6421,7 +6424,6 @@
       });
       $('btn-refresh-estado').addEventListener('click', aLoadStatus);
       $('btn-corr-dup').addEventListener('click', aCorrDuplicates_);
-      $('btn-corr-add').addEventListener('click', aCorrAdd_);
       $('btn-corr-edit').addEventListener('click', aCorrEdit_);
       $('btn-corr-del').addEventListener('click', aCorrDelete_);
       $('btn-test-del').addEventListener('click', aDeleteTestData_);
