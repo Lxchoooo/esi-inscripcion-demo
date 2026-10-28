@@ -1642,6 +1642,7 @@
       <div id="done-list" class="card"></div>
       <div class="toolbar" style="margin-top:16px">
         <button id="btn-done-volver" class="btn secondary small" type="button">Volver a mis charlas</button>
+        <button id="btn-done-copiar" class="btn small" type="button">Copiar resumen</button>
       </div>
     </section>
 
@@ -1713,6 +1714,14 @@
       <details class="faq">
         <summary>¿Qué pasa si se llena?</summary>
         <p>No vas a poder elegirla. Probá con otra del mismo horario.</p>
+      </details>
+      <details class="faq">
+        <summary>¿Tengo que estar presente?</summary>
+        <p>Sí. La guía marca tu presencia en cada charla. Si no podés asistir, avisá para liberar el lugar.</p>
+      </details>
+      <details class="faq">
+        <summary>¿Puedo volver a entrar?</summary>
+        <p>Sí, con tu mail o DNI hasta que cierre la inscripción.</p>
       </details>
     </section>
   </div>
@@ -4225,6 +4234,23 @@
       if ($('btn-done-volver')) $('btn-done-volver').addEventListener('click', function () {
         showScreen(S_SCREENS, 's-screen-panel');
         sRender();
+      });
+      if ($('btn-done-copiar')) $('btn-done-copiar').addEventListener('click', function () {
+        var d = sState.data || {};
+        var slots = d.slots || [];
+        var mine = d.mine || {};
+        var lines = ['Jornada ESI 2026 - Mis charlas'];
+        for (var i = 0; i < slots.length; i++) {
+          var talk = mine[Number(slots[i].id)] ? sTalkById(mine[Number(slots[i].id)]) : null;
+          if (!talk) continue;
+          lines.push(slots[i].label + ': ' + talk.titulo + ' (' + talk.lugar + ')');
+        }
+        var text = lines.join('\n');
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast('Resumen copiado.', 'ok'); }, function () { window.prompt('Copiá el resumen:', text); });
+        } else if (window.prompt) {
+          window.prompt('Copiá el resumen:', text);
+        }
       });
       // btn-ics eliminado.
       $('btn-cambiar-datos').addEventListener('click', function () {
