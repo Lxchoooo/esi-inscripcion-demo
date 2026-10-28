@@ -1802,6 +1802,12 @@ function sessionDateMs_(value) {
   return isNaN(t) ? 0 : t;
 }
 
+function signupStamp_(value, tz) {
+  var ms = sessionDateMs_(value);
+  if (!ms) return '';
+  return Utilities.formatDate(new Date(ms), tz, 'dd/MM HH:mm');
+}
+
 function readSessions_() {
   var sh = sessionsSheet_();
   var vals = sh.getDataRange().getValues();
@@ -2236,7 +2242,7 @@ function apiAdminGetData(cred) {
     var signups = admin ? signupsRaw.map(function (s) {
       return {
         id: s.id,
-        cuando: s.ts ? Utilities.formatDate(s.ts, tz, 'dd/MM HH:mm') : '',
+        cuando: signupStamp_(s.ts, tz),
         email: s.email,
         apellido: s.apellido || apellidos[s.emailKey] || '',
         nombre: givenName_(s.nombre, s.apellido || apellidos[s.emailKey] || ''),
