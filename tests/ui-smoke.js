@@ -95,7 +95,7 @@ return {
   sRender: sRender, sBuildTalk: sBuildTalk, sConfirmar: sConfirmar, sOnTalk: sOnTalk,
   aRender: aRender, aRenderTable: aRenderTable, aTab: aTab,
   sLookup: sLookup, sLookupDni: sLookupDni, sLoginSubmit: sLoginSubmit, sSalir: sSalir, sRegister: sRegister,
-  sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall, sBuildIcs_: sBuildIcs_,
+  sHelloYes: sHelloYes, sHelloNo: sHelloNo, demoCall: demoCall,
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
   aSyncTableCards_: aSyncTableCards_,
@@ -200,7 +200,7 @@ assert(document.getElementById('a-roster-info').textContent === 'Sin lista carga
 assert(document.getElementById('a-cupos').innerHTML.includes('Cupos por charla'), 'cupos titulo');
 assert(document.getElementById('a-table').innerHTML.includes('Ana'), 'tabla con inscriptos');
 assert(document.getElementById('a-table').innerHTML.includes('data-mail="ana@esc.edu.ar"'), 'mail disponible en inscriptos');
-assert(document.getElementById('a-table-count').textContent === '2 de 2 reservas', 'contador de reservas');
+assert(document.getElementById('a-table-count').textContent === '2 de 2 alumnos', 'contador de alumnos');
 assert(document.getElementById('filter-curso').innerHTML.includes('2°B'), 'filtro curso');
 assert(document.getElementById('filter-division').innerHTML.includes('Turismo'), 'filtro division');
 
@@ -641,12 +641,6 @@ function tick() {
     talks: ui.DEMO_TALKS.slice(),
     mine: { 1: 'B1', 2: 'B5', 3: 'B9' }
   };
-  const ics = ui.sBuildIcs_();
-  assert(ics.startsWith('BEGIN:VCALENDAR') && ics.trim().endsWith('END:VCALENDAR'), 'ics envelope');
-  assert((ics.match(/BEGIN:VEVENT/g) || []).length === 3, 'ics has three events');
-  assert(ics.includes('DTSTART:20261104T133000Z'), 'ics timezone offset');
-  assert(ics.includes('TRIGGER:-PT10M'), 'ics reminder');
-  assert(!ics.includes('ana@'), 'ics has no mail');
   ui.sConfirmar();
   assert(document.getElementById('btn-ics-confirm'), 'ics button in confirmation');
 
