@@ -35,12 +35,12 @@
       --warn-line: #EBDDBD;
       --nav-bg: rgba(250, 248, 245, .84);
       --scrim: rgba(31, 25, 17, .42);
-      --shadow: 0 1px 2px rgba(31, 31, 31, .04), 0 8px 24px rgba(31, 31, 31, .05);
-      --shadow-lg: 0 18px 50px rgba(31, 31, 31, .13);
+      --shadow: 0 2px 4px rgba(31, 31, 31, .06), 0 12px 32px rgba(31, 31, 31, .08);
+      --shadow-lg: 0 24px 60px rgba(31, 31, 31, .16);
       --toast-bg: #1F1F1F;
       --toast-ink: #FAF8F5;
-      --radius: 16px;
-      --radius-sm: 12px;
+      --radius: 20px;
+      --radius-sm: 14px;
       --card: var(--surface);
       --brand-dark: var(--accent-strong);
     }
@@ -256,6 +256,8 @@
     }
     .btn.link:active { transform: none; }
     .btn.red { background: var(--danger); color: var(--paper); }
+    .btn.btn-confirm { background: var(--accent); color: var(--paper); font-size: 17px; min-height: 56px; padding: 16px 28px; box-shadow: 0 8px 24px rgba(47, 111, 78, .35); border-radius: 14px; }
+    .btn.btn-confirm:hover { background: var(--accent-fill); box-shadow: 0 12px 32px rgba(47, 111, 78, .45); }
     .btn.full { display: flex; width: 100%; }
     .btn.small { min-height: 44px; padding: 9px 15px; font-size: 13.5px; border-radius: 10px; box-shadow: none; }
     .btn.full + .btn.secondary.full { margin-top: 8px; }
@@ -1327,7 +1329,7 @@
           <span class="sel-count" id="sel-count" aria-live="polite">0 de 3 elegidas</span>
           <span class="sel-hint" id="sel-hint" role="status" hidden></span>
         </div>
-        <button id="btn-confirmar" class="btn" type="button">Confirmar</button>
+        <button id="btn-confirmar" class="btn btn-confirm" type="button">Confirmar inscripción</button>
       </div>
     </div>
 
@@ -1635,6 +1637,7 @@
     </section>
 
     <section id="s-screen-done" class="screen card" tabindex="-1" aria-labelledby="done-title" hidden>
+      <div style="text-align:center;font-size:48px;color:var(--accent);margin-bottom:8px">✓</div>
       <div class="panel-head">
         <div>
           <div class="steps">Listo</div>
