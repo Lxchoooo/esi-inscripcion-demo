@@ -151,7 +151,7 @@ assert(grid.children[0].innerHTML.includes('Elegida'), 'texto elegida');
 assert(grid.children[1].innerHTML.includes('is-low'), 'barra casi llena');
 assert(grid.children[2].innerHTML.includes('is-full'), 'barra completa');
 assert(document.getElementById('sel-count').textContent === '1 de 3 elegidas', 'contador');
-assert(document.getElementById('btn-confirmar').style.display !== 'none', 'confirmar visible con faltantes');
+assert(document.getElementById('btn-confirmar').style.display === 'none', 'confirmar oculto con faltantes');
 assert(document.getElementById('summary').innerHTML.includes('Ana'), 'resumen identidad');
 ui.sConfirmar();
 assert(document.getElementById('sel-hint').hidden === false, 'aviso horario faltante visible');
@@ -168,11 +168,11 @@ assert(document.getElementById('sheet-body').innerHTML.includes('12 lugares'), '
 
 ui.sState.data.mine = { 1: 'B1', 2: 'B5', 3: 'B8' };
 ui.sRender();
-assert(document.getElementById('btn-confirmar').style.display === 'none', 'confirmar oculto al completar');
-assert(document.getElementById('sel-count').textContent === 'Ya estás anotado', 'estado anotado');
+assert(document.getElementById('btn-confirmar').style.display !== 'none', 'confirmar visible al completar');
+assert(document.getElementById('sel-count').textContent === 'Todo elegido, confirmá tu inscripción', 'estado listo');
 ui.sConfirmar();
-assert(document.getElementById('sheet-title').textContent === 'Tus charlas', 'sheet confirmar completo');
-assert(document.getElementById('sheet-body').innerHTML.includes('Autolesiones'), 'resumen charlas');
+assert(document.body.getAttribute('data-screen') === 's-screen-done', 'va a pantalla final');
+assert(document.getElementById('done-list').innerHTML.includes('Autolesiones'), 'resumen charlas');
 assert(document.getElementById('sel-hint').hidden === true, 'sin aviso al completar');
 
 ui.setA({
@@ -642,7 +642,7 @@ function tick() {
     mine: { 1: 'B1', 2: 'B5', 3: 'B9' }
   };
   ui.sConfirmar();
-  assert(document.getElementById('btn-ics-confirm'), 'ics button in confirmation');
+  assert(document.body.getAttribute('data-screen') === 's-screen-done', 'confirmar lleva al final');
 
   ui.setRole('admin');
   ui.setCred('demo');
