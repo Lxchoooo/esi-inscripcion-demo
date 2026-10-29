@@ -167,7 +167,7 @@
       body[data-screen="s-screen-mail"] .nav-links { display: flex; }
     }
     body.admin #nav { background: #1F1F1F; border-bottom-color: #1F1F1F; color: #F5F2EB; }
-    body.admin .brand-mark { background: #26352A; border-color: #3F5C44; }
+    body.admin .brand-mark { background: #26352A; border-color: #3F5C44; padding: 3px; }
     body.admin .brand-logo { filter: brightness(0) invert(1); }
     body.admin .brand-school { color: #C9D8C5; }
     body.admin #hdr-sub { color: #B9B6AC; }
@@ -1306,6 +1306,7 @@
           <div class="steps">3 de 3</div>
           <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
+          <p class="hint" id="panel-progress"></p>
         </div>
         <div class="head-actions">
           <button id="btn-alumno-salir" class="btn link" type="button" style="display:none">Salir</button>
@@ -3600,7 +3601,8 @@
       var d = sState.data;
       if (!d) return;
       var sub = $('hdr-sub');
-      sub.textContent = (d.evento_abierto ? 'Inscripción abierta' : 'Inscripción cerrada')
+      sub.textContent = 'Hola, ' + (sState.student.nombre || '') + ' · '
+        + (d.evento_abierto ? 'Inscripción abierta' : 'Inscripción cerrada')
         + ' · ' + CICLO_LABELS[sState.student.ciclo];
       sub.className = d.evento_abierto ? '' : 'alert';
 
@@ -3613,6 +3615,8 @@
         if (chosenId && sTalkById(chosenId)) chosenCount++;
       }
       var missing = sMissingSlots();
+      var progress = $('panel-progress');
+      if (progress) progress.textContent = chosenCount + ' de ' + slots.length + ' charlas elegidas';
       var hint = $('sel-hint');
       if (hint) {
         if (sState.showMissing && missing.length) {
@@ -4528,7 +4532,13 @@
       var el = $('a-msg');
       if (!el) return;
       if (aUndoTimer) window.clearTimeout(aUndoTimer);
-      el.innerHTML = 'Marcado. <button type="button" class="undo-btn" id="btn-undo">Deshacer</button>';
+      var who = '';
+      if (aTalkData && aTalkData.students) {
+        for (var ui = 0; ui < aTalkData.students.length; ui++) {
+          if (String(aTalkData.students[ui].id) === String(id)) { who = aTalkData.students[ui].nombre || ''; break; }
+        }
+      }
+      el.innerHTML = (who ? esc(who) + ' marcado presente. ' : 'Marcado. ') + '<button type="button" class="undo-btn" id="btn-undo">Deshacer</button>';
       el.className = 'banner ok';
       el.style.display = 'block';
       var btn = $('btn-undo');
