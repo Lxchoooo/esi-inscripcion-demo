@@ -1307,6 +1307,7 @@
           <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
           <p class="hint" id="panel-progress"></p>
+          <input id="input-buscar-talk" type="text" autocomplete="off" placeholder="Buscar charla" aria-label="Buscar charla" style="margin-top:8px;max-width:280px">
         </div>
         <div class="head-actions">
           <button id="btn-alumno-salir" class="btn link" type="button" style="display:none">Salir</button>
@@ -3589,7 +3590,9 @@
       for (var i = 0; i < slots.length; i++) {
         var talk = mine[Number(slots[i].id)] ? sTalkById(mine[Number(slots[i].id)]) : null;
         if (!talk) continue;
-        lines += '<p class="sheet-line"><span class="h">' + esc(slots[i].label) + '</span>'
+        var dotColor = ['#2F6F4E', '#3B5B8A', '#8A5B3B'][i % 3];
+        lines += '<p class="sheet-line"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + dotColor + ';margin-right:6px;vertical-align:middle"></span>'
+          + '<span class="h">' + esc(slots[i].label) + '</span>'
           + '<span>' + esc(talk.titulo) + ' <span class="sheet-meta">· ' + esc(talk.lugar) + '</span></span></p>';
       }
       if (!lines) lines = '<p class="hint-line">Todavía no elegiste charlas.</p>';
@@ -3660,8 +3663,11 @@
         section.appendChild(h2);
         var grid = document.createElement('div');
         grid.className = 'slot-grid';
+        var qTalk = ($('input-buscar-talk') ? $('input-buscar-talk').value : '').toLowerCase();
         for (var t = 0; t < d.talks.length; t++) {
           if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
+          if (qTalk && String(d.talks[t].titulo || '').toLowerCase().indexOf(qTalk) < 0
+            && String(d.talks[t].lugar || '').toLowerCase().indexOf(qTalk) < 0) continue;
           grid.appendChild(sBuildTalk(d.talks[t], slots[s]));
         }
         section.appendChild(grid);
@@ -4231,6 +4237,7 @@
         sFillDivisions(this.value, '');
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
+      if ($('input-buscar-talk')) $('input-buscar-talk').addEventListener('input', function () { sRender(); });
       if ($('btn-done-volver')) $('btn-done-volver').addEventListener('click', function () {
         showScreen(S_SCREENS, 's-screen-panel');
         sRender();
