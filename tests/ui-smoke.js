@@ -20,7 +20,11 @@ function makeEl(id) {
     className: '',
     hidden: false,
     disabled: false,
-    style: {},
+    style: {
+      props: {},
+      setProperty(k, v) { this.props[k] = String(v); this[k] = String(v); },
+      removeProperty(k) { delete this.props[k]; delete this[k]; }
+    },
     children: [],
     attrs: {},
     classList: {
@@ -139,7 +143,7 @@ ui.sRender();
 const slots = document.getElementById('slots-container');
 assert(slots.children.length === 3, 'tres horarios');
 const grid = slots.children[0].children[1];
-assert(grid.className === 'slot-grid', 'grid de charlas');
+assert(grid.className === 'slot-grid stagger', 'grid de charlas');
 assert(grid.children.length === 3, 'tres charlas en horario 1');
 assert(grid.children[0].className.includes('selected'), 'primera elegida');
 assert(grid.children[1].className.includes('low'), 'segunda con ultimos lugares');
@@ -671,6 +675,36 @@ function tick() {
   const rosterNow = JSON.parse(store.esi_demo_roster || '[]');
   assert(rosterNow.some((r) => r.email === 'nuevo.alumno@secundariosalsipuedes.edu.ar'),
     'alumno nuevo en la lista');
+
+  // Mini resumen, estado por horario y filtro "solo con lugares".
+  const st = ui.getState();
+  st.student = { nombre: 'Ana', curso: '2\u00b0B', email: 'ana@secundariosalsipuedes.edu.ar', ciclo: 'basico' };
+  st.data = {
+    evento_abierto: true,
+    slots: [{ id: 1, label: '10:30 a 11:20' }, { id: 2, label: '11:30 a 12:20' }, { id: 3, label: '12:30 a 13:30' }],
+    talks: [
+      { id: 'B1', titulo: 'Ansiedad', slot_id: 1, lugar: 'Aula 5', cupo: 40, restantes: 40 },
+      { id: 'B2', titulo: 'Alcohol', slot_id: 1, lugar: 'Aula 6', cupo: 40, restantes: 0 },
+      { id: 'B5', titulo: 'Autolesiones', slot_id: 2, lugar: 'Aula 7', cupo: 40, restantes: 12 }
+    ],
+    mine: { 1: 'B1' }
+  };
+  st.onlyAvailable = false;
+  st.lastChosen = -1;
+  ui.sRender();
+  const mini = document.getElementById('mini-summary');
+  assert(mini.hidden === false, 'mini resumen visible');
+  assert(mini.innerHTML.includes('Ansiedad'), 'mini resumen muestra la elegida');
+  assert(mini.innerHTML.includes('Falta elegir'), 'mini resumen marca lo que falta');
+  const slot0 = document.getElementById('slots-container').children[0];
+  assert(slot0.children[0].innerHTML.includes('Ya elegiste'), 'badge ya elegiste');
+  assert(!document.getElementById('slots-container').children[1].children[0].innerHTML.includes('Ya elegiste'),
+    'badge solo en el horario elegido');
+  st.onlyAvailable = true;
+  ui.sRender();
+  const grid2 = document.getElementById('slots-container').children[0].children[1];
+  assert(grid2.children.length === 1, 'filtro solo con lugares');
+  st.onlyAvailable = false;
 
   console.log('UI smoke: OK');
 })().catch((e) => {

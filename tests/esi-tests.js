@@ -872,7 +872,11 @@ function contrast(a, b) {
 
 t('Panel keeps control borders and focus rings above the contrast minimum', () => {
   const root = panelHtml.match(/:root \{([\s\S]*?)\}/)[1];
-  const dark = panelHtml.match(/@media \(prefers-color-scheme: dark\) \{\s*:root \{([\s\S]*?)\}/)[1];
+  const dark = panelHtml.match(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([\s\S]*?)\}/)[1];
+  const darkBlocks = Array.from(panelHtml.matchAll(/:root\[data-theme="dark"\] \{([\s\S]*?)\n    \}/g)).map((m) => m[1]);
+  const darkAttr = darkBlocks.filter((b) => b.includes('--ink'))[0];
+  if (!darkAttr) throw new Error('manual dark theme block missing');
+  if (cssVar(darkAttr, 'ink') !== cssVar(dark, 'ink')) throw new Error('manual dark theme drifts from the system one');
   const pairs = [
     ['claro accent/paper', cssVar(root, 'accent'), cssVar(root, 'paper'), 4.5],
     ['claro accent/surface', cssVar(root, 'accent'), cssVar(root, 'surface'), 4.5],
@@ -897,6 +901,23 @@ t('Panel keeps control borders and focus rings above the contrast minimum', () =
   if (/focus-visible[^}]*var\(--accent-fill\)/.test(panelHtml)) throw new Error('weak focus ring');
   if (!/focus-visible[^}]*var\(--accent\)/.test(panelHtml)) throw new Error('focus ring missing');
   if (!/overflow-wrap:\s*anywhere/.test(panelHtml)) throw new Error('long text can overflow on narrow screens');
+});
+
+t('Panel offers a manual theme toggle that survives reloads', () => {
+  for (const needle of ['id="btn-theme"', 'esi_theme', 'function initTheme_',
+    'function applyTheme_', 'data-theme']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/initTheme_\(\);/.test(panelSrc)) throw new Error('initTheme_ no corre en boot');
+  if (!/:root\[data-theme="light"\] \{ color-scheme: light; \}/.test(panelHtml)) throw new Error('light scheme');
+});
+
+t('Panel banners accept an inline retry action', () => {
+  if (!/function sBanner\(text, type, actionLabel, actionFn\)/.test(panelSrc)) throw new Error('sBanner sin accion');
+  if (!/function aBanner\(text, type, actionLabel, actionFn\)/.test(panelSrc)) throw new Error('aBanner sin accion');
+  if (!/banner-btn/.test(panelHtml)) throw new Error('estilo banner-btn');
+  if (!/sBanner\([^;]*Reintentar/.test(panelSrc)) throw new Error('sin Reintentar en errores de carga');
+  if (!/function haptic_\(ms\)/.test(panelSrc)) throw new Error('sin haptics');
 });
 
 t('Panel carries the ISS identity and an accessible green palette', () => {

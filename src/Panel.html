@@ -75,7 +75,7 @@
       --ease-pop: cubic-bezier(.2, .9, .3, 1.35);
     }
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --paper: #141513;
         --surface: #1B1D19;
         --surface-2: #22251F;
@@ -111,6 +111,46 @@
         --toast-ink: #1B1D19;
       }
     }
+
+    :root[data-theme="light"] { color-scheme: light; }
+    :root[data-theme="dark"] { color-scheme: dark; }
+    :root[data-theme="dark"] {
+        --paper: #141513;
+        --surface: #1B1D19;
+        --surface-2: #22251F;
+        --surface-3: #2A2D26;
+        --ink: #F2F0EA;
+        --muted: #A5A79F;
+        --line: #2C2F29;
+        --line-strong: #3A3E35;
+        --line-ui: #7C8075;
+        --accent: #9BD3A6;
+        --accent-strong: #C6E8CC;
+        --accent-fill: #356B3F;
+        --accent-soft: #1F3324;
+        --accent-line: #33543A;
+        --primary-container: #26382A;
+        --on-primary-container: #C6E8CC;
+        --secondary-container: #262E3D;
+        --on-secondary-container: #C9D5EE;
+        --tertiary-container: #33281E;
+        --on-tertiary-container: #EAD3BC;
+        --surface-tint: rgba(155, 211, 166, .1);
+        --danger: #E3A196;
+        --danger-soft: #32201C;
+        --danger-line: #4A2E27;
+        --warn: #D9B26A;
+        --warn-soft: #2B2417;
+        --warn-line: #453A24;
+        --nav-bg: rgba(20, 21, 19, .8);
+        --scrim: rgba(0, 0, 0, .6);
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
+        --shadow-lg: 0 18px 50px rgba(0, 0, 0, .45);
+        --toast-bg: #F2F0EA;
+        --toast-ink: #1B1D19;
+      }
+    }
+
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: light dark; }
     body {
@@ -573,6 +613,17 @@
       font-size: 12.5px; color: var(--muted);
     }
     .footer-ver { opacity: .7; font-variant-numeric: tabular-nums; }
+    .theme-toggle {
+      display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+      padding: 8px 12px; min-height: 40px; border-radius: 999px;
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+      transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .theme-toggle:hover { color: var(--ink); border-color: var(--line-ui); }
+    .theme-toggle:active { transform: scale(.97); }
+    .theme-toggle .ico { width: 15px; height: 15px; }
+    @media print { .theme-toggle { display: none !important; } }
     .footer-inner a {
       color: var(--muted); text-decoration: none;
       border-bottom: 1px solid transparent;
@@ -1278,7 +1329,101 @@
     .field-row > div { flex: 1; min-width: 0; }
     .field-row label { margin: 0 0 7px; }
     .login-form { animation: rise .22s ease both; }
+
+    /* ---- Animaciones (minimalistas, respetan reduced-motion) ---- */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes popIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes ringPulse {
+      0% { box-shadow: 0 0 0 0 rgba(47, 111, 78, .45); }
+      70% { box-shadow: 0 0 0 10px rgba(47, 111, 78, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(47, 111, 78, 0); }
+    }
+    @keyframes checkDraw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+    @keyframes countPop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+    .panel-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+    .panel-filters #input-buscar-talk { max-width: 280px; margin: 0; }
+    .switch-line {
+      display: inline-flex; align-items: center; gap: 7px; min-height: 40px;
+      font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer;
+      -webkit-user-select: none; user-select: none;
+    }
+    .switch-line input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-fill); }
+    .switch-line:active { transform: scale(.98); }
+    .mini-summary {
+      display: grid; gap: 6px; margin: 0 0 14px; padding: 12px 14px;
+      border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--surface); box-shadow: var(--shadow);
+      animation: drop-in .24s var(--ease-emph) both;
+    }
+    .mini-summary .ms-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; min-width: 0; }
+    .mini-summary .ms-n {
+      flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+      display: grid; place-items: center; font-size: 10.5px; font-weight: 800;
+      background: var(--accent-soft); color: var(--accent-strong);
+    }
+    .mini-summary .ms-n.falta { background: var(--surface-2); color: var(--muted); }
+    .mini-summary .ms-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
+    .mini-summary .ms-t.falta { color: var(--muted); font-weight: 500; font-style: italic; }
+    .mini-summary .ms-meta { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+    .slot-done {
+      display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
+      padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+      letter-spacing: .02em; text-transform: uppercase;
+      background: var(--accent-soft); color: var(--accent-strong);
+      animation: popIn .24s var(--ease-pop) both;
+    }
+    .banner-action { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .banner-btn {
+      margin-left: auto; padding: 7px 12px; min-height: 34px; border-radius: 999px;
+      border: 1px solid currentColor; background: transparent; color: inherit;
+      font: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
+      transition: transform var(--dur-fast) ease, opacity var(--dur-fast) ease;
+    }
+    .banner-btn:active { transform: scale(.96); opacity: .85; }
+    .pane-in { animation: fadeUp .26s var(--ease-emph) both; }
+    .stagger > * { animation: fadeUp .3s var(--ease-emph) both; animation-delay: calc(var(--i, 0) * 28ms); }
+    .fade-in { animation: fadeIn .24s ease both; }
+    .pop-in { animation: popIn .26s var(--ease-pop) both; }
+    .drop-in { animation: slideDown .22s var(--ease-emph) both; }
+    .num-pop { animation: countPop .32s var(--ease-pop); }
+
+    .talk-check svg { width: 12px; height: 12px; display: block; }
+    .talk-check svg path {
+      stroke: currentColor; stroke-width: 3; fill: none;
+      stroke-linecap: round; stroke-linejoin: round;
+      stroke-dasharray: 24; stroke-dashoffset: 24;
+    }
+    .talk.selected .talk-check svg path { animation: checkDraw .28s .05s ease forwards; }
+
+    .btn .ico { transition: transform var(--dur-fast) ease; }
+    .btn:active .ico { transform: scale(.92); }
+    .btn.is-loading .ico { animation: spin .9s linear infinite; }
+    .btn.is-loading { pointer-events: none; opacity: .8; }
+
+    .present-btn.on { animation: ringPulse .5s ease-out; }
+    .present-mini.on { animation: popIn .2s var(--ease-pop); }
+
+    .status-chip.updated { animation: popIn .24s var(--ease-pop); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pane-in, .stagger > *, .fade-in, .pop-in, .drop-in, .num-pop,
+      .present-btn.on, .present-mini.on, .status-chip.updated { animation: none !important; }
+      .btn.is-loading .ico { animation: none; }
+      .talk.selected .talk-check svg path { animation: none; stroke-dashoffset: 0; }
+    }
   </style>
+  <script>
+    (function () {
+      try {
+        var t = window.localStorage.getItem("esi_theme");
+        if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { }
+    })();
+  </script>
 </head>
 <body data-admin="<?= IS_ADMIN ? '1' : '0' ?>">
   <header id="nav">
@@ -1449,13 +1594,20 @@
           <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
           <p class="hint" id="panel-progress"></p>
-          <input id="input-buscar-talk" type="text" autocomplete="off" placeholder="Buscar charla" aria-label="Buscar charla" style="margin-top:8px;max-width:280px">
+          <div class="panel-filters">
+            <input id="input-buscar-talk" type="text" autocomplete="off" placeholder="Buscar charla" aria-label="Buscar charla">
+            <label class="switch-line">
+              <input type="checkbox" id="chk-solo-lugares">
+              <span>Solo con lugares</span>
+            </label>
+          </div>
         </div>
         <div class="head-actions">
           <button id="btn-alumno-salir" class="btn link" type="button" style="display:none">Salir</button>
         </div>
       </div>
       <div class="summary" id="summary"></div>
+      <div id="mini-summary" class="mini-summary" hidden></div>
       <div class="next-talk" id="next-talk" hidden></div>
       <div class="panel-tools"></div>
       <div class="chips" id="chips" hidden></div>
@@ -1587,7 +1739,7 @@
         <div class="card">
           <div class="filters">
             <select id="select-charla" aria-label="Charla"></select>
-            <input id="input-buscar-charla" type="text" autocomplete="off" placeholder="Buscar por nombre" aria-label="Buscar por nombre">
+            <input id="input-buscar-charla" type="text" autocomplete="off" placeholder="Nombre, mail o DNI" aria-label="Buscar por nombre, mail o DNI">
             <select id="filter-curso-charla" aria-label="Curso"></select>
           </div>
           <div class="view-head">
@@ -1599,7 +1751,7 @@
   
             </div>
             <span class="hint-line" id="charla-updated">Actualizado hace 0s</span>
-            <button id="btn-refresh-charla" class="btn secondary small" type="button"<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
+            <button id="btn-refresh-charla" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
           </div>
           <div id="charla-list"></div>
         </div>
@@ -1608,14 +1760,14 @@
       <div id="pane-pend" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-pend" hidden>
         <div class="card">
           <div class="filters">
-            <input id="input-buscar-pend" type="text" autocomplete="off" placeholder="Buscar por nombre" aria-label="Buscar por nombre">
+            <input id="input-buscar-pend" type="text" autocomplete="off" placeholder="Nombre, mail o DNI" aria-label="Buscar por nombre, mail o DNI">
             <select id="filter-curso-pend" aria-label="Curso"></select>
             <select id="filter-division-pend" aria-label="División"></select>
           </div>
           <div class="view-head">
             <span class="view-count" id="pend-count">0 sin completar</span>
             <span class="hint-line" id="pend-updated">Actualizado hace 0s</span>
-            <button id="btn-refresh-pend" class="btn secondary small" type="button"<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
+            <button id="btn-refresh-pend" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
           </div>
           <div id="pend-list"></div>
         </div>
@@ -1645,7 +1797,7 @@
           <div class="view-head">
             <span class="view-count">Estado del servidor</span>
             <span class="hint-line" id="estado-updated">Sin consultar</span>
-            <button id="btn-refresh-estado" class="btn secondary small" type="button"<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
+            <button id="btn-refresh-estado" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
           </div>
           <div id="estado-out"></div>
         </div>
@@ -1655,7 +1807,7 @@
         <div class="card" id="a-cupos"></div>
         <div class="card">
           <div class="filters">
-            <input id="input-buscar" type="text" autocomplete="off" placeholder="Buscar" aria-label="Buscar">
+            <input id="input-buscar" type="text" autocomplete="off" placeholder="Nombre, mail o DNI" aria-label="Buscar por nombre, mail o DNI">
             <select id="filter-curso" aria-label="Curso"></select>
             <select id="filter-division" aria-label="División"></select>
             <select id="filter-charla" aria-label="Charla"></select>
@@ -1884,6 +2036,10 @@
     <div class="footer-inner">
       <span>ISS · Jornada ESI 2026</span>
       <span id="app-version" class="footer-ver"></span>
+      <button id="btn-theme" class="theme-toggle" type="button" aria-label="Cambiar tema" aria-pressed="false">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>
+        <span id="btn-theme-label">Tema</span>
+      </button>
     </div>
   </footer>
 
@@ -1909,7 +2065,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v33';
+    var APP_VERSION = 'v34';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -1986,6 +2142,7 @@
         email: '', nombre: '', apellido: '', curso: '', login: '', recordatorio: false,
         needsNombre: false, needsApellido: false, needsCurso: false,
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
+      onlyAvailable: false, lastChosen: -1,
       confirmed: false, recordatorio: false,
         student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
       };
@@ -3699,11 +3856,21 @@
       out.textContent = 'Tu mail termina en ' + egreso + '.';
     }
 
-    function sBanner(text, type) {
+    function sBanner(text, type, actionLabel, actionFn) {
       var el = $('s-banner');
+      if (!el) return;
       el.textContent = text || '';
       el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
       el.style.display = text ? 'block' : 'none';
+      if (text && actionLabel && actionFn) {
+        el.classList.add('banner-action');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'banner-btn';
+        btn.textContent = actionLabel;
+        btn.addEventListener('click', function () { actionFn(); });
+        el.appendChild(btn);
+      }
     }
 
     function sSlotsLabel(id) {
@@ -3736,6 +3903,30 @@
           + '</div>';
       }
       return out;
+    }
+
+    function haptic_(ms) {
+      if (typeof navigator === 'undefined' || !navigator.vibrate) return;
+      try { navigator.vibrate(ms || 12); } catch (e) { }
+    }
+
+    function btnLoading_(id, on) {
+      var b = $(id);
+      if (!b) return;
+      b.classList.toggle('is-loading', !!on);
+      b.disabled = !!on;
+      b.setAttribute('aria-busy', on ? 'true' : 'false');
+    }
+
+    function aSkeletonRows_(n) {
+      var out = '<div class="a-skeleton" aria-hidden="true">';
+      for (var i = 0; i < (n || 5); i++) out += '<div class="skeleton-line card"></div>';
+      return out + '</div>';
+    }
+
+    function aSkeletonIfEmpty_(id) {
+      var el = $(id);
+      if (el && !el.children.length) el.innerHTML = aSkeletonRows_();
     }
 
     function sConfetti_() {
@@ -3814,7 +4005,15 @@
       }
       var missing = sMissingSlots();
       var progress = $('panel-progress');
-      if (progress) progress.textContent = chosenCount + ' de ' + slots.length + ' charlas elegidas';
+      if (progress) {
+        progress.textContent = chosenCount + ' de ' + slots.length + ' charlas elegidas';
+        if (sState.lastChosen !== chosenCount) {
+          progress.classList.remove('num-pop');
+          void progress.offsetWidth;
+          progress.classList.add('num-pop');
+          sState.lastChosen = chosenCount;
+        }
+      }
       var hint = $('sel-hint');
       if (hint) {
         if (sState.showMissing && missing.length) {
@@ -3846,6 +4045,7 @@
         countEl.className = 'sel-count' + (done ? ' is-done' : '');
       }
       sRenderNextTalk_();
+      sRenderMini_();
 
       var cont = $('slots-container');
       cont.innerHTML = '';
@@ -3859,22 +4059,58 @@
         section.setAttribute('tabindex', '-1');
         var h2 = document.createElement('h2');
         h2.className = 'slot-title';
+        var slotChosen = mine[Number(slots[s].id)] ? sTalkById(mine[Number(slots[s].id)]) : null;
         h2.innerHTML = '<span class="time-pill">Horario ' + (s + 1) + '</span>'
           + '<span class="slot-time">· ' + esc(slots[s].label) + '</span>'
-          + (isMissing ? '<span class="slot-missing">Falta elegir</span>' : '');
+          + (isMissing ? '<span class="slot-missing">Falta elegir</span>' : '')
+          + (slotChosen ? '<span class="slot-done">Ya elegiste</span>' : '');
         section.appendChild(h2);
         var grid = document.createElement('div');
-        grid.className = 'slot-grid';
+        grid.className = 'slot-grid stagger';
         var qTalk = ($('input-buscar-talk') ? $('input-buscar-talk').value : '').toLowerCase();
+        var shown = 0;
         for (var t = 0; t < d.talks.length; t++) {
           if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
+          var tMine = mine[Number(slots[s].id)] === d.talks[t].id;
           if (qTalk && String(d.talks[t].titulo || '').toLowerCase().indexOf(qTalk) < 0
             && String(d.talks[t].lugar || '').toLowerCase().indexOf(qTalk) < 0) continue;
-          grid.appendChild(sBuildTalk(d.talks[t], slots[s]));
+          if (sState.onlyAvailable && !tMine && (d.talks[t].restantes == null ? 0 : d.talks[t].restantes) <= 0) continue;
+          var card = sBuildTalk(d.talks[t], slots[s]);
+          card.style.setProperty('--i', String(shown));
+          shown++;
+          grid.appendChild(card);
+        }
+        if (!shown) {
+          var empty = document.createElement('p');
+          empty.className = 'hint slot-empty';
+          empty.textContent = qTalk || sState.onlyAvailable
+            ? 'No quedan charlas con esos filtros en este horario.'
+            : 'Todavía no hay charlas en este horario.';
+          grid.appendChild(empty);
         }
         section.appendChild(grid);
         cont.appendChild(section);
       }
+    }
+
+    function sRenderMini_() {
+      var box = $('mini-summary');
+      if (!box) return;
+      var d = sState.data;
+      if (!d || !d.slots || !d.slots.length) { box.hidden = true; return; }
+      var mine = d.mine || {};
+      var out = [];
+      for (var i = 0; i < d.slots.length; i++) {
+        var talk = mine[Number(d.slots[i].id)] ? sTalkById(mine[Number(d.slots[i].id)]) : null;
+        out.push('<div class="ms-row" style="--i:' + i + '">'
+          + '<span class="ms-n' + (talk ? '' : ' falta') + '">' + (i + 1) + '</span>'
+          + '<span class="ms-t' + (talk ? '' : ' falta') + '">'
+          + (talk ? esc(talk.titulo) : 'Falta elegir') + '</span>'
+          + '<span class="ms-meta">' + esc(talk ? talk.lugar : d.slots[i].label) + '</span>'
+          + '</div>');
+      }
+      box.innerHTML = out.join('');
+      box.hidden = false;
     }
 
     function sBuildTalk(talk, slot) {
@@ -3902,7 +4138,9 @@
       var barClass = full ? 'is-full' : (low ? 'is-low' : '');
       btn.innerHTML = '<span class="talk-top">'
         + '<span class="t-title">' + esc(talk.titulo) + '</span>'
-        + '<span class="talk-check" aria-hidden="true">\u2713</span></span>'
+        + '<span class="talk-check" aria-hidden="true">'
+        + '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true">'
+        + '<path d="M3.2 8.6 6.2 11.6 12.8 4.6"/></svg></span></span>'
         + '<span class="t-meta"><span class="talk-room">' + esc(talk.lugar) + '</span>'
         + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span></span>'
         + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + '" style="width:' + pct + '%"></span></span>';
@@ -4008,6 +4246,7 @@
       }
       sState.showMissing = false;
       sState.confirmed = true;
+      haptic_([12, 40, 18]);
       var chk = $('done-recordatorio');
       var wants = chk ? !!chk.checked : !!sState.recordatorio;
       sState.recordatorio = wants;
@@ -4069,6 +4308,7 @@
           toast(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
           if (resp.ok) {
             sState.confirmed = false;
+            haptic_(10);
             sRenderChange(slotId, prevId, talkId);
           }
           else sRender();
@@ -4106,6 +4346,11 @@
       }, 150);
     }
 
+    function sRetry_() {
+      if (sState.busy) return;
+      sEnterPanel(sState.nombre, sState.curso, sState.apellido);
+    }
+
     function sEnterPanel(nombre, curso, apellido) {
       if (sState.busy) return Promise.resolve();
       sState.busy = true;
@@ -4133,7 +4378,8 @@
             showScreen(S_SCREENS, 's-screen-panel');
             sRender();
           } else {
-            sBanner(resp.message || 'No se pudo cargar.', 'err');
+            sBanner(resp.message || 'No se pudo cargar.', 'err',
+              'Reintentar', function () { sRetry_(); });
             if (resp.needsLogin) {
               sState.login = '';
               showScreen(S_SCREENS, 's-screen-login');
@@ -4159,10 +4405,12 @@
             sState.recordatorio = !!cached.recordatorio;
             showScreen(S_SCREENS, 's-screen-panel');
             sRender();
-            sBanner('Sin conexión: mostrando lo último guardado.', 'err');
+            sBanner('Sin conexión: mostrando lo último guardado.', 'err',
+              'Reintentar', function () { sRetry_(); });
             return;
           }
-          sBanner('Sin conexión. Probá de nuevo.', 'err');
+          sBanner('Sin conexión. Probá de nuevo.', 'err',
+            'Reintentar', function () { sRetry_(); });
         });
     }
 
@@ -4444,6 +4692,13 @@
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
       if ($('input-buscar-talk')) $('input-buscar-talk').addEventListener('input', function () { sRender(); });
+      if ($('chk-solo-lugares')) {
+        $('chk-solo-lugares').checked = !!sState.onlyAvailable;
+        $('chk-solo-lugares').addEventListener('change', function () {
+          sState.onlyAvailable = !!this.checked;
+          sRender();
+        });
+      }
       if ($('btn-done-volver')) $('btn-done-volver').addEventListener('click', function () {
         showScreen(S_SCREENS, 's-screen-panel');
         sRender();
@@ -4563,11 +4818,21 @@
     var aTimer = null;
     var aTicker = null;
 
-    function aBanner(text, type) {
+    function aBanner(text, type, actionLabel, actionFn) {
       var el = $('a-msg');
+      if (!el) return;
       el.textContent = text || '';
       el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
       el.style.display = text ? 'block' : 'none';
+      if (text && actionLabel && actionFn) {
+        el.classList.add('banner-action');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'banner-btn';
+        btn.textContent = actionLabel;
+        btn.addEventListener('click', function () { actionFn(); });
+        el.appendChild(btn);
+      }
     }
 
     function aLogin(pin) {
@@ -4704,8 +4969,11 @@
       var talkId = sel && sel.value ? sel.value : aTalkId;
       if (!talkId) return;
       aTalkId = talkId;
+      btnLoading_('btn-refresh-charla', true);
+      aSkeletonIfEmpty_('charla-list');
       call('apiAdminTalkRoster', [adminCred, talkId])
         .then(function (resp) {
+          btnLoading_('btn-refresh-charla', false);
           if (talkId !== aTalkId) return;
           if (!resp.ok) {
             aBanner(resp.message || 'No se pudo cargar.', 'err');
@@ -4721,6 +4989,7 @@
           aFlushMarks_();
         })
         .catch(function () {
+          btnLoading_('btn-refresh-charla', false);
           if (talkId !== aTalkId) return;
           var hit = aReadTalkCache_(talkId);
           if (hit) {
@@ -4753,7 +5022,7 @@
       }
       aTalkData.presentes = presentes;
       aRenderTalk();
-      if (typeof navigator !== 'undefined' && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { } }
+      haptic_(next ? 14 : 8);
       call('apiAdminSetPresent', [adminCred, id, next])
         .then(function (resp) {
           if (!resp.ok) {
@@ -4986,8 +5255,11 @@
 
     function aLoadPending() {
       if (!adminCred) return;
+      btnLoading_('btn-refresh-pend', true);
+      aSkeletonIfEmpty_('pend-list');
       call('apiAdminPending', [adminCred])
         .then(function (resp) {
+          btnLoading_('btn-refresh-pend', false);
           if (!resp.ok) {
             aBanner(resp.message || 'No se pudo cargar.', 'err');
             return;
@@ -4998,6 +5270,7 @@
           aRenderPending();
         })
         .catch(function () {
+          btnLoading_('btn-refresh-pend', false);
           aBanner('Sin conexión.', 'err');
         });
     }
@@ -5263,6 +5536,7 @@
 
     function aOnReportPresent(signupId, present) {
       if (!adminCred || !signupId) return;
+      haptic_(present ? 8 : 14);
       call('apiAdminSetPresent', [adminCred, signupId, !present])
         .then(function (resp) {
           if (!resp.ok) {
@@ -5670,8 +5944,9 @@
 
     function aSearch_(st) {
       var text = String(st.apellido || '') + ' ' + String(st.nombre || '') + ' '
-        + String(st.nombreCompleto || '') + ' ' + String(st.curso || '');
-      if (aRole === 'admin') text += ' ' + String(st.email || '');
+        + String(st.nombreCompleto || '') + ' ' + String(st.curso || '')
+        + ' ' + String(st.email || '');
+      if (st.dni) text += ' ' + String(st.dni);
       return text;
     }
 
@@ -5783,6 +6058,14 @@
           try { paneEl.focus({ preventScroll: true }); } catch (e3) { }
         }
       }
+      var shownPane = $('pane-' + name);
+      if (shownPane) {
+        shownPane.classList.remove('pane-in');
+        void shownPane.offsetWidth;
+        shownPane.classList.add('pane-in');
+      }
+      if (name === 'charla') aSkeletonIfEmpty_('charla-list');
+      if (name === 'pend') aSkeletonIfEmpty_('pend-list');
       if (name === 'mails' && !aMailPreview) aLoadMailPreview();
       aRefreshView();
       aSyncTableCards_();
@@ -6891,6 +7174,40 @@
       initReveal();
     }
 
+    function prefersDark_() {
+      return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    }
+
+    function currentTheme_() {
+      var t = document.documentElement.getAttribute("data-theme");
+      if (t === "dark" || t === "light") return t;
+      return prefersDark_() ? "dark" : "light";
+    }
+
+    function syncThemeBtn_(t) {
+      var b = $("btn-theme");
+      if (b) b.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
+      var l = $("btn-theme-label");
+      if (l) l.textContent = t === "dark" ? "Claro" : "Oscuro";
+    }
+
+    function applyTheme_(t) {
+      document.documentElement.setAttribute("data-theme", t);
+      lsSet("esi_theme", t);
+      syncThemeBtn_(t);
+    }
+
+    function initTheme_() {
+      var stored = lsGet("esi_theme");
+      var t = (stored === "dark" || stored === "light") ? stored : (prefersDark_() ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", t);
+      syncThemeBtn_(t);
+      var b = $("btn-theme");
+      if (b) b.addEventListener("click", function () {
+        applyTheme_(currentTheme_() === "dark" ? "light" : "dark");
+      });
+    }
+
     function purgeLegacyStorage() {
       ssDel('esi_admin_pin');
       ssDel('esi_student');
@@ -6901,6 +7218,7 @@
 
     function boot() {
       purgeLegacyStorage();
+      initTheme_();
       sheetInit();
       initShell();
       watchErrors_();
