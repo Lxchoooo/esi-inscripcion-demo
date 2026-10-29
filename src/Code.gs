@@ -899,9 +899,17 @@ function cleanLogText_(value, max) {
   return s.length > limit ? s.slice(0, limit) + '...' : s;
 }
 
+function errorsSheet_() {
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(ERRORS_SHEET);
+  if (sh) return sh;
+  return ensureSheet_(ss, ERRORS_SHEET,
+    ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []);
+}
+
 function pruneErrors_() {
   try {
-    var sh = sheet_(ERRORS_SHEET);
+    var sh = errorsSheet_();
     var extra = sh.getLastRow() - 1 - MAX_ERROR_ROWS;
     if (extra > 0) sh.deleteRows(2, extra);
   } catch (e) { }
@@ -919,7 +927,7 @@ function apiLogError(payload, sid) {
     var count = Number(cache.get(key) || 0);
     if (count >= 20) return { ok: false, message: 'Demasiados reportes.' };
     cache.put(key, String(count + 1), 600);
-    sheet_(ERRORS_SHEET).appendRow([
+    errorsSheet_().appendRow([
       new Date(),
       cleanLogText_(p.message || p.msg, 300),
       cleanLogText_(p.source || p.file, 200),
@@ -2361,6 +2369,8 @@ function apiAdminLogin(pin) {
     if (!auth.ok) return { ok: false, message: auth.message };
     var token = adminIssueToken_(auth.role);
     if (!token) return { ok: false, message: 'No se pudo emitir sesión.' };
+    // Instala el trigger diario de respaldo la primera vez que entra un admin.
+    try { configureDriveBackupTrigger_(); } catch (e) { }
     return { ok: true, role: auth.role, token: token };
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
