@@ -60,21 +60,23 @@ gh run list --limit 3
 gh run view <id> --log-failed
 ```
 
-`scripts/push.sh` corre tests, smoke y `node scripts/minify.js --check` antes de
+`scripts/push.sh` corre tests, smoke y `cmp src/Panel.html index.html` antes de
 usar `gh auth token` y hacer push de `HEAD` a `main`; `SKIP_TESTS=1` saltea el
 control. No bloquear la conversacion con `gh run watch`; consultar el run y
 seguir.
 
-`index.html` es generado: no editarlo a mano. Despues de tocar `src/Panel.html`:
+`index.html` es la copia publicada y debe ser identica a `src/Panel.html`
+(`cp src/Panel.html index.html`). Para el deploy de Apps Script hay una version
+comprimida opcional:
 
 ```bash
-node scripts/minify.js      # regenera index.html (CSS comprimido, JS sin indentar)
-node scripts/minify.js --check
+node scripts/minify.js   # genera build/index.min.html (CSS comprimido, JS sin indentar, -15%)
 ```
 
-El minificador valida la sintaxis del JS resultante con `vm.Script` y verifica
-marcadores clave; si falla, no escribe nada. Los tests (`tests/esi-tests.js`,
-`tests/ui-smoke.js`) siguen corriendo contra `src/`, que es la fuente editable.
+El minificador valida la sintaxis del JS con `vm.Script` y verifica marcadores
+clave; si falla, no escribe nada. Ese archivo se copia como `Panel.html` en el
+proyecto de clasp; nunca reemplaza a `index.html`. Tests y CI siguen corriendo
+contra `src/`.
 Verificar Pages con cachebuster:
 
 ```bash

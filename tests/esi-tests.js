@@ -165,12 +165,9 @@ function assertEq(a, b, msg) {
 const codeSrc = read('Code.gs');
 const panelHtml = read('Panel.html');
 const publishedCandidates = [path.join(ROOT, '..', 'index.html'), path.join(ROOT, 'web', 'index.html')];
-const { build: buildIndex } = require(path.join(__dirname, '..', 'scripts', 'minify.js'));
 for (const file of publishedCandidates) {
-  if (!fs.existsSync(file)) continue;
-  const expected = buildIndex(panelHtml);
-  if (fs.readFileSync(file, 'utf8') !== expected) {
-    console.error('FAIL published index.html is stale: ' + file + ' (corré node scripts/minify.js)');
+  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') !== panelHtml) {
+    console.error('FAIL published index.html is stale: ' + file);
     process.exit(1);
   }
 }
