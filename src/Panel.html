@@ -1308,8 +1308,7 @@
           <p class="hint">Una por horario.</p>
         </div>
         <div class="head-actions">
-          <button id="btn-cambiar-datos" class="btn link" type="button">Cambiar datos</button>
-          <button id="btn-alumno-salir" class="btn link" type="button">Salir</button>
+          <button id="btn-alumno-salir" class="btn link" type="button" style="display:none">Salir</button>
         </div>
       </div>
       <div class="summary" id="summary"></div>
@@ -1636,7 +1635,7 @@
         <div>
           <div class="steps">Listo</div>
           <h2 class="intro" id="done-title">Ya estás anotado</h2>
-          <p class="hint">Guardá esta pantalla o anotá tus charlas. Tu sesión queda guardada en este dispositivo: podés volver a entrar para cambiar tus charlas.</p>
+          <p class="hint">Guardá esta pantalla o anotá tus charlas. Tu sesión queda guardada en este dispositivo. Si necesitás cambiar tus datos, contactá al staff o a un preceptor.</p>
         </div>
       </div>
       <div id="done-list" class="card"></div>
@@ -1649,7 +1648,7 @@
     <section class="section landing" id="como" aria-labelledby="como-title">
       <p class="eyebrow">Cómo funciona</p>
       <h2 id="como-title">Tres pasos.</h2>
-      <p class="lead">Entrás, elegís y listo. Tu sesión queda guardada en este dispositivo: podés volver a entrar sin volver a ingresar tus datos.</p>
+      <p class="lead">Entrás, elegís y listo. Tu sesión queda guardada en este dispositivo y no se puede usar desde otro. Si necesitás cambiar tus datos, contactá al staff o a un preceptor.</p>
       <p class="lead">El día de la jornada, la guía marca tu presencia en cada charla. Si no podés asistir a alguna, avisá con tiempo para liberar el lugar.</p>
       <div class="how-grid">
         <article class="how-card">
@@ -1721,7 +1720,7 @@
       </details>
       <details class="faq">
         <summary>¿Puedo volver a entrar?</summary>
-        <p>Sí. Tu sesión queda guardada en este dispositivo. Si cambiás de teléfono o borrás los datos del navegador, volvé a ingresar con tu mail o DNI.</p>
+        <p>Sí, desde el mismo dispositivo. Tu sesión queda guardada acá. Si cambiás de teléfono o borrás los datos del navegador, contactá al staff para reingresar.</p>
       </details>
     </section>
   </div>
@@ -4252,21 +4251,8 @@
           window.prompt('Copiá el resumen:', text);
         }
       });
-      // btn-ics eliminado.
-      $('btn-cambiar-datos').addEventListener('click', function () {
-        var has = sState.data && Object.keys(sState.data.mine || {}).length > 0;
-        var ok = has
-          ? window.confirm('Tus charlas quedan guardadas. Para cambiar tus datos se cierra la sesión y volvés a ingresar. ¿Continuar?')
-          : true;
-        if (!ok) return;
-        sRevokeSession_();
-        sClearStudentSession_();
-        sState = sEmptyState_();
-        sClearLoginFields_();
-        sBanner('');
-        showScreen(S_SCREENS, 's-screen-login');
-        $('input-nombre').focus();
-      });
+      // btn-cambiar-datos y btn-alumno-salir eliminados de la UI: la sesión queda en este dispositivo.
+      // Si alguien necesita cambiar datos, debe contactar al staff/preceptores.
 
       showPagesNotice_();
       document.addEventListener('visibilitychange', function () {
