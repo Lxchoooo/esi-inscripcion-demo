@@ -25,9 +25,9 @@ esac
 if [ "${SKIP_TESTS:-0}" != "1" ]; then
   node tests/esi-tests.js src
   node tests/ui-smoke.js src
-  cmp src/Panel.html index.html
+  node scripts/minify.js --check
 else
-  echo "AVISO: SKIP_TESTS=1, no se corrieron tests ni se comparo index.html." >&2
+  echo "AVISO: SKIP_TESTS=1, no se corrieron tests ni se verifico index.html." >&2
 fi
 
 GH_TOKEN="$(gh auth token)"

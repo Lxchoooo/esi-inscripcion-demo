@@ -60,10 +60,21 @@ gh run list --limit 3
 gh run view <id> --log-failed
 ```
 
-`scripts/push.sh` corre tests, smoke y `cmp src/Panel.html index.html` antes de
+`scripts/push.sh` corre tests, smoke y `node scripts/minify.js --check` antes de
 usar `gh auth token` y hacer push de `HEAD` a `main`; `SKIP_TESTS=1` saltea el
 control. No bloquear la conversacion con `gh run watch`; consultar el run y
 seguir.
+
+`index.html` es generado: no editarlo a mano. Despues de tocar `src/Panel.html`:
+
+```bash
+node scripts/minify.js      # regenera index.html (CSS comprimido, JS sin indentar)
+node scripts/minify.js --check
+```
+
+El minificador valida la sintaxis del JS resultante con `vm.Script` y verifica
+marcadores clave; si falla, no escribe nada. Los tests (`tests/esi-tests.js`,
+`tests/ui-smoke.js`) siguen corriendo contra `src/`, que es la fuente editable.
 Verificar Pages con cachebuster:
 
 ```bash

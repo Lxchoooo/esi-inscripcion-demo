@@ -27,6 +27,11 @@ var LOGIN_TICKET_TTL = 300;
 var CONFIG_TEST_MODE = 'modo_prueba';
 var CONFIG_DATA_ERASED = 'datos_personales_borrados';
 var CONFIG_BACKUP_ACTIVE = 'backup_activo';
+var CONFIG_DRIVE_BACKUP = 'backup_drive_activo';
+var ERRORS_SHEET = 'Errors';
+var MAX_ERROR_ROWS = 500;
+var DRIVE_BACKUP_FOLDER = 'ESI 2026 Respaldos';
+var DRIVE_BACKUP_KEEP = 14;
 // 2026-11-04 23:59:59 -03. Sessions can live 24 h past the event.
 var EVENT_DEFAULT_DATE_ = '2026-11-04';
 var EVENT_DEFAULT_TZ_ = 'America/Argentina/Cordoba';
@@ -755,7 +760,9 @@ var API_FN_MAP_ = {
   apiAdminDeleteStudent: apiAdminDeleteStudent,
   apiAdminDeleteTestData: apiAdminDeleteTestData,
   apiAdminCloseEvent: apiAdminCloseEvent,
-  apiAdminErasePersonalData: apiAdminErasePersonalData
+  apiAdminErasePersonalData: apiAdminErasePersonalData,
+  apiAdminBackupDrive: apiAdminBackupDrive,
+  apiLogError: apiLogError
 };
 
 function doGet(e) {
@@ -814,6 +821,7 @@ function setup() {
   ensureConfigDefault_('evento_zona', EVENT_DEFAULT_TZ_);
   ensureConfigDefault_(CONFIG_TEST_MODE, 'no');
   ensureConfigDefault_(CONFIG_BACKUP_ACTIVE, 'si');
+  ensureConfigDefault_(CONFIG_DRIVE_BACKUP, 'si');
   ensureSheet_(ss, SLOTS_SHEET, ['id', 'nombre', 'inicio', 'fin', 'orden'], [
     [1, '1ra', '10:30', '11:20', 1],
     [2, '2da', '11:30', '12:20', 2],
@@ -827,6 +835,7 @@ function setup() {
   ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
   ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
   ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
+  ensureSheet_(ss, ERRORS_SHEET, ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []);
   var signupsSh = sheet_(SIGNUPS_SHEET);
   ensureColumn_(signupsSh, 'presente');
   ensureColumn_(signupsSh, 'apellido');
@@ -853,6 +862,26 @@ function configureBackupTrigger_() {
     } else if (!active) {
       for (var j = 0; j < existing.length; j++) ScriptApp.deleteTrigger(existing[j]);
     }
+    configureDriveBackupTrigger_();
+  } catch (e) { }
+}
+
+function configureDriveBackupTrigger_() {
+  if (typeof ScriptApp === 'undefined') return;
+  try {
+    var cfg = readConfig_();
+    var on = cfg[CONFIG_DRIVE_BACKUP] == null || String(cfg[CONFIG_DRIVE_BACKUP]).trim() === ''
+      ? true : convertBool_(cfg[CONFIG_DRIVE_BACKUP]);
+    var triggers = ScriptApp.getProjectTriggers();
+    var existing = [];
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'backupToDrive_') existing.push(triggers[i]);
+    }
+    if (on && !existing.length) {
+      ScriptApp.newTrigger('backupToDrive_').timeBased().atHour(2).everyDays(1).create();
+    } else if (!on) {
+      for (var j = 0; j < existing.length; j++) ScriptApp.deleteTrigger(existing[j]);
+    }
   } catch (e) { }
 }
 
@@ -860,6 +889,110 @@ function logAction_(action, signupId, detail) {
   try {
     sheet_(LOG_SHEET).appendRow([new Date(), String(action || ''), String(signupId || ''), String(detail || '')]);
   } catch (e) { }
+}
+
+function cleanLogText_(value, max) {
+  var s = String(value == null ? '' : value);
+  s = s.replace(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g, '[mail]');
+  s = s.replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  var limit = Number(max) || 300;
+  return s.length > limit ? s.slice(0, limit) + '...' : s;
+}
+
+function pruneErrors_() {
+  try {
+    var sh = sheet_(ERRORS_SHEET);
+    var extra = sh.getLastRow() - 1 - MAX_ERROR_ROWS;
+    if (extra > 0) sh.deleteRows(2, extra);
+  } catch (e) { }
+}
+
+function apiLogError(payload, sid) {
+  try {
+    var p = payload;
+    if (typeof p === 'string') {
+      try { p = JSON.parse(p); } catch (e2) { p = { message: p }; }
+    }
+    if (!p || typeof p !== 'object') return { ok: false, message: 'Sin datos.' };
+    var cache = CacheService.getScriptCache();
+    var key = 'err_' + cleanLogText_(sid || 'anon', 40);
+    var count = Number(cache.get(key) || 0);
+    if (count >= 20) return { ok: false, message: 'Demasiados reportes.' };
+    cache.put(key, String(count + 1), 600);
+    sheet_(ERRORS_SHEET).appendRow([
+      new Date(),
+      cleanLogText_(p.message || p.msg, 300),
+      cleanLogText_(p.source || p.file, 200),
+      cleanLogText_(p.line, 20),
+      cleanLogText_(p.stack, 900),
+      cleanLogText_(p.version, 20),
+      cleanLogText_(p.href || p.url, 180),
+      cleanLogText_(p.ua, 180)
+    ]);
+    pruneErrors_();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
+function driveBackupFolder_() {
+  var it = DriveApp.getFoldersByName(DRIVE_BACKUP_FOLDER);
+  if (it.hasNext()) return it.next();
+  return DriveApp.createFolder(DRIVE_BACKUP_FOLDER);
+}
+
+function pruneDriveBackups_(folder) {
+  var files = folder.getFiles();
+  var list = [];
+  while (files.hasNext()) {
+    var f = files.next();
+    if (String(f.getName()).indexOf('ESI-2026-respaldo-') === 0) list.push(f);
+  }
+  list.sort(function (a, b) {
+    return a.getDateCreated().getTime() - b.getDateCreated().getTime();
+  });
+  var removed = 0;
+  while (list.length > DRIVE_BACKUP_KEEP) {
+    try { list.shift().setTrashed(true); removed++; } catch (e) { break; }
+  }
+  return removed;
+}
+
+function backupToDrive_() {
+  if (typeof DriveApp === 'undefined') return { ok: false, message: 'Drive no disponible.' };
+  try {
+    var cfg = readConfig_();
+    if (cfg[CONFIG_DRIVE_BACKUP] != null && String(cfg[CONFIG_DRIVE_BACKUP]).trim() !== ''
+      && !convertBool_(cfg[CONFIG_DRIVE_BACKUP])) {
+      return { ok: false, message: 'Respaldo a Drive desactivado.' };
+    }
+    var tz = (SpreadsheetApp.getActive().getSpreadsheetTimeZone && SpreadsheetApp.getActive().getSpreadsheetTimeZone())
+      || 'America/Argentina/Cordoba';
+    var stamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    var name = 'ESI-2026-respaldo-' + stamp;
+    var folder = driveBackupFolder_();
+    var existing = folder.getFilesByName(name);
+    if (existing.hasNext()) {
+      var hit = existing.next();
+      return { ok: true, skipped: true, name: name, id: hit.getId ? hit.getId() : '' };
+    }
+    var file = DriveApp.getFileById(SpreadsheetApp.getActive().getId());
+    var copy = file.makeCopy(name, folder);
+    var pruned = pruneDriveBackups_(folder);
+    logAction_('backup_drive', '', name);
+    return { ok: true, name: name, id: copy.getId ? copy.getId() : '', pruned: pruned };
+  } catch (e) {
+    return { ok: false, message: 'No se pudo respaldar a Drive.' };
+  }
+}
+
+function apiAdminBackupDrive(cred) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  var onlyAdmin = requireAdmin_(auth);
+  if (!onlyAdmin.ok) return onlyAdmin;
+  return backupToDrive_();
 }
 
 function backupSignups_() {
