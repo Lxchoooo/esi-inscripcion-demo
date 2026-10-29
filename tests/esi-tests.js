@@ -82,7 +82,73 @@ function summary() {
 
 function finish() {
   asyncPending--;
-  summary();
+t('apiLogError stores sanitized client errors and rate limits', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiLogError');
+  const r = api.apiLogError({
+    message: 'Fallo con ana@secundariosalsipuedes.edu.ar en el panel',
+    source: 'Panel.html', line: 42, stack: 'Error: x\n  at y',
+    version: 'v33', ua: 'Mozilla/5.0'
+  }, 'sid-1');
+  assertEq(r.ok, true, 'first report ok');
+  const rows = services.sheets.Errors.data;
+  assertEq(rows.length, 2, 'one row appended');
+  if (String(rows[1][1]).indexOf('ana@') >= 0) throw new Error('email leaked');
+  if (String(rows[1][1]).indexOf('[mail]') < 0) throw new Error('email not masked');
+  assertEq(rows[1][5], 'v33', 'version stored');
+  for (let i = 0; i < 25; i++) api.apiLogError({ message: 'x' }, 'sid-1');
+  assertEq(services.sheets.Errors.data.length, 21, 'rate limited at 20 reports');
+  const other = api.apiLogError({ message: 'y' }, 'sid-2');
+  assertEq(other.ok, true, 'other session still allowed');
+});
+
+t('backupToDrive_ copies once per day and prunes old files', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'backupToDrive_');
+  const files = [];
+  const created = [];
+  function fakeFile(name, daysAgo) {
+    const f = {
+      name: name,
+      getId: () => 'id-' + name,
+      getName: () => name,
+      getDateCreated: () => new Date(Date.now() - daysAgo * 86400000),
+      setTrashed: (v) => { f.trashed = !!v; }
+    };
+    return f;
+  }
+  for (let i = 0; i < 16; i++) files.push(fakeFile('ESI-2026-respaldo-2026-10-' + String(i + 1).padStart(2, '0'), 20 - i));
+  const folder = {
+    getFilesByName: (n) => {
+      const hits = files.filter((f) => f.getName() === n);
+      let i = 0;
+      return { hasNext: () => i < hits.length, next: () => hits[i++] };
+    },
+    getFiles: () => {
+      let i = 0;
+      return { hasNext: () => i < files.length, next: () => files[i++] };
+    }
+  };
+  global.DriveApp = {
+    getFoldersByName: () => ({ hasNext: () => true, next: () => folder }),
+    createFolder: () => folder,
+    getFileById: () => ({ makeCopy: (name) => { created.push(name); const f = fakeFile(name, 0); files.push(f); return f; } })
+  };
+  try {
+    const r1 = api.backupToDrive_();
+    assertEq(r1.ok, true, 'backup ok: ' + r1.message);
+    assertEq(created.length, 1, 'one copy created');
+    const r2 = api.backupToDrive_();
+    assertEq(r2.skipped, true, 'same day skipped');
+    assertEq(created.length, 1, 'no duplicate copy');
+    const alive = files.filter((f) => !f.trashed);
+    assertEq(alive.length, 14, 'kept last 14 copies');
+  } finally {
+    delete global.DriveApp;
+  }
+});
+
+summary();
 }
 
 process.once('exit', function () {
@@ -99,9 +165,12 @@ function assertEq(a, b, msg) {
 const codeSrc = read('Code.gs');
 const panelHtml = read('Panel.html');
 const publishedCandidates = [path.join(ROOT, '..', 'index.html'), path.join(ROOT, 'web', 'index.html')];
+const { build: buildIndex } = require(path.join(__dirname, '..', 'scripts', 'minify.js'));
 for (const file of publishedCandidates) {
-  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') !== panelHtml) {
-    console.error('FAIL published index.html is stale: ' + file);
+  if (!fs.existsSync(file)) continue;
+  const expected = buildIndex(panelHtml);
+  if (fs.readFileSync(file, 'utf8') !== expected) {
+    console.error('FAIL published index.html is stale: ' + file + ' (corré node scripts/minify.js)');
     process.exit(1);
   }
 }
@@ -970,6 +1039,7 @@ function backendStub(props, seed) {
       ['carla@secundariosalsipuedes.edu.ar', 'Carla Diaz', '3°A']
     ]),
     Mails: fakeSheet('Mails', ['email', 'fecha', 'asunto'], []),
+    Errors: fakeSheet('Errors', ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []),
     Signups: fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'recordatorio'],
       (seed && seed.signups) || [
         ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1', true],
@@ -986,6 +1056,7 @@ function backendStub(props, seed) {
     getSheetByName: (n) => sheets[n] || null,
     insertSheet: (n) => { sheets[n] = fakeSheet(n, [], []); return sheets[n]; },
     getSpreadsheetTimeZone: () => 'America/Argentina/Cordoba',
+    getId: () => 'sheet1',
     toast: () => { }
   };
   return {

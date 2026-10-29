@@ -572,6 +572,7 @@
       align-items: center; justify-content: space-between;
       font-size: 12.5px; color: var(--muted);
     }
+    .footer-ver { opacity: .7; font-variant-numeric: tabular-nums; }
     .footer-inner a {
       color: var(--muted); text-decoration: none;
       border-bottom: 1px solid transparent;
@@ -1882,6 +1883,7 @@
   <footer class="site">
     <div class="footer-inner">
       <span>ISS · Jornada ESI 2026</span>
+      <span id="app-version" class="footer-ver"></span>
     </div>
   </footer>
 
@@ -1907,6 +1909,8 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
+    var APP_VERSION = 'v33';
+    var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
     function $(id) { return document.getElementById(id); }
@@ -6899,6 +6903,7 @@
       purgeLegacyStorage();
       sheetInit();
       initShell();
+      watchErrors_();
       if (TRANSPORT === 'unconfigured') {
         $('btn-demo').addEventListener('click', function () {
           lsSet('esi_demo', '1');
@@ -6925,6 +6930,50 @@
         if (!/(^|\.)github\.io$/.test(window.location.hostname)) return;
         navigator.serviceWorker.register('sw.js').catch(function () { });
       } catch (e) { }
+    }
+
+    function errorSid_() {
+      var sid = ssGet('esi_sid');
+      if (!sid) {
+        sid = 'p' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        ssSet('esi_sid', sid);
+      }
+      return sid;
+    }
+
+    function reportError_(message, source, line, stack) {
+      try {
+        if (errorReports_ >= 5) return;
+        errorReports_++;
+        if (typeof call !== 'function') return;
+        call('apiLogError', [{
+          message: String(message == null ? '' : message),
+          source: String(source == null ? '' : source),
+          line: String(line == null ? '' : line),
+          stack: String(stack == null ? '' : stack),
+          href: String(window.location.href || ''),
+          ua: String((navigator && navigator.userAgent) || ''),
+          version: APP_VERSION
+        }, errorSid_()]).catch(function () { });
+      } catch (e) { }
+    }
+
+    function watchErrors_() {
+      window.addEventListener('error', function (e) {
+        if (!e) return;
+        var t = e.target;
+        if (t && t !== window && t.tagName) {
+          reportError_('No se pudo cargar ' + t.tagName, t.src || t.href || '', '', '');
+          return;
+        }
+        reportError_(e.message, e.filename, e.lineno, e.error && e.error.stack);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e && e.reason;
+        reportError_(r && r.message ? r.message : r, '', '', r && r.stack);
+      });
+      var ver = $('app-version');
+      if (ver) ver.textContent = APP_VERSION;
     }
 
     document.addEventListener('DOMContentLoaded', boot);
