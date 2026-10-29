@@ -27,9 +27,4 @@ jobs:
       - name: Smoke de interfaz
         run: node tests/ui-smoke.js src
       - name: Copia publicada
-        run: node scripts/minify.js --check
-      - name: Smoke sobre la copia publicada
-        run: |
-          mkdir -p build/min
-          cp index.html build/min/Panel.html
-          node tests/ui-smoke.js build/min
+        run: cmp src/Panel.html index.html

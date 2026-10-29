@@ -27,3 +27,6 @@ build/put*.json
 # Tooling
 .DS_Store
 node_modules/
+
+# Build local (minificado)
+build/index.min.html

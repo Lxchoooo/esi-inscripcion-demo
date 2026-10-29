@@ -13,7 +13,7 @@ const path = require('path');
 const vm = require('vm');
 
 const SRC = path.join(__dirname, '..', 'src', 'Panel.html');
-const OUT = path.join(__dirname, '..', 'index.html');
+const OUT = path.join(__dirname, '..', 'build', 'index.min.html');
 
 function minifyCss(css) {
   let out = css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -67,15 +67,16 @@ function main() {
     let current = '';
     try { current = fs.readFileSync(OUT, 'utf8'); } catch (e) { current = ''; }
     if (current !== out) {
-      console.error('index.html esta desactualizado. Corré: node scripts/minify.js');
+      console.error('build/index.min.html esta desactualizado. Corré: node scripts/minify.js');
       process.exit(1);
     }
-    console.log('index.html OK (' + Math.round(after / 1024) + ' KB, -'
+    console.log('build/index.min.html OK (' + Math.round(after / 1024) + ' KB, -'
       + Math.round((1 - after / before) * 100) + '% vs src)');
     return;
   }
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, out);
-  console.log('index.html generado: ' + Math.round(after / 1024) + ' KB (src '
+  console.log('build/index.min.html generado: ' + Math.round(after / 1024) + ' KB (src '
     + Math.round(before / 1024) + ' KB, -' + Math.round((1 - after / before) * 100) + '%)');
 }
 
