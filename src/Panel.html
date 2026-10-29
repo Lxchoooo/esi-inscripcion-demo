@@ -1153,6 +1153,7 @@
           <h1 id="hdr-title">ESI</h1>
           <span id="hdr-sub"></span>
           <span id="hdr-present" class="admin-only" style="display:none;font-size:12px;color:#C9D8C5"></span>
+          <span id="conn-status" style="font-size:12px;margin-left:8px"></span>
         </div>
       </a>
       <nav class="nav-links" aria-label="Secciones">
@@ -1645,6 +1646,7 @@
       <div class="toolbar" style="margin-top:16px">
         <button id="btn-done-volver" class="btn secondary small" type="button">Volver a mis charlas</button>
         <button id="btn-done-copiar" class="btn small" type="button">Copiar resumen</button>
+        <button id="btn-done-imprimir" class="btn secondary small" type="button">Imprimir</button>
       </div>
     </section>
 
@@ -4243,6 +4245,7 @@
         showScreen(S_SCREENS, 's-screen-panel');
         sRender();
       });
+      if ($('btn-done-imprimir')) $('btn-done-imprimir').addEventListener('click', function () { window.print(); });
       if ($('btn-done-copiar')) $('btn-done-copiar').addEventListener('click', function () {
         var d = sState.data || {};
         var slots = d.slots || [];
@@ -4264,6 +4267,19 @@
       // Si alguien necesita cambiar datos, debe contactar al staff/preceptores.
 
       showPagesNotice_();
+      function sUpdateConn_() {
+        var el = $('conn-status');
+        if (!el) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          el.textContent = 'Sin conexión';
+          el.style.color = '#F0B5AA';
+        } else {
+          el.textContent = '';
+        }
+      }
+      sUpdateConn_();
+      window.addEventListener('online', sUpdateConn_);
+      window.addEventListener('offline', sUpdateConn_);
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible' && sState.data && !sState.busy
           && $('s-screen-panel').className.indexOf('active') >= 0) {
