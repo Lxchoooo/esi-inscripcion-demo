@@ -10,7 +10,10 @@
   <title>ISS · Jornada ESI 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
   <style>
     :root {
       --paper: #FAF8F5;
@@ -879,6 +882,22 @@
     .panel-bar-title strong { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
     .panel-bar-title .steps { margin: 0; }
     .panel-bar-actions { display: flex; gap: 8px; margin-left: auto; }
+    .panel-search {
+      display: flex; align-items: center; gap: 8px; flex: 1 1 220px; max-width: 360px;
+      min-width: 0; padding: 0 12px; min-height: 44px;
+      border: 1px solid var(--line-ui); border-radius: 999px;
+      background: var(--surface); color: var(--muted);
+      transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+    }
+    .panel-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--surface-tint); }
+    .panel-search input {
+      flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+      font: inherit; font-size: 14px; padding: 10px 0; margin: 0;
+    }
+    .panel-search input:focus { outline: none; }
+    @media (max-width: 719px) {
+      .panel-search { order: 3; flex: 1 1 100%; max-width: none; }
+    }
     .menu-toggle { display: none; width: 44px; height: 44px; padding: 0; align-items: center; justify-content: center; flex: 0 0 auto; }
     .menu-bars, .menu-bars::before, .menu-bars::after {
       display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; content: "";
@@ -1479,6 +1498,11 @@
         <div class="panel-bar-title">
           <span class="steps">3 de 3</span>
           <strong>Panel de profes</strong>
+        </div>
+        <div class="panel-search">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="input-buscar-global" type="search" autocomplete="off"
+            placeholder="Buscar alumno, mail o charla" aria-label="Búsqueda global">
         </div>
         <div class="panel-bar-actions">
           <button id="btn-arefresh" class="btn secondary small" type="button">
@@ -4097,6 +4121,10 @@
             sState.recordatorio = !!resp.recordatorio;
             sState.login = '';
             sSetSession_(resp.session || savedToken);
+            lsSet('esi_last_data', JSON.stringify({
+              ts: Date.now(), student: resp.student, data: resp.data,
+              recordatorio: !!resp.recordatorio
+            }));
             sBanner('');
             showScreen(S_SCREENS, 's-screen-panel');
             sRender();
@@ -4116,6 +4144,20 @@
         })
         .catch(function () {
           sState.busy = false;
+          var cached = null;
+          try { cached = JSON.parse(lsGet('esi_last_data') || 'null'); } catch (e) { cached = null; }
+          if (cached && cached.data && cached.student) {
+            sState.student = cached.student;
+            sState.nombre = cached.student.nombre || sState.nombre;
+            sState.apellido = cached.student.apellido || sState.apellido;
+            sState.curso = cached.student.curso || sState.curso;
+            sState.data = cached.data;
+            sState.recordatorio = !!cached.recordatorio;
+            showScreen(S_SCREENS, 's-screen-panel');
+            sRender();
+            sBanner('Sin conexión: mostrando lo último guardado.', 'err');
+            return;
+          }
           sBanner('Sin conexión. Probá de nuevo.', 'err');
         });
     }
@@ -6642,6 +6684,25 @@
         window.clearTimeout(buscarTimer);
         buscarTimer = window.setTimeout(aRenderTable, 180);
       });
+      if ($('input-buscar-global')) {
+        var globalTimer = 0;
+        $('input-buscar-global').addEventListener('input', function () {
+          var q = this.value || '';
+          window.clearTimeout(globalTimer);
+          globalTimer = window.setTimeout(function () {
+            if ($('input-buscar')) $('input-buscar').value = q;
+            if (q && aTabName !== 'inscriptos') aTab('inscriptos');
+            aRenderTable();
+          }, 200);
+        });
+        $('input-buscar-global').addEventListener('keydown', function (e) {
+          if (e && (e.key === 'Enter' || e.keyCode === 13)) {
+            if ($('input-buscar')) $('input-buscar').value = this.value || '';
+            aTab('inscriptos');
+            aRenderTable();
+          }
+        });
+      }
       $('filter-curso').addEventListener('change', aRenderTable);
       $('filter-division').addEventListener('change', aRenderTable);
       $('filter-charla').addEventListener('change', aRenderTable);
@@ -6854,6 +6915,16 @@
       if (TRANSPORT === 'demo') {
         document.body.classList.add('demo');
       }
+      registerServiceWorker_();
+    }
+
+    function registerServiceWorker_() {
+      try {
+        if (!('serviceWorker' in navigator)) return;
+        if (window.location.protocol !== 'https:') return;
+        if (!/(^|\.)github\.io$/.test(window.location.hostname)) return;
+        navigator.serviceWorker.register('sw.js').catch(function () { });
+      } catch (e) { }
     }
 
     document.addEventListener('DOMContentLoaded', boot);

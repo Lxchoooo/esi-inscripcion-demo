@@ -1,0 +1,21 @@
+{
+  "name": "Jornada ESI 2026 · ISS",
+  "short_name": "ESI 2026",
+  "description": "Inscripción a las charlas de la Jornada ESI 2026 del Instituto Secundario Salsipuedes.",
+  "lang": "es-AR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF8F5",
+  "theme_color": "#1F6B3F",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
