@@ -1164,9 +1164,12 @@ t('El panel de profes se reconoce desde el servidor', () => {
   if (!/getAttribute\('data-admin'\)/.test(panelSrc)) throw new Error('panel ignores the flag');
 });
 
-t('El botón de confirmar desaparece cuando ya está anotado', () => {
+t('El botón de confirmar aparece recién cuando eligió todas las charlas', () => {
   if (!/id="sel-bar"/.test(panelHtml)) throw new Error('sel-bar has no id');
-  if (!/'Ya estás anotado'/.test(panelSrc)) throw new Error('no done state');
+  if (!/Inscripción confirmada/.test(panelSrc)) throw new Error('no done state');
+  if (!/var canConfirm = !!d\.evento_abierto && done && !sState\.confirmed;/.test(panelSrc)) {
+    throw new Error('confirm button does not require all slots');
+  }
   if (!/confirmBtn\.style\.display = canConfirm \? '' : 'none'/.test(panelSrc)) {
     throw new Error('confirm button is not hidden');
   }
