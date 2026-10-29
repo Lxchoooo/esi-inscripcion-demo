@@ -1152,6 +1152,7 @@
           <span class="brand-school">Instituto Secundario Salsipuedes</span>
           <h1 id="hdr-title">ESI</h1>
           <span id="hdr-sub"></span>
+          <span id="hdr-present" class="admin-only" style="display:none;font-size:12px;color:#C9D8C5"></span>
         </div>
       </a>
       <nav class="nav-links" aria-label="Secciones">
@@ -4636,6 +4637,11 @@
       $('charla-count').textContent = d.count + ' de ' + d.talk.cupo + ' lugares';
       var presentesEl = $('charla-presentes');
       if (presentesEl) presentesEl.textContent = 'Presentes ' + (d.presentes || 0) + ' de ' + d.count;
+      var hdrPresent = $('hdr-present');
+      if (hdrPresent) {
+        hdrPresent.style.display = adminCred ? 'inline' : 'none';
+        hdrPresent.textContent = 'Presentes: ' + (d.presentes || 0) + '/' + d.count;
+      }
       var rows = '';
       var shown = 0;
       var cursos = {};
