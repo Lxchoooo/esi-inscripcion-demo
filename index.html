@@ -680,8 +680,11 @@
 
     label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin: 16px 0 7px; }
     .field { display: grid; gap: 8px; }
+    .field { grid-template-columns: minmax(0, 1fr); min-width: 0; }
     .field label { margin: 0; }
     .login-fields { display: grid; gap: 16px; }
+    .login-fields > * { min-width: 0; }
+    .login-fields input, .login-fields select { max-width: 100%; min-width: 0; }
     .login-form { margin-top: 4px; }
     .login-fields .btn.full { margin: 0; }
     input[type=text], input[type=password], input[type=email], select, textarea {
@@ -1720,11 +1723,11 @@
     #pane-charla .status-chips button { transition-duration: var(--dur-1) !important; }
     #nav::after { will-change: opacity; }
     .acc-body {
-      display: grid; grid-template-rows: 1fr; opacity: 1;
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; opacity: 1;
       transition: grid-template-rows var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
     }
     .acc-body.closed { grid-template-rows: 0fr; opacity: 0; }
-    .acc-body > div { overflow: hidden; }
+    .acc-body > div { overflow: hidden; min-width: 0; }
     @keyframes donutDraw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
     .donut .arc.in { animation: donutDraw var(--dur-draw) var(--ease-out) both; }
     @keyframes shakeX {
@@ -2411,7 +2414,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v40';
+    var APP_VERSION = 'v41';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4321,6 +4324,13 @@
       sync();
     }
 
+    function focusField_(el) {
+      if (!el || !el.focus) return;
+      var fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      if (!fine) return;
+      try { el.focus(); } catch (e) { }
+    }
+
     function haptic_(ms) {
       if (typeof navigator === 'undefined' || !navigator.vibrate) return;
       try { navigator.vibrate(ms || 12); } catch (e) { }
@@ -4943,7 +4953,7 @@
             sBanner(resp.message || 'No pudimos entrar.', 'err');
             if (resp.needsApellido) {
               sOpenLoginExtra_();
-              try { $('input-apellido').focus(); } catch (e) { }
+              focusField_($('input-apellido'));
             }
             return;
           }
@@ -5049,17 +5059,17 @@
       var curso = needsCurso ? form.curso : sState.curso;
       if (needsNombre && !(typeof EsiClient !== 'undefined' && EsiClient.isValidName ? EsiClient.isValidName(nombre) : String(nombre).replace(/\s/g, '').length >= 2)) {
         sBanner('Escribí tu nombre.', 'err');
-        try { $('input-nombre').focus(); } catch (e) { }
+        focusField_($('input-nombre'));
         return;
       }
       if (needsApellido && String(apellido).replace(/\s/g, '').length < 2) {
         sBanner('Escribí tu apellido.', 'err');
-        try { $('input-apellido').focus(); } catch (e) { }
+        focusField_($('input-apellido'));
         return;
       }
       if (needsCurso && !curso) {
         sBanner('Elegí año y división.', 'err');
-        try { $('select-anio').focus(); } catch (e) { }
+        focusField_($('select-anio'));
         return;
       }
       var full = String(nombre || '').replace(/\s+/g, ' ').trim();
@@ -5105,7 +5115,7 @@
       });
       $('btn-login-start').addEventListener('click', function () {
         showScreen(S_SCREENS, 's-screen-login');
-        $('input-mail').focus();
+        focusField_($('input-mail'));
       });
       $('btn-login-back').addEventListener('click', function () {
         showScreen(S_SCREENS, 's-screen-mail');
@@ -7722,7 +7732,7 @@
 
     function accInit_() {
       try {
-        var ds = document.querySelectorAll('details.mail-help, details.faq');
+        var ds = document.querySelectorAll('details.faq');
         for (var i = 0; i < ds.length; i++) accOne_(ds[i]);
       } catch (e) { }
     }

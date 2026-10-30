@@ -1181,7 +1181,7 @@ t('Login asks for nombre before apellido', () => {
   if (nombre < 0 || apellido < 0 || nombre > apellido) {
     throw new Error('nombre must come before apellido');
   }
-  if (!/function sUseLoginData_[\s\S]*?needsNombre[\s\S]*?input-nombre'\)\.focus\(\)/s.test(panelSrc)) {
+  if (!/function sUseLoginData_[\s\S]*?needsNombre[\s\S]*?focusField_\(\$\(.input-nombre.\)\)/s.test(panelSrc)) {
     throw new Error('focus order does not start with nombre');
   }
 });
@@ -2961,6 +2961,22 @@ t('r14: acordeones, encabezado y toasts', () => {
   if (!/slice\.call\(document\.querySelectorAll\(\x27\.reveal:not\(\[data-rv\]\)\x27\), 0, 6\)/.test(panelSrc)) {
     throw new Error('reveal sin tope de 6');
   }
+});
+
+t('r14: el formulario de datos no se recorta ni abre el teclado solo', () => {
+  const css = panelCss();
+  if (!/document\.querySelectorAll\(\x27details\.faq\x27\)/.test(panelSrc)) {
+    throw new Error('el acordeon no debe envolver los detalles del login');
+  }
+  if (/details\.mail-help, details\.faq/.test(panelSrc)) throw new Error('login todavia envuelto');
+  if (!/\.acc-body \{[^}]*grid-template-columns: minmax\(0, 1fr\)/.test(css)) throw new Error('acordeon sin minmax');
+  if (!/\.field \{[^}]*grid-template-columns: minmax\(0, 1fr\)/.test(css)) throw new Error('campo sin minmax');
+  if (!/\.login-fields > \* \{ min-width: 0; \}/.test(css)) throw new Error('login sin min-width 0');
+  if (!/\.login-fields input, \.login-fields select \{ max-width: 100%/.test(css)) throw new Error('campos sin tope de ancho');
+  if (!/function focusField_\(el\)/.test(panelSrc)) throw new Error('sin foco guardado');
+  if (!/if \(!fine\) return;/.test(panelSrc)) throw new Error('foco sin guarda tactil');
+  const raw = panelSrc.match(/\$\x27(input-nombre|input-apellido|input-mail)\x27\)\.focus\(\)/g) || [];
+  if (raw.length) throw new Error('foco directo en ' + raw.join(', '));
 });
 
 summary();
