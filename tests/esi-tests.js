@@ -3534,6 +3534,24 @@ t('r15: updateSessionsStudent_ busca el mail por encabezado', () => {
   if (!/vals\[i\]\[emailCol\]/.test(body)) throw new Error('sigue usando un indice fijo');
 });
 
+t('r15: el manifest trae icono chico y maskable', () => {
+  const man = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
+  const icons = man.icons || [];
+  const has = (size, purpose) => icons.some((i) => i.sizes === size && String(i.purpose || '').split(' ').indexOf(purpose) >= 0);
+  if (!has('192x192', 'any')) throw new Error('falta el 192x192');
+  if (!has('512x512', 'any')) throw new Error('falta el 512x512');
+  if (!has('512x512', 'maskable')) throw new Error('falta el maskable');
+  for (const icon of icons) {
+    const buf = fs.readFileSync(icon.src);
+    const size = buf.readUInt32BE(16) + 'x' + buf.readUInt32BE(20);
+    if (size !== icon.sizes) throw new Error(icon.src + ' mide ' + size + ' y dice ' + icon.sizes);
+  }
+  const sw = fs.readFileSync('sw.js', 'utf8');
+  for (const icon of icons) {
+    if (sw.indexOf(icon.src) < 0) throw new Error('el sw no cachea ' + icon.src);
+  }
+});
+
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
   if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');

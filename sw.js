@@ -3,8 +3,8 @@
    script.google.com ni respuestas de la API. */
 'use strict';
 
-var CACHE = 'esi-shell-v1';
-var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'assets/logo.png'];
+var CACHE = 'esi-shell-v2';
+var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'assets/logo.png', 'assets/logo-192.png', 'assets/logo-maskable-512.png'];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
