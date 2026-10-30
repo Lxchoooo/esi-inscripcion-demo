@@ -12,8 +12,7 @@ guia marca presentes sin ver mails.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
 - Estado: ronda 15 publicada en `main` (panel `v43`, backend `v43`): un solo
   panel con la misma clave para guias, preceptores y profes; pantalla "Listo
-  para el evento" de solo lectura con 9 controles; aviso de privacidad; docs del
-  dia. tests 193/0, smoke OK, CI tests y Pages verdes. MailApp y dispositivo
+  para el evento" de solo lectura con 9 controles; docs del dia. tests 193/0, smoke OK, CI tests y Pages verdes. MailApp y dispositivo
   siguen sin probarse.
 
 ## Donde trabajar

@@ -16,7 +16,7 @@ const path = require('path');
 
 const SRC = path.join(__dirname, '..', 'src', 'Panel.html');
 const SITIO = process.env.ESI_SITE || 'https://lxchoooo.github.io/esi-inscripcion-demo/';
-const MARCAS = ['id="tab-evento"', 'id="pane-evento"', 'id="priv-mail"'];
+const MARCAS = ['id="tab-evento"', 'id="pane-evento"', 'id="done-list"'];
 
 function versionDe(html) {
   const m = String(html == null ? '' : html).match(/var APP_VERSION = '(v\d+)'/);
