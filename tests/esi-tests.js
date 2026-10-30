@@ -951,17 +951,18 @@ t('Home uses reveal, tint and hero animations', () => {
   if (!/class="how-card reveal"/.test(panelHtml)) throw new Error('how-card sin reveal');
   if (!/--tint-1/.test(panelHtml)) throw new Error('sin tint tokens');
   if (!/@keyframes heroIn/.test(panelHtml)) throw new Error('sin entrada del hero');
-  if (!/hero-poster \{[^}]*posterFloat/.test(panelHtml.replace(/\n/g, ' '))) throw new Error('poster sin flotacion');
+  if (!/hero-poster \{[^}]*posterIn/.test(panelHtml.replace(/\n/g, ' '))) throw new Error('poster sin entrada');
+  if (/posterFloat/.test(panelHtml)) throw new Error('el poster no debe flotar en bucle');
   if (!/function aAnimateStats_/.test(panelSrc)) throw new Error('stats sin contador animado');
   if (!/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.hero-copy > \*/.test(panelHtml)) throw new Error('hero sin guarda');
 });
 
 t('Panel anima scroll, ripple y transiciones de tema', () => {
   for (const needle of ['id="scroll-progress"', 'function initRipple_', 'function initScrollProgress_',
-    'function initHeroParallax_', '::view-transition-new(root)']) {
+    'function initHeroParallax_']) {
     if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/startViewTransition/.test(panelSrc)) throw new Error('sin view transition');
+  if (/startViewTransition|::view-transition/.test(panelHtml + panelSrc)) throw new Error('sin view transitions en esta ronda');
   const guards = panelHtml.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n    \}/g) || [];
   if (!guards.some((g) => g.includes('.ripple'))) throw new Error('ripple sin guarda');
   if (!/translate: 0 var\(--py/.test(panelHtml)) throw new Error('parallax sin translate');
@@ -2817,6 +2818,123 @@ t('Docs send staff to /exec and list shared sheets', () => {
     }
     if (/Compartir a profes.*\?api=/i.test(doc)) throw new Error('doc ' + i + ' recommends ?api=');
   });
+});
+
+/* ---- r14: contrato estático de movimiento ---- */
+function panelCss() {
+  const i = panelHtml.indexOf('<style>');
+  const j = panelHtml.indexOf('</style>', i);
+  return panelHtml.slice(i, j);
+}
+function cssRules(css) {
+  const out = [];
+  const lines = css.split('\n');
+  let sel = '';
+  lines.forEach((raw) => {
+    const l = raw.trim();
+    if (!l || l.startsWith('/*') || l.startsWith('*')) return;
+    if (l.endsWith('{')) { sel = l.slice(0, -1).trim(); return; }
+    if (l === '}' || l.startsWith('@')) return;
+    out.push({ sel, decl: l });
+  });
+  return out;
+}
+const FORBIDDEN = /^(width|height|min-width|min-height|max-width|max-height|top|left|right|bottom|margin|margin-|padding|padding-|box-shadow|background)/;
+
+t('r14: ninguna regla usa transition all', () => {
+  const bad = cssRules(panelCss()).filter((r) => /^transition\s*:/.test(r.decl) && /\ball\b/.test(r.decl));
+  if (bad.length) throw new Error('transition all en ' + bad.map((b) => b.sel).join(', '));
+});
+
+t('r14: transiciones y animaciones solo tocan transform y opacity', () => {
+  const rules = cssRules(panelCss());
+  const badTrans = [];
+  rules.forEach((r) => {
+    if (!/^transition\s*:/.test(r.decl)) return;
+    const value = r.decl.replace(/^transition\s*:\s*/, '').replace(/;$/, '');
+    value.split(/,(?![^(]*\))/).forEach((part) => {
+      const prop = part.trim().split(/\s+/)[0];
+      if (/^(none|all|visibility)$/.test(prop)) return;
+      if (!/^(transform|opacity)$/.test(prop)) badTrans.push(r.sel + ' -> ' + prop);
+    });
+  });
+  if (badTrans.length) throw new Error('transition prohibida: ' + badTrans.join(' | '));
+
+  const css = panelCss();
+  const badKf = [];
+  const kf = /@keyframes\s+([\w-]+)\s*\{/g;
+  let m;
+  while ((m = kf.exec(css))) {
+    let i = m.index + m[0].length, depth = 1, body = '';
+    while (i < css.length && depth > 0) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}') depth--;
+      if (depth > 0) body += css[i];
+      i++;
+    }
+    const props = [...body.matchAll(/(^|[;{\s])([\w-]+)\s*:/g)].map((x) => x[2]);
+    props.forEach((prop) => {
+      if (/^(transform|opacity|stroke-dashoffset|translate|scale|rotate)$/.test(prop)) return;
+      badKf.push(m[1] + ' -> ' + prop);
+    });
+  }
+  if (badKf.length) throw new Error('keyframes prohibidos: ' + badKf.join(' | '));
+});
+
+t('r14: existe el bloque prefers-reduced-motion que apaga el movimiento', () => {
+  const css = panelCss();
+  const blocks = css.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n    \}/g) || [];
+  if (!blocks.length) throw new Error('sin bloque reduce');
+  const neutral = blocks.find((b) => /animation-duration:\s*1ms\s*!important/.test(b));
+  if (!neutral) throw new Error('reduce sin neutralizacion');
+  if (!/transition-duration:\s*1ms\s*!important/.test(neutral)) throw new Error('reduce sin transiciones');
+  if (!/\.skeleton-line \{ animation: none/.test(css)) throw new Error('skeleton animado con reduce');
+  if (!/@media \(prefers-reduced-motion: no-preference\)/.test(css)) throw new Error('sin bloque no-preference');
+});
+
+t('r14: la unica animacion infinita es el brillo del skeleton', () => {
+  const infinite = panelCss().match(/animation:[^;]*infinite[^;]*;/g) || [];
+  if (infinite.length !== 1) throw new Error('animaciones infinitas: ' + infinite.length);
+  if (!/skelPulse/.test(infinite[0])) throw new Error('infinita distinta del skeleton: ' + infinite[0]);
+  if (!/html\.lite \*[^{]*\{[^}]*animation: none !important/.test(panelCss())) throw new Error('lite no apaga animaciones');
+  if (!/html\.lite \.skeleton-line \{ animation: none/.test(panelCss())) throw new Error('lite no apaga el skeleton');
+});
+
+t('r14: deteccion de html.js y del modo lite', () => {
+  if (!/className \+= " js"/.test(panelSrc)) throw new Error('sin clase js');
+  if (!/typeof navigator !== "undefined"/.test(panelSrc)) throw new Error('sin guarda de navigator');
+  if (!/saveData/.test(panelSrc)) throw new Error('sin saveData');
+  if (!/deviceMemory/.test(panelSrc)) throw new Error('sin deviceMemory');
+  if (!/className \+= " lite"/.test(panelSrc)) throw new Error('sin clase lite');
+});
+
+t('r14: el CSS y el JS nuevos caben en el presupuesto', () => {
+  const css = panelCss();
+  const start = css.indexOf('/* ==== r14 P1: base de movimiento ==== */');
+  if (start < 0) throw new Error('sin bloque r14');
+  const cssBytes = Buffer.byteLength(css.slice(start));
+  if (cssBytes > 4096) throw new Error('CSS nuevo ' + cssBytes + ' B');
+
+  const units = [
+    panelSrc.match(/function shakeField_\(el\) \{[\s\S]*?\n    \}/),
+    panelSrc.match(/function isLite_\(\) \{[\s\S]*?\n    \}/),
+    panelSrc.match(/document\.documentElement\.className \+= " js";[\s\S]*?\n        \}/),
+    panelSrc.match(/if \(busy && !btn\.style\.minWidth[^\n]*/),
+    panelSrc.match(/if \(isLite_\(\) \|\| typeof document\.addEventListener/),
+    panelSrc.match(/if \(!poster \|\| isLite_\(\)\) return;/),
+    panelSrc.match(/reduced \|\| isLite_\(\) \|\|/),
+  ].filter(Boolean);
+  if (units.length !== 7) throw new Error('faltan unidades r14: ' + units.length);
+  const jsBytes = units.reduce((n, u) => n + Buffer.byteLength(u[0]), 0);
+  if (jsBytes > 2048) throw new Error('JS nuevo ' + jsBytes + ' B');
+});
+
+t('r14: el modo verificacion de guias no anima', () => {
+  const css = panelCss();
+  if (!/#pane-charla \*, #pane-pend \* \{ animation: none !important; transition-duration: 1ms !important; \}/.test(css)) {
+    throw new Error('sin bloque de verificacion');
+  }
+  if (!/#pane-charla \.btn, #pane-pend \.btn/.test(css)) throw new Error('sin feedback de toque en verificacion');
 });
 
 summary();
