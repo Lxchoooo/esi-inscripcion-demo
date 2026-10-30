@@ -15,6 +15,6 @@ publicar, `scripts/push.sh`.
 
 Detalle técnico: el backend es Apps Script, se abre desde `/exec` y guarda en
 Google Sheets. El login de profes usa `google.script.run` (POST), no `?api=`; las
-hojas compartidas son `Sessions`, `Signups` y `Mails`.Documento del dia del evento: [docs/EVENTO.md](docs/EVENTO.md).
+hojas compartidas son `Sessions`, `Signups` y `Mails`.Documentos del evento: [el dia](docs/EVENTO.md), [tarjeta del equipo](docs/EQUIPO.md) ([para imprimir](docs/equipo.html)) y [textos para copiar](docs/COMUNICACION.md).
 
 

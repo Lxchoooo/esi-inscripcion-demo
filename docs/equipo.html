@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarjeta del equipo — Jornada ESI</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0; color: #12161c; background: #fff;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.35;
+  }
+  .hoja { width: 186mm; margin: 0 auto; padding: 4mm 0; }
+  h1 { font-size: 17pt; margin: 0 0 2mm; letter-spacing: -.2px; }
+  h2 { font-size: 11.5pt; margin: 5mm 0 1.5mm; padding-bottom: 1mm; border-bottom: 1px solid #c9d2dc; }
+  p { margin: 0 0 1.5mm; }
+  ol, ul { margin: 0 0 1.5mm; padding-left: 6mm; }
+  li { margin: 0 0 .8mm; }
+  .sub { color: #4a5561; font-size: 9.5pt; margin-bottom: 3mm; }
+  .dos { display: flex; gap: 6mm; }
+  .dos > section { flex: 1; }
+  .aviso { border: 1px solid #12161c; border-radius: 2mm; padding: 2.5mm 3mm; margin: 3mm 0 0; }
+  .aviso strong { display: block; margin-bottom: 1mm; }
+  .pie { margin-top: 4mm; padding-top: 2mm; border-top: 1px solid #c9d2dc; font-size: 8.5pt; color: #4a5561; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 9.5pt; }
+  @media print { .hoja { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="hoja">
+  <h1>Tarjeta del equipo — Jornada ESI</h1>
+  <p class="sub">Una hoja para tener al lado en cada aula. Vale para guías, preceptores y profes: el panel es el mismo y se entra con la misma clave.</p>
+
+  <div class="dos">
+    <section>
+      <h2>Entrar</h2>
+      <ol>
+        <li>Abrí el navegador en <code>/exec?admin=1</code>.</li>
+        <li>Escribí la clave y tocá <strong>Ingresar</strong>.</li>
+        <li>Si dice que la sesión venció, volvé a escribir la clave.</li>
+      </ol>
+      <p>La clave se pasa por mensaje directo, nunca por cartelera ni por grupo.</p>
+
+      <h2>Marcar un presente</h2>
+      <ol>
+        <li><strong>Tomar asistencia</strong>.</li>
+        <li>Elegí la franja: 10:30, 11:30 o 12:30.</li>
+        <li>En el buscador escribí el apellido. También acepta nombre, mail o DNI.</li>
+        <li>Tocá <strong>Presente</strong> en la fila del alumno.</li>
+        <li>Si te equivocaste, tocá <strong>Deshacer</strong> en el aviso de abajo.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Si el alumno no figura</h2>
+      <ol>
+        <li>Buscalo en <strong>Inscripciones</strong>, por apellido.</li>
+        <li>Si no está anotado, que se anote desde su celular con su mail institucional.</li>
+        <li>Si el mail no está en la lista del curso, avisale al preceptor: se agrega desde <strong>Arreglar datos</strong>.</li>
+        <li>Si aparece dos veces, en <strong>Arreglar datos</strong> se unen los duplicados.</li>
+      </ol>
+      <p>No anotes a nadie a mano en la planilla.</p>
+
+      <h2>Si algo no anda</h2>
+      <ul>
+        <li><strong>Servidor ocupado</strong>: esperá unos segundos y tocá de nuevo.</li>
+        <li><strong>Sin internet</strong>: seguí con la lista impresa y cargá los presentes cuando vuelva.</li>
+        <li><strong>No ves la sección</strong>: cerrá la pestaña y volvé a entrar con la clave.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="aviso">
+    <strong>Lo que no se hace en el aula</strong>
+    Cerrar o abrir la inscripción, borrar inscripciones, mover o fusionar alumnos, importar listas, mandar recordatorios y borrar datos. Eso lo hace el responsable del proyecto: se pide por mensaje y se espera.
+  </div>
+
+  <p class="pie">Instituto Secundario Salsipuedes · Jornada ESI · 4 de noviembre. Esta hoja no lleva la clave.</p>
+</div>
+</body>
+</html>

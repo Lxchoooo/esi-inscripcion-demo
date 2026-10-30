@@ -3149,6 +3149,60 @@ t('r15: el control previo mira solo ADMIN_PIN y nunca muestra el valor', () => {
   if (/\d{6}/.test(json)) throw new Error('el informe muestra un numero de seis digitos');
 });
 
+t('r15: EVENTO.md tiene acciones delicadas y plazos claros', () => {
+  const doc = read('../docs/EVENTO.md');
+  if (doc.indexOf('## Acciones delicadas') < 0) throw new Error('falta el apartado de acciones delicadas');
+  ['Cerrar o abrir la inscripción', 'Borrar inscripciones', 'fusionar', 'Importar la lista', 'recordatorios', 'Exportar y cerrar', 'datos de prueba', 'datos personales'].forEach((n) => {
+    if (doc.indexOf(n) < 0) throw new Error('no lista: ' + n);
+  });
+  if (doc.indexOf('sin consultar con') < 0 || doc.indexOf('responsable del proyecto') < 0) {
+    throw new Error('no dice que hay que consultar');
+  }
+  if (!/mensaje directo/.test(doc)) throw new Error('no dice como se comparte la clave');
+  if (!/30 días/.test(doc)) throw new Error('no recomienda borrar a los 30 dias');
+  if (!/--copia-ok/.test(doc) || !/loadtest/.test(doc)) throw new Error('no explica el simulacro');
+});
+
+t('r15: la tarjeta del equipo usa los textos reales de la interfaz', () => {
+  const md = read('../docs/EQUIPO.md');
+  ['/exec?admin=1', 'Ingresar', 'Tomar asistencia', 'Presente', 'Deshacer', 'Inscripciones', 'Arreglar datos'].forEach((n) => {
+    if (md.indexOf(n) < 0) throw new Error('falta ' + n);
+  });
+  if (/d{6}/.test(md)) throw new Error('la tarjeta tiene un numero de seis digitos');
+  if (/[w.+-]+@[w-]+.[w.]+/.test(md)) throw new Error('la tarjeta tiene un mail');
+});
+
+t('r15: equipo.html es una hoja A4 autocontenida y sin clave', () => {
+  const html = read('../docs/equipo.html');
+  if (html.indexOf('@page') < 0 || html.indexOf('A4') < 0) throw new Error('no define hoja A4');
+  ['<link', '<script', 'src=', 'http://', 'https://', '@import'].forEach((n) => {
+    if (html.indexOf(n) >= 0) throw new Error('tiene recurso externo o script: ' + n);
+  });
+  if ((html.match(/<h1/g) || []).length !== 1) throw new Error('tiene que ser una sola hoja con un titulo');
+  if (/d{6}/.test(html)) throw new Error('tiene un numero de seis digitos');
+  if (/[w.+-]+@[w-]+.[w.]+/.test(html)) throw new Error('tiene un mail');
+  if (/clave:s*S/i.test(html)) throw new Error('parece incluir la clave');
+});
+
+t('r15: COMUNICACION.md tiene los textos con marcadores', () => {
+  const doc = read('../docs/COMUNICACION.md');
+  ['[LINK]', '[LINK_PANEL]'].forEach((m) => {
+    if (doc.indexOf(m) < 0) throw new Error('falta el marcador ' + m);
+  });
+  if ((doc.match(/[LINK]/g) || []).length < 2) throw new Error('el aviso de alumnos necesita el link');
+  if (/d{6}/.test(doc)) throw new Error('tiene un numero de seis digitos');
+  if (/[w.+-]+@[w-]+.[w.]+/.test(doc)) throw new Error('tiene un mail');
+  if (!/Entrá|Anotate|poné/.test(doc)) throw new Error('no esta en voseo');
+  if (/dirección/.test(doc) && !/30 días/.test(doc)) throw new Error('el texto de direccion no dice el plazo');
+});
+
+t('r15: el README linkea los documentos del evento', () => {
+  const readme = read('../README.md');
+  ['docs/EVENTO.md', 'docs/EQUIPO.md', 'docs/equipo.html', 'docs/COMUNICACION.md'].forEach((n) => {
+    if (readme.indexOf(n) < 0) throw new Error('falta el link a ' + n);
+  });
+});
+
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
   Object.keys(map).forEach((name) => {
