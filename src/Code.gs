@@ -732,6 +732,277 @@ function apiAdminSetConfig(cred, values) {
   });
 }
 
+
+/* ==== r15: control previo al evento (solo lectura) ==== */
+var EXPECTED_COLUMNS_ = {
+  Config: ['clave', 'valor'],
+  Slots: ['id', 'nombre', 'inicio', 'fin', 'orden'],
+  Talks: ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'],
+  Signups: ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
+  Sessions: ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'],
+  Mails: ['email', 'fecha', 'asunto'],
+  Log: ['fecha', 'accion', 'signup_id', 'detalle'],
+  Backup: ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
+  Resumen: ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes']
+};
+
+var CHECK_LEVELS_ = { verde: 0, amarillo: 1, rojo: 2 };
+// La clave que hay que cambiar si sigue puesta.
+var WEAK_PIN_ = ['1', '2', '3', '4'].join('');
+
+function checkItem_(id, titulo, nivel, detalle) {
+  return { id: id, titulo: titulo, nivel: nivel, detalle: String(detalle || '') };
+}
+
+function agoLabel_(ms) {
+  if (!ms || ms < 0) return 'nunca';
+  var min = Math.floor(ms / 60000);
+  if (min < 1) return 'recién';
+  if (min < 60) return 'hace ' + min + (min === 1 ? ' minuto' : ' minutos');
+  var hs = Math.floor(min / 60);
+  if (hs < 24) return 'hace ' + hs + (hs === 1 ? ' hora' : ' horas');
+  var dias = Math.floor(hs / 24);
+  return 'hace ' + dias + (dias === 1 ? ' día' : ' días');
+}
+
+function dateLabel_(iso) {
+  var m = String(iso || '').match(/^(d{4})-(d{2})-(d{2})$/);
+  return m ? (m[3] + '/' + m[2] + '/' + m[1]) : String(iso || '');
+}
+
+function checkSheets_(sheets) {
+  var faltanHojas = [];
+  var faltanCols = [];
+  for (var name in EXPECTED_COLUMNS_) {
+    if (!Object.prototype.hasOwnProperty.call(EXPECTED_COLUMNS_, name)) continue;
+    var head = sheets ? sheets[name] : null;
+    if (!head || !head.length) { faltanHojas.push(name); continue; }
+    var have = {};
+    for (var i = 0; i < head.length; i++) have[EsiCore.normalizeText(head[i])] = true;
+    var miss = [];
+    var want = EXPECTED_COLUMNS_[name];
+    for (var j = 0; j < want.length; j++) if (!have[want[j]]) miss.push(want[j]);
+    if (miss.length) faltanCols.push(name + ' (' + miss.join(', ') + ')');
+  }
+  if (faltanHojas.length) {
+    return checkItem_('hojas', 'Hojas y columnas', 'rojo', 'Falta la hoja ' + faltanHojas.join(', ') + '. Corré setup().');
+  }
+  if (faltanCols.length) {
+    return checkItem_('hojas', 'Hojas y columnas', 'rojo', 'Faltan columnas en ' + faltanCols.join(' · ') + '.');
+  }
+  return checkItem_('hojas', 'Hojas y columnas', 'verde', 'Las 9 hojas tienen sus columnas.');
+}
+
+function checkBackup_(cfg, trigger, lastBackup, now) {
+  var activo = convertBool_(cfg && cfg[CONFIG_BACKUP_ACTIVE]);
+  if (!activo) return checkItem_('respaldo', 'Respaldo automático', 'rojo', 'Está apagado: prendelo en Configuración antes del evento.');
+  if (!trigger) return checkItem_('respaldo', 'Respaldo automático', 'rojo', 'El disparador no está activo: corré setup() de nuevo.');
+  if (!lastBackup) return checkItem_('respaldo', 'Respaldo automático', 'amarillo', 'Todavía no hay ninguna copia guardada.');
+  var age = now - lastBackup;
+  if (age > 3600000) return checkItem_('respaldo', 'Respaldo automático', 'amarillo', 'La última copia fue ' + agoLabel_(age) + '. Revisá el disparador.');
+  return checkItem_('respaldo', 'Respaldo automático', 'verde', 'La última copia fue ' + agoLabel_(age) + '.');
+}
+
+function checkPins_(pins) {
+  var admin = String((pins && pins.admin) || '').trim();
+  var guide = String((pins && pins.guide) || '').trim();
+  if (!admin) return checkItem_('claves', 'Claves del panel', 'rojo', 'Falta la clave ADMIN_PIN. Corré setup().');
+  if (!guide) return checkItem_('claves', 'Claves del panel', 'rojo', 'Falta la clave GUIDE_PIN. Corré setup().');
+  if (!/^d{6}$/.test(admin) || !/^d{6}$/.test(guide)) {
+    return checkItem_('claves', 'Claves del panel', 'amarillo', 'Alguna de las dos claves no tiene 6 dígitos.');
+  }
+  if (admin === WEAK_PIN_ || guide === WEAK_PIN_) {
+    return checkItem_('claves', 'Claves del panel', 'rojo', 'Una de las claves es la de siempre: cambiala antes del evento.');
+  }
+  if (admin === guide) {
+    return checkItem_('claves', 'Claves del panel', 'rojo', 'Las dos claves son iguales: usá una distinta para cada una.');
+  }
+  return checkItem_('claves', 'Claves del panel', 'verde', 'Las dos claves tienen 6 dígitos y son distintas.');
+}
+
+function checkTestMode_(cfg, signups) {
+  if (!convertBool_(cfg && cfg[CONFIG_TEST_MODE])) {
+    return checkItem_('prueba', 'Modo prueba', 'verde', 'Apagado: los datos son reales.');
+  }
+  var n = 0;
+  for (var i = 0; i < (signups || []).length; i++) if (signups[i] && signups[i].prueba) n++;
+  return checkItem_('prueba', 'Modo prueba', 'rojo', 'Está prendido: hay ' + n + ' ' + (n === 1 ? 'fila de prueba' : 'filas de prueba') + ' en Signups.');
+}
+
+function checkOpenAndDate_(cfg, expectDate, expectZone) {
+  var abierta = isOpen_(cfg || {});
+  var fecha = eventDate_(cfg || {});
+  var zona = String((cfg && cfg.evento_zona) || expectZone || '').trim();
+  var base = (abierta ? 'Abierta' : 'Cerrada') + ' · ' + dateLabel_(fecha) + ' · ' + zona;
+  if (zona !== expectZone) {
+    return checkItem_('inscripcion', 'Inscripción y fecha', 'amarillo', base + ' (la zona esperada es ' + expectZone + ').');
+  }
+  if (fecha !== expectDate) {
+    return checkItem_('inscripcion', 'Inscripción y fecha', 'amarillo', base + ' (la fecha esperada es ' + dateLabel_(expectDate) + ').');
+  }
+  return checkItem_('inscripcion', 'Inscripción y fecha', 'verde', base);
+}
+
+function checkTalks_(talks, slots) {
+  var active = [];
+  for (var i = 0; i < (talks || []).length; i++) if (talks[i] && talks[i].activa) active.push(talks[i]);
+  if (!active.length) return checkItem_('charlas', 'Charlas por franja', 'rojo', 'No hay ninguna charla activa.');
+  var ciclos = [];
+  var seen = {};
+  for (var j = 0; j < active.length; j++) {
+    var c = String(active[j].ciclo || '');
+    if (!c || seen[c]) continue;
+    seen[c] = true;
+    ciclos.push(c);
+  }
+  var lista = slots && slots.length ? slots : [];
+  var faltan = [];
+  for (var k = 0; k < ciclos.length; k++) {
+    for (var f = 0; f < lista.length; f++) {
+      var hay = false;
+      for (var m = 0; m < active.length; m++) {
+        if (active[m].ciclo === ciclos[k] && Number(active[m].slot_id) === Number(lista[f].id)) { hay = true; break; }
+      }
+      if (!hay) faltan.push((ciclos[k] === 'basico' ? 'Básico' : ciclos[k] === 'orientado' ? 'Orientado' : ciclos[k]) + ' en la ' + lista[f].nombre);
+    }
+  }
+  var resumen = ciclos.map(function (c) {
+    var n = 0;
+    for (var q = 0; q < active.length; q++) if (active[q].ciclo === c) n++;
+    return (c === 'basico' ? 'Básico' : c === 'orientado' ? 'Orientado' : c) + ' ' + n;
+  }).join(' · ');
+  if (faltan.length) {
+    return checkItem_('charlas', 'Charlas por franja', 'amarillo', 'Falta una charla de ' + faltan.join(', ') + '.');
+  }
+  return checkItem_('charlas', 'Charlas por franja', 'verde', resumen + ' charlas activas, todas las franjas cubiertas.');
+}
+
+function checkMails_(mailOk, quota) {
+  if (!mailOk) return checkItem_('mails', 'Mails', 'rojo', 'MailApp no responde: no van a salir los recordatorios.');
+  var q = Number(quota);
+  if (!isFinite(q)) return checkItem_('mails', 'Mails', 'amarillo', 'No se pudo leer la cuota de mails.');
+  if (q <= 0) return checkItem_('mails', 'Mails', 'rojo', 'Cuota agotada: se renueva mañana a la madrugada.');
+  if (q <= 50) return checkItem_('mails', 'Mails', 'amarillo', 'Quedan ' + q + ' mails: alcanza justo para los recordatorios.');
+  return checkItem_('mails', 'Mails', 'verde', 'Quedan ' + q + ' mails disponibles.');
+}
+
+function checkSessions_(sessions, signups, todayStart, now) {
+  var activas = 0;
+  for (var i = 0; i < (sessions || []).length; i++) {
+    var s = sessions[i];
+    if (s && !s.revoked && Number(s.expires) > now) activas++;
+  }
+  var hoy = 0;
+  for (var j = 0; j < (signups || []).length; j++) {
+    var t = sessionDateMs_(signups[j] && signups[j].ts);
+    if (t && t >= todayStart) hoy++;
+  }
+  return checkItem_('sesiones', 'Sesiones e inscriptos de hoy', 'verde', activas + (activas === 1 ? ' sesión activa' : ' sesiones activas') + ' · ' + hoy + (hoy === 1 ? ' inscripto hoy' : ' inscriptos hoy') + '.');
+}
+
+function checkVersion_(version, lastSetupAt, lastSetupVersion, appVersion) {
+  var base = 'Backend ' + version;
+  if (lastSetupAt) base += ' · último setup ' + String(lastSetupAt).slice(0, 10).split('-').reverse().join('/');
+  var app = String(appVersion || '').trim();
+  if (app && app !== version) {
+    return checkItem_('version', 'Versión', 'rojo', 'El panel quedó en ' + app + ' y el backend es ' + version + ': recargá la página.');
+  }
+  if (!lastSetupAt) {
+    return checkItem_('version', 'Versión', 'amarillo', base + ' · sin registro de setup: corré setup() una vez.');
+  }
+  if (lastSetupVersion && lastSetupVersion !== version) {
+    return checkItem_('version', 'Versión', 'amarillo', base + ' · el último setup fue con ' + lastSetupVersion + ': corré setup() otra vez.');
+  }
+  return checkItem_('version', 'Versión', 'verde', base + '.');
+}
+
+function buildEventCheck_(ctx) {
+  var c = ctx || {};
+  var now = Number(c.now || Date.now());
+  var controles = [
+    checkSheets_(c.sheets),
+    checkBackup_(c.cfg, c.trigger && c.trigger.backup, Number(c.lastBackup || 0), now),
+    checkPins_(c.pins),
+    checkTestMode_(c.cfg, c.signups),
+    checkOpenAndDate_(c.cfg, c.expectedDate, c.expectedZone),
+    checkTalks_(c.talks, c.slots),
+    checkMails_(c.mailOk, c.quota),
+    checkSessions_(c.sessions, c.signups, Number(c.todayStart || 0), now),
+    checkVersion_(String(c.version || ''), String(c.lastSetupAt || ''), String(c.lastSetupVersion || ''), c.appVersion)
+  ];
+  var estado = 'verde';
+  for (var i = 0; i < controles.length; i++) {
+    if (CHECK_LEVELS_[controles[i].nivel] > CHECK_LEVELS_[estado]) estado = controles[i].nivel;
+  }
+  return { ok: true, estado: estado, generado: new Date(now).toISOString(), controles: controles };
+}
+
+function apiAdminEventCheck(cred, appVersion) {
+  try {
+    var auth = adminAuth_(cred);
+    if (!auth.ok) return { ok: false, message: auth.message };
+    var props = PropertiesService.getScriptProperties();
+    var cfg = readConfig_();
+    var sheets = {};
+    for (var name in EXPECTED_COLUMNS_) {
+      if (!Object.prototype.hasOwnProperty.call(EXPECTED_COLUMNS_, name)) continue;
+      var head = null;
+      try {
+        var sh = sheet_(name);
+        head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
+      } catch (e) { head = null; }
+      sheets[name] = head;
+    }
+    var backupTrigger = false;
+    try {
+      var trs = ScriptApp.getProjectTriggers();
+      for (var t = 0; t < trs.length; t++) {
+        if (trs[t].getHandlerFunction() === 'backupSignups_') { backupTrigger = true; break; }
+      }
+    } catch (e) { backupTrigger = false; }
+    var lastBackup = 0;
+    try {
+      var bv = sheet_(BACKUP_SHEET).getDataRange().getValues();
+      for (var b = 1; b < bv.length; b++) {
+        var raw = bv[b][0];
+        var ms = Object.prototype.toString.call(raw) === '[object Date]' ? raw.getTime() : Date.parse(String(raw));
+        if (ms > lastBackup) lastBackup = ms;
+      }
+    } catch (e) { lastBackup = 0; }
+    var mailOk = false;
+    var quota = null;
+    try {
+      quota = MailApp.getRemainingDailyQuota();
+      mailOk = true;
+    } catch (e) { mailOk = false; }
+    var todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return buildEventCheck_({
+      cfg: cfg,
+      sheets: sheets,
+      pins: { admin: getAdminPin_(), guide: getGuidePin_() },
+      trigger: { backup: backupTrigger },
+      lastBackup: lastBackup,
+      signups: readSignups_(),
+      sessions: readSessions_(),
+      talks: readTalks_(),
+      slots: readSlots_(),
+      mailOk: mailOk,
+      quota: quota,
+      version: BACKEND_VERSION,
+      lastSetupAt: props.getProperty('LAST_SETUP_AT') || '',
+      lastSetupVersion: props.getProperty('LAST_SETUP_VERSION') || '',
+      appVersion: String(appVersion || '').trim(),
+      expectedDate: eventDate_({}),
+      expectedZone: EVENT_DEFAULT_TZ_,
+      todayStart: todayStart.getTime(),
+      now: Date.now()
+    });
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
 var API_FN_MAP_ = {
   apiBootstrap: apiBootstrap,
   apiLookup: apiLookup,
@@ -755,6 +1026,7 @@ var API_FN_MAP_ = {
   apiAdminGetConfig: apiAdminGetConfig,
   apiAdminSetConfig: apiAdminSetConfig,
   apiAdminStatus: apiAdminStatus,
+  apiAdminEventCheck: apiAdminEventCheck,
   apiAdminDuplicates: apiAdminDuplicates,
   apiAdminAddStudent: apiAdminAddStudent,
   apiAdminCorrectStudent: apiAdminCorrectStudent,
