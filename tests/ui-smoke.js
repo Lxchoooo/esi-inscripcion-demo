@@ -705,6 +705,13 @@ function tick() {
   const grid2 = document.getElementById('slots-container').children[0].children[1];
   assert(grid2.children.length === 1, 'filtro solo con lugares');
   st.onlyAvailable = false;
+  assert(document.getElementById('slot-progress-fill').style.width === '33%',
+    'barra de progreso al 33 por ciento');
+  st.miniOpen = false;
+  ui.sRender();
+  assert(document.getElementById('mini-summary').className.includes('is-collapsed'),
+    'mini resumen colapsable');
+  st.miniOpen = true;
 
   console.log('UI smoke: OK');
 })().catch((e) => {

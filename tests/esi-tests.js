@@ -912,6 +912,17 @@ t('Panel offers a manual theme toggle that survives reloads', () => {
   if (!/:root\[data-theme="light"\] \{ color-scheme: light; \}/.test(panelHtml)) throw new Error('light scheme');
 });
 
+t('Panel anima el resumen fijo, las pantallas y respeta reduced-motion', () => {
+  for (const needle of ['mini-summary', 'ms-head', 'esi_mini', 'function sToggleMini_',
+    'slot-progress-fill', 'screenInFwd', 'screenInBack', 'attachClear_']) {
+    if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  const guard = panelHtml.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n    \}/g) || [];
+  if (!guard.some((g) => g.includes('.seatbar > span'))) throw new Error('seatbar sin guarda');
+  if (!guard.some((g) => g.includes('.screen.active.fwd'))) throw new Error('pantallas sin guarda');
+  if (!/position: sticky/.test(panelHtml)) throw new Error('mini resumen no sticky');
+});
+
 t('Panel banners accept an inline retry action', () => {
   if (!/function sBanner\(text, type, actionLabel, actionFn\)/.test(panelSrc)) throw new Error('sBanner sin accion');
   if (!/function aBanner\(text, type, actionLabel, actionFn\)/.test(panelSrc)) throw new Error('aBanner sin accion');
