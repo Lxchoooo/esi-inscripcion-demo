@@ -3485,6 +3485,37 @@ t('r15: la asistencia se encola antes de la request', () => {
   if (!/if \(!resp\.ok\) \{\n            aUnqueue_\(id\);/.test(body)) throw new Error('no descarta la marca si el servidor falla');
 });
 
+t('r15: el ticket se consume antes de emitir la sesion', () => {
+  const i = codeSrc.indexOf('function apiGetData(');
+  const j = codeSrc.indexOf('function apiRegister(', i);
+  const getData = codeSrc.slice(i, j);
+  if (getData.indexOf('consumeLoginTicket_(loginToken)') < 0) throw new Error('apiGetData no consume el ticket');
+  if (getData.indexOf('consumeLoginTicket_(loginToken)') > getData.indexOf('issueStudentSession_(s)')) {
+    throw new Error('apiGetData emite la sesion antes de consumir el ticket');
+  }
+  const reg = codeSrc.slice(codeSrc.indexOf('function apiRegister('), codeSrc.indexOf('function apiAdminLogin(', codeSrc.indexOf('function apiRegister(')));
+  if (reg.indexOf('consumeLoginTicket_(loginToken)') > reg.indexOf('rotated = issueStudentSession_(s)')) {
+    throw new Error('apiRegister emite la sesion antes de consumir el ticket');
+  }
+});
+
+t('r15: reportes y asistencia no pierden marcas y no se pisan', () => {
+  if (!/var aMarkBusy = \{\};/.test(panelHtml)) throw new Error('sin guarda de doble toque');
+  const i = panelHtml.indexOf('function aApplyQueuedReports_()');
+  if (i < 0) throw new Error('los reportes no aplican la cola');
+  const body = panelHtml.slice(i, panelHtml.indexOf('function aRenderReport', i));
+  if (body.indexOf('aReports.talks') < 0) throw new Error('no recorre las charlas');
+  if (body.indexOf('list[t].presentes = presentes') < 0) throw new Error('no recalcula presentes');
+  const rp = panelHtml.slice(panelHtml.indexOf('function aOnReportPresent('), panelHtml.indexOf('function aRenderTalkReport(', i));
+  if (rp.indexOf('aQueueMark_') < 0 || rp.indexOf('aQueueMark_') > rp.indexOf("call('apiAdminSetPresent'")) {
+    throw new Error('el reporte no encola antes de la request');
+  }
+  if (!/aReports = null;/.test(panelHtml.slice(panelHtml.indexOf('function aLogout()'), panelHtml.indexOf('function aLogout()') + 900))) {
+    throw new Error('aLogout deja los reportes del turno anterior');
+  }
+  if (!/aApplyQueuedReports_\(\);/.test(panelHtml)) throw new Error('aLoadReports no aplica la cola');
+});
+
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
   if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');

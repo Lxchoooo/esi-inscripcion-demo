@@ -5278,6 +5278,7 @@
     var aMenuOpen = false;
     var aTimer = null;
     var aVisBound = false;
+    var aMarkBusy = {};
     var aTicker = null;
 
     function aBanner(text, type, actionLabel, actionFn) {
@@ -5483,6 +5484,7 @@
     }
 
     function aOnPresent(signupId) {
+      if (aMarkBusy[String(signupId)]) return;
       if (!adminCred || !aTalkData) return;
       var id = String(signupId);
       var target = null;
@@ -5501,8 +5503,10 @@
       aRenderTalk();
       haptic_(next ? 14 : 8);
       aQueueMark_(id, next);
+      aMarkBusy[id] = true;
       call('apiAdminSetPresent', [adminCred, id, next])
         .then(function (resp) {
+          delete aMarkBusy[id];
           if (!resp.ok) {
             aUnqueue_(id);
             target.presente = prev;
@@ -5514,6 +5518,7 @@
           aOfferUndo_(id, prev);
         })
         .catch(function () {
+          delete aMarkBusy[id];
           aBanner('Sin conexión. La marca quedó guardada en el teléfono.', 'err');
         });
     }
@@ -5837,6 +5842,7 @@
             return;
           }
           aReports = resp;
+          aApplyQueuedReports_();
           aFillReportFilters();
           aRenderReport();
           if (typeof done === 'function') done();
@@ -6043,19 +6049,51 @@
       aSyncTableCards_();
     }
 
+    function aApplyQueuedReports_() {
+      if (!aReports) return;
+      var q = aReadQueue_();
+      if (!q.length) return;
+      var by = {};
+      for (var i = 0; i < q.length; i++) by[String(q[i].id)] = !!q[i].presente;
+      var list = aReports.talks || [];
+      for (var t = 0; t < list.length; t++) {
+        var students = list[t].students || [];
+        var hit = false;
+        var presentes = 0;
+        for (var s = 0; s < students.length; s++) {
+          var key = String(students[s].id);
+          if (Object.prototype.hasOwnProperty.call(by, key)) { students[s].presente = by[key]; hit = true; }
+          if (students[s].presente) presentes++;
+        }
+        if (hit) {
+          list[t].presentes = presentes;
+          list[t].ausentes = Math.max(0, Number(list[t].anotados || 0) - presentes);
+        }
+      }
+    }
+
     function aOnReportPresent(signupId, present) {
       if (!adminCred || !signupId) return;
+      if (aMarkBusy[String(signupId)]) return;
       haptic_(present ? 8 : 14);
+      aQueueMark_(signupId, !present);
+      aMarkBusy[signupId] = true;
       call('apiAdminSetPresent', [adminCred, signupId, !present])
         .then(function (resp) {
+          delete aMarkBusy[signupId];
           if (!resp.ok) {
+            aUnqueue_(signupId);
+            if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo marcar.', 'err');
             return;
           }
           aLoadReports();
         })
         .catch(function () {
-          aBanner('Sin conexión.', 'err');
+          delete aMarkBusy[signupId];
+          aApplyQueuedReports_();
+          aRenderReport();
+          aBanner('Sin conexión. La marca quedó guardada en el teléfono.', 'err');
         });
     }
 
@@ -7085,6 +7123,13 @@
       aTalkId = '';
       aConfigLoaded = false;
       aData = null;
+      aReports = null;
+      aRepCurso = '';
+      aRepTalkId = '';
+      aMailPreview = null;
+      aUpdatedAt = 0;
+      aOfflineAt = 0;
+      aMarkBusy = {};
       $('input-pin').value = '';
       $('gate-msg').textContent = '';
       $('gate-msg').style.display = 'none';

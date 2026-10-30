@@ -2188,10 +2188,14 @@ function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
     }
     var session = '';
     if (!current) {
-      if (ticket) revokeSessionsForEmail_(s.email, '');
+      // El ticket se consume ANTES de emitir la sesion: dos pestanas con el
+      // mismo ticket no pueden abrir dos sesiones validas en paralelo.
+      if (ticket) {
+        consumeLoginTicket_(loginToken);
+        revokeSessionsForEmail_(s.email, '');
+      }
       session = issueStudentSession_(s);
     }
-    if (ticket) consumeLoginTicket_(loginToken);
     return {
       ok: true,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
@@ -2557,10 +2561,12 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     var rotated = '';
     if (plan.action === 'insert' || plan.action === 'change') {
       var keepHash = current && sessionToken ? studentTokenHash_(sessionToken) : '';
+      if (ticket) consumeLoginTicket_(loginToken);
       revokeSessionsForEmail_(s.email, keepHash);
       if (!current) rotated = issueStudentSession_(s);
+    } else if (ticket) {
+      consumeLoginTicket_(loginToken);
     }
-    if (ticket) consumeLoginTicket_(loginToken);
     var fresh = readSignups_();
     invalidateDataCache_();
     return {
