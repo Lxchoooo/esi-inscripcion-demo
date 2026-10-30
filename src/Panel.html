@@ -1478,6 +1478,14 @@
     .corr-dup .dup-where { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
     .corr-dup .btn { margin: 4px 6px 0 0; }
     #sheet-body { overflow-wrap: anywhere; }
+    .ev-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+    .ev-item { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: start; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; }
+    .ev-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--muted); }
+    .ev-item.is-verde .ev-dot { background: #2F9E44; }
+    .ev-item.is-amarillo .ev-dot { background: #B8860B; }
+    .ev-item.is-rojo .ev-dot { background: #C92A2A; }
+    .ev-item b { display: block; font-size: 13.5px; }
+    .ev-item span span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
     .estado-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
     .estado-item { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; }
     .estado-item b { display: block; font-size: 20px; }
@@ -2024,6 +2032,13 @@
         <nav id="admin-tabs" class="tabs side" role="tablist" aria-label="Secciones del panel"
           aria-orientation="vertical" tabindex="-1">
           <div class="side-group" role="presentation">
+            <span class="side-label" role="button" tabindex="0" aria-expanded="true">Antes del evento</span>
+            <button id="tab-evento" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-evento" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.2-2.9 7.7-7 9-4.1-1.3-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+              <span>Listo para el evento</span>
+            </button>
+          </div>
+          <div class="side-group" role="presentation">
             <span class="side-label" role="button" tabindex="0" aria-expanded="true">Asistencia</span>
             <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -2075,7 +2090,7 @@
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
               <span>Descargar CSV</span>
             </button>
-            <span class="kbd-hint" id="kbd-hint">Atajos <kbd>1-8</kbd> secciones <kbd>/</kbd> buscar</span>
+            <span class="kbd-hint" id="kbd-hint">Atajos <kbd>1-9</kbd> secciones <kbd>/</kbd> buscar</span>
           </div>
         </nav>
 
@@ -2085,6 +2100,18 @@
             <div id="a-toggle-box"></div>
             <div id="a-msg" class="banner" role="status" aria-live="polite"></div>
           </div>
+
+      <div id="pane-evento" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-evento" hidden>
+        <div class="card">
+          <div class="view-head">
+            <span class="view-count">Listo para el evento</span>
+            <span class="hint-line" id="ev-resumen">Sin consultar</span>
+            <button id="btn-evento-refresh" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
+          </div>
+          <p class="hint-line">Solo lectura: no cambia nada, solo cuenta cómo está todo antes de abrir.</p>
+          <ul id="ev-lista" class="ev-list"></ul>
+        </div>
+      </div>
 
       <div id="pane-charla" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-charla">
         <div class="card">
@@ -2818,7 +2845,7 @@
       nombre: 'Escribí tu nombre con letras, espacios, apóstrofe o guion.',
       apellido: 'Escribí tu apellido con letras, espacios, apóstrofe o guion.',
       curso: 'Elegí año y división.',
-      notInRoster: 'Ese mail no está en la lista.'
+      notInRoster: 'Ese mail no figura en la lista del curso: pedile a tu preceptor que te agregue.'
     };
 
     var DEMO_SLOTS = [
@@ -3162,7 +3189,7 @@
     function demoRegister(email, nombre, curso, talkId, apellido) {
       var s = demoStudent(email, nombre, curso, apellido);
       if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
-      if (!demoOpen()) return Promise.resolve({ ok: false, message: 'La inscripción está cerrada.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (!demoOpen()) return Promise.resolve({ ok: false, message: 'La inscripción está cerrada: si te falta anotarte, avisale a tu preceptor.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       var talksById = {};
       for (var i = 0; i < DEMO_TALKS.length; i++) talksById[DEMO_TALKS[i].id] = DEMO_TALKS[i];
       var talk = talksById[String(talkId || '')];
@@ -3313,7 +3340,7 @@
         if (!talk) return { ok: false, message: 'No encontramos una de las charlas.' };
         if (talk.ciclo !== v.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
         if (bySlot[Number(talk.slot_id)]) return { ok: false, message: 'Ya tiene una charla en ese horario.' };
-        if ((counts[talk.id] || 0) >= talk.cupo) return { ok: false, message: 'Sin lugares en ' + talk.titulo + '.' };
+        if ((counts[talk.id] || 0) >= talk.cupo) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
         bySlot[Number(talk.slot_id)] = true;
         counts[talk.id] = (counts[talk.id] || 0) + 1;
         signups.push({
@@ -3908,7 +3935,7 @@
         if (!s.ok) return Promise.resolve({ ok: false, message: STUDENT_MSG[s.error] || 'Datos inválidos.' });
         var current = a[3] ? demoSession_(a[3]) : null;
         if (a[3] && (!current || current.email !== s.email)) {
-          return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
+          return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció: entrá de nuevo con tu mail institucional.' });
         }
         if (!current && !ticket && demoHasSignups_(s.email)) {
           return Promise.resolve({ ok: false, needsLogin: true, message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.' });
@@ -3926,9 +3953,9 @@
       }
       if (fn === 'apiResumeSession') {
         var sess = demoSession_(a[0]);
-        if (!sess) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
+        if (!sess) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció: entrá de nuevo con tu mail institucional.' });
         var resumed = demoStudent(sess.email, sess.nombre, sess.curso, sess.apellido);
-        if (!resumed.ok) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
+        if (!resumed.ok) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció: entrá de nuevo con tu mail institucional.' });
         return Promise.resolve({
           ok: true,
           email: resumed.email,
@@ -3943,7 +3970,7 @@
       }
       if (fn === 'apiSetReminder') {
         var remSess = demoSession_(a[0]);
-        if (!remSess) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
+        if (!remSess) return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció: entrá de nuevo con tu mail institucional.' });
         var remKey = EsiClient.normalizeEmail(remSess.email);
         var remSignups = demoSignups();
         var remUpdated = 0;
@@ -3960,7 +3987,7 @@
         var regEmail = EsiClient.normalizeEmail(a[0]) || (regSess ? regSess.email : '');
         var regTicket = a[6] ? demoLoginTicket_(a[6]) : null;
         if (a[5] && (!regSess || (regEmail && regSess.email !== regEmail))) {
-          return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' });
+          return Promise.resolve({ ok: false, expired: true, message: 'Tu sesión venció: entrá de nuevo con tu mail institucional.' });
         }
         if (regTicket && regTicket.email !== regEmail) {
           return Promise.resolve({ ok: false, message: 'La sesión no coincide con el mail.' });
@@ -4016,6 +4043,7 @@
       }
       if (fn === 'apiAdminSetConfig') return Promise.resolve(demoAdminSetConfig(a[0], a[1]));
       if (fn === 'apiAdminStatus') return Promise.resolve(demoStatus());
+      if (fn === 'apiAdminEventCheck') return Promise.resolve(demoEventCheck_());
       if (fn === 'apiAdminDuplicates') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         return Promise.resolve(demoAdminDuplicates());
@@ -4708,7 +4736,7 @@
         + '<p class="sheet-talk">' + esc(talk.titulo) + '</p>'
         + '<p class="sheet-seats">' + (talk.restantes > 0
           ? talk.restantes + ' lugares'
-          : 'Sin lugares') + '</p>';
+          : 'Sin lugares: elegí otra charla de esa franja') + '</p>';
       if (prev && prev.id !== talk.id) {
         body += '<p class="sheet-warn">Dejás "' + esc(prev.titulo) + '".</p>';
       }
@@ -4733,7 +4761,7 @@
             sState.session = null;
             sState.login = null;
             sSetSession_(null);
-            toast(resp.message || 'Tu sesión venció. Volvé a ingresar.', 'err');
+            toast(resp.message || 'Tu sesión venció: entrá de nuevo con tu mail institucional.', 'err');
             showScreen(S_SCREENS, 's-screen-login');
             return;
           }
@@ -4751,7 +4779,7 @@
         })
         .catch(function () {
           sState.busy = false;
-          toast('Sin conexión. Probá de nuevo.', 'err');
+          toast('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
         });
     }
 
@@ -4841,11 +4869,11 @@
             sState.recordatorio = !!cached.recordatorio;
             showScreen(S_SCREENS, 's-screen-panel');
             sRender();
-            sBanner('Sin conexión: mostrando lo último guardado.', 'err',
+            sBanner('Sin conexión: te muestro lo último guardado. Revisá el wifi o los datos.', 'err',
               'Reintentar', function () { sRetry_(); });
             return;
           }
-          sBanner('Sin conexión. Probá de nuevo.', 'err',
+          sBanner('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err',
             'Reintentar', function () { sRetry_(); });
         });
     }
@@ -4913,7 +4941,7 @@
         .catch(function () {
           sState.busy = false;
           sSetLoginBusy_('btn-login', false, 'Ingresando...', 'Ingresar');
-          sMailError_('Sin conexión. Probá de nuevo.');
+          sMailError_('Sin conexión: revisá el wifi o los datos y probá de nuevo.');
         });
     }
 
@@ -4982,7 +5010,7 @@
         .catch(function () {
           sState.busy = false;
           sSetLoginBusy_('btn-login', false, 'Ingresando...', 'Ingresar');
-          sBanner('Sin conexión. Probá de nuevo.', 'err');
+          sBanner('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
         });
     }
 
@@ -5213,11 +5241,11 @@
               return;
             }
             sClearStudentSession_();
-            sBanner('Tu sesión venció. Entrá de nuevo.', 'err');
+            sBanner('Tu sesión venció: entrá de nuevo con tu mail institucional.', 'err');
             showScreen(S_SCREENS, 's-screen-mail');
           })
           .catch(function () {
-            sBanner('Sin conexión. Probá de nuevo.', 'err');
+            sBanner('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
             showScreen(S_SCREENS, 's-screen-mail');
           });
         return;
@@ -5445,7 +5473,7 @@
             aBanner('Sin conexión. Mostrando datos guardados.', 'err');
             return;
           }
-          aBanner('Sin conexión. Probá de nuevo.', 'err');
+          aBanner('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
         });
     }
 
@@ -5633,7 +5661,7 @@
           + ' aria-label="' + (st.presente ? 'Quitar presente a ' : 'Marcar presente a ')
           + esc(aDisplay_(st, false)) + '">Presente</button>'
           + '<span class="roster-who">' + aAvatarHtml_(st)
-          + aStudentNameHtml_(st, 'roster-name', aRole === 'admin') + '</span>'
+          + aStudentNameHtml_(st, 'roster-name', true) + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '</div>';
       }
@@ -5773,7 +5801,7 @@
         shown++;
         rows += '<div class="roster-row">'
           + '<span class="roster-who">' + aAvatarHtml_(st)
-          + aStudentNameHtml_(st, 'roster-name', aRole === 'admin') + '</span>'
+          + aStudentNameHtml_(st, 'roster-name', true) + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
           + '<span class="roster-faltan">Falta ' + esc(st.faltan.join(' y ')) + '</span>'
           + '</div>';
@@ -5960,7 +5988,7 @@
       }
       aRepCurso = course.curso;
       if ($('rep-curso')) $('rep-curso').value = course.curso;
-      var showMail = aRole === 'admin';
+      var showMail = true;
       var html = reportStats_([
         [course.roster, 'Alumnos'],
         [course.complete, 'Completos'],
@@ -6038,7 +6066,7 @@
       }
       aRepTalkId = talk.id;
       if ($('rep-charla')) $('rep-charla').value = talk.id;
-      var showMailTalk = aRole === 'admin';
+      var showMailTalk = true;
       var html = reportStats_([
         [talk.anotados, 'Reservas'],
         [talk.presentes, 'Presentes'],
@@ -6268,19 +6296,13 @@
     }
 
     function aApplyRole() {
-      var admin = aRole === 'admin';
+      // El panel es uno solo: las dos claves ven lo mismo, sin distinciones.
       var nodes = [];
       try { nodes = document.querySelectorAll('.admin-only'); } catch (e) { }
-      for (var i = 0; i < nodes.length; i++) {
-        nodes[i].style.display = admin ? '' : 'none';
-      }
-      $('hdr-sub').textContent = admin ? EVENT_NAME : EVENT_NAME + ' · Guía';
+      for (var i = 0; i < nodes.length; i++) nodes[i].style.display = '';
+      $('hdr-sub').textContent = EVENT_NAME;
       var hint = $('kbd-hint');
-      if (hint) {
-        hint.innerHTML = admin
-          ? 'Atajos <kbd>1-8</kbd> secciones <kbd>/</kbd> buscar'
-          : 'Atajos <kbd>1-4</kbd> secciones <kbd>/</kbd> buscar';
-      }
+      if (hint) hint.innerHTML = 'Atajos <kbd>1-9</kbd> secciones <kbd>/</kbd> buscar';
     }
 
     function aRender() {
@@ -6463,8 +6485,9 @@
       fillFilter('filter-charla', charlas, 'Todas las charlas');
     }
 
-    var A_ADMIN_TABS = ['inscriptos', 'mails', 'corr', 'config'];
+    // Las dos claves ven las mismas secciones: no hay tabs de admin y tabs de guia.
     var A_TAB_ORDER = [
+      ['evento', 'tab-evento'],
       ['charla', 'tab-charla'], ['pend', 'tab-pend'], ['reportes', 'tab-reportes'],
       ['estado', 'tab-estado'], ['inscriptos', 'tab-inscriptos'],
       ['mails', 'tab-mails'], ['corr', 'tab-corr'], ['config', 'tab-config']
@@ -6474,7 +6497,6 @@
       var out = [];
       for (var i = 0; i < A_TAB_ORDER.length; i++) {
         var name = A_TAB_ORDER[i][0];
-        if (A_ADMIN_TABS.indexOf(name) >= 0 && aRole !== 'admin') continue;
         var el = $(A_TAB_ORDER[i][1]);
         if (el) out.push({ name: name, el: el });
       }
@@ -6505,7 +6527,8 @@
       var panes = [['pane-charla', name === 'charla'], ['pane-pend', name === 'pend'],
         ['pane-reportes', name === 'reportes'], ['pane-estado', name === 'estado'],
         ['pane-inscriptos', name === 'inscriptos'], ['pane-mails', name === 'mails'],
-        ['pane-corr', name === 'corr'], ['pane-config', name === 'config']];
+        ['pane-corr', name === 'corr'], ['pane-config', name === 'config'],
+        ['pane-evento', name === 'evento']];
       for (var i = 0; i < panes.length; i++) {
         var pane = $(panes[i][0]);
         if (pane) pane.hidden = !panes[i][1];
@@ -6546,6 +6569,7 @@
       if (name === 'charla') aSkeletonIfEmpty_('charla-list');
       if (name === 'pend') aSkeletonIfEmpty_('pend-list');
       if (name === 'mails' && !aMailPreview) aLoadMailPreview();
+      if (name === 'evento') aLoadEventCheck_();
       aRefreshView();
       aSyncTableCards_();
     }
@@ -6610,10 +6634,9 @@
         aFocusSearch_();
         return;
       }
-      var names = { '1': 'charla', '2': 'pend', '3': 'reportes', '4': 'estado', '5': 'inscriptos', '6': 'mails', '7': 'corr', '8': 'config' };
+      var names = { '1': 'charla', '2': 'pend', '3': 'reportes', '4': 'estado', '5': 'inscriptos', '6': 'mails', '7': 'corr', '8': 'config', '9': 'evento' };
       var name = names[ev.key];
       if (!name) return;
-      if (A_ADMIN_TABS.indexOf(name) >= 0 && aRole !== 'admin') return;
       ev.preventDefault();
       aTab(name);
     }
@@ -6702,7 +6725,7 @@
         charlasHtml += '</div></div>';
         rows += '<tr style="--i:' + (shown > 12 ? 12 : shown) + '">'
           + '<td class="narrow" data-label="Fecha">' + esc(s0.cuando) + '</td>'
-          + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', aRole === 'admin')
+          + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', true)
           + '</td>'
           + '<td data-label="Curso">' + esc(s0.curso) + '</td>'
           + '<td data-label="Charlas" colspan="2">' + charlasHtml + '</td>'
@@ -7078,6 +7101,72 @@
       var d = new Date(value);
       if (isNaN(d.getTime())) return String(value);
       return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function demoEventCheck_() {
+      return {
+        ok: true, estado: 'verde', generado: new Date().toISOString(),
+        controles: [
+          { id: 'hojas', titulo: 'Hojas y columnas', nivel: 'verde', detalle: 'Las 9 hojas tienen sus columnas.' },
+          { id: 'respaldo', titulo: 'Respaldo automático', nivel: 'verde', detalle: 'La última copia fue hace 8 minutos.' },
+          { id: 'claves', titulo: 'Claves del panel', nivel: 'verde', detalle: 'Las dos claves tienen 6 dígitos y son distintas.' },
+          { id: 'prueba', titulo: 'Modo prueba', nivel: 'verde', detalle: 'Apagado: los datos son reales.' },
+          { id: 'inscripcion', titulo: 'Inscripción y fecha', nivel: 'verde', detalle: 'Abierta · 04/11/2026 · America/Argentina/Cordoba' },
+          { id: 'charlas', titulo: 'Charlas por franja', nivel: 'verde', detalle: 'Básico y Orientado cubren las tres franjas.' },
+          { id: 'mails', titulo: 'Mails', nivel: 'verde', detalle: 'Quedan 120 mails disponibles.' },
+          { id: 'sesiones', titulo: 'Sesiones e inscriptos de hoy', nivel: 'verde', detalle: '2 sesiones activas · 5 inscriptos hoy.' },
+          { id: 'version', titulo: 'Versión', nivel: 'verde', detalle: 'Backend v42 · último setup 30/10/2026.' }
+        ]
+      };
+    }
+
+    function aEventTone_(nivel) {
+      return nivel === 'rojo' ? 'rojo' : nivel === 'amarillo' ? 'amarillo' : 'verde';
+    }
+
+    function aRenderEventCheck_(resp) {
+      var lista = $('ev-lista');
+      var resumen = $('ev-resumen');
+      if (!lista || !resumen) return;
+      var controles = (resp && resp.controles) || [];
+      var rojos = 0;
+      var amarillos = 0;
+      var html = '';
+      for (var i = 0; i < controles.length; i++) {
+        var c = controles[i];
+        var tono = aEventTone_(c.nivel);
+        if (tono === 'rojo') rojos++;
+        else if (tono === 'amarillo') amarillos++;
+        html += '<li class="ev-item is-' + tono + '">'
+          + '<span class="ev-dot" aria-hidden="true"></span>'
+          + '<span class="ev-texto"><b>' + esc(c.titulo) + '</b><span>' + esc(c.detalle) + '</span></span></li>';
+      }
+      lista.innerHTML = html;
+      var texto = rojos
+        ? rojos + (rojos === 1 ? ' problema' : ' problemas')
+        : amarillos ? amarillos + (amarillos === 1 ? ' aviso' : ' avisos') : 'Todo listo';
+      resumen.textContent = texto + ' · revisado ' + aFmtDate_(resp && resp.generado);
+    }
+
+    function aLoadEventCheck_() {
+      var lista = $('ev-lista');
+      var resumen = $('ev-resumen');
+      if (!adminCred) return;
+      if (resumen) resumen.textContent = 'Consultando…';
+      call('apiAdminEventCheck', [adminCred, APP_VERSION])
+        .then(function (resp) {
+          if (!resp || !resp.ok) {
+            if (resp && aAuthLost(resp)) return;
+            if (lista) lista.innerHTML = '';
+            if (resumen) resumen.textContent = (resp && resp.message) || 'No se pudo consultar.';
+            return;
+          }
+          aRenderEventCheck_(resp);
+        })
+        .catch(function () {
+          if (lista) lista.innerHTML = '';
+          if (resumen) resumen.textContent = 'Sin conexión: revisá el wifi o los datos y probá de nuevo.';
+        });
     }
 
     function aLoadStatus() {
@@ -7531,6 +7620,7 @@
         if (btn) aOnReportPresent(btn.getAttribute('data-signup'), btn.getAttribute('data-present') === 'true');
       });
       $('btn-refresh-estado').addEventListener('click', aLoadStatus);
+      $('btn-evento-refresh').addEventListener('click', aLoadEventCheck_);
       $('btn-corr-dup').addEventListener('click', aCorrDuplicates_);
       $('btn-corr-edit').addEventListener('click', aCorrEdit_);
       $('btn-corr-del').addEventListener('click', aCorrDelete_);
