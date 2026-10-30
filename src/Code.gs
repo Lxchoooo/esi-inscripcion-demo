@@ -804,20 +804,16 @@ function checkBackup_(cfg, trigger, lastBackup, now) {
 }
 
 function checkPins_(pins) {
+  // Solo ADMIN_PIN: hoy todo el equipo entra con la misma clave y GUIDE_PIN queda sin uso.
   var admin = String((pins && pins.admin) || '').trim();
-  var guide = String((pins && pins.guide) || '').trim();
-  if (!admin) return checkItem_('claves', 'Claves del panel', 'rojo', 'Falta la clave ADMIN_PIN. Corré setup().');
-  if (!guide) return checkItem_('claves', 'Claves del panel', 'rojo', 'Falta la clave GUIDE_PIN. Corré setup().');
-  if (admin === WEAK_PIN_ || guide === WEAK_PIN_) {
-    return checkItem_('claves', 'Claves del panel', 'rojo', 'Una de las claves es la de siempre: cambiala antes del evento.');
+  if (!admin) return checkItem_('claves', 'Clave del panel', 'rojo', 'Falta ADMIN_PIN en Script Properties. Corré setup().');
+  if (admin === WEAK_PIN_) {
+    return checkItem_('claves', 'Clave del panel', 'rojo', 'ADMIN_PIN es la de siempre: cambiala antes del evento.');
   }
-  if (!/^\d{6}$/.test(admin) || !/^\d{6}$/.test(guide)) {
-    return checkItem_('claves', 'Claves del panel', 'amarillo', 'Alguna de las dos claves no tiene 6 dígitos.');
+  if (!/^\d{6}$/.test(admin)) {
+    return checkItem_('claves', 'Clave del panel', 'amarillo', 'ADMIN_PIN no tiene 6 dígitos.');
   }
-  if (admin === guide) {
-    return checkItem_('claves', 'Claves del panel', 'rojo', 'Las dos claves son iguales: usá una distinta para cada una.');
-  }
-  return checkItem_('claves', 'Claves del panel', 'verde', 'Las dos claves tienen 6 dígitos y son distintas.');
+  return checkItem_('claves', 'Clave del panel', 'verde', 'ADMIN_PIN tiene 6 dígitos.');
 }
 
 function checkTestMode_(cfg, signups) {
@@ -980,7 +976,7 @@ function apiAdminEventCheck(cred, appVersion) {
     return buildEventCheck_({
       cfg: cfg,
       sheets: sheets,
-      pins: { admin: getAdminPin_(), guide: getGuidePin_() },
+      pins: { admin: getAdminPin_() },
       trigger: { backup: backupTrigger },
       lastBackup: lastBackup,
       signups: readSignups_(),
