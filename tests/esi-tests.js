@@ -1141,10 +1141,13 @@ function backendStub(props, seed) {
       })
     },
     SpreadsheetApp: { getActive: () => spreadsheet },
+    Session: { getScriptTimeZone: () => 'UTC' },
     Utilities: {
       DigestAlgorithm: { SHA_256: 'sha256' },
       getUuid: () => 'uuid-' + (++uuid),
-      formatDate: (d) => '01/01 10:00',
+      formatDate: (d, tz, fmt) => (fmt === 'HH:mm'
+        ? ('0' + d.getUTCHours()).slice(-2) + ':' + ('0' + d.getUTCMinutes()).slice(-2)
+        : '01/01 10:00'),
       computeDigest: (algo, value) => Array.from(
         crypto.createHash('sha256').update(String(value)).digest()
       )
@@ -1160,10 +1163,11 @@ function loginTicketFor(services, email, nombre, curso, apellido) {
 function backendApi(services, names) {
   const src = names.split(',').map((n) => n.trim());
   const body = src.map((n) => n + ': ' + n).join(',');
-  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp',
+  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp', 'Session',
     codeSrc + '\nreturn {' + body + '};')(
     services.PropertiesService, services.LockService, services.CacheService,
-    services.SpreadsheetApp, services.Utilities, services.MailApp);
+    services.SpreadsheetApp, services.Utilities, services.MailApp,
+    services.Session || { getScriptTimeZone: () => 'UTC' });
 }
 
 t('Landing opens with the event poster and a primary call to action', () => {
@@ -3514,6 +3518,20 @@ t('r15: reportes y asistencia no pierden marcas y no se pisan', () => {
     throw new Error('aLogout deja los reportes del turno anterior');
   }
   if (!/aApplyQueuedReports_\(\);/.test(panelHtml)) throw new Error('aLoadReports no aplica la cola');
+});
+
+t('r15: las horas de la hoja respetan la zona del script', () => {
+  if (/v\.getUTCHours\(\)/.test(codeSrc)) throw new Error('slotTime_ sigue usando UTC');
+  if (!/Utilities\.formatDate\(v, Session\.getScriptTimeZone\(\), 'HH:mm'\)/.test(codeSrc)) {
+    throw new Error('slotTime_ no formatea en la zona del script');
+  }
+});
+
+t('r15: updateSessionsStudent_ busca el mail por encabezado', () => {
+  const i = codeSrc.indexOf('function updateSessionsStudent_');
+  const body = codeSrc.slice(i, codeSrc.indexOf('function updateRosterStudent_', i));
+  if (!/colMap\.email = h/.test(body)) throw new Error('no lee la columna email del encabezado');
+  if (!/vals\[i\]\[emailCol\]/.test(body)) throw new Error('sigue usando un indice fijo');
 });
 
 t('r15: el login no ofrece el DNI como alternativa', () => {

@@ -1518,7 +1518,13 @@ function isOpen_(cfg) {
 
 function slotTime_(v) {
   if (Object.prototype.toString.call(v) === '[object Date]') {
-    return ('0' + v.getUTCHours()).slice(-2) + ':' + ('0' + v.getUTCMinutes()).slice(-2);
+    // La hoja guarda las horas en la zona del script: con getUTCHours una
+    // franja de 10:30 en Buenos Aires salia 13:30.
+    try {
+      return Utilities.formatDate(v, Session.getScriptTimeZone(), 'HH:mm');
+    } catch (e) {
+      return ('0' + v.getHours()).slice(-2) + ':' + ('0' + v.getMinutes()).slice(-2);
+    }
   }
   var s = String(v == null ? '' : v).trim();
   var m = s.match(/^(\d{1,2}):(\d{2})/);
@@ -2904,9 +2910,11 @@ function updateSessionsStudent_(student) {
     for (var h = 0; h < vals[0].length; h++) {
       var key = EsiCore.normalizeText(vals[0][h]);
       if (key === 'nombre' || key === 'apellido' || key === 'curso' || key === 'ciclo') colMap[key] = h;
+      if (key === 'email' || key === 'mail') colMap.email = h;
     }
+    var emailCol = colMap.email == null ? 1 : colMap.email;
     for (var i = 1; i < vals.length; i++) {
-      if (EsiCore.normalizeEmail(vals[i][1]) !== student.email) continue;
+      if (EsiCore.normalizeEmail(vals[i][emailCol]) !== student.email) continue;
       if (colMap.nombre != null) sh.getRange(i + 1, colMap.nombre + 1).setValue(student.nombre);
       if (colMap.curso != null) sh.getRange(i + 1, colMap.curso + 1).setValue(student.curso);
       if (colMap.ciclo != null) sh.getRange(i + 1, colMap.ciclo + 1).setValue(student.ciclo);
