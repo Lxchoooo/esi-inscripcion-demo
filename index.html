@@ -267,6 +267,93 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: none; }
     }
+    @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    .empty-state { animation: fadeUp .3s var(--ease-emph) both; }
+    .empty-state svg { animation: floaty 4.5s ease-in-out infinite; }
+    .status-chips button { transition: background-color .16s ease, color .16s ease, border-color .16s ease, transform .12s ease; }
+    .status-chips button:active { transform: scale(.96); }
+    @media (hover: hover) and (pointer: fine) {
+      .btn:hover { transform: translateY(-1px); }
+      .btn:active { transform: translateY(0) scale(.985); }
+      .roster-row:hover { background: var(--surface-2); }
+    }
+    @keyframes screenInFwd {
+      from { opacity: 0; transform: translateX(18px) scale(.994); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes screenInBack {
+      from { opacity: 0; transform: translateX(-18px) scale(.994); }
+      to { opacity: 1; transform: none; }
+    }
+    .screen.active.fwd { animation: screenInFwd var(--dur-slow) var(--ease-emph) both; }
+    .screen.active.back { animation: screenInBack var(--dur-slow) var(--ease-emph) both; }
+    @keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .seatbar > span { animation: barGrow .5s var(--ease-emph) both; transform-origin: left center; }
+    .toast.show { animation: popIn .22s var(--ease-pop); }
+    #done-list .sheet-line { animation: fadeUp .3s var(--ease-emph) both; }
+    #done-list .sheet-line:nth-child(2) { animation-delay: .06s; }
+    #done-list .sheet-line:nth-child(3) { animation-delay: .12s; }
+    #done-list .sheet-line:nth-child(4) { animation-delay: .18s; }
+    .slot-progress {
+      height: 6px; margin: 10px 0 0; max-width: 280px; overflow: hidden;
+      border-radius: 999px; background: var(--surface-2);
+    }
+    .slot-progress > span {
+      display: block; height: 100%; width: 0; border-radius: 999px;
+      background: var(--accent-fill);
+      transition: width .38s var(--ease-emph), background-color .3s ease;
+    }
+    .slot-progress.is-done > span { background: var(--accent); }
+
+    /* ---- v35: resumen fijo, filas y detalles ---- */
+    .mini-summary {
+      position: sticky; top: 76px; z-index: 6;
+      padding: 10px 12px 12px;
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      background: var(--surface);
+    }
+    @media (max-width: 719px) { .mini-summary { top: 64px; } }
+    .mini-summary.is-complete { border-color: var(--accent-line); }
+    .ms-head {
+      display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 2px;
+      padding: 4px 2px; border: 0; background: transparent; color: var(--muted);
+      font: inherit; font-size: 11px; font-weight: 800; letter-spacing: .04em;
+      text-transform: uppercase; cursor: pointer;
+    }
+    .ms-head .ms-hint { margin-left: auto; color: var(--accent-strong); letter-spacing: 0; text-transform: none; }
+    .ms-head .ms-chev { width: 14px; height: 14px; transition: transform .22s var(--ease-emph); }
+    .mini-summary.is-collapsed .ms-chev { transform: rotate(-90deg); }
+    .ms-rows {
+      display: grid; gap: 6px; overflow: hidden;
+      max-height: 320px; opacity: 1;
+      transition: max-height .26s var(--ease-emph), opacity .18s ease, margin-top .2s ease;
+    }
+    .mini-summary.is-collapsed .ms-rows { max-height: 0; opacity: 0; margin-top: 0; }
+    .ms-rows .ms-row { animation: fadeUp .26s var(--ease-emph) both; animation-delay: calc(var(--i, 0) * 40ms); }
+
+    .roster-row { transition: background-color .22s ease, box-shadow .22s ease; }
+    .roster-row.is-present { box-shadow: inset 3px 0 0 var(--accent); }
+    .roster-row.is-present .present-btn { animation: popIn .2s var(--ease-pop); }
+
+    .clear-btn {
+      flex: 0 0 auto; display: grid; place-items: center;
+      width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
+      background: var(--surface-2); color: var(--muted);
+      font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+      animation: popIn .16s var(--ease-pop) both;
+      transition: background-color .16s ease, color .16s ease;
+    }
+    .clear-btn:hover { background: var(--surface-3); color: var(--ink); }
+    .clear-btn[hidden] { display: none; }
+
+    .sheet-body > * { animation: fadeUp .24s var(--ease-emph) both; }
+    .sheet-body > *:nth-child(2) { animation-delay: .04s; }
+    .sheet-body > *:nth-child(3) { animation-delay: .08s; }
+    .sheet-body > *:nth-child(4) { animation-delay: .11s; }
+    .sheet-actions .btn { animation: fadeUp .24s .12s var(--ease-emph) both; }
+
+    .talk:focus-visible { animation: none; }
+
     @media (prefers-reduced-motion: reduce) {
       .screen.active { animation: none; }
       * { scroll-behavior: auto !important; }
@@ -1411,6 +1498,9 @@
 
     @media (prefers-reduced-motion: reduce) {
       .pane-in, .stagger > *, .fade-in, .pop-in, .drop-in, .num-pop,
+      .ms-rows .ms-row, .clear-btn, .sheet-body > *, .sheet-actions .btn,
+      .seatbar > span, .toast.show, #done-list .sheet-line,
+      .screen.active.fwd, .screen.active.back, .empty-state, .empty-state svg,
       .present-btn.on, .present-mini.on, .status-chip.updated { animation: none !important; }
       .btn.is-loading .ico { animation: none; }
       .talk.selected .talk-check svg path { animation: none; stroke-dashoffset: 0; }
@@ -1594,6 +1684,7 @@
           <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
           <p class="hint" id="panel-progress"></p>
+          <div class="slot-progress" id="slot-progress" aria-hidden="true"><span id="slot-progress-fill"></span></div>
           <div class="panel-filters">
             <input id="input-buscar-talk" type="text" autocomplete="off" placeholder="Buscar charla" aria-label="Buscar charla">
             <label class="switch-line">
@@ -2065,7 +2156,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v34';
+    var APP_VERSION = 'v35';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -2142,7 +2233,7 @@
         email: '', nombre: '', apellido: '', curso: '', login: '', recordatorio: false,
         needsNombre: false, needsApellido: false, needsCurso: false,
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
-      onlyAvailable: false, lastChosen: -1,
+      onlyAvailable: false, lastChosen: -1, miniOpen: true,
       confirmed: false, recordatorio: false,
         student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
       };
@@ -3738,8 +3829,12 @@
 
     function showScreen(ids, activeId) {
       var prev = document.body.getAttribute('data-screen') || '';
+      var prevIdx = ids.indexOf(prev);
+      var nextIdx = ids.indexOf(activeId);
+      var dir = (nextIdx >= 0 && prevIdx >= 0 && nextIdx < prevIdx) ? ' back' : ' fwd';
+      if (!prev) dir = '';
       for (var i = 0; i < ids.length; i++) {
-        $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' : '');
+        $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' + dir : '');
       }
       document.body.setAttribute('data-screen', activeId || '');
       if (aMenuOpen && activeId !== 'a-screen-panel') aMenuSet_(false);
@@ -3905,6 +4000,49 @@
       return out;
     }
 
+    function sToggleMini_() {
+      sState.miniOpen = !sState.miniOpen;
+      lsSet('esi_mini', sState.miniOpen ? '1' : '0');
+      var box = $('mini-summary');
+      if (!box) return;
+      box.classList.toggle('is-collapsed', !sState.miniOpen);
+      var head = null;
+      try { head = box.querySelector('.ms-head'); } catch (e) { }
+      if (head) head.setAttribute('aria-expanded', sState.miniOpen ? 'true' : 'false');
+    }
+
+    function popNum_(el) {
+      if (!el || !el.classList) return;
+      el.classList.remove('num-pop');
+      void el.offsetWidth;
+      el.classList.add('num-pop');
+    }
+
+    function attachClear_(inputId) {
+      var input = $(inputId);
+      if (!input || !input.parentNode) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'clear-btn';
+      btn.textContent = '\u00d7';
+      btn.setAttribute('aria-label', 'Limpiar búsqueda');
+      btn.hidden = true;
+      input.parentNode.appendChild(btn);
+      var sync = function () {
+        var empty = !input.value;
+        btn.hidden = empty;
+        if (empty) btn.classList.remove('num-pop');
+      };
+      input.addEventListener('input', sync);
+      btn.addEventListener('click', function () {
+        input.value = '';
+        sync();
+        try { input.dispatchEvent(new window.Event('input')); } catch (e) { }
+        try { input.focus(); } catch (e2) { }
+      });
+      sync();
+    }
+
     function haptic_(ms) {
       if (typeof navigator === 'undefined' || !navigator.vibrate) return;
       try { navigator.vibrate(ms || 12); } catch (e) { }
@@ -4004,6 +4142,14 @@
         if (chosenId && sTalkById(chosenId)) chosenCount++;
       }
       var missing = sMissingSlots();
+      var barEl = $('slot-progress');
+      if (barEl) {
+        barEl.classList.toggle('is-done', slots.length > 0 && chosenCount >= slots.length);
+        var fill = $('slot-progress-fill');
+        if (fill && fill.style) {
+          fill.style.width = (slots.length ? Math.round(chosenCount * 100 / slots.length) : 0) + '%';
+        }
+      }
       var progress = $('panel-progress');
       if (progress) {
         progress.textContent = chosenCount + ' de ' + slots.length + ' charlas elegidas';
@@ -4098,6 +4244,10 @@
       if (!box) return;
       var d = sState.data;
       if (!d || !d.slots || !d.slots.length) { box.hidden = true; return; }
+      if (!sState.miniInited) {
+        sState.miniInited = true;
+        if (lsGet('esi_mini') === '0') sState.miniOpen = false;
+      }
       var mine = d.mine || {};
       var out = [];
       for (var i = 0; i < d.slots.length; i++) {
@@ -4109,7 +4259,20 @@
           + '<span class="ms-meta">' + esc(talk ? talk.lugar : d.slots[i].label) + '</span>'
           + '</div>');
       }
-      box.innerHTML = out.join('');
+      var listo = 0;
+      for (var k = 0; k < d.slots.length; k++) {
+        if (mine[Number(d.slots[k].id)]) listo++;
+      }
+      box.classList.toggle('is-collapsed', !sState.miniOpen);
+      box.classList.toggle('is-complete', listo === d.slots.length);
+      box.innerHTML = '<button class="ms-head" type="button" aria-expanded="'
+        + (sState.miniOpen ? 'true' : 'false') + '">'
+        + '<span>Tu inscripción</span>'
+        + '<span class="ms-hint">' + listo + ' de ' + d.slots.length + '</span>'
+        + '<svg class="ms-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor"'
+        + ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M4 6.5 8 10.5 12 6.5"/></svg></button>'
+        + '<div class="ms-rows">' + out.join('') + '</div>';
       box.hidden = false;
     }
 
@@ -4693,9 +4856,14 @@
       $('btn-confirmar').addEventListener('click', sConfirmar);
       if ($('input-buscar-talk')) $('input-buscar-talk').addEventListener('input', function () { sRender(); });
       if ($('chk-solo-lugares')) {
+        if (!sState.onlyInited) {
+          sState.onlyInited = true;
+          sState.onlyAvailable = lsGet('esi_solo_lugares') === '1';
+        }
         $('chk-solo-lugares').checked = !!sState.onlyAvailable;
         $('chk-solo-lugares').addEventListener('change', function () {
           sState.onlyAvailable = !!this.checked;
+          lsSet('esi_solo_lugares', sState.onlyAvailable ? '1' : '0');
           sRender();
         });
       }
@@ -5131,6 +5299,10 @@
     function aReleaseAwake_() {
       if (aWakeLock) { try { aWakeLock.release(); } catch (e) { } aWakeLock = null; }
     }
+    var aPresentesSeen = -1;
+    var aRosterKey = '';
+    var aRosterStagger = true;
+
     function aRenderTalk() {
       var d = aTalkData;
       if (!d) return;
@@ -5140,12 +5312,21 @@
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
       $('charla-count').textContent = d.count + ' de ' + d.talk.cupo + ' lugares';
       var presentesEl = $('charla-presentes');
-      if (presentesEl) presentesEl.textContent = 'Presentes ' + (d.presentes || 0) + ' de ' + d.count;
+      if (presentesEl) {
+        presentesEl.textContent = 'Presentes ' + (d.presentes || 0) + ' de ' + d.count;
+        if (aPresentesSeen !== (d.presentes || 0)) {
+          aPresentesSeen = d.presentes || 0;
+          popNum_(presentesEl);
+        }
+      }
       var hdrPresent = $('hdr-present');
       if (hdrPresent) {
         hdrPresent.style.display = adminCred ? 'inline' : 'none';
         hdrPresent.textContent = 'Presentes: ' + (d.presentes || 0) + '/' + d.count;
       }
+      var rosterKey = String(aTalkId) + '|' + q + '|' + fCurso + '|' + aTalkFilter;
+      aRosterStagger = rosterKey !== aRosterKey;
+      aRosterKey = rosterKey;
       var rows = '';
       var shown = 0;
       var cursos = {};
@@ -5157,7 +5338,8 @@
         // Filtro 'Faltan' eliminado: solo se marcan presentes.
         if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
         shown++;
-        rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '">'
+        rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '"'
+          + (aRosterStagger ? ' style="--i:' + shown + '"' : '') + '>'
           + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
           + ' data-id="' + esc(st.id) + '" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
           + ' aria-label="' + (st.presente ? 'Quitar presente a ' : 'Marcar presente a ')
@@ -5174,7 +5356,9 @@
       } else if (!shown) {
         rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
       }
-      $('charla-list').innerHTML = rows;
+      var listEl = $('charla-list');
+      listEl.innerHTML = rows;
+      if (listEl.classList) listEl.classList.toggle('stagger', aRosterStagger);
       if (focusId) {
         var list = $('charla-list');
         var buttons = list && list.querySelectorAll ? list.querySelectorAll('.present-btn') : [];
@@ -7172,6 +7356,15 @@
         onScroll();
       }
       initReveal();
+      var mini = $('mini-summary');
+      if (mini) {
+        mini.addEventListener('click', function (ev) {
+          var t = ev.target;
+          if (t && t.closest && t.closest('.ms-head')) sToggleMini_();
+        });
+      }
+      attachClear_('input-buscar-talk');
+      attachClear_('input-buscar');
     }
 
     function prefersDark_() {
