@@ -3203,6 +3203,37 @@ t('r15: el README linkea los documentos del evento', () => {
   });
 });
 
+t('r15: EVENTO.md explica como probar los recordatorios', () => {
+  const doc = read('../docs/EVENTO.md');
+  if (doc.indexOf('## Probar los recordatorios') < 0) throw new Error('falta la seccion de recordatorios');
+  ['Enviar recordatorios', 'Vista previa', 'Mails', 'recordatorio', 'cuota'].forEach((n) => {
+    if (doc.indexOf(n) < 0) throw new Error('falta ' + n);
+  });
+  if (!/una sola vez/.test(doc)) throw new Error('no aclara que se prueba una vez');
+  if (doc.indexOf('sin enviar a alumnos') >= 0) throw new Error('texto raro');
+});
+
+t('r15: published.js detecta un sitio viejo sin red', () => {
+  const pub = require(path.resolve(ROOT, '..', 'tests', 'published.js'));
+  const html = '<script>var APP_VERSION = \'v43\'</script>' + pub.MARCAS.join(' ');
+  assertEq(pub.versionDe(html), 'v43', 'lee la version');
+  assertEq(pub.comparar(html, 'v43').ok, true, 'coincide');
+  const viejo = pub.comparar(html, 'v44');
+  assertEq(viejo.ok, false, 'version distinta');
+  assertEq(viejo.publicada, 'v43', 'informa la publicada');
+  const sinMarcas = pub.comparar('<b>', 'v43');
+  assertEq(sinMarcas.ok, false, 'sin marcadores');
+  assertEq(sinMarcas.faltan.length, pub.MARCAS.length, 'cuenta los que faltan');
+  assertEq(pub.versionDe(''), '', 'sin version devuelve vacio');
+});
+
+t('r15: el chequeo de publicado corre despues de Pages', () => {
+  const wf = read('../.github/workflows/published.yml');
+  if (wf.indexOf('workflow_run') < 0) throw new Error('no se dispara con workflow_run');
+  if (wf.indexOf('pages build and deployment') < 0) throw new Error('no espera a Pages');
+  if (wf.indexOf('node tests/published.js') < 0) throw new Error('no corre el chequeo');
+  if (/pull_request/.test(wf)) throw new Error('no tiene que correr en cada PR');
+});
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
   Object.keys(map).forEach((name) => {

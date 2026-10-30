@@ -118,6 +118,31 @@ Se vuelve con `git revert`, nunca con `git reset` ni con `--force`: eso reescrib
    eso vuelve a servir la versión que funcionaba, sin tocar los datos.
 5. Confirmá que `/exec` responde y que el pie dice la versión esperada.
 
+## Probar los recordatorios (una vez, antes del evento)
+
+El envío de mails es lo único que nunca corrió de verdad. Se prueba una sola vez,
+con tu propio mail, y no se manda nada a los alumnos hasta verlo funcionar.
+
+1. En **Configuración**, revisá el remitente. Si queda vacío, el mail sale con la
+   cuenta del instituto, que suele ser la correcta.
+2. Andá a la página del alumno y anotate en una charla con un mail de la lista del
+   curso. En la confirmación, tildá **Quiero recibir un mail de recordatorio**.
+3. Volvé al panel, sección de mails, y tocá **Vista previa**: muestra el texto y
+   cuánta cuota queda. Si no hay cuota, ahí se ve antes de intentar.
+4. Tocá **Enviar recordatorios**. La tanda es de veinte y nunca pasa de cuarenta
+   por día, así que con un alumno alcanza.
+5. Revisá tres cosas: que el mail llegue, que en la hoja `Mails` quede una fila y
+   que al tocar **Enviar recordatorios** otra vez no se duplique.
+6. Mirá **Listo para el evento**: el control de mails tiene que seguir en verde y
+   con la cuota descontada.
+
+Si no llega: revisá spam, que el remitente sea una cuenta con permiso para enviar
+y que los permisos de envío estén autorizados (los pide la primera ejecución de
+`setup()`). Sin cuota no hay reintento: se espera al día siguiente.
+
+Cuando termines la prueba, borrá esa inscripción desde **Arreglar datos** y que el
+alumno destilde el recordatorio si no lo quiere.
+
 ## Simulacro de carga (antes del evento, sobre una copia)
 
 Sirve para saber cuántos alumnos aguantan el backend y ver los "ocupado" antes
