@@ -16,6 +16,7 @@
   <link rel="apple-touch-icon" href="assets/logo.png">
   <style>
     :root {
+      --nav-h: 62px;
       --paper: #FAF8F5;
       --surface: #FFFFFF;
       --surface-2: #F4F1EB;
@@ -508,7 +509,7 @@
 
     /* ---- v35: resumen fijo, filas y detalles ---- */
     .mini-summary {
-      position: sticky; top: 76px; z-index: 6;
+      position: sticky; top: calc(var(--nav-h) + 14px); z-index: 6;
       padding: 10px 12px 12px;
       -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
       background: var(--surface);
@@ -1088,7 +1089,7 @@
       font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
     }
     @media (max-width: 719px) {
-      body.admin #pane-charla .filters { position: sticky; top: calc(62px + env(safe-area-inset-top)); z-index: 20; background: var(--paper); padding: 8px 0; }
+      body.admin #pane-charla .filters { position: sticky; top: calc(var(--nav-h) + env(safe-area-inset-top)); z-index: 20; background: var(--paper); padding: 8px 0; }
     }
     .roster-who { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
     .student-avatar {
@@ -7176,6 +7177,19 @@
       if (document.body && document.body.classList) {
         document.body.classList.toggle('test-mode', !!on);
       }
+      syncNavHeight_();
+    }
+
+    // La barra crece con la franja de modo ensayo: los topes sticky se miden
+    // en vez de asumir 62 px.
+    function syncNavHeight_() {
+      try {
+        var nav = document.getElementById('nav');
+        var root = document.documentElement;
+        if (!nav || !root || !root.style) return;
+        var h = Math.round(nav.offsetHeight || 0);
+        if (h > 0) root.style.setProperty('--nav-h', h + 'px');
+      } catch (e) { }
     }
 
     function aFmtDate_(value) {
@@ -7997,6 +8011,9 @@
       sheetInit();
       initShell();
       watchErrors_();
+      syncNavHeight_();
+      window.addEventListener('resize', syncNavHeight_);
+      window.addEventListener('orientationchange', syncNavHeight_);
       if (TRANSPORT === 'unconfigured') {
         $('btn-demo').addEventListener('click', function () {
           lsSet('esi_demo', '1');
@@ -8012,7 +8029,9 @@
       }
       if (TRANSPORT === 'demo') {
         document.body.classList.add('demo');
+        syncNavHeight_();
       }
+      window.addEventListener('load', syncNavHeight_);
       registerServiceWorker_();
     }
 

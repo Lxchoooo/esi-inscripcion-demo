@@ -3585,6 +3585,18 @@ t('r15: el flush de marcas va por bloques', () => {
   if (panelHtml.indexOf("if (fn === 'apiAdminSetPresentBatch')") < 0) throw new Error('el demo no implementa el lote');
 });
 
+t('r15: los topes sticky se miden en vez de asumir 62px', () => {
+  if (!/--nav-h: 62px;/.test(panelHtml)) throw new Error('sin la variable --nav-h');
+  if (!/top: calc\(var\(--nav-h\) \+ env\(safe-area-inset-top\)\)/.test(panelHtml)) {
+    throw new Error('la barra de filtros sigue con 62px fijos');
+  }
+  if (!/top: calc\(var\(--nav-h\) \+ 14px\)/.test(panelHtml)) throw new Error('el mini resumen sigue con 76px fijos');
+  if (!/function syncNavHeight_\(\)/.test(panelHtml)) throw new Error('no mide la barra');
+  if (!/setProperty\('--nav-h'/.test(panelHtml)) throw new Error('no actualiza la variable');
+  const mode = panelHtml.slice(panelHtml.indexOf('function aApplyTestMode_'), panelHtml.indexOf('function aFmtDate_'));
+  if (mode.indexOf('syncNavHeight_()') < 0) throw new Error('el modo ensayo no remide la barra');
+});
+
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
   if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');
