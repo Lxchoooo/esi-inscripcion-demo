@@ -1802,6 +1802,25 @@ function withScriptLock_(timeoutMs, fn) {
   }
 }
 
+// Ejecuta con el lock global, salvo que ya lo tengamos: LockService no es
+// reentrante y estas funciones se llaman tambien desde adentro del lock.
+function withLockIfFree_(fn) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (typeof lock.hasLock === 'function' && lock.hasLock()) return fn();
+  } catch (e) { }
+  var tomado = false;
+  try {
+    lock.waitLock(REGISTER_LOCK_MS);
+    tomado = true;
+  } catch (e) { }
+  try {
+    return fn();
+  } finally {
+    if (tomado) { try { lock.releaseLock(); } catch (e) { } }
+  }
+}
+
 function sortKey_(row) {
   var ap = String(row.apellido == null ? '' : row.apellido).replace(/\s+/g, ' ').trim();
   var nombre = String(row.nombre == null ? '' : row.nombre).replace(/\s+/g, ' ').trim();
@@ -1996,8 +2015,13 @@ function noteDniFailure_(dni) {
   try {
     var props = PropertiesService.getScriptProperties();
     var key = dniCacheKey_(dni);
-    var count = dniFails_(dni) + 1;
-    props.setProperty(key, JSON.stringify({ count: count, ts: Date.now() }));
+    var prev = null;
+    try { prev = JSON.parse(props.getProperty(key) || 'null'); } catch (e) { prev = null; }
+    var vigente = prev && prev.ts && Date.now() - Number(prev.ts) <= DNI_BLOCK_MS;
+    var count = vigente ? Number(prev.count || 0) + 1 : 1;
+    // El reloj arranca en el primer fallo: el bloqueo no se puede sostener.
+    var ts = vigente ? Number(prev.ts) : Date.now();
+    props.setProperty(key, JSON.stringify({ count: count, ts: ts }));
   } catch (e) { }
 }
 
@@ -2153,7 +2177,9 @@ function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
     var s = bs.student;
     var signups = readSignupsCached_();
     var mine = mineMap_(signups, s.email);
-    if (!current && !ticket && hasSignupsForEmail_(signups, s.email)) {
+    // Con cache de 12 s este chequeo podia dejar entrar sin sesion a quien
+    // solo sabe el mail; se lee crudo, y solo en el camino sin credencial.
+    if (!current && !ticket && hasSignupsForEmail_(readSignups_(), s.email)) {
       return {
         ok: false,
         needsLogin: true,
@@ -2346,13 +2372,15 @@ function revokeStudentSession_(token) {
   var raw = String(token == null ? '' : token).trim();
   if (raw.indexOf(STUDENT_TOKEN_PREFIX) !== 0) return false;
   var hash = studentTokenHash_(raw);
-  var rows = readSessions_();
-  for (var i = 0; i < rows.length; i++) {
-    if (rows[i].hash !== hash) continue;
-    sessionsSheet_().getRange(rows[i].row, rows[i].revokedCol).setValue(true);
-    return true;
-  }
-  return false;
+  return withLockIfFree_(function () {
+    var rows = readSessions_();
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].hash !== hash) continue;
+      sessionsSheet_().getRange(rows[i].row, rows[i].revokedCol).setValue(true);
+      return true;
+    }
+    return false;
+  });
 }
 
 // Cierra las sesiones abiertas de un mail. `keepHash` conserva la del que
@@ -2360,17 +2388,19 @@ function revokeStudentSession_(token) {
 function revokeSessionsForEmail_(email, keepHash) {
   var key = EsiCore.normalizeEmail(email);
   if (!key) return 0;
-  var rows = readSessions_();
-  var sh = null;
-  var count = 0;
-  for (var i = 0; i < rows.length; i++) {
-    if (rows[i].email !== key || rows[i].revoked) continue;
-    if (keepHash && rows[i].hash === keepHash) continue;
-    if (!sh) sh = sessionsSheet_();
-    sh.getRange(rows[i].row, rows[i].revokedCol).setValue(true);
-    count++;
-  }
-  return count;
+  return withLockIfFree_(function () {
+    var rows = readSessions_();
+    var sh = null;
+    var count = 0;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].email !== key || rows[i].revoked) continue;
+      if (keepHash && rows[i].hash === keepHash) continue;
+      if (!sh) sh = sessionsSheet_();
+      sh.getRange(rows[i].row, rows[i].revokedCol).setValue(true);
+      count++;
+    }
+    return count;
+  });
 }
 
 function studentSessionExpired_() {

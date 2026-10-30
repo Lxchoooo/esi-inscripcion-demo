@@ -2092,13 +2092,16 @@ t('Cached reads are invalidated by writes', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   services.cache.set('signups_v2', JSON.stringify([]));
   const api = backendApi(services, 'apiGetData, apiRegister, apiAdminSetOpen');
-  let r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  const sinCredencial = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  assertEq(sinCredencial.ok, false, 'el cache vacio ya no deja entrar sin credencial');
+  assertEq(sinCredencial.needsLogin, true, 'pide DNI aunque el cache diga que no hay filas');
+  let r = api.apiGetData('cami@secundariosalsipuedes.edu.ar', 'Cami Perez', '2°B');
   assertEq(r.ok, true, 'getData ok: ' + r.message);
-  assertEq(r.data.mine[1], undefined, 'stale cache hides the row');
+  assertEq(r.data.mine[1], undefined, 'sin filas todavia');
   const session = r.session;
-  const reg = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B1', '', session);
+  const reg = api.apiRegister('cami@secundariosalsipuedes.edu.ar', 'Cami Perez', '2°B', 'B1', '', session);
   assertEq(reg.ok, true, 'register ok');
-  r = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', session);
+  r = api.apiGetData('cami@secundariosalsipuedes.edu.ar', 'Cami Perez', '2°B', session);
   assertEq(r.data.mine[1], 'B1', 'write invalidates the signups cache');
   if (!services.cache.has('signups_v2')) throw new Error('cache not repopulated');
   if (!services.cache.has('talks_v1') || !services.cache.has('slots_v1')) {
@@ -3241,6 +3244,71 @@ t('auditoria: la cola offline aguanta una jornada entera', () => {
   if (!/var A_QUEUE_MAX = 2000;/.test(panelSrc)) throw new Error('tope de cola muy chico');
   if (!/list\.slice\(-A_QUEUE_MAX\)/.test(panelSrc)) throw new Error('no usa el tope');
   if (/slice\(-200\)/.test(panelSrc)) throw new Error('quedo el tope viejo de 200');
+});
+t('auditoria: el lock no se toma dos veces', () => {
+  const armar = (tomadoYa) => {
+    const estado = { waits: 0, releases: 0, tomado: !!tomadoYa };
+    return {
+      estado: estado,
+      lock: {
+        hasLock: () => estado.tomado,
+        waitLock: () => { estado.waits++; estado.tomado = true; },
+        releaseLock: () => { estado.releases++; estado.tomado = false; }
+      }
+    };
+  };
+  const cargar = (lock) => new Function('LockService', 'PropertiesService', codeSrc + '\nreturn { withLockIfFree_: withLockIfFree_ };')(
+    { getScriptLock: () => lock },
+    { getScriptProperties: () => ({ getProperty: () => '' }) }
+  );
+  const dentro = armar(true);
+  const api1 = cargar(dentro.lock);
+  let corrió = false;
+  const r1 = api1.withLockIfFree_(() => { corrió = true; return 7; });
+  assertEq(r1, 7, 'devuelve el valor');
+  assertEq(corrió, true, 'corre igual');
+  assertEq(dentro.estado.waits, 0, 'no espera el lock que ya tiene');
+  assertEq(dentro.estado.releases, 0, 'no suelta un lock ajeno');
+  const fuera = armar(false);
+  const api2 = cargar(fuera.lock);
+  const r2 = api2.withLockIfFree_(() => 'ok');
+  assertEq(r2, 'ok', 'respuesta con lock libre');
+  assertEq(fuera.estado.waits, 1, 'toma el lock');
+  assertEq(fuera.estado.releases, 1, 'lo suelta');
+  const error = armar(false);
+  error.lock.waitLock = () => { throw new Error('ocupado'); };
+  const api3 = cargar(error.lock);
+  assertEq(api3.withLockIfFree_(() => 3), 3, 'si no lo consigue igual trabaja');
+});
+
+t('auditoria: revocar sesiones y chequear mails van con lock y sin cache', () => {
+  const rev1 = codeSrc.slice(codeSrc.indexOf('function revokeStudentSession_'), codeSrc.indexOf('function revokeSessionsForEmail_'));
+  const rev2 = codeSrc.slice(codeSrc.indexOf('function revokeSessionsForEmail_'), codeSrc.indexOf('function studentSessionExpired_'));
+  if (rev1.indexOf('withLockIfFree_') < 0) throw new Error('revokeStudentSession_ escribe sin lock');
+  if (rev2.indexOf('withLockIfFree_') < 0) throw new Error('revokeSessionsForEmail_ escribe sin lock');
+  if (codeSrc.indexOf('hasSignupsForEmail_(readSignups_()') < 0) throw new Error('el chequeo de mails sigue leyendo cache');
+});
+
+t('auditoria: el bloqueo por DNI no se renueva solo', () => {
+  const store = {};
+  const props = {
+    getProperty: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+    setProperty: (k, v) => { store[k] = v; },
+    deleteProperty: (k) => { delete store[k]; }
+  };
+  const api = new Function('PropertiesService','LockService','CacheService','SpreadsheetApp','Utilities','MailApp',
+    codeSrc + '\nreturn { noteDniFailure_: noteDniFailure_ };')(
+    { getScriptProperties: () => props }, {}, {},
+    {}, { computeDigest: () => new Array(32).fill(7), DigestAlgorithm: { SHA_256: 'SHA_256' } }, {});
+  api.noteDniFailure_('30111222');
+  const clave = Object.keys(store)[0];
+  const primero = JSON.parse(store[clave]);
+  const t0 = Date.now();
+  while (Date.now() - t0 < 4) { }
+  api.noteDniFailure_('30111222');
+  const segundo = JSON.parse(store[clave]);
+  assertEq(primero.ts, segundo.ts, 'el reloj arranca en el primer fallo');
+  assertEq(segundo.count, 2, 'cuenta los dos intentos');
 });
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
