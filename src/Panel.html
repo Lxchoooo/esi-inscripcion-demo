@@ -707,13 +707,6 @@
     }
     input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
     .screen:focus { outline: none; }
-    .login-or {
-      display: flex; align-items: center; gap: 12px;
-      color: var(--muted); font-size: 12px; font-weight: 600;
-    }
-    .login-or::before, .login-or::after {
-      content: ""; flex: 1; height: 1px; background: var(--line-strong);
-    }
     .first-time .field, .first-time .field-row, .first-time p { margin-top: 12px; }
 
     .banner {
@@ -1862,7 +1855,7 @@
     <section id="s-screen-mail" class="screen card" tabindex="-1" aria-labelledby="login-title">
       <div class="steps"><span>1 de 3</span><span class="steps-bar" aria-hidden="true"><i class="on"></i><i></i><i></i></span></div>
       <h2 class="intro" id="login-title">Ingresar</h2>
-      <p class="hint">Vas a necesitar tu mail institucional o tu DNI.</p>
+      <p class="hint">Vas a necesitar tu mail institucional y tu DNI.</p>
       <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
       <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: ingresen por el panel de administración.</p>
       <p class="hint-line login-note" id="login-note">Si usás un celular compartido, cerrá la pestaña al terminar.</p>
@@ -1870,8 +1863,8 @@
 
     <section id="s-screen-login" class="screen card" tabindex="-1" aria-labelledby="login-form-title">
       <div class="steps"><span>2 de 3</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="on"></i><i></i></span></div>
-      <h2 class="intro" id="login-form-title">Ingresá con tu mail o tu DNI</h2>
-      <p class="hint" id="login-intro">Con tu mail o con tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.</p>
+      <h2 class="intro" id="login-form-title">Ingresá con tu mail y tu DNI</h2>
+      <p class="hint" id="login-intro">Con tu mail y tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.</p>
       <form id="login-form" class="login-form" novalidate>
         <div class="login-fields">
           <div class="field">
@@ -1897,7 +1890,6 @@
               <span id="mail-year-out" class="hint-line"></span>
             </div>
           </details>
-          <div class="login-or" aria-hidden="true">o</div>
           <div class="field">
             <label for="input-dni">DNI</label>
             <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"

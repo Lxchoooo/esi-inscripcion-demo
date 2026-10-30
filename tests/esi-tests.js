@@ -1016,7 +1016,7 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
     'id="select-anio"', 'id="select-division"',
     'placeholder="usuario@secundariosalsipuedes.edu.ar"', 'placeholder="Solo números"',
     '<h2 class="intro" id="login-title">Ingresar</h2>',
-    'Con tu mail o con tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.',
+    'Con tu mail y tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.',
     '.login-fields { display: grid; gap: 16px; }',
     '.field { display: grid; gap: 8px; }',
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
@@ -3452,6 +3452,12 @@ t('r15: el logo se ve en el panel de admin, no un cuadrado blanco', () => {
   if (/body\.admin \.brand-logo \{[^}]*filter/.test(css)) throw new Error('el filtro aplana el logo a blanco');
   if (!/body\.admin \.brand-mark \{[^}]*background: #F5F2EB/.test(css)) throw new Error('la marca oscura no tiene fondo claro');
   if (!/\.brand-logo \{[^}]*border-radius/.test(css)) throw new Error('el logo no tiene esquinas redondeadas');
+});
+
+t('r15: el login no ofrece el DNI como alternativa', () => {
+  if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
+  if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');
+  if (!/Vas a necesitar tu mail institucional y tu DNI\./.test(panelHtml)) throw new Error('la pantalla previa sigue diciendo o');
 });
 
 t('r15: los campos de los filtros no se salen de la tarjeta', () => {
