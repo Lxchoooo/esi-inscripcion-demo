@@ -226,7 +226,7 @@
       border: 1px solid var(--accent-line);
       display: grid; place-items: center;
     }
-    .brand-logo { width: 30px; height: 30px; display: block; object-fit: contain; }
+    .brand-logo { width: 30px; height: 30px; display: block; object-fit: contain; border-radius: 7px; }
     .brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.12; }
     .brand-school {
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
@@ -257,8 +257,7 @@
       body[data-screen="s-screen-mail"] .nav-links { display: flex; }
     }
     body.admin #nav { background: #1F1F1F; border-bottom-color: #1F1F1F; color: #F5F2EB; }
-    body.admin .brand-mark { background: #26352A; border-color: #3F5C44; padding: 3px; }
-    body.admin .brand-logo { filter: brightness(0) invert(1); }
+    body.admin .brand-mark { background: #F5F2EB; border-color: #46603F; padding: 2px; }
     body.admin .brand-school { color: #C9D8C5; }
     body.admin #hdr-sub { color: #B9B6AC; }
     body.admin #hdr-sub.alert { color: #F0B5AA; }
@@ -594,6 +593,7 @@
       display: flex; align-items: center; gap: 8px;
       font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
       color: var(--accent); margin: 0 0 8px;
+      white-space: nowrap;
     }
     .steps::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-fill); flex: 0 0 auto; }
     .tab-badge {
@@ -1218,11 +1218,11 @@
     }
     .present-mini.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
     .present-mini:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
-    .panel-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .panel-bar-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .panel-bar-title strong { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+    .panel-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .panel-bar-title { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+    .panel-bar-title strong { font-size: 15px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .panel-bar-title .steps { margin: 0; }
-    .panel-bar-actions { display: flex; gap: 8px; margin-left: auto; }
+    .panel-bar-actions { display: flex; gap: 8px; margin-left: auto; flex: 0 0 auto; }
     .panel-search {
       display: flex; align-items: center; gap: 8px; flex: 1 1 220px; max-width: 360px;
       min-width: 0; padding: 0 12px; min-height: 44px;
@@ -1238,6 +1238,8 @@
     .panel-search input:focus { outline: none; }
     @media (max-width: 719px) {
       .panel-search { order: 3; flex: 1 1 100%; max-width: none; }
+      .panel-bar .btn-label { display: none; }
+      .panel-bar .btn.small { width: 44px; padding: 0; }
     }
     .menu-toggle { display: none; width: 44px; height: 44px; padding: 0; align-items: center; justify-content: center; flex: 0 0 auto; }
     .menu-bars, .menu-bars::before, .menu-bars::after {
@@ -2016,13 +2018,13 @@
             placeholder="Buscar alumno, mail o charla  ( / )" aria-label="Búsqueda global">
         </div>
         <div class="panel-bar-actions">
-          <button id="btn-arefresh" class="btn secondary small" type="button">
+          <button id="btn-arefresh" class="btn secondary small" type="button" aria-label="Actualizar">
             <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
-            Actualizar
+            <span class="btn-label">Actualizar</span>
           </button>
-          <button id="btn-salir" class="btn secondary small" type="button">
+          <button id="btn-salir" class="btn secondary small" type="button" aria-label="Salir">
             <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-            Salir
+            <span class="btn-label">Salir</span>
           </button>
         </div>
       </div>

@@ -3422,5 +3422,37 @@ t('r15: el log del loadtest queda fuera del repo', () => {
   if (ignore.indexOf('build/loadtest.log') < 0) throw new Error('falta build/loadtest.log en .gitignore');
 });
 
+t('r15: la barra del panel no aplasta el titulo en el celular', () => {
+  const css = panelCss();
+  const bar = css.match(/\.panel-bar \{[^}]*\}/);
+  if (!bar) throw new Error('falta .panel-bar');
+  if (!/flex-wrap: wrap/.test(bar[0])) throw new Error('.panel-bar no puede envolver: la busqueda se sale');
+  const steps = css.match(/\n    \.steps \{[^}]*\}/);
+  if (!steps) throw new Error('falta .steps');
+  if (!/white-space: nowrap/.test(steps[0])) throw new Error('"3 de 3" se parte letra por letra');
+  if (!/\.panel-bar-title strong \{[^}]*white-space: nowrap/.test(css)) throw new Error('el titulo se parte');
+  if (!/\.panel-bar-actions \{[^}]*flex: 0 0 auto/.test(css)) throw new Error('las acciones se achican');
+});
+
+t('r15: en el celular los botones de la barra quedan solo con el icono', () => {
+  const css = panelCss();
+  if (!/@media \(max-width: 719px\) \{[\s\S]*?\.panel-bar \.btn-label \{ display: none; \}/.test(css)) {
+    throw new Error('la etiqueta de Actualizar y Salir no se oculta en el celular');
+  }
+  ['btn-arefresh', 'btn-salir'].forEach((id) => {
+    const m = panelHtml.match(new RegExp('id="' + id + '"[\\s\\S]*?</button>'));
+    if (!m) throw new Error('falta ' + id);
+    if (!/aria-label="[^"]+"/.test(m[0])) throw new Error(id + ' sin aria-label');
+    if (!/<span class="btn-label">/.test(m[0])) throw new Error(id + ' sin etiqueta ocultable');
+  });
+});
+
+t('r15: el logo se ve en el panel de admin, no un cuadrado blanco', () => {
+  const css = panelCss();
+  if (/body\.admin \.brand-logo \{[^}]*filter/.test(css)) throw new Error('el filtro aplana el logo a blanco');
+  if (!/body\.admin \.brand-mark \{[^}]*background: #F5F2EB/.test(css)) throw new Error('la marca oscura no tiene fondo claro');
+  if (!/\.brand-logo \{[^}]*border-radius/.test(css)) throw new Error('el logo no tiene esquinas redondeadas');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
