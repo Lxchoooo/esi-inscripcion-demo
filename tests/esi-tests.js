@@ -3454,6 +3454,37 @@ t('r15: el logo se ve en el panel de admin, no un cuadrado blanco', () => {
   if (!/\.brand-logo \{[^}]*border-radius/.test(css)) throw new Error('el logo no tiene esquinas redondeadas');
 });
 
+t('r15: hidden siempre oculta y la sesion se borra al vencer', () => {
+  if (!/\n    \[hidden\] \{ display: none !important; \}/.test(panelHtml)) throw new Error('falta la regla [hidden]');
+  if (!/function sSetSession_\(token\) \{\n      if \(token\) lsSet\('esi_session', token\);\n      else lsDel\('esi_session'\);/.test(panelHtml)) {
+    throw new Error('sSetSession_(null) no borra el token');
+  }
+  if (!/var aVisBound = false;/.test(panelHtml)) throw new Error('sin guarda para el listener de visibilidad');
+  if (!/if \(!aVisBound\) \{/.test(panelHtml)) throw new Error('el listener se agrega en cada login');
+});
+
+t('r15: cambiar de charla desmarca la asistencia', () => {
+  if (!/sh\.getRange\(row, map\.presente \+ 1\)\.setValue\(''\)/.test(codeSrc)) {
+    throw new Error('Code.gs no limpia presente al cambiar de charla');
+  }
+  if (!/setSignupFields_\(sh, map, row, \{ talk_id: String\(talk\.id\), presente: '' \}\)/.test(codeSrc)) {
+    throw new Error('la correccion manual no limpia presente');
+  }
+  if (!/signups\[k\]\.presente = false;/.test(panelHtml)) throw new Error('el demo no limpia presente');
+});
+
+t('r15: la asistencia se encola antes de la request', () => {
+  const i = panelHtml.indexOf('function aOnPresent(signupId)');
+  const j = panelHtml.indexOf('function aOfferUndo_', i);
+  const body = panelHtml.slice(i, j);
+  if (body.indexOf("call('apiAdminSetPresent'") < 0) throw new Error('no llama al api');
+  if (body.indexOf('aQueueMark_(id, next)') < 0) throw new Error('no encola la marca');
+  if (body.indexOf('aQueueMark_(id, next)') > body.indexOf("call('apiAdminSetPresent'")) {
+    throw new Error('encola despues de la request: se pierde si cierran la pestana');
+  }
+  if (!/if \(!resp\.ok\) \{\n            aUnqueue_\(id\);/.test(body)) throw new Error('no descarta la marca si el servidor falla');
+});
+
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
   if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');

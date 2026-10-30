@@ -160,6 +160,7 @@
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
     html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: light dark; }
     body {
       margin: 0;
@@ -2487,6 +2488,7 @@
 
     function sSetSession_(token) {
       if (token) lsSet('esi_session', token);
+      else lsDel('esi_session');
     }
 
     function sRevokeSession_() {
@@ -3227,6 +3229,7 @@
           if (signups[k].id === plan.signupId) {
             signups[k].talk_id = String(talkId);
             signups[k].ts = Date.now();
+            signups[k].presente = false;
           }
         }
         message = 'Listo, cambiaste de charla.';
@@ -5274,6 +5277,7 @@
     var aTabName = 'charla';
     var aMenuOpen = false;
     var aTimer = null;
+    var aVisBound = false;
     var aTicker = null;
 
     function aBanner(text, type, actionLabel, actionFn) {
@@ -5370,9 +5374,12 @@
         aRefreshView();
       }, 30000);
       aTicker = window.setInterval(aUpdateAges, 1000);
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') aRefreshView();
-      });
+      if (!aVisBound) {
+        aVisBound = true;
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible' && adminCred) aRefreshView();
+        });
+      }
     }
 
     function aStopAutoRefresh() {
@@ -5493,9 +5500,11 @@
       aTalkData.presentes = presentes;
       aRenderTalk();
       haptic_(next ? 14 : 8);
+      aQueueMark_(id, next);
       call('apiAdminSetPresent', [adminCred, id, next])
         .then(function (resp) {
           if (!resp.ok) {
+            aUnqueue_(id);
             target.presente = prev;
             aRenderTalk();
             aBanner(resp.message || 'No se pudo marcar.', 'err');
@@ -5505,8 +5514,7 @@
           aOfferUndo_(id, prev);
         })
         .catch(function () {
-          aQueueMark_(id, next);
-          aBanner('Sin conexión. Se reintentará.', 'err');
+          aBanner('Sin conexión. La marca quedó guardada en el teléfono.', 'err');
         });
     }
 
@@ -5588,7 +5596,9 @@
             else if (aAuthLost(resp)) return;
             next();
           })
-          .catch(function () { });
+          .catch(function () {
+            aBanner('Sin conexión: quedan ' + (q.length - i + 1) + ' marcas sin guardar. Se reintentan solas.', 'err');
+          });
       }
       next();
     }
