@@ -2497,7 +2497,8 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       return { ok: false, message: ERROR_MESSAGES_.talkWrongCycle, data: publicData_(s.ciclo, mine, signups) };
     }
 
-    var plan = EsiCore.planRegistration(signups, talksById, {
+    var planRows = convertBool_(cfg.modo_prueba) ? signups : signups.filter(function (x) { return !x.prueba; });
+    var plan = EsiCore.planRegistration(planRows, talksById, {
       emailKey: s.emailKey,
       ciclo: s.ciclo
     }, talkId);
@@ -2547,6 +2548,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       if (map.ts < 0 || map.talk_id < 0) throw new Error('Falta una columna de Signups');
       sh.getRange(row, map.ts + 1).setValue(new Date());
       sh.getRange(row, map.talk_id + 1).setValue(talkId);
+      if (map.presente >= 0) sh.getRange(row, map.presente + 1).setValue('');
       message = 'Cambiaste tu charla de ese horario a ' + talk.titulo + '.';
     } else {
       message = 'Ya estabas anotado.';
@@ -3142,7 +3144,7 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       }
       var sh = sheet_(SIGNUPS_SHEET);
       var map = signupsHeaderMap_(sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]);
-      setSignupFields_(sh, map, row, { talk_id: String(talk.id) });
+      setSignupFields_(sh, map, row, { talk_id: String(talk.id), presente: '' });
       logAction_('move_talk', signupId, talk.id);
       invalidateDataCache_();
       return { ok: true, changed: true, talk: { id: talk.id, titulo: talk.titulo } };
