@@ -5554,7 +5554,8 @@
         return Object.prototype.toString.call(list) === '[object Array]' ? list : [];
       } catch (e) { return []; }
     }
-    function aWriteQueue_(list) { lsSet(A_MARK_QUEUE, JSON.stringify(list.slice(-200))); }
+    var A_QUEUE_MAX = 2000;
+    function aWriteQueue_(list) { lsSet(A_MARK_QUEUE, JSON.stringify(list.slice(-A_QUEUE_MAX))); }
     function aQueueMark_(id, presente) {
       var list = aReadQueue_().filter(function (x) { return String(x.id) !== String(id); });
       list.push({ id: String(id), presente: !!presente, t: Date.now() });
