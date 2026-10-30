@@ -39,9 +39,12 @@ var EVENT_TITLE_ = 'Jornada ESI 2026';
 var REMINDER_BATCH_ = 20;
 var REMINDER_MAX_BATCH_ = 40;
 var ROLE_ADMIN = 'admin';
+// Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
+// ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
+var BACKEND_VERSION = 'v42';
 var DATA_CACHE_TTL = 12;
-var BUSY_MESSAGE = 'El servidor está ocupado. Probá de nuevo.';
+var BUSY_MESSAGE = 'El servidor está ocupado: esperá unos segundos y probá de nuevo.';
 var REGISTER_LOCK_MS = 8000;
 var ADMIN_LOCK_MS = 5000;
 
@@ -50,7 +53,7 @@ var ERROR_MESSAGES_ = {
   talkNotFound: 'No encontramos esa charla.',
   talkInactive: 'Esa charla no está disponible.',
   talkWrongCycle: 'Esa charla no es de tu ciclo.',
-  closed: 'La inscripción está cerrada.'
+  closed: 'La inscripción está cerrada: si te falta anotarte, avisale a tu preceptor.'
 };
 
 var STUDENT_ERRORS_ = {
@@ -58,8 +61,8 @@ var STUDENT_ERRORS_ = {
   nombre: 'Escribí tu nombre con letras, espacios, apóstrofe o guion.',
   apellido: 'Escribí tu apellido con letras, espacios, apóstrofe o guion.',
   curso: 'Elegí año y división.',
-  notInRoster: 'Ese mail no está en la lista.',
-  domain: 'Usá tu mail institucional @secundariosalsipuedes.edu.ar.'
+  notInRoster: 'Ese mail no figura en la lista del curso: pedile a tu preceptor que te agregue.',
+  domain: 'Ese mail no es institucional: usá el que termina en @secundariosalsipuedes.edu.ar.'
 };
 
 var EsiCore = (function () {
@@ -843,9 +846,18 @@ function setup() {
   ensureColumn_(signupsSh, 'prueba');
   ensureAdminPin_();
   ensureGuidePin_();
+  noteSetupRun_();
   configureBackupTrigger_();
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
+}
+
+function noteSetupRun_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('LAST_SETUP_AT', new Date().toISOString());
+    props.setProperty('LAST_SETUP_VERSION', BACKEND_VERSION);
+  } catch (e) { }
 }
 
 function configureBackupTrigger_() {
@@ -2080,7 +2092,7 @@ function revokeSessionsForEmail_(email, keepHash) {
 }
 
 function studentSessionExpired_() {
-  return { ok: false, expired: true, message: 'Tu sesión venció. Entrá de nuevo.' };
+  return { ok: false, expired: true, message: 'Tu sesión venció: entrá de nuevo con tu mail institucional.' };
 }
 
 function apiResumeSession(token) {
@@ -2289,7 +2301,7 @@ function adminAuth_(cred) {
   }
   if (given && given === guidePin) {
     resetAdminFailures_();
-    return { ok: true, role: ROLE_GUIDE };
+    return { ok: true, role: ROLE_ADMIN };
   }
   var now = Date.now();
   var blockedUntil = Number(props.getProperty(ADMIN_BLOCK_PROP) || 0);
@@ -2304,7 +2316,7 @@ function adminTokenAuth_(token) {
   try {
     var hit = CacheService.getScriptCache().get(tokenCacheKey_(token));
     if (hit === ROLE_ADMIN || hit === ROLE_GUIDE) {
-      return { ok: true, role: hit };
+      return { ok: true, role: ROLE_ADMIN };
     }
   } catch (e) { }
   return { ok: false, message: 'Sesión vencida. Entrá de nuevo.' };
@@ -2321,7 +2333,7 @@ function adminIssueToken_(role) {
   try {
     var raw = Utilities.getUuid() + Utilities.getUuid();
     var token = ADMIN_TOKEN_PREFIX + raw.replace(/-/g, '');
-    CacheService.getScriptCache().put(tokenCacheKey_(token), role || ROLE_ADMIN, ADMIN_TOKEN_TTL);
+    CacheService.getScriptCache().put(tokenCacheKey_(token), ROLE_ADMIN, ADMIN_TOKEN_TTL);
     return token;
   } catch (e) {
     return '';
