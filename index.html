@@ -1308,9 +1308,13 @@
       .workspace { min-width: 0; }
     }
     .tabpanel { padding-top: 4px; }
-    .filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
-    @media (min-width: 720px) { .filters { grid-template-columns: 1.4fr 1fr 1fr 1.4fr; } }
-    .filters input, .filters select { min-height: 44px; padding: 9px 12px; font-size: 16px; }
+    .filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 12px; }
+    @media (min-width: 720px) { .filters { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); } }
+    .filters input, .filters select {
+      min-height: 44px; padding: 9px 12px; font-size: 16px;
+      width: auto; justify-self: stretch; min-width: 0; max-width: 100%;
+      box-sizing: border-box;
+    }
     .filters select { padding-right: 34px; background-position: right 12px center; }
     .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
     .admin-actions .btn { gap: 6px; }
