@@ -4027,6 +4027,24 @@
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         return Promise.resolve(demoImportRoster(a[1], a[2]));
       }
+      if (fn === 'apiAdminSetPresentBatch') {
+        var batch = a[1];
+        if (!batch || typeof batch.length !== 'number') return Promise.resolve({ ok: false, message: 'Lote invalido.' });
+        var all = demoSignups();
+        var doneIds = [];
+        var missingIds = [];
+        for (var bi = 0; bi < batch.length; bi++) {
+          var hitRow = null;
+          for (var bj = 0; bj < all.length; bj++) {
+            if (String(all[bj].id) === String(batch[bi] && batch[bi].id)) { hitRow = all[bj]; break; }
+          }
+          if (!hitRow) { missingIds.push(String(batch[bi] && batch[bi].id)); continue; }
+          hitRow.presente = !!batch[bi].presente;
+          doneIds.push(String(hitRow.id));
+        }
+        if (doneIds.length) demoWrite('esi_demo_signups', all);
+        return Promise.resolve({ ok: true, done: doneIds, missing: missingIds });
+      }
       if (fn === 'apiAdminSetPresent') {
         var signupsP = demoSignups();
         for (var q = 0; q < signupsP.length; q++) {
@@ -5587,6 +5605,7 @@
       for (var k = 0; k < d.students.length; k++) if (d.students[k].presente) presentes++;
       d.presentes = presentes;
     }
+    var A_MARK_BATCH = 50;
     function aFlushMarks_() {
       if (!adminCred || typeof navigator === 'undefined' || !navigator.onLine) return;
       var q = aReadQueue_();
@@ -5594,15 +5613,24 @@
       var i = 0;
       function next() {
         if (i >= q.length || !adminCred) return;
-        var row = q[i++];
-        call('apiAdminSetPresent', [adminCred, row.id, !!row.presente])
+        var chunk = q.slice(i, i + A_MARK_BATCH);
+        i += chunk.length;
+        // Un solo viaje por bloque: con 1500 marcas encoladas el flush de a una
+        // tardaba minutos y el celular se trababa.
+        call('apiAdminSetPresentBatch', [adminCred, chunk.map(function (row) {
+          return { id: row.id, presente: !!row.presente };
+        })])
           .then(function (resp) {
-            if (resp.ok) aUnqueue_(row.id);
-            else if (aAuthLost(resp)) return;
+            if (aAuthLost(resp)) return;
+            if (!resp.ok) return;
+            var done = resp.done || [];
+            for (var d = 0; d < done.length; d++) aUnqueue_(done[d]);
+            var missing = resp.missing || [];
+            for (var m = 0; m < missing.length; m++) aUnqueue_(missing[m]);
             next();
           })
           .catch(function () {
-            aBanner('Sin conexión: quedan ' + (q.length - i + 1) + ' marcas sin guardar. Se reintentan solas.', 'err');
+            aBanner('Sin conexión: quedan ' + (q.length - (i - chunk.length)) + ' marcas sin guardar. Se reintentan solas.', 'err');
           });
       }
       next();

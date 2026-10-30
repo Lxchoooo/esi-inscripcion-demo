@@ -1996,7 +1996,9 @@ t('Panel clears the offline attendance queue on logout and erase', () => {
   if (!/function aClearMarkQueue_\(\)/.test(panelSrc)) throw new Error('queue wipe helper missing');
   if (!/function aLogout\(\)[\s\S]*?aClearMarkQueue_\(\)/.test(panelSrc)) throw new Error('logout keeps queued marks');
   if (!/apiAdminErasePersonalData[\s\S]*?aClearMarkQueue_\(\)/.test(panelSrc)) throw new Error('erase keeps queued marks');
-  if (!/function aFlushMarks_\(\)[\s\S]*?else if \(aAuthLost\(resp\)\) return;/.test(panelSrc)) {
+  // el flush tiene que cortar cuando la sesion del panel vencio, sin seguir
+  // mandando el resto de la cola
+  if (!/function aFlushMarks_\(\)[\s\S]*?if \(aAuthLost\(resp\)\) return;/.test(panelSrc)) {
     throw new Error('flush keeps looping after auth loss');
   }
 });
@@ -3550,6 +3552,37 @@ t('r15: el manifest trae icono chico y maskable', () => {
   for (const icon of icons) {
     if (sw.indexOf(icon.src) < 0) throw new Error('el sw no cachea ' + icon.src);
   }
+});
+
+t('r15: la asistencia se puede guardar por lote', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminSetPresentBatch');
+  const r = api.apiAdminSetPresentBatch('1111', [
+    { id: 's1', presente: true },
+    { id: 's2', presente: false },
+    { id: 'fantasma', presente: true }
+  ]);
+  assertEq(r.ok, true, 'lote ok');
+  assertEq(r.done.length, 2, 'dos marcas aplicadas');
+  assertEq(r.missing.length, 1, 'una fila inexistente');
+  const sh = services.sheets.Signups;
+  const col = sh.data[0].indexOf('presente');
+  if (col < 0) throw new Error('no se creo la columna presente');
+  assertEq(sh.data[1][col], 'si', 's1 presente');
+  assertEq(sh.data[2][col], 'no', 's2 ausente');
+  const big = [];
+  for (let i = 0; i < 101; i++) big.push({ id: 'x' + i, presente: true });
+  const tooBig = api.apiAdminSetPresentBatch('1111', big);
+  assertEq(tooBig.ok, false, 'rechaza lotes enormes');
+});
+
+t('r15: el flush de marcas va por bloques', () => {
+  const i = panelHtml.indexOf('function aFlushMarks_()');
+  const body = panelHtml.slice(i, panelHtml.indexOf('function aKeepAwake_', i));
+  if (body.indexOf("call('apiAdminSetPresentBatch'") < 0) throw new Error('el flush no usa el lote');
+  if (!/var A_MARK_BATCH = \d+;/.test(panelHtml)) throw new Error('falta el tamano del bloque');
+  if (body.indexOf('slice(i, i + A_MARK_BATCH)') < 0) throw new Error('no parte la cola en bloques');
+  if (panelHtml.indexOf("if (fn === 'apiAdminSetPresentBatch')") < 0) throw new Error('el demo no implementa el lote');
 });
 
 t('r15: el login no ofrece el DNI como alternativa', () => {
