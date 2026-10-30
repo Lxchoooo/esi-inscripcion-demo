@@ -3237,6 +3237,11 @@ t('auditoria: el respaldo aguanta filas de distinto ancho', () => {
   const rep = codeSrc.slice(codeSrc.indexOf('function repairErasedSignups_'), codeSrc.indexOf('function ensureColumn_'));
   if (rep.indexOf('while (fila.length < ancho) fila.push') < 0) throw new Error('la reparacion no rellena columnas');
 });
+t('auditoria: la cola offline aguanta una jornada entera', () => {
+  if (!/var A_QUEUE_MAX = 2000;/.test(panelSrc)) throw new Error('tope de cola muy chico');
+  if (!/list\.slice\(-A_QUEUE_MAX\)/.test(panelSrc)) throw new Error('no usa el tope');
+  if (/slice\(-200\)/.test(panelSrc)) throw new Error('quedo el tope viejo de 200');
+});
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
   Object.keys(map).forEach((name) => {
