@@ -3046,9 +3046,10 @@ t('r15: el control previo marca rojo lo que bloquea el evento', () => {
   assertEq(niveaux(api.buildEventCheck_(colFaltante)).hojas, 'rojo', 'columna faltante');
   if (!/Signups/.test(api.buildEventCheck_(colFaltante).controles[0].detalle)) throw new Error('no dice que columna falta');
 
-  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '482913', guide: '482913' } }))).claves, 'rojo', 'claves iguales');
-  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '1234', guide: '731204' } }))).claves, 'rojo', 'clave obvia');
-  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '', guide: '731204' } }))).claves, 'rojo', 'clave faltante');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '482913' } }))).claves, 'verde', 'solo admin alcanza');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '482913', guide: '' } }))).claves, 'verde', 'GUIDE_PIN no influye');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '1234' } }))).claves, 'rojo', 'clave obvia');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '' } }))).claves, 'rojo', 'clave faltante');
   assertEq(niveaux(api.buildEventCheck_(checkCtx({ trigger: { backup: false } }))).respaldo, 'rojo', 'sin trigger');
   assertEq(niveaux(api.buildEventCheck_(checkCtx({ cfg: { evento_abierto: 'abierto', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Cordoba', modo_prueba: 'si', backup_activo: 'si' }, signups: [{ prueba: true }, { prueba: true }, {}] }))).prueba, 'rojo', 'modo prueba');
   assertEq(niveaux(api.buildEventCheck_(checkCtx({ mailOk: false }))).mails, 'rojo', 'sin MailApp');
@@ -3080,7 +3081,7 @@ t('r15: el control previo avisa con amarillo lo que conviene mirar', () => {
   assertEq(niveaux(api.buildEventCheck_(checkCtx({ lastBackup: 1 }))).respaldo, 'amarillo', 'sin copias');
   assertEq(niveaux(api.buildEventCheck_(checkCtx({ quota: 20 }))).mails, 'amarillo', 'cuota baja');
   assertEq(niveaux(api.buildEventCheck_(checkCtx({ lastSetupAt: '' }))).version, 'amarillo', 'sin setup');
-  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '48291', guide: '731204' } }))).claves, 'amarillo', 'clave corta');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '48291' } }))).claves, 'amarillo', 'clave corta');
   const zona = checkCtx({ cfg: { evento_abierto: 'cerrado', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Buenos_Aires', modo_prueba: 'no', backup_activo: 'si' } });
   assertEq(niveaux(api.buildEventCheck_(zona)).inscripcion, 'amarillo', 'zona distinta');
   if (!/Cerrada/.test(api.buildEventCheck_(zona).controles.filter((c) => c.id === 'inscripcion')[0].detalle)) throw new Error('no informa abierta/cerrada');
@@ -3112,6 +3113,19 @@ t('r15: las dos claves entran al control previo y no ven claves', () => {
   assertEq(conGuia.controles.length, 9, 'nueve controles');
   const json = JSON.stringify(conGuia);
   if (json.indexOf('482913') >= 0 || json.indexOf('731204') >= 0) throw new Error('el endpoint devuelve una clave');
+});
+
+t('r15: el control previo mira solo ADMIN_PIN y nunca muestra el valor', () => {
+  const api = checkApi();
+  const r = api.buildEventCheck_(checkCtx({ pins: { admin: '482913', guide: '' } }));
+  const claves = r.controles.filter((c) => c.id === 'claves')[0];
+  assertEq(claves.titulo, 'Clave del panel', 'titulo');
+  assertEq(claves.nivel, 'verde', 'sin GUIDE_PIN sigue verde');
+  const bloque = codeSrc.slice(codeSrc.indexOf('function apiAdminEventCheck'), codeSrc.indexOf('function apiAdminEventCheck') + 2200);
+  if (bloque.indexOf('getGuidePin_') >= 0) throw new Error('el control previo lee GUIDE_PIN');
+  if (bloque.indexOf('GUIDE_PIN') >= 0) throw new Error('el control previo menciona GUIDE_PIN');
+  const json = JSON.stringify(r);
+  if (/\d{6}/.test(json)) throw new Error('el informe muestra un numero de seis digitos');
 });
 
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
