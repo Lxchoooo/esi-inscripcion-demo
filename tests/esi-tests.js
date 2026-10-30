@@ -1037,6 +1037,8 @@ function fakeSheet(name, headers, rows) {
   const sh = {
     name: name,
     data: [headers.slice()].concat((rows || []).map((r) => r.slice())),
+    getLastColumn() { return sh.data.reduce((n, r) => Math.max(n, (r || []).length), 1); },
+    getLastRow() { return sh.data.length; },
     getDataRange() {
       return { getValues: () => sh.data.map((r) => r.slice()) };
     },
@@ -2974,6 +2976,185 @@ t('r14: el formulario de datos no se recorta ni abre el teclado solo', () => {
   if (!/if \(!fine\) return;/.test(panelSrc)) throw new Error('foco sin guarda tactil');
   const raw = panelSrc.match(/\$\x27(input-nombre|input-apellido|input-mail)\x27\)\.focus\(\)/g) || [];
   if (raw.length) throw new Error('foco directo en ' + raw.join(', '));
+});
+
+
+/* ---- r15: control previo al evento ---- */
+const checkApi = new Function(
+  'PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp',
+  codeSrc + '\nreturn { buildEventCheck_: buildEventCheck_, EXPECTED_COLUMNS_: EXPECTED_COLUMNS_, apiAdminEventCheck: apiAdminEventCheck, BACKEND_VERSION: BACKEND_VERSION };'
+);
+function checkCtx(over) {
+  const base = {
+    cfg: { evento_abierto: 'abierto', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Cordoba', modo_prueba: 'no', backup_activo: 'si' },
+    sheets: {},
+    pins: { admin: '482913', guide: '731204' },
+    trigger: { backup: true },
+    lastBackup: 0,
+    signups: [],
+    sessions: [],
+    talks: [
+      { id: 'B1', ciclo: 'basico', slot_id: 1, activa: true },
+      { id: 'B2', ciclo: 'basico', slot_id: 2, activa: true },
+      { id: 'B3', ciclo: 'basico', slot_id: 3, activa: true },
+      { id: 'O1', ciclo: 'orientado', slot_id: 1, activa: true },
+      { id: 'O2', ciclo: 'orientado', slot_id: 2, activa: true },
+      { id: 'O3', ciclo: 'orientado', slot_id: 3, activa: true }
+    ],
+    slots: [{ id: 1, nombre: '1ra' }, { id: 2, nombre: '2da' }, { id: 3, nombre: '3ra' }],
+    mailOk: true, quota: 120,
+    version: 'v42', lastSetupAt: '2026-10-30T10:00:00.000Z', lastSetupVersion: 'v42',
+    appVersion: 'v42',
+    expectedDate: '2026-11-04', expectedZone: 'America/Argentina/Cordoba',
+    todayStart: Date.UTC(2026, 9, 30),
+    now: Date.UTC(2026, 9, 30, 12)
+  };
+  const ctx = Object.assign({}, base, over || {});
+  for (const name in checkApi().EXPECTED_COLUMNS_) {
+    if (!Object.prototype.hasOwnProperty.call(ctx.sheets, name)) ctx.sheets[name] = checkApi().EXPECTED_COLUMNS_[name].slice();
+  }
+  if (!ctx.lastBackup) ctx.lastBackup = ctx.now - 10 * 60000;
+  return ctx;
+}
+function niveaux(resp) {
+  const out = {};
+  resp.controles.forEach((c) => { out[c.id] = c.nivel; });
+  return out;
+}
+
+t('r15: el control previo da verde con todo en orden', () => {
+  const api = checkApi();
+  const r = api.buildEventCheck_(checkCtx());
+  assertEq(r.ok, true, 'ok');
+  assertEq(r.estado, 'verde', 'estado');
+  assertEq(r.controles.length, 9, 'nueve controles');
+  const ids = r.controles.map((c) => c.id).join(',');
+  assertEq(ids, 'hojas,respaldo,claves,prueba,inscripcion,charlas,mails,sesiones,version', 'orden');
+  r.controles.forEach((c) => {
+    if (!c.titulo || !c.detalle) throw new Error('control sin texto: ' + c.id);
+  });
+});
+
+t('r15: el control previo marca rojo lo que bloquea el evento', () => {
+  const api = checkApi();
+  const faltaHoja = api.buildEventCheck_(checkCtx({ sheets: { Talks: null } }));
+  assertEq(niveaux(faltaHoja).hojas, 'rojo', 'hoja faltante');
+  if (!/Talks/.test(faltaHoja.controles[0].detalle)) throw new Error('no dice que hoja falta');
+
+  const colFaltante = checkCtx();
+  colFaltante.sheets.Signups = ['id', 'ts', 'email'];
+  assertEq(niveaux(api.buildEventCheck_(colFaltante)).hojas, 'rojo', 'columna faltante');
+  if (!/Signups/.test(api.buildEventCheck_(colFaltante).controles[0].detalle)) throw new Error('no dice que columna falta');
+
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '482913', guide: '482913' } }))).claves, 'rojo', 'claves iguales');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '1234', guide: '731204' } }))).claves, 'rojo', 'clave obvia');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '', guide: '731204' } }))).claves, 'rojo', 'clave faltante');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ trigger: { backup: false } }))).respaldo, 'rojo', 'sin trigger');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ cfg: { evento_abierto: 'abierto', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Cordoba', modo_prueba: 'si', backup_activo: 'si' }, signups: [{ prueba: true }, { prueba: true }, {}] }))).prueba, 'rojo', 'modo prueba');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ mailOk: false }))).mails, 'rojo', 'sin MailApp');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ quota: 0 }))).mails, 'rojo', 'cuota agotada');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ appVersion: 'v41' }))).version, 'rojo', 'panel viejo');
+});
+
+t('r15: el control previo cuenta las filas de prueba y avisa', () => {
+  const api = checkApi();
+  const ctx = checkCtx({
+    cfg: { evento_abierto: 'abierto', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Cordoba', modo_prueba: 'si', backup_activo: 'si' },
+    signups: [{ prueba: true }, { prueba: true }, { prueba: false }, {}]
+  });
+  const prueba = api.buildEventCheck_(ctx).controles.filter((c) => c.id === 'prueba')[0];
+  assertEq(prueba.nivel, 'rojo', 'nivel');
+  if (!/2 filas de prueba/.test(prueba.detalle)) throw new Error('detalle: ' + prueba.detalle);
+});
+
+t('r15: el control previo avisa con amarillo lo que conviene mirar', () => {
+  const api = checkApi();
+  const sinFranja = checkCtx();
+  sinFranja.talks = sinFranja.talks.filter((t) => !(t.ciclo === 'orientado' && t.slot_id === 2));
+  const r = api.buildEventCheck_(sinFranja);
+  assertEq(niveaux(r).charlas, 'amarillo', 'franja sin charla');
+  if (!/Orientado en la 2da/.test(r.controles.filter((c) => c.id === 'charlas')[0].detalle)) throw new Error('no dice cual falta');
+  assertEq(r.estado, 'amarillo', 'estado global');
+
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ lastBackup: Date.UTC(2026, 9, 30, 8) }))).respaldo, 'amarillo', 'copia vieja');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ lastBackup: 1 }))).respaldo, 'amarillo', 'sin copias');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ quota: 20 }))).mails, 'amarillo', 'cuota baja');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ lastSetupAt: '' }))).version, 'amarillo', 'sin setup');
+  assertEq(niveaux(api.buildEventCheck_(checkCtx({ pins: { admin: '48291', guide: '731204' } }))).claves, 'amarillo', 'clave corta');
+  const zona = checkCtx({ cfg: { evento_abierto: 'cerrado', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Buenos_Aires', modo_prueba: 'no', backup_activo: 'si' } });
+  assertEq(niveaux(api.buildEventCheck_(zona)).inscripcion, 'amarillo', 'zona distinta');
+  if (!/Cerrada/.test(api.buildEventCheck_(zona).controles.filter((c) => c.id === 'inscripcion')[0].detalle)) throw new Error('no informa abierta/cerrada');
+});
+
+t('r15: el control previo no filtra claves, mails ni nombres', () => {
+  const api = checkApi();
+  const ctx = checkCtx({
+    signups: [
+      { prueba: false, ts: new Date(Date.UTC(2026, 9, 30, 11)), email: 'juana@secundariosalsipuedes.edu.ar', nombre: 'Juana', apellido: 'Méndez' },
+      { prueba: false, ts: new Date(Date.UTC(2026, 9, 30, 11)), email: 'beto@secundariosalsipuedes.edu.ar', nombre: 'Beto', apellido: 'Díaz' }
+    ],
+    sessions: [{ revoked: false, expires: Date.UTC(2026, 9, 30, 18) }]
+  });
+  const json = JSON.stringify(api.buildEventCheck_(ctx));
+  ['482913', '731204', 'juana@', 'beto@', 'Juana', 'Méndez', 'Díaz'].forEach((needle) => {
+    if (json.indexOf(needle) >= 0) throw new Error('el informe filtra ' + needle);
+  });
+  if (json.indexOf('@') >= 0) throw new Error('el informe filtra un arroba');
+});
+
+t('r15: las dos claves entran al control previo y no ven claves', () => {
+  const services = backendStub({ ADMIN_PIN: '482913', GUIDE_PIN: '731204' });
+  const api = backendApi(services, 'apiAdminEventCheck');
+  const sinClave = api.apiAdminEventCheck('');
+  assertEq(sinClave.ok, false, 'sin clave');
+  const conGuia = api.apiAdminEventCheck('731204', 'v42');
+  assertEq(conGuia.ok, true, 'la segunda clave entra');
+  assertEq(conGuia.controles.length, 9, 'nueve controles');
+  const json = JSON.stringify(conGuia);
+  if (json.indexOf('482913') >= 0 || json.indexOf('731204') >= 0) throw new Error('el endpoint devuelve una clave');
+});
+
+t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
+  const map = checkApi().EXPECTED_COLUMNS_;
+  Object.keys(map).forEach((name) => {
+    const literal = '[' + map[name].map((c) => "'" + c + "'").join(', ') + ']';
+    if (codeSrc.indexOf(literal) < 0) throw new Error('setup() no crea ' + name + ' como ' + literal);
+  });
+  ['Config', 'Slots', 'Talks', 'Signups', 'Sessions', 'Mails', 'Log', 'Backup', 'Resumen'].forEach((name) => {
+    if (!map[name]) throw new Error('falta ' + name);
+  });
+});
+
+t('r15: la version del backend coincide con la del panel', () => {
+  const v = checkApi().BACKEND_VERSION;
+  const app = (panelSrc.match(/var APP_VERSION = '(v\d+)'/) || [])[1];
+  if (!app) throw new Error('APP_VERSION no encontrada');
+  assertEq(v, app, 'backend y panel tienen que ir juntos');
+});
+
+t('r15: la pantalla de control es de solo lectura y sin animacion nueva', () => {
+  ['id="tab-evento"', 'id="pane-evento"', 'id="ev-lista"', 'id="btn-evento-refresh"', 'apiAdminEventCheck'].forEach((needle) => {
+    if (panelHtml.indexOf(needle) < 0 && panelSrc.indexOf(needle) < 0) throw new Error('falta ' + needle);
+  });
+  if (!/function aLoadEventCheck_\(\)/.test(panelSrc)) throw new Error('sin loader');
+  const block = panelSrc.slice(panelSrc.indexOf('function aLoadEventCheck_'), panelSrc.indexOf('function aLoadStatus'));
+  if (/apiAdmin(Set|Delete|Import|Add|Correct|Move|Merge|Erase|Close|Send)\w*\(/.test(block)) {
+    throw new Error('la pantalla escribe datos');
+  }
+  const css = panelCss();
+  const evCss = css.slice(css.indexOf('.ev-list'), css.indexOf('.estado-grid'));
+  if (/animation|transition/.test(evCss)) throw new Error('la pantalla nueva anima');
+});
+
+t('r15: EVENTO.md explica el dia sin filtrar claves ni mails', () => {
+  const doc = read('../docs/EVENTO.md');
+  ['git revert', 'clasp deploy', 'Script Properties', '/exec', 'POST', 'Sessions', 'Signups', 'Mails'].forEach((needle) => {
+    if (doc.indexOf(needle) < 0) throw new Error('falta ' + needle);
+  });
+  if (/\b\d{6}\b/.test(doc)) throw new Error('el doc tiene un numero de seis digitos');
+  if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(doc)) throw new Error('el doc tiene un mail');
+  if (/git reset --hard|push --force/.test(doc)) throw new Error('el doc recomienda reset o force push');
+  if (/panel de guias|panel guia/i.test(doc)) throw new Error('el doc separa el panel por rol');
 });
 
 summary();

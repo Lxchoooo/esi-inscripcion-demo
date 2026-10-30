@@ -766,7 +766,7 @@ function agoLabel_(ms) {
 }
 
 function dateLabel_(iso) {
-  var m = String(iso || '').match(/^(d{4})-(d{2})-(d{2})$/);
+  var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? (m[3] + '/' + m[2] + '/' + m[1]) : String(iso || '');
 }
 
@@ -808,11 +808,11 @@ function checkPins_(pins) {
   var guide = String((pins && pins.guide) || '').trim();
   if (!admin) return checkItem_('claves', 'Claves del panel', 'rojo', 'Falta la clave ADMIN_PIN. Corré setup().');
   if (!guide) return checkItem_('claves', 'Claves del panel', 'rojo', 'Falta la clave GUIDE_PIN. Corré setup().');
-  if (!/^d{6}$/.test(admin) || !/^d{6}$/.test(guide)) {
-    return checkItem_('claves', 'Claves del panel', 'amarillo', 'Alguna de las dos claves no tiene 6 dígitos.');
-  }
   if (admin === WEAK_PIN_ || guide === WEAK_PIN_) {
     return checkItem_('claves', 'Claves del panel', 'rojo', 'Una de las claves es la de siempre: cambiala antes del evento.');
+  }
+  if (!/^\d{6}$/.test(admin) || !/^\d{6}$/.test(guide)) {
+    return checkItem_('claves', 'Claves del panel', 'amarillo', 'Alguna de las dos claves no tiene 6 dígitos.');
   }
   if (admin === guide) {
     return checkItem_('claves', 'Claves del panel', 'rojo', 'Las dos claves son iguales: usá una distinta para cada una.');
