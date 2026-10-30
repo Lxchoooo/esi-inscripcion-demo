@@ -46,6 +46,7 @@ var BACKEND_VERSION = 'v43';
 var DATA_CACHE_TTL = 12;
 var BUSY_MESSAGE = 'El servidor está ocupado: esperá unos segundos y probá de nuevo.';
 var REGISTER_LOCK_MS = 8000;
+var A_MARK_BATCH_MAX = 100;
 var ADMIN_LOCK_MS = 5000;
 
 var ERROR_MESSAGES_ = {
@@ -1016,6 +1017,7 @@ var API_FN_MAP_ = {
   apiAdminTalkRoster: apiAdminTalkRoster,
   apiAdminPending: apiAdminPending,
   apiAdminSetPresent: apiAdminSetPresent,
+  apiAdminSetPresentBatch: apiAdminSetPresentBatch,
   apiAdminReports: apiAdminReports,
   apiAdminMailPreview: apiAdminMailPreview,
   apiAdminSendReminders: apiAdminSendReminders,
@@ -3545,6 +3547,38 @@ function apiAdminSetPresent(cred, signupId, present) {
       sh.getRange(row, col).setValue(present ? 'si' : 'no');
       invalidateDataCache_();
       return { ok: true, presente: !!present };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+}
+
+function apiAdminSetPresentBatch(cred, marks) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  if (!marks || typeof marks.length !== 'number') return { ok: false, message: 'Lote invalido.' };
+  if (marks.length > A_MARK_BATCH_MAX) return { ok: false, message: 'Manda hasta ' + A_MARK_BATCH_MAX + ' marcas por vez.' };
+  return withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var sh = sheet_(SIGNUPS_SHEET);
+      var vals = sh.getDataRange().getValues();
+      if (!vals.length) return { ok: false, message: 'No hay inscripciones.' };
+      var map = signupsHeaderMap_(vals[0]);
+      if (map.id < 0) return { ok: false, message: 'Falta la columna id.' };
+      var col = presenteCol_(sh);
+      var byId = {};
+      for (var i = 1; i < vals.length; i++) byId[String(vals[i][map.id])] = i + 1;
+      var done = [];
+      var missing = [];
+      for (var k = 0; k < marks.length; k++) {
+        var id = String(marks[k] && marks[k].id);
+        var row = byId[id];
+        if (!row) { missing.push(id); continue; }
+        sh.getRange(row, col).setValue(marks[k].presente ? 'si' : 'no');
+        done.push(id);
+      }
+      if (done.length) invalidateDataCache_();
+      return { ok: true, done: done, missing: missing };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
