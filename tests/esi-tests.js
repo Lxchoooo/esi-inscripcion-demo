@@ -3454,5 +3454,22 @@ t('r15: el logo se ve en el panel de admin, no un cuadrado blanco', () => {
   if (!/\.brand-logo \{[^}]*border-radius/.test(css)) throw new Error('el logo no tiene esquinas redondeadas');
 });
 
+t('r15: los campos de los filtros no se salen de la tarjeta', () => {
+  const css = panelCss();
+  if (!/\.filters \{ display: grid; grid-template-columns: minmax\(0, 1fr\)/.test(css)) {
+    throw new Error('la columna de filtros puede crecer con el contenido');
+  }
+  const grupos = css.match(/@media \(min-width: 720px\) \{ \.filters \{[^}]*\}/g) || [];
+  if (!grupos.length || !grupos.every((g) => g.indexOf('minmax(0, 1.4fr)') > 0)) {
+    throw new Error('las columnas del escritorio no usan minmax(0, ...)');
+  }
+  const regla = css.match(/\.filters input, \.filters select \{[\s\S]*?\}/);
+  if (!regla) throw new Error('falta la regla de los campos');
+  ['width: auto', 'justify-self: stretch', 'min-width: 0', 'max-width: 100%', 'box-sizing: border-box']
+    .forEach((decl) => {
+      if (regla[0].indexOf(decl) < 0) throw new Error('falta ' + decl + ' en los filtros');
+    });
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
