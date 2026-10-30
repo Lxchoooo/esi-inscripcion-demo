@@ -940,6 +940,22 @@ t('Panel muestra pasos, vivo y contadores en la asistencia', () => {
   if (!/id="tab-inscriptos-badge"/.test(panelHtml)) throw new Error('sin badge de inscripciones');
 });
 
+t('Panel keeps only the edit action on the final screen', () => {
+  const done = panelHtml.match(/id="s-screen-done"[\s\S]*?<\/section>/)[0];
+  if (/btn-done-imprimir|btn-done-copiar/.test(done)) throw new Error('quedan botones de imprimir o copiar');
+  if (!/Cambiar mis charlas/.test(done)) throw new Error('falta el boton para editar');
+  if (/window\.print\(\)/.test(panelSrc.split('sRenderDone_')[1] || '')) throw new Error('print desde la pantalla final');
+});
+
+t('Home uses reveal, tint and hero animations', () => {
+  if (!/class="how-card reveal"/.test(panelHtml)) throw new Error('how-card sin reveal');
+  if (!/--tint-1/.test(panelHtml)) throw new Error('sin tint tokens');
+  if (!/@keyframes heroIn/.test(panelHtml)) throw new Error('sin entrada del hero');
+  if (!/hero-poster \{[^}]*posterFloat/.test(panelHtml.replace(/\n/g, ' '))) throw new Error('poster sin flotacion');
+  if (!/function aAnimateStats_/.test(panelSrc)) throw new Error('stats sin contador animado');
+  if (!/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.hero-copy > \*/.test(panelHtml)) throw new Error('hero sin guarda');
+});
+
 t('Panel carries the ISS identity and an accessible green palette', () => {
   if (!/var SCHOOL_NAME = 'Instituto Secundario Salsipuedes \(ISS\)';/.test(panelSrc)) throw new Error('SCHOOL_NAME placeholder');
   if (!/var EVENT_NAME = 'Jornada ESI 2026';/.test(panelSrc)) throw new Error('EVENT_NAME');
@@ -988,7 +1004,7 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
     'id="select-anio"', 'id="select-division"',
     'placeholder="usuario@secundariosalsipuedes.edu.ar"', 'placeholder="Solo números"',
     '<h2 class="intro" id="login-title">Ingresar</h2>',
-    'Elegí una sola forma. Si es tu primera vez, el sistema te va a pedir tus datos.',
+    'Con tu mail o con tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.',
     '.login-fields { display: grid; gap: 16px; }',
     '.field { display: grid; gap: 8px; }',
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
@@ -1977,7 +1993,7 @@ t('Panel wipes student data on Salir and warns about shared phones', () => {
   if (!/function sSalir\(\) \{[\s\S]*?sRevokeSession_\(\)[\s\S]*?sClearStudentSession_\(\)[\s\S]*?sEmptyState_\(\)[\s\S]*?sClearLoginFields_\(\)[\s\S]*?s-screen-mail/.test(panelSrc)) {
     throw new Error('Salir does not reset the login');
   }
-  for (const needle of ['id="login-note"', 'Si el celular es compartido',
+  for (const needle of ['id="login-note"', 'Si usás un celular compartido',
     'sClearStudentSession_()', 'sClearLoginFields_()']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
