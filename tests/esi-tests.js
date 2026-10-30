@@ -1245,7 +1245,7 @@ t('Las pestañas del panel se recorren con flechas', () => {
   if (!/scrollIntoView\(\{ block: 'nearest', inline: 'center' \}\)/.test(panelSrc)) {
     throw new Error('active tab is not scrolled into view');
   }
-  if (!/Atajos <kbd>1-8<\/kbd>/.test(panelHtml)) throw new Error('shortcut hint is outdated');
+  if (!/Atajos <kbd>1-9<\/kbd>/.test(panelHtml)) throw new Error('shortcut hint is outdated');
 });
 
 t('El panel agrupa las secciones en un menú lateral', () => {
@@ -1390,7 +1390,7 @@ t('Access screen starts with one Ingresar gate and a separate form', () => {
   }
 });
 
-t('Code.gs has two roles and a separate guide key', () => {
+t('Code.gs keeps two keys in Script Properties', () => {
   if (!/GUIDE_PIN_PROP\s*=\s*'GUIDE_PIN'/.test(codeSrc)) throw new Error('guide pin property missing');
   if (!/function ensureGuidePin_/.test(codeSrc)) throw new Error('ensureGuidePin_ missing');
   if (!/ROLE_ADMIN\s*=\s*'admin'/.test(codeSrc)) throw new Error('admin role missing');
@@ -1399,49 +1399,48 @@ t('Code.gs has two roles and a separate guide key', () => {
   if (/\[.'admin_pin',/.test(codeSrc) || /\[.'guide_pin',/.test(codeSrc)) throw new Error('pin seeded in sheet');
 });
 
-t('Code.gs resolves the role from the key and keeps it in the token', () => {
+t('Code.gs treats both keys as the same panel', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'adminAuth_, apiAdminLogin');
-  assertEq(api.adminAuth_('1111').role, 'admin', 'admin role');
-  assertEq(api.adminAuth_('2222').role, 'guide', 'guide role');
+  assertEq(api.adminAuth_('1111').role, 'admin', 'admin key');
+  assertEq(api.adminAuth_('2222').role, 'admin', 'second key has the same role');
   assertEq(api.adminAuth_('3333').ok, false, 'wrong key');
   const login = api.apiAdminLogin('2222');
-  assertEq(login.ok, true, 'guide login');
-  assertEq(login.role, 'guide', 'guide role in login');
+  assertEq(login.ok, true, 'second key login');
+  assertEq(login.role, 'admin', 'second key opens the admin panel');
   if (!login.token) throw new Error('no token issued');
-  assertEq(api.adminAuth_(login.token).role, 'guide', 'role kept in token');
+  assertEq(api.adminAuth_(login.token).role, 'admin', 'role kept in token');
   const adminLogin = api.apiAdminLogin('1111');
   assertEq(api.adminAuth_(adminLogin.token).role, 'admin', 'admin role in token');
 });
 
-t('Code.gs blocks write actions for the guide role', () => {
+t('Code.gs lets both keys write', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminSetOpen, apiAdminDeleteSignup, apiAdminImportRoster');
   const setOpen = api.apiAdminSetOpen('2222', false);
-  assertEq(setOpen.ok, false, 'guide cannot close signup');
-  if (!/no permite esta acción/.test(setOpen.message)) throw new Error('message: ' + setOpen.message);
+  assertEq(setOpen.ok, true, 'second key closes signup');
   const del = api.apiAdminDeleteSignup('2222', 'x');
-  assertEq(del.ok, false, 'guide cannot delete');
+  assertEq(del.ok, false, 'unknown id still fails');
+  if (!/No encontramos/.test(del.message)) throw new Error('delete gate: ' + del.message);
   const imp = api.apiAdminImportRoster('2222', 'a@b.co', 'agregar');
-  assertEq(imp.ok, false, 'guide cannot import');
+  assertEq(imp.ok, true, 'second key imports');
   const noKey = api.apiAdminSetOpen('', false);
   assertEq(noKey.ok, false, 'no key');
   if (!/Clave incorrecta/.test(noKey.message)) throw new Error('no key message: ' + noKey.message);
 });
 
-t('Code.gs guide payload has no signup list', () => {
+t('Code.gs returns the same list for both keys', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminGetData');
   const noKey = api.apiAdminGetData('');
   assertEq(noKey.ok, false, 'no key rejected');
   const guideData = api.apiAdminGetData('2222');
-  assertEq(guideData.ok, true, 'guide can read');
-  assertEq(guideData.role, 'guide', 'role in payload');
-  assertEq(guideData.signups.length, 0, 'guide gets no full signup list');
-  if (JSON.stringify(guideData).indexOf('@') >= 0) throw new Error('guide payload leaks a mail');
+  assertEq(guideData.ok, true, 'second key can read');
+  assertEq(guideData.role, 'admin', 'same role in payload');
+  assertEq(guideData.signups.length, 3, 'same signup list');
   const adminData = api.apiAdminGetData('1111');
-  assertEq(adminData.signups.length, 3, 'admin sees the signups');
-  assertEq(adminData.signups[0].email, 'ana@secundariosalsipuedes.edu.ar', 'admin sees the mails');
+  assertEq(JSON.stringify(guideData.signups), JSON.stringify(adminData.signups), 'same data for both keys');
+  assertEq(adminData.signups[0].email, 'ana@secundariosalsipuedes.edu.ar', 'the panel shows the mails');
 });
 
 t('Code.gs counts unique students separately from reservations', () => {
@@ -1453,10 +1452,9 @@ t('Code.gs counts unique students separately from reservations', () => {
   assertEq(admin.studentCount, 3, 'admin sees unique students');
   assertEq(admin.porCiclo.basico, 3, 'cycle counts unique students');
   const guide = api.apiAdminGetData('2222');
-  assertEq(guide.total, 6, 'guide sees reservation total');
-  assertEq(guide.studentCount, 3, 'guide sees unique students');
-  assertEq(guide.signups.length, 0, 'guide still gets no list');
-  if (JSON.stringify(guide).indexOf('@') >= 0) throw new Error('guide totals leak a mail');
+  assertEq(guide.total, 6, 'second key sees reservation total');
+  assertEq(guide.studentCount, 3, 'second key sees unique students');
+  assertEq(guide.signups.length, 6, 'second key sees the same list');
   const status = api.apiAdminStatus('1111');
   assertEq(status.total, 6, 'status reservations');
   assertEq(status.student_count, 3, 'status unique students');
@@ -1481,15 +1479,15 @@ t('Code.gs lookup accepts an institutional mail without a roster', () => {
   if (JSON.stringify([r, out]).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
 });
 
-t('Code.gs guide reads of the new views never leak mails', () => {
+t('Code.gs both keys read the same views', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminTalkRoster, apiAdminPending');
   const roster = api.apiAdminTalkRoster('2222', 'B1');
-  assertEq(roster.ok, true, 'guide can read talk roster');
+  assertEq(roster.ok, true, 'second key reads talk roster');
   const pending = api.apiAdminPending('2222');
-  assertEq(pending.ok, true, 'guide can read pending');
-  if (JSON.stringify(roster).indexOf('@') >= 0) throw new Error('talk roster leaks mail');
-  if (JSON.stringify(pending).indexOf('@') >= 0) throw new Error('pending leaks mail');
+  assertEq(pending.ok, true, 'second key reads pending');
+  const adminRoster = api.apiAdminTalkRoster('1111', 'B1');
+  assertEq(JSON.stringify(roster), JSON.stringify(adminRoster), 'same roster for both keys');
 });
 
 t('Code.gs caches reads and invalidates on writes', () => {
@@ -1782,7 +1780,7 @@ t('apiAdminMailPreview prepares a reminder only for signed-up students', () => {
   if (!/Charla uno/.test(p.sample.body)) throw new Error('body missing chosen talk');
   if (/@/.test(p.sample.body)) throw new Error('body should not expose mails');
   assertEq(p.quota, -1, 'no MailApp means no quota');
-  assertEq(api.apiAdminMailPreview('2222').ok, false, 'guide cannot mail');
+  assertEq(api.apiAdminMailPreview('2222').ok, true, 'second key previews the mail');
 });
 
 t('apiAdminSendReminders does not resend a subject already sent', () => {
@@ -1840,7 +1838,7 @@ t('apiAdminGetConfig and apiAdminSetConfig validate admin changes', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig');
   assertEq(api.apiAdminGetConfig('').ok, false, 'config needs a key');
-  assertEq(api.apiAdminGetConfig('2222').ok, false, 'guide cannot read config');
+  assertEq(api.apiAdminGetConfig('2222').ok, true, 'second key reads config');
   const before = api.apiAdminGetConfig('1111');
   assertEq(before.ok, true, 'admin reads config');
   assertEq(before.event.fecha, '2026-11-04', 'default date');
@@ -1855,7 +1853,7 @@ t('apiAdminGetConfig and apiAdminSetConfig validate admin changes', () => {
   assertEq(saved.evento_abierto, false, 'closed saved');
   assertEq(api.apiAdminSetConfig('1111', { evento_fecha: '05/11/2026' }).ok, false, 'bad date rejected');
   assertEq(api.apiAdminSetConfig('1111', { evento_zona: 'bad zone!' }).ok, false, 'bad zone rejected');
-  assertEq(api.apiAdminSetConfig('2222', { evento_fecha: '2026-11-05' }).ok, false, 'guide cannot write');
+  assertEq(api.apiAdminSetConfig('2222', { evento_fecha: '2026-11-05' }).ok, true, 'second key writes config');
 });
 
 t('apiAdminReports rejects requests without a key or token', () => {
@@ -1867,7 +1865,7 @@ t('apiAdminReports rejects requests without a key or token', () => {
   assertEq(/Clave incorrecta/.test(r.message), true);
 });
 
-t('apiAdminReports never sends mails to the guide role', () => {
+t('apiAdminReports returns the same report to both keys', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   reportSeed(services);
   const api = backendApi(services, 'apiAdminReports');
@@ -1875,9 +1873,8 @@ t('apiAdminReports never sends mails to the guide role', () => {
   assertEq(admin.courses[0].students[0].email, 'beto@secundariosalsipuedes.edu.ar');
   const guide = api.apiAdminReports('2222');
   assertEq(guide.ok, true);
-  assertEq(guide.role, 'guide');
-  if (JSON.stringify(guide).indexOf('@') >= 0) throw new Error('guide report leaks a mail');
-  if (guide.courses[0].students[0].email) throw new Error('guide report has email field');
+  assertEq(guide.role, 'admin');
+  assertEq(guide.courses[0].students[0].email, admin.courses[0].students[0].email, 'same report for both keys');
   assertEq(guide.courses[0].students[0].apellido, 'Díaz');
 });
 
@@ -1912,13 +1909,13 @@ t('apiAdminReports computes per-talk seats, attendance and course breakdown', ()
   assertEq(b2.ausentes, 1);
 });
 
-t('apiAdminReports talk rows respect the guide role', () => {
+t('apiAdminReports returns the same rows to both keys', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   reportSeed(services);
   const api = backendApi(services, 'apiAdminReports');
+  const admin = api.apiAdminReports('1111');
   const guide = api.apiAdminReports('2222');
-  if (JSON.stringify(guide.talks).indexOf('@') >= 0) throw new Error('guide talk report leaks a mail');
-  if (guide.talks[0].students[0].email) throw new Error('guide talk student has email');
+  assertEq(JSON.stringify(guide.talks), JSON.stringify(admin.talks), 'same talk report for both keys');
   assertEq(guide.talks[0].students[0].apellido, 'Díaz');
 });
 
@@ -2063,11 +2060,11 @@ t('Panel demo backend: reports for admin and guide', () => {
 });
 
 
-t('Reports hide mails for guides even if the payload leaks one', () => {
-  if (!/showMail = aRole === 'admin'/.test(panelSrc)) throw new Error('course report is not role aware');
-  if (!/showMailTalk = aRole === 'admin'/.test(panelSrc)) throw new Error('talk report is not role aware');
-  if (!/aStudentNameHtml_\(st, 'row-name', showMail\)/.test(panelSrc)) throw new Error('course mail is not gated');
-  if (!/aStudentNameHtml_\(st, 'row-name', showMailTalk\)/.test(panelSrc)) throw new Error('talk mail is not gated');
+t('Reports show mails in one panel for both keys', () => {
+  if (!/var showMail = true;/.test(panelSrc)) throw new Error('course report still branches by role');
+  if (!/var showMailTalk = true;/.test(panelSrc)) throw new Error('talk report still branches by role');
+  if (!/aStudentNameHtml_\(st, 'row-name', showMail\)/.test(panelSrc)) throw new Error('course mail is not wired');
+  if (!/aStudentNameHtml_\(st, 'row-name', showMailTalk\)/.test(panelSrc)) throw new Error('talk mail is not wired');
 });
 
 t('Report tables turn into cards on narrow screens', () => {
@@ -2289,7 +2286,7 @@ t('A lock timeout returns the busy message and writes nothing', () => {
   const r = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B2');
   assertEq(r.ok, false, 'busy is not ok');
   assertEq(r.busy, true, 'busy flag');
-  assertEq(r.message, 'El servidor está ocupado. Probá de nuevo.', 'busy message');
+  assertEq(r.message, 'El servidor está ocupado: esperá unos segundos y probá de nuevo.', 'busy message');
   assertEq(services.sheets.Signups.data.length, 4, 'no row added');
   assertEq(released, 0, 'nothing to release when the lock is not acquired');
   const present = api.apiAdminSetPresent('1111', 's1', true);
@@ -2576,7 +2573,7 @@ t('Configurable sender is validated and used for reminders', () => {
   const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig, apiAdminMailPreview, apiAdminSendReminders, apiAdminGetData');
   assertEq(api.apiAdminGetConfig('1111').mail_remitente, '', 'empty sender by default');
   assertEq(api.apiAdminSetConfig('1111', { mail_remitente: 'no-es-mail' }).ok, false, 'invalid sender rejected');
-  assertEq(api.apiAdminSetConfig('2222', { mail_remitente: 'guia@secundariosalsipuedes.edu.ar' }).ok, false, 'guide cannot change sender');
+  assertEq(api.apiAdminSetConfig('1111', { mail_remitente: 'no-es-mail' }).ok, false, 'invalid sender rejected');
   const sender = 'recordatorios@secundariosalsipuedes.edu.ar';
   assertEq(api.apiAdminSetConfig('1111', { mail_remitente: sender }).ok, true, 'valid sender saved');
   assertEq(api.apiAdminGetConfig('1111').mail_remitente, sender, 'sender read back');

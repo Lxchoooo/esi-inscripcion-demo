@@ -340,11 +340,10 @@ function tick() {
   ui.setRole('guide');
   ui.aApplyRole();
   ui.aRenderTalk();
-  assert(!document.getElementById('charla-list').innerHTML.includes('@'), 'la guia no ve el mail');
-
-  assert(document.getElementById('hdr-sub').textContent === 'Jornada ESI 2026 · Guía', 'subtitulo de guia');
-  assert(document.getElementById('btn-csv').style.display === 'none', 'csv oculto para guia');
-  assert(document.getElementById('tab-mails').style.display === 'none', 'tab de mails oculto');
+  assert(document.getElementById('charla-list').innerHTML.includes('ana@esc.edu.ar'), 'la segunda clave ve el mismo mail');
+  assert(document.getElementById('hdr-sub').textContent === 'Jornada ESI 2026', 'un solo subtitulo para las dos claves');
+  assert(document.getElementById('btn-csv').style.display === '', 'csv visible con la segunda clave');
+  assert(document.getElementById('tab-mails').style.display === '', 'tab de mails visible con la segunda clave');
   ui.setRole('admin');
   ui.aApplyRole();
   assert(document.getElementById('btn-csv').style.display === '', 'csv visible para profe');
@@ -440,7 +439,7 @@ function tick() {
   ui.aRepSetType('curso');
   rep = document.getElementById('rep-out').innerHTML;
   assert(rep.includes('Díaz, Beto'), 'la guia ve el apellido');
-  assert(!rep.includes('@'), 'la guia no ve mails en el reporte');
+  assert(rep.includes('beto@esc.edu.ar'), 'la segunda clave ve los mails del reporte');
   ui.setRole('admin');
 
   ui.setReports({
@@ -480,7 +479,7 @@ function tick() {
   ui.aRepSetType('charla');
   repTalk = document.getElementById('rep-out').innerHTML;
   assert(repTalk.includes('Díaz, Beto'), 'la guia ve la charla');
-  assert(!repTalk.includes('@'), 'la guia no ve mails en la charla');
+  assert(repTalk.includes('beto@esc.edu.ar'), 'la segunda clave ve los mails de la charla');
   ui.setRole('admin');
 
   ui.setReports({
