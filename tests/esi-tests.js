@@ -1840,6 +1840,23 @@ t('apiAdminSendReminders sends in batches and respects quota', () => {
   assertEq(none.ok, false, 'quota exhausted');
 });
 
+t('apiAdminSendReminders dice que mails fallaron', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  services.MailApp = {
+    getRemainingDailyQuota: () => 50,
+    sendEmail: (msg) => { if (msg.to.indexOf('carla') === 0) throw new Error('rebotado'); }
+  };
+  const api = backendApi(services, 'apiAdminSendReminders');
+  const r = api.apiAdminSendReminders('1111', 0, 20);
+  assertEq(r.ok, true, 'sigue con el resto');
+  assertEq(r.sent, 2, 'dos enviados');
+  assertEq(r.failed, 1, 'uno fallo');
+  assertEq(r.failedEmails.length, 1, 'devuelve el mail que fallo');
+  assertEq(r.failedEmails[0], 'carla@secundariosalsipuedes.edu.ar', 'cual fallo');
+  assertEq(r.done, true, 'termino igual');
+});
+
 t('apiAdminGetConfig and apiAdminSetConfig validate admin changes', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig');
@@ -3595,6 +3612,15 @@ t('r15: los topes sticky se miden en vez de asumir 62px', () => {
   if (!/setProperty\('--nav-h'/.test(panelHtml)) throw new Error('no actualiza la variable');
   const mode = panelHtml.slice(panelHtml.indexOf('function aApplyTestMode_'), panelHtml.indexOf('function aFmtDate_'));
   if (mode.indexOf('syncNavHeight_()') < 0) throw new Error('el modo ensayo no remide la barra');
+});
+
+t('r15: el envio de recordatorios muestra los mails que fallaron', () => {
+  const i = panelHtml.indexOf('function aSendReminders()');
+  const body = panelHtml.slice(i, panelHtml.indexOf('function aLoadPending', i));
+  if (body.indexOf('resp.failedEmails') < 0) throw new Error('el panel ignora los fallidos');
+  if (body.indexOf('failedEmails.slice(0, 5)') < 0) throw new Error('no recorta la lista');
+  if (body.indexOf('Volvé a apretar Enviar') < 0) throw new Error('no dice como reintentar');
+  if (panelHtml.indexOf("failedEmails: []") < 0) throw new Error('el demo no devuelve la lista');
 });
 
 t('r15: el login no ofrece el DNI como alternativa', () => {
