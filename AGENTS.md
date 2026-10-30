@@ -10,9 +10,11 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: ronda 13, panel de profes con nombres primarios y conteos separados,
-  publicada en `main`; tests 148/0, smoke OK, CI tests y Pages verdes. Backend
-  real en preparacion; MailApp y dispositivo siguen sin probarse.
+- Estado: ronda 15 publicada en `main` (panel `v42`, backend `v42`): un solo
+  panel con la misma clave para guias, preceptores y profes; pantalla "Listo
+  para el evento" de solo lectura con 9 controles; aviso de privacidad; docs del
+  dia. tests 193/0, smoke OK, CI tests y Pages verdes. MailApp y dispositivo
+  siguen sin probarse.
 
 ## Donde trabajar
 
@@ -35,6 +37,15 @@ Desde el checkout completo:
 ```bash
 node tests/esi-tests.js src
 node tests/ui-smoke.js src
+```
+
+Simulacro de carga, solo contra el `/exec` de una COPIA de la planilla (escribe
+filas reales; sin `--copia-ok` se niega). La clave va por entorno, nunca por
+argumento; el log queda en `build/loadtest.log`, que no se versiona:
+
+```bash
+node scripts/loadtest.js <url-exec-de-la-copia> --alumnos 50 --rampa 10,30,50 --copia-ok
+ESI_ADMIN_KEY=<clave-admin> node scripts/loadtest.js <url> --copia-ok   # verifica invariantes
 ```
 
 En Termux, bajar prioridad:
@@ -113,8 +124,8 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
 - Invariantes de negocio: una charla por franja, ciclo correcto, cupo 40,
   charla activa y un solo alumno por mail. El backend revalida; la UI no
   alcanza.
-- Privacidad: la API publica solo devuelve datos propios; la guia nunca recibe
-  mails. `apiLookupDni` no devuelve el mail, solo un ticket `l_` de un solo
+- Privacidad: la API publica solo devuelve datos propios; el panel es el mismo
+  para todo el equipo y los mails solo se ven adentro del panel admin. `apiLookupDni` no devuelve el mail, solo un ticket `l_` de un solo
   uso. La sesion local es un token opaco `s_`; no guardar identidad.
 - `apiGetData` y `apiRegister` exigen sesion o ticket si el mail ya tiene
   inscripciones; si no, responden `needsLogin`.
@@ -134,8 +145,9 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   orientado 4-6: O1-O9. Divisiones 1-3: A/B; 4-6: Turismo/Economia. Cupo 40
   por charla; el ciclo se deduce del año. No hay disertante: no inventar
   nombres.
-- `ADMIN_PIN` puede todo; `GUIDE_PIN` lee y marca presentes, sin mails ni
-  escrituras administrativas. PIN de 6 digitos; 5 fallos bloquean los intentos
+- `ADMIN_PIN` y `GUIDE_PIN` resuelven al mismo rol admin (el equipo usa una sola
+  clave); `GUIDE_PIN` no se borra. `checkPins_` del control previo mira solo
+  `ADMIN_PIN` y nunca muestra el valor. PIN de 6 digitos; 5 fallos bloquean los intentos
   incorrectos 15 min, pero la clave correcta sigue entrando (una guia no puede
   dejar sin panel a los profes) y los intentos por DNI 2 min. El backend aplica
   permisos.

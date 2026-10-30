@@ -7,8 +7,12 @@ alumnos: este repo es público.
 
 El panel es uno solo. Guías, preceptores y profes entran al mismo panel admin,
 con la misma pantalla y las mismas secciones: no hay un panel de guías aparte ni
-permisos distintos. Hay dos claves (una de respaldo de la otra) y cualquiera de
-las dos abre exactamente lo mismo. Cambiar una no invalida la otra.
+permisos distintos. Todo el equipo usa la misma clave, `ADMIN_PIN`.
+
+`GUIDE_PIN` queda sin uso: no se borra ni se cambia, y si alguien la tiene
+también abre el mismo panel, pero no hace falta repartirla. La clave se comparte
+solo por mensaje directo a cada persona del equipo y se cambia después del
+evento.
 
 Se entra por `/exec?admin=1`, con la clave y después "Ingresar". El panel le
 habla al backend por POST contra ese mismo `/exec`, con la clave o con el token
@@ -22,10 +26,11 @@ con la misma clave.
 | Cuándo | Qué | Dónde |
 |---|---|---|
 | Primero | Correr `setup()` una vez | Editor de Apps Script |
-| Después | Poner las dos claves nuevas | Script Properties (ver abajo) |
+| Después | Poner la clave nueva en `ADMIN_PIN` | Script Properties (ver abajo) |
 | Después | Abrir **Listo para el evento** y revisar que todo esté en verde | Panel, primera sección |
 | Antes de imprimir | Cerrar la inscripción para la prueba | Panel → Configuración |
 | Cuando esté verde | Imprimir las listas por franja y por curso | Panel → Tomar asistencia / Reportes |
+| Si hay tiempo | Correr el simulacro de carga contra una copia (ver abajo) | Termux o una computadora |
 | Último paso | Dejar la inscripción **abierta** para el día | Panel → Configuración |
 
 Si algún control queda en amarillo, se puede seguir: son avisos. Los rojos se
@@ -50,6 +55,24 @@ arreglan antes de abrir.
 No se rompió nada: hay demasiada gente anotándose al mismo tiempo. Pedile al
 alumno que espere unos segundos y toque de nuevo. Si pasa seguido, mandá a los
 cursos de a uno por franja.
+
+### Demasiados "ocupado": escalonar la apertura por curso
+
+El backend atiende una inscripción por vez y devuelve "ocupado" al que llega
+mientras otro escribe. Con unos cientos de alumnos a la misma hora eso pasa
+seguido, así que la apertura se escalona desde los preceptores:
+
+1. Cada preceptor avisa en su curso el horario que le toca (por ejemplo, 1ro a
+   las 9:40, 2do a las 9:50, 3ro a las 10:00).
+2. Nadie abre la página antes de su horario: se anota en el aula, no en el
+   pasillo.
+3. Si un curso termina rápido, el preceptor avisa al siguiente y recién ahí
+   siguen.
+4. La guía de cada aula no necesita hacer nada: solo mira que el alumno vea la
+   confirmación.
+
+Si aun así hay "ocupado", se corta un curso por vez: no se abre otro hasta que
+el anterior termine de anotarse.
 
 ### No hay internet
 
@@ -95,19 +118,69 @@ Se vuelve con `git revert`, nunca con `git reset` ni con `--force`: eso reescrib
    eso vuelve a servir la versión que funcionaba, sin tocar los datos.
 5. Confirmá que `/exec` responde y que el pie dice la versión esperada.
 
-## Cambiar las claves (Script Properties)
+## Simulacro de carga (antes del evento, sobre una copia)
+
+Sirve para saber cuántos alumnos aguantan el backend y ver los "ocupado" antes
+de que los vean los chicos. **Escribe inscripciones de verdad**, así que corre
+solo contra una copia de la planilla, nunca contra la real.
+
+1. `Archivo → Hacer una copia` de la planilla. En la copia, `setup()` y un
+   deployment propio: ese `/exec` es el que se usa acá.
+2. En la copia, prendé `modo_prueba=si` en `Config`. El script se niega a correr
+   si no está prendido cuando le pasás la clave.
+3. Desde el repo:
+
+```bash
+node scripts/loadtest.js <url-exec-de-la-copia> --alumnos 50 --rampa 10,30,50 --copia-ok
+```
+
+Sin `--copia-ok` se niega: es la forma de confirmar que es una copia. Si hace
+falta revisar cupos y duplicados, la clave va en el entorno, nunca en el
+comando:
+
+```bash
+ESI_ADMIN_KEY=<clave> node scripts/loadtest.js <url-exec-de-la-copia> --alumnos 50 --rampa 10,30,50 --copia-ok
+```
+
+4. Resultado aceptable: las tres tandas sin errores, pocos "busy" en la de 50, y
+   el caso de cupo con cuarenta aceptados y el resto "completa". Los tiempos
+   p95 se miran entre tandas: si se duplican de 30 a 50, la apertura tiene que
+   ir por curso.
+5. Al terminar, borrá los datos de prueba desde el panel de la copia. El script
+   deja el detalle en `build/loadtest.log` (no se sube al repo).
+
+## Cambiar la clave (Script Properties)
 
 Las claves no están en la hoja ni en el código: viven en **Script Properties**.
 
 1. Abrí el proyecto en <https://script.google.com>.
 2. Engranaje → **Propiedades del proyecto** (Script Properties).
-3. Editá `ADMIN_PIN` y `GUIDE_PIN`: seis dígitos cada una, distintas entre sí y
-   distintas de la de siempre.
+3. Editá `ADMIN_PIN`: seis dígitos y distinta de la de siempre. Es la única que
+   usa el equipo; `GUIDE_PIN` se deja como está.
 4. Guardar. No hace falta republicar: el próximo ingreso ya usa la clave nueva.
-5. Entrá al panel con las dos claves para confirmar que abren.
-6. Abrí **Listo para el evento**: el control de claves tiene que quedar en verde.
+5. Entrá al panel con la clave nueva para confirmar que abre.
+6. Abrí **Listo para el evento**: el control de la clave tiene que quedar en verde.
 
 Si te equivocás, se puede volver a la anterior con el mismo procedimiento.
+
+## Acciones delicadas
+
+Todo el equipo entra con la misma clave, así que cualquier persona puede tocar
+cualquier cosa. Estas acciones **no se hacen el día del evento sin consultar con
+el responsable del proyecto**, aunque el panel las permita:
+
+- Cerrar o abrir la inscripción.
+- Borrar inscripciones.
+- Mover a un alumno de charla o fusionar dos registros.
+- Importar la lista del curso.
+- Enviar los recordatorios por mail.
+- Exportar y cerrar el evento.
+- Borrar los datos de prueba.
+- Borrar los datos personales.
+
+Si alguien las necesita, se pide por mensaje directo y se espera la respuesta.
+La clave se comparte solo por mensaje directo a cada persona del equipo y se
+cambia después del evento.
 
 ## Qué datos se guardan
 
@@ -128,5 +201,6 @@ Cuando termina la jornada:
 
 1. **Configuración** → cerrar el evento.
 2. Exportar lo que se necesite (**Descargar CSV**).
-3. Borrar los datos personales desde el panel cuando ya no hagan falta. Esa
-   acción deja el registro en `Log` y no se puede deshacer.
+3. Borrar los datos personales desde el panel a los 30 días, o antes si la
+   dirección lo pide. Esa acción deja el registro en `Log` y no se puede
+   deshacer.
