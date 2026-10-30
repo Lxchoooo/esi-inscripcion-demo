@@ -1325,7 +1325,10 @@ function pruneBackup_(sh) {
   for (var k = 0; k < keep.length; k++) out = out.concat(groups[keep[k]]);
   var lastRow = sh.getLastRow();
   var width = Math.max(out[0].length, sh.getLastColumn());
-  sh.getRange(1, 1, out.length, out[0].length).setValues(out);
+  for (var w = 0; w < out.length; w++) {
+    while (out[w].length < width) out[w].push('');
+  }
+  sh.getRange(1, 1, out.length, width).setValues(out);
   if (lastRow > out.length) {
     sh.getRange(out.length + 1, 1, lastRow - out.length, width).clearContent();
   }
@@ -1399,7 +1402,10 @@ function repairErasedSignups_(ss) {
     var backup = ss.getSheetByName(BACKUP_SHEET);
     if (backup) {
       for (var br = 0; br < rows.length; br++) {
-        backup.appendRow(['repair', new Date()].concat(rows[br]));
+        var fila = ['repair', new Date()].concat(rows[br]);
+        var ancho = Math.max(1, backup.getLastColumn());
+        while (fila.length < ancho) fila.push('');
+        backup.appendRow(fila);
       }
     }
     var resumen = ensureSheet_(ss, RESUMEN_SHEET,
@@ -1830,6 +1836,14 @@ function givenName_(full, apellido) {
   return n;
 }
 
+// Cuenta lugares ocupados. Las filas de ensayo no gastan cupo real cuando el
+// modo prueba esta apagado: si quedo alguna olvidada, no bloquea al alumno.
+function cupoCounts_(signups, cfg) {
+  var lista = signups || [];
+  if (convertBool_((cfg || {})[CONFIG_TEST_MODE])) return countByTalk_(lista);
+  return countByTalk_(lista.filter(function (s) { return !s.prueba; }));
+}
+
 function countByTalk_(signups) {
   var counts = {};
   for (var i = 0; i < signups.length; i++) {
@@ -1861,7 +1875,7 @@ function mineMap_(signups, email) {
 function publicData_(ciclo, mine, signupsNow) {
   var cfg = readConfigCached_();
   var slots = readSlotsCached_();
-  var counts = countByTalk_(signupsNow || readSignupsCached_());
+  var counts = cupoCounts_(signupsNow || readSignupsCached_(), cfg);
   var talks = readTalksCached_()
     .filter(function (t) {
       return t.ciclo === ciclo && t.activa;
@@ -2395,9 +2409,7 @@ function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, login
     return registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken);
   });
   if (resp && resp.busy) return resp;
-  if (resp && resp.ok) {
-    try { rebuildReport_(); } catch (e) { }
-  }
+  if (resp && resp.ok) maybeRebuildReport_();
   return resp;
 }
 
@@ -2478,7 +2490,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       if (duplicate) {
         plan = { action: 'none' };
       } else {
-        var targetCount = countByTalk_(fresh)[talkId] || 0;
+        var targetCount = cupoCounts_(fresh, cfg)[talkId] || 0;
         if (targetCount >= Number(talk.cupo)) {
           return {
             ok: false,
@@ -3776,6 +3788,17 @@ function apiAdminReports(cred) {
 }
 
 var REPORTE_SHEET = 'Reporte';
+
+// El reporte es cosmetico (los numeros salen de Signups) y reescribirlo en cada
+// inscripcion cuesta una hoja entera. Se refresca como mucho cada 15 segundos.
+function maybeRebuildReport_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    if (cache.get('report_rebuild')) return;
+    cache.put('report_rebuild', '1', 15);
+    rebuildReport_();
+  } catch (e) { }
+}
 
 function rebuildReport_() {
   try {

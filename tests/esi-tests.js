@@ -3206,6 +3206,37 @@ t('r15: published.js detecta un sitio viejo sin red', () => {
   assertEq(pub.versionDe(''), '', 'sin version devuelve vacio');
 });
 
+t('auditoria: las filas de ensayo no gastan cupo real', () => {
+  const api = new Function('PropertiesService','LockService','CacheService','SpreadsheetApp','Utilities','MailApp',
+    codeSrc + '\nreturn { cupoCounts_: cupoCounts_ };')(
+    { getScriptProperties: () => ({ getProperty: () => '' }) }, {}, {}, {}, {}, {});
+  const filas = [
+    { talk_id: 'B1', prueba: false },
+    { talk_id: 'B1', prueba: true },
+    { talk_id: 'B1', prueba: true },
+    { talk_id: 'B2', prueba: true }
+  ];
+  assertEq(api.cupoCounts_(filas, { modo_prueba: 'no' }).B1, 1, 'sin modo prueba cuenta solo reales');
+  assertEq(api.cupoCounts_(filas, { modo_prueba: 'si' }).B1, 3, 'en modo prueba cuenta todo');
+  assertEq(api.cupoCounts_(filas, {}).B2, undefined, 'sin config no cuenta ensayo');
+  assertEq(api.cupoCounts_([], null).B1, undefined, 'lista vacia');
+});
+
+t('auditoria: el reporte se rehace como mucho cada 15 segundos', () => {
+  if (codeSrc.indexOf('function maybeRebuildReport_') < 0) throw new Error('falta el throttle');
+  if (!/cache\.put\('report_rebuild', '1', 15\)/.test(codeSrc)) throw new Error('no usa CacheService con 15 s');
+  const api = codeSrc.slice(codeSrc.indexOf('function apiRegister'), codeSrc.indexOf('function registerLocked_'));
+  if (api.indexOf('maybeRebuildReport_()') < 0) throw new Error('apiRegister no usa el throttle');
+  if (/rebuildReport_\(\)/.test(api)) throw new Error('apiRegister rehace el reporte en cada alta');
+});
+
+t('auditoria: el respaldo aguanta filas de distinto ancho', () => {
+  if (!/while \(out\[w\]\.length < width\) out\[w\]\.push\(''\);/.test(codeSrc)) {
+    throw new Error('pruneBackup_ no empareja el ancho de las filas');
+  }
+  const rep = codeSrc.slice(codeSrc.indexOf('function repairErasedSignups_'), codeSrc.indexOf('function ensureColumn_'));
+  if (rep.indexOf('while (fila.length < ancho) fila.push') < 0) throw new Error('la reparacion no rellena columnas');
+});
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
   Object.keys(map).forEach((name) => {
