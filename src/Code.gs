@@ -49,7 +49,7 @@ var REGISTER_LOCK_MS = 8000;
 var ADMIN_LOCK_MS = 5000;
 
 var ERROR_MESSAGES_ = {
-  full: 'Sin lugares.',
+  full: 'Sin lugares: elegí otra charla de esa franja.',
   talkNotFound: 'No encontramos esa charla.',
   talkInactive: 'Esa charla no está disponible.',
   talkWrongCycle: 'Esa charla no es de tu ciclo.',
@@ -2995,7 +2995,7 @@ function apiAdminAddStudent(cred, data) {
         if (talk.ciclo !== v.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
         if (bySlot[Number(talk.slot_id)]) return { ok: false, message: 'Ya tiene una charla en ese horario.' };
         if (mine[String(talk.id)]) return { ok: false, message: 'Ya está anotado en esa charla.' };
-        if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + '.' };
+        if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
         bySlot[Number(talk.slot_id)] = true;
         mine[String(talk.id)] = true;
         chosen.push(talk);
@@ -3092,7 +3092,7 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       if (talk.ciclo !== current.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
       if (String(talk.id) === String(current.talk_id)) return { ok: true, changed: false };
       var counts = countByTalk_(signups);
-      if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + '.' };
+      if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
       for (var k = 0; k < signups.length; k++) {
         if (signups[k].emailKey === current.emailKey && String(signups[k].talk_id) === String(talk.id)) {
           return { ok: false, message: 'Ya está anotado en esa charla.' };

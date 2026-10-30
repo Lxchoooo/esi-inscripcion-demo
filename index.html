@@ -3201,7 +3201,7 @@
       if (plan.error) {
         return Promise.resolve({
           ok: false,
-          message: plan.error === 'full' ? 'Sin lugares.' : 'No se pudo anotar.',
+          message: plan.error === 'full' ? 'Sin lugares: elegí otra charla de esa franja.' : 'No se pudo anotar.',
           data: demoPublicData(s.ciclo, demoMine(s.email))
         });
       }
