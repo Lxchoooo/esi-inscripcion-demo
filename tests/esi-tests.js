@@ -931,6 +931,15 @@ t('Panel banners accept an inline retry action', () => {
   if (!/function haptic_\(ms\)/.test(panelSrc)) throw new Error('sin haptics');
 });
 
+t('Panel muestra pasos, vivo y contadores en la asistencia', () => {
+  if (!/class="steps-bar"/.test(panelHtml)) throw new Error('sin barra de pasos');
+  if (!/id="live-dot"/.test(panelHtml)) throw new Error('sin punto en vivo');
+  if (!/.steps-bar i.on/.test(panelHtml)) throw new Error('paso activo sin estilo');
+  if (!/function tweenCount_/.test(panelSrc)) throw new Error('sin contador animado');
+  if (!/Se anotó 1 alumno nuevo/.test(panelSrc)) throw new Error('sin aviso de inscripto nuevo');
+  if (!/id="tab-inscriptos-badge"/.test(panelHtml)) throw new Error('sin badge de inscripciones');
+});
+
 t('Panel carries the ISS identity and an accessible green palette', () => {
   if (!/var SCHOOL_NAME = 'Instituto Secundario Salsipuedes \(ISS\)';/.test(panelSrc)) throw new Error('SCHOOL_NAME placeholder');
   if (!/var EVENT_NAME = 'Jornada ESI 2026';/.test(panelSrc)) throw new Error('EVENT_NAME');
