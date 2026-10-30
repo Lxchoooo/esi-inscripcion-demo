@@ -42,7 +42,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v42';
+var BACKEND_VERSION = 'v43';
 var DATA_CACHE_TTL = 12;
 var BUSY_MESSAGE = 'El servidor está ocupado: esperá unos segundos y probá de nuevo.';
 var REGISTER_LOCK_MS = 8000;
