@@ -1326,7 +1326,6 @@
     .bulk-box summary::marker { color: var(--accent); }
     .bulk-box #ta-roster { margin-top: 8px; }
     .hint-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
-    .privacidad { margin: 10px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
     .login-note { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
     .kbd-hint { display: none; align-items: center; gap: 5px; margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
     .kbd-hint kbd {
@@ -1861,7 +1860,6 @@
       <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
       <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: ingresen por el panel de administración.</p>
       <p class="hint-line login-note" id="login-note">Si usás un celular compartido, cerrá la pestaña al terminar.</p>
-      <p class="privacidad" id="priv-mail">Usamos tu mail, nombre, apellido y curso solo para anotarte en las charlas y controlar la asistencia. Los ven profesores y guías de la jornada.</p>
     </section>
 
     <section id="s-screen-login" class="screen card" tabindex="-1" aria-labelledby="login-form-title">
@@ -2322,7 +2320,6 @@
         <h2 class="intro" id="done-title">¡Ya estás inscripto!</h2>
       </div>
       <div id="done-list" class="card"></div>
-      <p class="privacidad" id="priv-done">Usamos tu mail, nombre, apellido y curso solo para anotarte en las charlas y controlar la asistencia. Los ven profesores y guías de la jornada.</p>
       <label class="sheet-check" style="margin:14px 0 0">
         <input type="checkbox" id="done-recordatorio">
         <span>Quiero recibir un mail de recordatorio</span>
@@ -2442,8 +2439,6 @@
     var SCHOOL_NAME = 'Instituto Secundario Salsipuedes (ISS)';
     var EVENT_NAME = 'Jornada ESI 2026';
     var TEXTO_DIRECCION = '';
-    var RETENCION_TEXTO = '';
-    var PRIVACIDAD_TEXTO = 'Usamos tu mail, nombre, apellido y curso solo para anotarte en las charlas y controlar la asistencia. Los ven profesores y guías de la jornada.';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
     var APP_VERSION = 'v43';
@@ -2451,18 +2446,6 @@
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
     function $(id) { return document.getElementById(id); }
-
-    function conRetencion_(texto, extra) {
-      var e = String(extra == null ? '' : extra).trim();
-      return e ? texto + ' ' + e : texto;
-    }
-
-    function pintarPrivacidad_() {
-      ['priv-mail', 'priv-done'].forEach(function (id) {
-        var el = $(id);
-        if (el) el.textContent = conRetencion_(PRIVACIDAD_TEXTO, RETENCION_TEXTO);
-      });
-    }
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -7928,7 +7911,6 @@
 
     function boot() {
       purgeLegacyStorage();
-      pintarPrivacidad_();
       initTheme_();
       sheetInit();
       initShell();

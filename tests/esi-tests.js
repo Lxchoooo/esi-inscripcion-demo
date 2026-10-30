@@ -3115,27 +3115,6 @@ t('r15: las dos claves entran al control previo y no ven claves', () => {
   if (json.indexOf('482913') >= 0 || json.indexOf('731204') >= 0) throw new Error('el endpoint devuelve una clave');
 });
 
-t('r15: la linea de privacidad es exacta y la retencion es opcional', () => {
-  const texto = 'Usamos tu mail, nombre, apellido y curso solo para anotarte en las charlas y controlar la asistencia. Los ven profesores y guías de la jornada.';
-  const veces = panelHtml.split(texto).length - 1;
-  assertEq(veces, 3, 'dos parrafos y la constante');
-  assertEq(panelSrc.split(texto).length - 1, 1, 'el texto vive en una sola constante');
-  if (codeSrc.indexOf(texto) >= 0) throw new Error('el backend no lleva el aviso');
-  ['id="priv-mail"', 'id="priv-done"'].forEach((id) => {
-    if (panelHtml.indexOf(id) < 0) throw new Error('falta ' + id);
-  });
-  if (!/var RETENCION_TEXTO = '';/.test(panelSrc)) throw new Error('RETENCION_TEXTO tiene que venir vacia');
-  const fnSrc = panelSrc.slice(panelSrc.indexOf('function conRetencion_'), panelSrc.indexOf('function pintarPrivacidad_'));
-  const helper = { conRetencion_: new Function(fnSrc + '\nreturn conRetencion_;')() };
-  assertEq(helper.conRetencion_(texto, ''), texto, 'sin retencion no agrega nada');
-  assertEq(helper.conRetencion_(texto, '   '), texto, 'espacios no cuentan');
-  assertEq(helper.conRetencion_(texto, 'Se borra a los 30 dias.'), texto + ' Se borra a los 30 dias.', 'con retencion se agrega');
-  if (/30 días|30 dias|días hábiles/.test(panelSrc.slice(panelSrc.indexOf('id=priv-mail') - 200, panelSrc.indexOf('id=priv-mail') + 400))) {
-    throw new Error('el aviso inventa un plazo');
-  }
-  if (/animation|transition/.test((panelCss().match(/\.privacidad[^}]*}/) || [''])[0])) throw new Error('la linea nueva anima');
-});
-
 t('r15: el control previo mira solo ADMIN_PIN y nunca muestra el valor', () => {
   const api = checkApi();
   const r = api.buildEventCheck_(checkCtx({ pins: { admin: '482913', guide: '' } }));
