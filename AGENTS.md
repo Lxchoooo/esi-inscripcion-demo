@@ -77,6 +77,15 @@ El minificador valida la sintaxis del JS con `vm.Script` y verifica marcadores
 clave; si falla, no escribe nada. Ese archivo se copia como `Panel.html` en el
 proyecto de clasp; nunca reemplaza a `index.html`. Tests y CI siguen corriendo
 contra `src/`.
+
+El proyecto de clasp se arma asi, y el manifiesto tiene que ser **el del repo**
+(copiarlo a mano sin `webapp` rompe el deployment y `/exec` devuelve 404):
+
+```bash
+cp src/Code.gs Code.js
+cp build/index.min.html Panel.html
+cp src/appsscript.json appsscript.json   # incluye "webapp": executeAs/access
+```
 Verificar Pages con cachebuster:
 
 ```bash
