@@ -3623,6 +3623,25 @@ t('r15: el envio de recordatorios muestra los mails que fallaron', () => {
   if (panelHtml.indexOf("failedEmails: []") < 0) throw new Error('el demo no devuelve la lista');
 });
 
+t('la pantalla de "ya estas inscripto" se ve al confirmar', () => {
+  // [hidden] ahora es !important: cualquier pantalla que arranque con el
+  // atributo y se muestre solo cambiando la clase queda en negro.
+  const done = panelHtml.match(/<section id="s-screen-done"[^>]*>/);
+  if (!done) throw new Error('falta la pantalla de listo');
+  if (/\shidden[\s>]/.test(done[0])) throw new Error('s-screen-done arranca oculta y nada la destapa');
+  const i = panelHtml.indexOf('function showScreen(');
+  const body = panelHtml.slice(i, panelHtml.indexOf('function ', i + 20));
+  if (body.indexOf('el.hidden = false') < 0) throw new Error('showScreen no limpia hidden');
+});
+
+t('ninguna pantalla arranca con el atributo hidden', () => {
+  // .screen se muestra cambiando la clase; con [hidden] !important el
+  // atributo gana y la pantalla queda en blanco (o negra, en modo oscuro).
+  if (/<section[^>]*class="[^"]*\bscreen\b[^"]*"[^>]*\shidden[\s>]/.test(panelHtml)) {
+    throw new Error('una .screen arranca con hidden y showScreen no lo saca');
+  }
+});
+
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
   if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');

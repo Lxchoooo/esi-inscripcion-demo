@@ -2313,7 +2313,7 @@
       </div>
     </section>
 
-    <section id="s-screen-done" class="screen card" tabindex="-1" aria-labelledby="done-title" hidden>
+    <section id="s-screen-done" class="screen card" tabindex="-1" aria-labelledby="done-title">
       <div class="done-hero">
         <div class="done-check" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5 9.5 17 19 7.5"/></svg></div>
         <div class="steps">Listo</div>
@@ -4140,7 +4140,11 @@
       var dir = (nextIdx >= 0 && prevIdx >= 0 && nextIdx < prevIdx) ? ' back' : ' fwd';
       if (!prev) dir = '';
       for (var i = 0; i < ids.length; i++) {
-        $(ids[i]).className = 'screen' + (ids[i] === activeId ? ' active' + dir : '');
+        var el = $(ids[i]);
+        if (!el) continue;
+        el.className = 'screen' + (ids[i] === activeId ? ' active' + dir : '');
+        // [hidden] gana sobre .screen.active: la pantalla activa se destapa.
+        if (ids[i] === activeId) el.hidden = false;
       }
       document.body.setAttribute('data-screen', activeId || '');
       if (aMenuOpen && activeId !== 'a-screen-panel') aMenuSet_(false);
