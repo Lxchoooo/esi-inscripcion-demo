@@ -3157,5 +3157,74 @@ t('r15: EVENTO.md explica el dia sin filtrar claves ni mails', () => {
   if (/panel de guias|panel guia/i.test(doc)) throw new Error('el doc separa el panel por rol');
 });
 
+// ---- r15: simulacro de carga ----
+const loadtest = require(path.resolve(ROOT, '..', 'scripts', 'loadtest.js'));
+const LT_URL = 'https://script.google.com/macros/s/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/exec';
+
+const ltErr = (fn, re) => {
+  let salio = false;
+  let mensaje = '';
+  try {
+    fn();
+  } catch (e) {
+    salio = true;
+    mensaje = String(e && e.message ? e.message : e);
+  }
+  if (!salio) throw new Error('no rechazo la entrada');
+  if (re && !re.test(mensaje)) throw new Error('mensaje inesperado: ' + mensaje);
+};
+
+t('r15: loadtest valida los argumentos', () => {
+  const base = loadtest.parseArgs([LT_URL, '--alumnos', '20', '--rampa', '5,10', '--copia-ok']);
+  assertEq(base.alumnos, 20, 'alumnos');
+  assertEq(base.rampa.join(','), '5,10', 'rampa');
+  assertEq(base.copiaOk, true, 'copia');
+  ltErr(() => loadtest.parseArgs([LT_URL, '--rampa', '0']), /--rampa/);
+  ltErr(() => loadtest.parseArgs([LT_URL, '--alumnos', 'x']), /--alumnos/);
+  ltErr(() => loadtest.parseArgs([LT_URL, '--loquesea']), /opcion desconocida/);
+  ltErr(() => loadtest.parseArgs(['https://ejemplo.com/exec']), /script\.google\.com/);
+  ltErr(() => loadtest.parseArgs([]), /falta la URL/);
+  ltErr(() => loadtest.parseArgs([LT_URL, '--clave', 'ABCDEF']), /ESI_ADMIN_KEY/);
+});
+
+t('r15: loadtest se niega a correr sin --copia-ok', () => {
+  const opts = loadtest.parseArgs([LT_URL]);
+  const motivos = loadtest.negativas(opts).join(' ');
+  if (!/--copia-ok/.test(motivos)) throw new Error('no pide --copia-ok');
+  ['Signups', 'Sessions'].forEach((n) => {
+    if (motivos.indexOf(n) < 0) throw new Error('no explica que escribe ' + n);
+  });
+  assertEq(loadtest.negativas(loadtest.parseArgs([LT_URL, '--copia-ok'])).length, 0, 'con --copia-ok pasa');
+  const pocos = loadtest.negativas(loadtest.parseArgs([LT_URL, '--copia-ok', '--alumnos', '5']));
+  if (!/rampa/.test(pocos.join(' '))) throw new Error('no avisa que la rampa supera a los alumnos');
+});
+
+t('r15: loadtest sin rutas ni claves hardcodeadas', () => {
+  const src = read('../scripts/loadtest.js');
+  ['/data/data', '/storage/', 'macros/s/AKfy', 'process.env.HOME'].forEach((needle) => {
+    if (src.indexOf(needle) >= 0) throw new Error('ruta o id fijo: ' + needle);
+  });
+  if (/(^|[^0-9])\d{6}([^0-9]|$)/.test(src)) throw new Error('hay un numero de seis digitos');
+  if (/console\.(log|error)\([^)]*ESI_ADMIN_KEY/.test(src)) throw new Error('imprime la clave');
+  if (!/process\.env\.ESI_ADMIN_KEY/.test(src)) throw new Error('no lee la clave del entorno');
+  if (!/Borrá los datos de prueba desde el panel/.test(src)) throw new Error('falta el aviso final');
+});
+
+t('r15: loadtest usa mails ficticios y clasifica busy', () => {
+  assertEq(loadtest.mail(1), 'carga001@secundariosalsipuedes.edu.ar', 'mail 1');
+  assertEq(loadtest.mail(50), 'carga050@secundariosalsipuedes.edu.ar', 'mail 50');
+  assertEq(loadtest.clasificar({ busy: true }), 'busy', 'busy');
+  assertEq(loadtest.clasificar({ ok: false, message: 'El servidor está ocupado' }), 'busy', 'mensaje ocupado');
+  assertEq(loadtest.clasificar({ ok: true }), 'ok', 'ok');
+  assertEq(loadtest.clasificar({ ok: false, message: 'Sin lugares' }), 'error', 'full');
+  assertEq(loadtest.redactar('x=abc123', 'abc123'), 'x=[clave]', 'redacta');
+  assertEq(loadtest.CUPO, 40, 'cupo');
+});
+
+t('r15: el log del loadtest queda fuera del repo', () => {
+  const ignore = read('../.gitignore');
+  if (ignore.indexOf('build/loadtest.log') < 0) throw new Error('falta build/loadtest.log en .gitignore');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
