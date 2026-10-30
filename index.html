@@ -396,6 +396,47 @@
       color: var(--accent); margin: 0 0 8px;
     }
     .steps::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-fill); flex: 0 0 auto; }
+    .tab-badge {
+      margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px;
+      background: var(--surface-3); color: var(--muted);
+      font-size: 11px; font-weight: 800; text-align: center; letter-spacing: 0;
+      animation: popIn .24s var(--ease-pop) both;
+    }
+    .tab.active .tab-badge { background: var(--primary-container); color: var(--on-primary-container); }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+      background: var(--accent); box-shadow: 0 0 0 0 rgba(47, 111, 78, .5);
+      animation: livePulse 2.4s ease-out infinite;
+    }
+    .live-dot.off { background: var(--warn); animation: none; box-shadow: none; }
+    @keyframes livePulse {
+      0% { box-shadow: 0 0 0 0 rgba(47, 111, 78, .5); }
+      70% { box-shadow: 0 0 0 7px rgba(47, 111, 78, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(47, 111, 78, 0); }
+    }
+    .steps-bar { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
+    .steps-bar i {
+      display: block; width: 13px; height: 4px; border-radius: 999px;
+      background: var(--line); transition: width .28s var(--ease-emph), background-color .28s ease;
+    }
+    .steps-bar i.done { background: var(--accent-line); }
+    .steps-bar i.on { width: 22px; background: var(--accent); animation: growBar .3s var(--ease-emph) both; }
+    @keyframes growBar { from { transform: scaleX(.4); } to { transform: scaleX(1); } }
+    html.theme-anim,
+    html.theme-anim body,
+    html.theme-anim #nav,
+    html.theme-anim .card,
+    html.theme-anim .talk,
+    html.theme-anim .mini-summary,
+    html.theme-anim .btn,
+    html.theme-anim .sheet,
+    html.theme-anim .panel-search,
+    html.theme-anim .sel-bar,
+    html.theme-anim .banner,
+    html.theme-anim .toast {
+      transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease !important;
+    }
+    #a-table tbody tr { animation: fadeUp .26s var(--ease-emph) both; animation-delay: calc(var(--i, 0) * 18ms); }
     h2.intro {
       font-size: clamp(25px, 5.2vw, 32px); font-weight: 650;
       letter-spacing: var(--track-tight); line-height: var(--lh-snug); margin: 0 0 12px;
@@ -1501,6 +1542,7 @@
       .ms-rows .ms-row, .clear-btn, .sheet-body > *, .sheet-actions .btn,
       .seatbar > span, .toast.show, #done-list .sheet-line,
       .screen.active.fwd, .screen.active.back, .empty-state, .empty-state svg,
+      .live-dot, .steps-bar i.on, #a-table tbody tr, .tab-badge,
       .present-btn.on, .present-mini.on, .status-chip.updated { animation: none !important; }
       .btn.is-loading .ico { animation: none; }
       .talk.selected .talk-check svg path { animation: none; stroke-dashoffset: 0; }
@@ -1586,7 +1628,7 @@
     </section>
 
     <section id="s-screen-mail" class="screen card" tabindex="-1" aria-labelledby="login-title">
-      <div class="steps">1 de 3</div>
+      <div class="steps"><span>1 de 3</span><span class="steps-bar" aria-hidden="true"><i class="on"></i><i></i><i></i></span></div>
       <h2 class="intro" id="login-title">Ingresar</h2>
       <p class="hint">Vas a necesitar tu mail institucional o tu DNI.</p>
       <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
@@ -1595,7 +1637,7 @@
     </section>
 
     <section id="s-screen-login" class="screen card" tabindex="-1" aria-labelledby="login-form-title">
-      <div class="steps">2 de 3</div>
+      <div class="steps"><span>2 de 3</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="on"></i><i></i></span></div>
       <h2 class="intro" id="login-form-title">Ingresá con tu mail o tu DNI</h2>
       <p class="hint" id="login-intro">Elegí una sola forma. Si es tu primera vez, el sistema te va a pedir tus datos.</p>
       <form id="login-form" class="login-form" novalidate>
@@ -1680,7 +1722,7 @@
     <section id="s-screen-panel" class="screen" tabindex="-1" aria-labelledby="panel-title">
       <div class="panel-head">
         <div>
-          <div class="steps">3 de 3</div>
+          <div class="steps"><span>3 de 3</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="on"></i></span></div>
           <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
           <p class="hint" id="panel-progress"></p>
@@ -1746,7 +1788,7 @@
         <div class="panel-search">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <input id="input-buscar-global" type="search" autocomplete="off"
-            placeholder="Buscar alumno, mail o charla" aria-label="Búsqueda global">
+            placeholder="Buscar alumno, mail o charla  ( / )" aria-label="Búsqueda global">
         </div>
         <div class="panel-bar-actions">
           <button id="btn-arefresh" class="btn secondary small" type="button">
@@ -1791,6 +1833,7 @@
             <button id="tab-inscriptos" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-inscriptos" tabindex="-1">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".7"/><circle cx="3.5" cy="12" r=".7"/><circle cx="3.5" cy="18" r=".7"/></svg>
               <span>Inscripciones</span>
+              <span class="tab-badge" id="tab-inscriptos-badge" hidden></span>
             </button>
             <button id="tab-mails" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-mails" tabindex="-1">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
@@ -1841,6 +1884,7 @@
               <button type="button" data-filter="present" aria-pressed="false">Presentes</button>
   
             </div>
+            <span class="live-dot" id="live-dot" aria-hidden="true"></span>
             <span class="hint-line" id="charla-updated">Actualizado hace 0s</span>
             <button id="btn-refresh-charla" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
           </div>
@@ -2156,7 +2200,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v35';
+    var APP_VERSION = 'v36';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4011,6 +4055,26 @@
       if (head) head.setAttribute('aria-expanded', sState.miniOpen ? 'true' : 'false');
     }
 
+    function tweenCount_(el, to, before, after) {
+      if (!el) return;
+      var from = Number((el.getAttribute && el.getAttribute('data-n')) || 0);
+      if (el.setAttribute) el.setAttribute('data-n', String(to));
+      var paint = function (n) { el.textContent = before + n + after; };
+      if (from === to || sReduceMotion() || typeof window.requestAnimationFrame !== 'function') {
+        paint(to);
+        return;
+      }
+      var t0 = Date.now();
+      var dur = 380;
+      var step = function () {
+        var k = Math.min(1, (Date.now() - t0) / dur);
+        var eased = 1 - Math.pow(1 - k, 3);
+        paint(Math.round(from + (to - from) * eased));
+        if (k < 1) window.requestAnimationFrame(step);
+      };
+      window.requestAnimationFrame(step);
+    }
+
     function popNum_(el) {
       if (!el || !el.classList) return;
       el.classList.remove('num-pop');
@@ -5097,6 +5161,8 @@
       if (aOfflineAt) label = 'Sin conexión · datos de hace ' + aOfflineAge_(aOfflineAt);
       var el = $('charla-updated');
       if (el) el.textContent = label;
+      var dot = $('live-dot');
+      if (dot && dot.classList) dot.classList.toggle('off', !!aOfflineAt);
       var el2 = $('pend-updated');
       if (el2) el2.textContent = label;
     }
@@ -5147,6 +5213,16 @@
             aBanner(resp.message || 'No se pudo cargar.', 'err');
             return;
           }
+          if (aTalkSeenId === talkId && aTalkSeenCount != null && resp.count > aTalkSeenCount) {
+            var nuevos = resp.count - aTalkSeenCount;
+            toast(nuevos === 1 ? 'Se anotó 1 alumno nuevo.' : 'Se anotaron ' + nuevos + ' alumnos nuevos.', 'ok');
+            haptic_(10);
+          }
+          if (aTalkSeenId !== talkId) {
+            aTalkSeenId = talkId;
+            aTalkSeenCount = null;
+          }
+          aTalkSeenCount = resp.count;
           aTalkData = resp;
           aApplyQueued_(aTalkData);
           aUpdatedAt = Date.now();
@@ -5299,6 +5375,8 @@
     function aReleaseAwake_() {
       if (aWakeLock) { try { aWakeLock.release(); } catch (e) { } aWakeLock = null; }
     }
+    var aTalkSeenId = null;
+    var aTalkSeenCount = null;
     var aPresentesSeen = -1;
     var aRosterKey = '';
     var aRosterStagger = true;
@@ -5310,10 +5388,10 @@
       var focusId = focusEl && focusEl.getAttribute ? focusEl.getAttribute('data-id') : '';
       var q = $('input-buscar-charla') ? $('input-buscar-charla').value : '';
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
-      $('charla-count').textContent = d.count + ' de ' + d.talk.cupo + ' lugares';
+      tweenCount_($('charla-count'), d.count, '', ' de ' + d.talk.cupo + ' lugares');
       var presentesEl = $('charla-presentes');
       if (presentesEl) {
-        presentesEl.textContent = 'Presentes ' + (d.presentes || 0) + ' de ' + d.count;
+        tweenCount_(presentesEl, d.presentes || 0, 'Presentes ', ' de ' + d.count);
         if (aPresentesSeen !== (d.presentes || 0)) {
           aPresentesSeen = d.presentes || 0;
           popNum_(presentesEl);
@@ -5327,6 +5405,16 @@
       var rosterKey = String(aTalkId) + '|' + q + '|' + fCurso + '|' + aTalkFilter;
       aRosterStagger = rosterKey !== aRosterKey;
       aRosterKey = rosterKey;
+      var allChip = null, presChip = null;
+      try {
+        var chipNodes = $('charla-filtro').querySelectorAll('button');
+        for (var ci = 0; ci < chipNodes.length; ci++) {
+          if (chipNodes[ci].getAttribute('data-filter') === 'all') allChip = chipNodes[ci];
+          if (chipNodes[ci].getAttribute('data-filter') === 'present') presChip = chipNodes[ci];
+        }
+      } catch (eChips) { }
+      if (allChip) allChip.textContent = 'Todos ' + d.count;
+      if (presChip) presChip.textContent = 'Presentes ' + (d.presentes || 0);
       var rows = '';
       var shown = 0;
       var cursos = {};
@@ -6000,6 +6088,13 @@
       if (!d) return;
       $('hdr-sub').textContent = EVENT_NAME;
       aApplyTestMode_(d.event && d.event.modo_prueba);
+      var badge = $('tab-inscriptos-badge');
+      if (badge) {
+        var totalBadge = d.total || 0;
+        badge.textContent = totalBadge > 999 ? '999+' : String(totalBadge);
+        badge.hidden = !totalBadge;
+        badge.setAttribute('aria-label', totalBadge + ' reservas');
+      }
 
       $('a-roster-info').textContent = d.rosterLoaded
         ? d.rosterCount + ' mails cargados · habilitan DNI y recordatorios'
@@ -6405,7 +6500,7 @@
             + '</div>';
         }
         charlasHtml += '</div></div>';
-        rows += '<tr>'
+        rows += '<tr style="--i:' + (shown > 12 ? 12 : shown) + '">'
           + '<td class="narrow" data-label="Fecha">' + esc(s0.cuando) + '</td>'
           + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', aRole === 'admin')
           + '</td>'
@@ -6577,6 +6672,7 @@
         if (menus[mi] !== el) menus[mi].hidden = true;
       }
       el.hidden = !el.hidden;
+      if (!el.hidden && el.classList) el.classList.add('drop-in');
     };
     window.aOnDelete = function (signupId) {
       if (aBusy) return;
@@ -7306,6 +7402,24 @@
         }
       });
       document.addEventListener('keydown', aOnKey_);
+      document.addEventListener('keydown', function (ev) {
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        var t = ev.target || {};
+        var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(String(t.tagName || ''));
+        if (ev.key === '/' && !typing) {
+          var globalInput = $('input-buscar');
+          if (globalInput) {
+            ev.preventDefault();
+            try { globalInput.focus(); } catch (e) { }
+          }
+          return;
+        }
+        if (ev.key === 'Escape' && typing) {
+          if (!t.value) return;
+          t.value = '';
+          try { t.dispatchEvent(new window.Event('input')); } catch (e2) { }
+        }
+      });
       window.addEventListener('resize', aSyncTableCards_);
 
       if (adminCred) {
@@ -7385,9 +7499,12 @@
     }
 
     function applyTheme_(t) {
-      document.documentElement.setAttribute("data-theme", t);
+      var root = document.documentElement;
+      root.classList.add("theme-anim");
+      root.setAttribute("data-theme", t);
       lsSet("esi_theme", t);
       syncThemeBtn_(t);
+      window.setTimeout(function () { root.classList.remove("theme-anim"); }, 340);
     }
 
     function initTheme_() {
