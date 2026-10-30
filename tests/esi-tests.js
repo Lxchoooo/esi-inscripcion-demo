@@ -953,7 +953,7 @@ t('Home uses reveal, tint and hero animations', () => {
   if (!/@keyframes heroIn/.test(panelHtml)) throw new Error('sin entrada del hero');
   if (!/hero-poster \{[^}]*posterIn/.test(panelHtml.replace(/\n/g, ' '))) throw new Error('poster sin entrada');
   if (/posterFloat/.test(panelHtml)) throw new Error('el poster no debe flotar en bucle');
-  if (!/function aAnimateStats_/.test(panelSrc)) throw new Error('stats sin contador animado');
+  if (/aAnimateStats_/.test(panelSrc)) throw new Error('los numeros de las tarjetas deben cambiar directo');
   if (!/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.hero-copy > \*/.test(panelHtml)) throw new Error('hero sin guarda');
 });
 
@@ -2854,7 +2854,7 @@ t('r14: transiciones y animaciones solo tocan transform y opacity', () => {
     const value = r.decl.replace(/^transition\s*:\s*/, '').replace(/;$/, '');
     value.split(/,(?![^(]*\))/).forEach((part) => {
       const prop = part.trim().split(/\s+/)[0];
-      if (/^(none|all|visibility)$/.test(prop)) return;
+      if (/^(none|all|visibility|grid-template-rows)$/.test(prop)) return;
       if (!/^(transform|opacity)$/.test(prop)) badTrans.push(r.sel + ' -> ' + prop);
     });
   });
@@ -2935,6 +2935,32 @@ t('r14: el modo verificacion de guias no anima', () => {
     throw new Error('sin bloque de verificacion');
   }
   if (!/#pane-charla \.btn, #pane-pend \.btn/.test(css)) throw new Error('sin feedback de toque en verificacion');
+});
+
+t('r14: barras y dona crecen una sola vez', () => {
+  const css = panelCss();
+  if (!/\.seatbar > span\.in, \.bar-fill\.in \{ animation: barGrow/.test(css)) throw new Error('barras sin clase in');
+  if (/barGrow \.5s/.test(css)) throw new Error('barra re-animada en cada render');
+  if (!panelSrc.includes('function barIn_(k)')) throw new Error('sin helper de primera vez');
+  if (!/donutDraw/.test(css) || !/\.donut \.arc\.in \{ animation: donutDraw/.test(css)) throw new Error('dona sin dibujo');
+  if (!/barIn_\(\x27s\x27 \+ slot\.id/.test(panelSrc)) throw new Error('seatbar sin clave estable');
+  if (/aAnimateStats_/.test(panelSrc)) throw new Error('stats animadas');
+});
+
+t('r14: acordeones, encabezado y toasts', () => {
+  const css = panelCss();
+  if (!/\.acc-body \{[^}]*grid-template-rows: 1fr/.test(css)) throw new Error('acordeon sin grid');
+  if (!/\.acc-body\.closed \{ grid-template-rows: 0fr/.test(css)) throw new Error('acordeon sin cierre');
+  if (!/function accOne_\(d\)/.test(panelSrc)) throw new Error('sin wrapper de acordeon');
+  if (!/#nav::after[^}]*opacity: 0/.test(css)) throw new Error('header sin borde fundido');
+  if (!/#nav\.scrolled::after \{ opacity: 1; \}/.test(css)) throw new Error('header sin estado scrolled');
+  if (!/\.toast \{[^}]*transition: transform 120ms/.test(css)) throw new Error('toast sin salida rapida');
+  if (!/\.toast\.show \{[^}]*transition-duration: var\(--dur-2\)/.test(css)) throw new Error('toast sin entrada 200ms');
+  if (/\.toast\.show \{ animation: popIn/.test(css)) throw new Error('toast con animation extra');
+  if (!/\.pane-in \{ animation: fadeIn 150ms/.test(css)) throw new Error('pane sin fundido 150ms');
+  if (!/slice\.call\(document\.querySelectorAll\(\x27\.reveal:not\(\[data-rv\]\)\x27\), 0, 6\)/.test(panelSrc)) {
+    throw new Error('reveal sin tope de 6');
+  }
 });
 
 summary();

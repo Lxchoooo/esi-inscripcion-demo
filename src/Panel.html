@@ -72,6 +72,7 @@
       --dur-1: 120ms;
       --dur-2: 200ms;
       --dur-step: 250ms;
+      --dur-bar: 400ms;
       --dur-3: 300ms;
       --dur-draw: 600ms;
       --dur-base: .24s;
@@ -205,8 +206,13 @@
       background: var(--nav-bg);
       -webkit-backdrop-filter: blur(14px) saturate(1.3);
       backdrop-filter: blur(14px) saturate(1.3);
-      border-bottom-color: var(--line);
     }
+    #nav::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: var(--line); opacity: 0;
+      transition: opacity var(--dur-2) var(--ease-out);
+    }
+    #nav.scrolled::after { opacity: 1; }
     .nav {
       max-width: 1020px; margin: 0 auto;
       display: flex; align-items: center; gap: 18px;
@@ -295,8 +301,7 @@
     .screen.active.fwd { animation: screenInFwd var(--dur-step) var(--ease-out) both; }
     .screen.active.back { animation: screenInBack var(--dur-step) var(--ease-out) both; }
     @keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-    .seatbar > span { animation: barGrow .5s var(--ease-emph) both; transform-origin: left center; }
-    .toast.show { animation: popIn .22s var(--ease-pop); }
+    .seatbar > span.in, .bar-fill.in { animation: barGrow var(--dur-bar) var(--ease-out) both; transform-origin: left center; }
     #done-list .sheet-line { animation: fadeUp .3s var(--ease-emph) both; }
     #done-list .sheet-line:nth-child(2) { animation-delay: 40ms; }
     #done-list .sheet-line:nth-child(3) { animation-delay: 80ms; }
@@ -369,8 +374,6 @@
     .sel-bar { animation: barSlideUp .32s var(--ease-emph) both; }
     .sheet-backdrop.show { animation: fadeIn .2s ease both; }
 
-    .pane-in > .card { animation: fadeUp .3s var(--ease-emph) both; }
-    .pane-in > .card:nth-child(2) { animation-delay: .05s; }
     .side .tab:hover .nav-ico { transform: translateX(2px); }
     .side .tab .nav-ico { transition: transform .18s var(--ease-emph); }
 
@@ -720,15 +723,15 @@
 
     .toast {
       position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 90;
-      transform: translate(-50%, -16px); opacity: 0; pointer-events: none;
+      transform: translate(-50%, -12px); opacity: 0; pointer-events: none;
       width: min(92vw, 430px);
       background: var(--toast-bg); color: var(--toast-ink);
       border-radius: 12px; padding: 13px 16px;
       font-size: 14px; font-weight: 600; text-align: center;
       box-shadow: var(--shadow-lg);
-      transition: transform .2s ease, opacity .2s ease;
+      transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out);
     }
-    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; transition-duration: var(--dur-2); }
     .toast.err { background: var(--danger); color: var(--paper); }
 
     .summary {
@@ -1661,7 +1664,7 @@
       transition: transform var(--dur-fast) ease, opacity var(--dur-fast) ease;
     }
     .banner-btn:active { transform: scale(.96); opacity: .85; }
-    .pane-in { animation: fadeUp .26s var(--ease-emph) both; }
+    .pane-in { animation: fadeIn 150ms var(--ease-out) both; }
     .stagger > * { animation: fadeUp var(--dur-3) var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 6) * 40ms); }
     .fade-in { animation: fadeIn .24s ease both; }
     .pop-in { animation: popIn .26s var(--ease-pop) both; }
@@ -1715,6 +1718,15 @@
     #pane-charla .btn, #pane-pend .btn,
     #pane-charla .present-btn, #pane-pend .present-btn,
     #pane-charla .status-chips button { transition-duration: var(--dur-1) !important; }
+    #nav::after { will-change: opacity; }
+    .acc-body {
+      display: grid; grid-template-rows: 1fr; opacity: 1;
+      transition: grid-template-rows var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
+    }
+    .acc-body.closed { grid-template-rows: 0fr; opacity: 0; }
+    .acc-body > div { overflow: hidden; }
+    @keyframes donutDraw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+    .donut .arc.in { animation: donutDraw var(--dur-draw) var(--ease-out) both; }
     @keyframes shakeX {
       0%, 100% { transform: translateX(0); }
       20% { transform: translateX(-4px); }
@@ -2399,7 +2411,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v39';
+    var APP_VERSION = 'v40';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4257,6 +4269,8 @@
 
     function tweenCount_(el, to, before, after) {
       if (!el) return;
+      var pane = el.closest ? el.closest('#pane-charla, #pane-pend') : null;
+      if (pane) { el.textContent = before + to + after; return; }
       var from = Number((el.getAttribute && el.getAttribute('data-n')) || 0);
       if (el.setAttribute) el.setAttribute('data-n', String(to));
       var paint = function (n) { el.textContent = before + n + after; };
@@ -4318,6 +4332,13 @@
       b.classList.toggle('is-loading', !!on);
       b.disabled = !!on;
       b.setAttribute('aria-busy', on ? 'true' : 'false');
+    }
+
+    var barsSeen_ = {};
+    function barIn_(k) {
+      if (barsSeen_[k]) return '';
+      barsSeen_[k] = 1;
+      return ' in';
     }
 
     function aSkeletonRows_(n) {
@@ -4549,7 +4570,7 @@
         + '<path d="M3.2 8.6 6.2 11.6 12.8 4.6"/></svg></span></span>'
         + '<span class="t-meta"><span class="talk-room">' + esc(talk.lugar) + '</span>'
         + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span></span>'
-        + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + '" style="width:' + pct + '%"></span></span>';
+        + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + barIn_('s' + slot.id + ':' + talk.id) + '" style="width:' + pct + '%"></span></span>';
       if (chosen || full) {
         btn.disabled = true;
       } else {
@@ -4822,7 +4843,7 @@
     function shakeField_(el) {
       if (!el || !el.classList) return;
       el.classList.remove('anim-shake');
-      try { void el.offsetWidth; } catch (e) { }
+      void el.offsetWidth;
       el.classList.add('anim-shake');
       window.setTimeout(function () { el.classList.remove('anim-shake'); }, 260);
     }
@@ -5831,7 +5852,7 @@
         + esc(label + ': ' + Number(present || 0) + ' de ' + total) + '">'
         + '<title>' + esc(label + ': ' + Number(present || 0) + ' de ' + total) + '</title>'
         + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line-strong)" stroke-width="6"></circle>'
-        + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--accent)" stroke-width="6" pathLength="100"'
+        + '<circle class="arc' + barIn_('d' + label) + '" cx="21" cy="21" r="15.9" fill="none" stroke="var(--accent)" stroke-width="6" pathLength="100"'
         + ' stroke-dasharray="' + pct + ' 100" transform="rotate(-90 21 21)"></circle>'
         + '<text x="21" y="21" dy=".35em">' + pct + '%</text></svg>'
         + '<p class="chart-note">' + Number(present || 0) + ' presentes de ' + total
@@ -5849,7 +5870,7 @@
         var max = Number(it.max || 0) || 1;
         var pct = Math.max(0, Math.min(100, Math.round(Number(it.value || 0) * 100 / max)));
         html += '<div class="bar-row"><span class="bar-name">' + esc(it.label) + '</span>'
-          + '<span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:' + pct + '%"></span></span>'
+          + '<span class="bar-track" aria-hidden="true"><span class="bar-fill' + barIn_('b' + it.label + pct) + '" style="width:' + pct + '%"></span></span>'
           + '<span class="bar-value">' + Number(it.value || 0) + (it.max != null ? '/' + Number(it.max) : '') + '</span></div>';
         table += '<tr><td>' + esc(it.label) + '</td><td>' + Number(it.value || 0) + '</td><td>' + Number(it.max || 0) + '</td></tr>';
       }
@@ -6252,21 +6273,6 @@
       }
     }
 
-    function aAnimateStats_() {
-      var box = $('a-totals');
-      if (!box || !box.querySelectorAll) return;
-      var nodes = null;
-      try { nodes = box.querySelectorAll('.stat-num'); } catch (e) { return; }
-      if (!nodes || !nodes.length) return;
-      for (var i = 0; i < nodes.length; i++) {
-        var el = nodes[i];
-        var raw = String(el.textContent || '');
-        if (!/^\d+$/.test(raw)) continue;
-        el.setAttribute('data-n', '0');
-        tweenCount_(el, Number(raw), '', '');
-      }
-    }
-
     function aRender() {
       var d = aData;
       if (!d) return;
@@ -6294,7 +6300,6 @@
         + '</div>'
         + '<div class="admin-status"><span class="status-pill ' + (d.evento_abierto ? 'open' : 'closed') + '">'
         + (d.evento_abierto ? 'Abierta' : 'Cerrada') + '</span></div>';
-      aAnimateStats_();
 
       if (!aConfigLoaded && $('cfg-fecha') && $('cfg-zona')) {
         var evCfg = d.event || { fecha: EVENT_DATE, zona: EVENT_TZ };
@@ -7624,7 +7629,7 @@
     }
 
     function initReveal() {
-      var nodes = document.querySelectorAll('.reveal:not([data-rv])');
+      var nodes = [].slice.call(document.querySelectorAll('.reveal:not([data-rv])'), 0, 6);
       if (!nodes.length) return;
       var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (reduced || isLite_() || !('IntersectionObserver' in window)) {
@@ -7715,6 +7720,27 @@
       }, { passive: true });
     }
 
+    function accInit_() {
+      try {
+        var ds = document.querySelectorAll('details.mail-help, details.faq');
+        for (var i = 0; i < ds.length; i++) accOne_(ds[i]);
+      } catch (e) { }
+    }
+
+    function accOne_(d) {
+      try {
+        var b = document.createElement("div"), w = document.createElement("div");
+        b.className = "acc-body";
+        while (d.lastChild && d.lastChild.nodeName !== "SUMMARY") w.insertBefore(d.lastChild, w.firstChild);
+        if (!w.firstChild) return;
+        b.appendChild(w); d.appendChild(b);
+        d.addEventListener("toggle", function () {
+          if (!d.open) return;
+          b.classList.add("closed"); void b.offsetHeight;
+          (window.requestAnimationFrame || function (f) { f(); })(function () { b.classList.remove("closed"); });
+        });
+      } catch (e) { }
+    }
     function initShell() {
       var nav = $('nav');
       if (nav) {
@@ -7725,6 +7751,7 @@
         onScroll();
       }
       initReveal();
+      accInit_();
       var mini = $('mini-summary');
       if (mini) {
         mini.addEventListener('click', function (ev) {
