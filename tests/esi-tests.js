@@ -956,6 +956,17 @@ t('Home uses reveal, tint and hero animations', () => {
   if (!/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.hero-copy > \*/.test(panelHtml)) throw new Error('hero sin guarda');
 });
 
+t('Panel anima scroll, ripple y transiciones de tema', () => {
+  for (const needle of ['id="scroll-progress"', 'function initRipple_', 'function initScrollProgress_',
+    'function initHeroParallax_', '::view-transition-new(root)']) {
+    if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/startViewTransition/.test(panelSrc)) throw new Error('sin view transition');
+  const guards = panelHtml.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n    \}/g) || [];
+  if (!guards.some((g) => g.includes('.ripple'))) throw new Error('ripple sin guarda');
+  if (!/translate: 0 var\(--py/.test(panelHtml)) throw new Error('parallax sin translate');
+});
+
 t('Panel carries the ISS identity and an accessible green palette', () => {
   if (!/var SCHOOL_NAME = 'Instituto Secundario Salsipuedes \(ISS\)';/.test(panelSrc)) throw new Error('SCHOOL_NAME placeholder');
   if (!/var EVENT_NAME = 'Jornada ESI 2026';/.test(panelSrc)) throw new Error('EVENT_NAME');
