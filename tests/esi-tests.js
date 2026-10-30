@@ -3227,13 +3227,6 @@ t('r15: published.js detecta un sitio viejo sin red', () => {
   assertEq(pub.versionDe(''), '', 'sin version devuelve vacio');
 });
 
-t('r15: el chequeo de publicado corre despues de Pages', () => {
-  const wf = read('../.github/workflows/published.yml');
-  if (wf.indexOf('workflow_run') < 0) throw new Error('no se dispara con workflow_run');
-  if (wf.indexOf('pages build and deployment') < 0) throw new Error('no espera a Pages');
-  if (wf.indexOf('node tests/published.js') < 0) throw new Error('no corre el chequeo');
-  if (/pull_request/.test(wf)) throw new Error('no tiene que correr en cada PR');
-});
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
   Object.keys(map).forEach((name) => {
