@@ -10,12 +10,18 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: ronda 15 publicada en `main` (panel `v43`, backend `v43`): un solo
-  panel con la misma clave para guias, preceptores y profes; pantalla "Listo
-  para el evento" de solo lectura con 9 controles; docs del dia; tests 209/0,
-  smoke OK, CI tests y Pages verdes. Backend real sin deployar; MailApp y
-  dispositivo siguen sin probarse. El logo y la barra del panel ya no se rompen
-  en pantallas de 360 px (logo sin filtro, botones solo con icono).
+- Estado: ronda 15 + auditoria publicadas en `main` (panel `v43`,
+  backend `v43`): un solo panel con la misma clave para guias, preceptores y
+  profes; pantalla "Listo para el evento" de solo lectura con 9 controles; docs
+  del dia; tests 222/0, smoke OK, CI tests y Pages verdes. Backend real sin
+  deployar; MailApp y dispositivo siguen sin probarse. El logo y la barra del
+  panel ya no se rompen en pantallas de 360 px (logo sin filtro, botones solo
+  con icono). De la auditoria salieron: `[hidden]` global, sesion que se borra
+  al vencer, ticket consumido antes de emitir la sesion, asistencias encoladas
+  antes de la request y guardadas por lote (`apiAdminSetPresentBatch`, hasta
+  100 por viaje; el flush manda bloques de 50), cambio de charla que desmarca la
+  asistencia, `presente` por encabezado, horas con la zona del script, topes
+  sticky medidos en `--nav-h` y manifest con 192x192 y maskable.
 
 ## Donde trabajar
 
