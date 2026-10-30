@@ -4110,7 +4110,7 @@
         var startR = Math.max(0, Number(a[1]) || 0);
         var takeR = Math.min(20, Math.max(1, Number(a[2]) || 20));
         var endR = Math.min(totalR, startR + takeR);
-        return Promise.resolve({ ok: true, sent: endR - startR, failed: 0, total: totalR, nextOffset: endR, done: endR >= totalR, quota: 100 });
+        return Promise.resolve({ ok: true, sent: endR - startR, failed: 0, failedEmails: [], total: totalR, nextOffset: endR, done: endR >= totalR, quota: 100 });
       }
       return Promise.resolve({ ok: false, message: 'Función desconocida (demo).' });
     }
@@ -5767,6 +5767,7 @@
       $('btn-mail-preview').disabled = true;
       var sent = 0;
       var failed = 0;
+      var failedEmails = [];
       function send(offset) {
         call('apiAdminSendReminders', [adminCred, offset, 20])
           .then(function (resp) {
@@ -5779,12 +5780,19 @@
             }
             sent += resp.sent;
             failed += resp.failed;
+            if (resp.failedEmails && resp.failedEmails.length) failedEmails = failedEmails.concat(resp.failedEmails);
             aMailMsg_('Enviados ' + sent + ' de ' + resp.total + (failed ? ' (' + failed + ' fallaron)' : '') + '.', failed ? 'err' : 'ok');
             if (!resp.done) { window.setTimeout(function () { send(resp.nextOffset); }, 400); return; }
             aMailBusy = false;
             $('btn-mail-send').disabled = false;
             $('btn-mail-preview').disabled = false;
-            aMailMsg_('Listo: ' + sent + ' enviados' + (failed ? ', ' + failed + ' fallaron' : '') + '.', failed ? 'err' : 'ok');
+            var msg = 'Listo: ' + sent + ' enviados' + (failed ? ', ' + failed + ' fallaron' : '') + '.';
+            if (failedEmails.length) {
+              var short = failedEmails.slice(0, 5).join(', ');
+              if (failedEmails.length > 5) short += ' y ' + (failedEmails.length - 5) + ' más';
+              msg += ' Revisá: ' + short + '. Volvé a apretar Enviar para reintentarlos.';
+            }
+            aMailMsg_(msg, failed ? 'err' : 'ok');
           })
           .catch(function () {
             aMailBusy = false;

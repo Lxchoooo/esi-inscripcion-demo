@@ -605,6 +605,7 @@ function apiAdminSendReminders(cred, offset, limit) {
     var end = Math.min(rows.length, start + take);
     var sent = 0;
     var failed = 0;
+    var failedEmails = [];
     var skipped = 0;
     for (var i = start; i < end; i++) {
       var key = String(rows[i].email).trim().toLowerCase();
@@ -623,6 +624,7 @@ function apiAdminSendReminders(cred, offset, limit) {
         delivered = true;
       } catch (err) {
         failed++;
+        if (failedEmails.length < REMINDER_MAX_BATCH_) failedEmails.push(key);
       }
       if (!delivered) continue;
       sentSet[key] = true;
@@ -633,6 +635,7 @@ function apiAdminSendReminders(cred, offset, limit) {
       ok: true,
       sent: sent,
       failed: failed,
+      failedEmails: failedEmails,
       skipped: skipped,
       total: rows.length,
       nextOffset: end,
