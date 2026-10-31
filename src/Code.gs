@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v51';
+var BACKEND_VERSION = 'v52';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -1086,6 +1086,7 @@ var EXPECTED_COLUMNS_ = {
   Mails: ['email', 'fecha', 'asunto'],
   MailQueue: ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
   Log: ['fecha', 'accion', 'signup_id', 'detalle'],
+  Accesos: ['fecha', 'resultado', 'rol', 'dispositivo'],
   Backup: ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
   Resumen: ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes']
 };
@@ -1353,6 +1354,7 @@ var API_FN_MAP_ = {
   apiSetReminder: apiSetReminder,
   apiRegister: apiRegister,
   apiAdminLogin: apiAdminLogin,
+  apiAdminAccessLog: apiAdminAccessLog,
   apiAdminGetData: apiAdminGetData,
   apiAdminSetOpen: apiAdminSetOpen,
   apiAdminDeleteSignup: apiAdminDeleteSignup,
@@ -1453,6 +1455,7 @@ function setup() {
   repairErasedSignups_(ss);
   ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
   ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
+  ensureSheet_(ss, ACCESS_SHEET, ['fecha', 'resultado', 'rol', 'dispositivo'], []);
   ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
   ensureSheet_(ss, ERRORS_SHEET, ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []);
   ensureSheet_(ss, MAIL_QUEUE_SHEET, ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
@@ -3142,6 +3145,45 @@ function isAdmin_(auth) {
   return !!(auth && auth.ok && auth.role === ROLE_ADMIN);
 }
 
+// Registro de ingresos al panel: exitosos y fallidos, con el user agent que
+// manda el navegador (marca, navegador y hora). La hoja se auto-repara si todavia
+// no corrio setup().
+var ACCESS_SHEET = 'Accesos';
+var ACCESS_MAX_ROWS = 250;
+
+function logAccess_(ok, role, ua) {
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var sh = ss.getSheetByName(ACCESS_SHEET);
+    if (!sh) sh = ensureSheet_(ss, ACCESS_SHEET, ['fecha', 'resultado', 'rol', 'dispositivo'], []);
+    sh.appendRow([new Date(), ok ? 'entro' : 'fallo', String(role || ''), cleanLogText_(ua, 140)]);
+    var last = sh.getLastRow();
+    if (last > ACCESS_MAX_ROWS + 1) sh.deleteRows(2, last - 1 - ACCESS_MAX_ROWS);
+  } catch (e) { }
+}
+
+function apiAdminAccessLog(cred) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  try {
+    var sh = sheet_(ACCESS_SHEET);
+    if (!sh) return { ok: true, rows: [] };
+    var vals = sh.getDataRange().getValues();
+    var rows = [];
+    for (var i = vals.length - 1; i >= 1 && rows.length < 40; i--) {
+      rows.push({
+        fecha: new Date(vals[i][0]).toISOString(),
+        resultado: String(vals[i][1] || ''),
+        rol: String(vals[i][2] || ''),
+        dispositivo: String(vals[i][3] || '')
+      });
+    }
+    return { ok: true, rows: rows };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
 function requireAdmin_(auth) {
   if (!auth || !auth.ok) return { ok: false, message: auth && auth.message ? auth.message : 'Clave incorrecta.' };
   if (auth.role !== ROLE_ADMIN) {
@@ -3173,12 +3215,16 @@ function resetAdminFailures_() {
   props.deleteProperty(ADMIN_BLOCK_PROP);
 }
 
-function apiAdminLogin(pin) {
+function apiAdminLogin(pin, ua) {
   try {
     var auth = adminAuth_(pin);
-    if (!auth.ok) return { ok: false, message: auth.message };
+    if (!auth.ok) {
+      logAccess_(false, '', ua);
+      return { ok: false, message: auth.message };
+    }
     var token = adminIssueToken_(auth.role);
     if (!token) return { ok: false, message: 'No se pudo emitir sesión.' };
+    logAccess_(true, auth.role, ua);
     // Instala el trigger diario de respaldo la primera vez que entra un admin.
     try { configureDriveBackupTrigger_(); } catch (e) { }
     // Los datos del panel viajan en el mismo viaje que el login: el panel abria

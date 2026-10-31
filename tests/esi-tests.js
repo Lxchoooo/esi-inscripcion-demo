@@ -102,6 +102,27 @@ t('apiLogError stores sanitized client errors and rate limits', () => {
   assertEq(other.ok, true, 'other session still allowed');
 });
 
+t('apiAdminAccessLog: login registra acceso y el endpoint devuelve el registro', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminLogin, apiAdminAccessLog, adminAuth_');
+  const login = api.apiAdminLogin('1111', 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130');
+  assertEq(login.ok, true, 'login ok');
+  assertEq(services.sheets.Accesos.data.length, 2, 'header + 1 fila');
+  const okRow = services.sheets.Accesos.data[1];
+  assertEq(okRow[1], 'entro', 'resultado ok');
+  if (String(okRow[3]).indexOf('Pixel 8') < 0) throw new Error('ua no guardado');
+  const bad = api.apiAdminLogin('0000', 'Mozilla/5.0 (Windows NT 10.0) Firefox/125');
+  assertEq(bad.ok, false, 'login erroneo rechazado');
+  assertEq(services.sheets.Accesos.data.length, 3, 'fallo tambien queda');
+  assertEq(services.sheets.Accesos.data[2][1], 'fallo', 'resultado fallo');
+  const log = api.apiAdminAccessLog(login.token);
+  assertEq(log.ok, true, 'endpoint ok');
+  assertEq(log.rows.length, 2, '2 entradas devueltas');
+  assertEq(log.rows[0].resultado, 'fallo', 'ultima primero');
+  const denied = api.apiAdminAccessLog('t_nope');
+  assertEq(denied.ok, false, 'sin sesion no hay registro');
+});
+
 t('backupToDrive_ copies once per day and prunes old files', () => {
   const services = backendStub({});
   const api = backendApi(services, 'backupToDrive_');
@@ -791,6 +812,16 @@ t('Code.gs seeds no admin PIN and logs no key', () => {
   if (/\[[\s]*['"]admin_pin['"],\s*randomPin_/.test(codeSrc)) throw new Error('seeded admin pin');
   if (/Logger\.log\([^)]*PIN de profes/i.test(codeSrc)) throw new Error('logs pin');
   if (!/ensureAdminPin_/.test(codeSrc)) throw new Error('ensureAdminPin_ missing');
+});
+
+t('Panel keeps the admin session in localStorage and logs device on login', () => {
+  if (!panelHtml.includes('id="a-accesos"')) throw new Error('missing markup a-accesos');
+  if (!panelHtml.includes('Registro de accesos')) throw new Error('missing markup registro');
+  for (const needle of ["A_SESSION_KEY = 'esi_admin_session'", 'A_SESSION_MS = 7200000',
+    'aSessionSave_(adminCred, aRole)', 'adminCred = String(ses.token);',
+    "call('apiAdminAccessLog', [adminCred])", "call('apiAdminLogin', [pin, deviceUA_()])"]) {
+    if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
 });
 
 t('Code.gs issues a session token that replaces the pin on later calls', () => {

@@ -766,6 +766,14 @@
     }
     .chip.miss { background: transparent; border: 1px dashed var(--line-ui); color: var(--muted); font-weight: 500; }
 
+    /* Registro de accesos del panel admin */
+    .accesos { display: flex; flex-direction: column; }
+    .accesos-item { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+    .accesos-item:last-child { border-bottom: none; }
+    .accesos-item .cuando { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .chip-ok { background: var(--accent-soft); }
+    .chip-err { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-line); }
+
     /* Ficha del alumno en el panel admin */
     .st-charlas { margin: 6px 0 10px; padding: 0 0 0 18px; }
     .st-charlas li { margin: 4px 0; font-size: 13.5px; overflow-wrap: anywhere; }
@@ -2340,6 +2348,14 @@
           <div id="cfg-msg" class="banner"></div>
         </div>
         <div class="card">
+          <h3>Registro de accesos</h3>
+          <p class="hint-line">Últimos ingresos con la clave del panel: los que entraron y los que intentaron sin éxito, con dispositivo y hora. Si la clave se filtró, cambiala y borra los datos.</p>
+          <div class="toolbar">
+            <button id="btn-accesos" class="btn secondary small" type="button">Actualizar registro</button>
+          </div>
+          <div id="a-accesos"></div>
+        </div>
+        <div class="card">
           <h3>Simulacro de carga</h3>
           <p class="hint-line">Anota 30 alumnos de prueba, mide cuánto tarda cada alta y los borra solo. Necesita el modo ensayo prendido. Sirve para saber cuánto esperaría el último de una fila larga.</p>
           <div class="toolbar">
@@ -2494,7 +2510,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v51';
+    var APP_VERSION = 'v52';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -5399,12 +5415,37 @@
     var aData = null;
     var aBusy = false;
     var adminCred = '';
+    // La sesion del panel vive 2 h igual que el token del backend;queda en
+    // localStorage para survive a recargas y cierre del navegador.
+    var A_SESSION_KEY = 'esi_admin_session';
+    var A_SESSION_MS = 7200000;
+    var A_MARK_QUEUE = 'esi_mark_queue';
     var aRole = 'admin';
     var aTalkData = null;
     var aTalkFilter = 'all';
     var aUndoTimer = null;
     var aWakeLock = null;
-    var A_MARK_QUEUE = 'esi_mark_queue';
+    function aSessionSave_(token, role) {
+      if (!token) return;
+      lsSet(A_SESSION_KEY, JSON.stringify({ token: token, role: role || 'admin', exp: Date.now() + A_SESSION_MS }));
+    }
+    function aSessionLoad_() {
+      var raw = lsGet(A_SESSION_KEY);
+      if (!raw) return null;
+      try {
+        var s = JSON.parse(raw);
+        if (!s || !s.token || !(Number(s.exp) > Date.now())) {
+          lsDel(A_SESSION_KEY);
+          return null;
+        }
+        return s;
+      } catch (e) {
+        return null;
+      }
+    }
+    function aSessionClear_() {
+      lsDel(A_SESSION_KEY);
+    }
     var aMailPreview = null;
     var aConfigLoaded = false;
     var aMailBusy = false;
@@ -5440,15 +5481,22 @@
       }
     }
 
+    // Marca del dispositivo que abre el panel: viaja con el login y queda en
+    // el registro de accesos.
+    function deviceUA_() {
+      try { return String(navigator.userAgent || '').slice(0, 140); } catch (e) { return ''; }
+    }
+
     function aLogin(pin) {
       if (aBusy) return;
       aBusy = true;
-      call('apiAdminLogin', [pin])
+      call('apiAdminLogin', [pin, deviceUA_()])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
             aRole = resp.role || 'admin';
             adminCred = resp.token ? resp.token : (TRANSPORT === 'demo' ? aRole : pin);
+            if (resp.token && TRANSPORT !== 'demo') aSessionSave_(adminCred, aRole);
             $('gate-msg').style.display = 'none';
             showScreen(A_SCREENS, 'a-screen-panel');
             aApplyRole();
@@ -5480,6 +5528,7 @@
         return false;
       }
       adminCred = '';
+      aSessionClear_();
       aStopAutoRefresh();
       aReleaseAwake_();
       if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
@@ -5556,6 +5605,7 @@
       else if (aTabName === 'pend') aLoadPending();
       else if (aTabName === 'reportes') aLoadReports();
       else if (aTabName === 'estado') aLoadStatus();
+      else if (aTabName === 'config') aLoadAccesos();
       else if (aTabName === 'inscriptos') aLoad(true);
     }
 
@@ -7531,6 +7581,7 @@
 
     function aLogout() {
       aStopAutoRefresh();
+      aSessionClear_();
       aReleaseAwake_();
       if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
       aClearTalkCaches_();
@@ -7665,7 +7716,70 @@
         });
     }
 
+    // Registro de accesos: lista corta con hora, resultado y dispositivo.
+    var aAccesosBusy = false;
+    function aLoadAccesos() {
+      if (aAccesosBusy || !adminCred || TRANSPORT === 'demo') return;
+      aAccesosBusy = true;
+      call('apiAdminAccessLog', [adminCred]).then(function (resp) {
+        aAccesosBusy = false;
+        var box = $('a-accesos');
+        if (!box) return;
+        if (!resp || !resp.ok) {
+          box.innerHTML = '<div class="hint-line">No se pudo leer el registro.</div>';
+          return;
+        }
+        if (!resp.rows || !resp.rows.length) {
+          box.innerHTML = '<div class="hint-line">Todavía no hay ingresos registrados.</div>';
+          return;
+        }
+        var html = '<div class="accesos">';
+        for (var i = 0; i < resp.rows.length; i++) {
+          var r = resp.rows[i];
+          var d = new Date(r.fecha);
+          var cuando = isNaN(d.getTime()) ? String(r.fecha) : d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          var fallo = r.resultado !== 'entro';
+          html += '<div class="accesos-item">' +
+            '<span class="chip ' + (fallo ? 'chip-err' : 'chip-ok') + '">' + (fallo ? 'falló' : 'entró') + '</span>' +
+            '<span>' + esc(aUAShort_(r.dispositivo)) + '</span>' +
+            '<span class="cuando">' + esc(cuando) + '</span>' +
+            '</div>';
+        }
+        box.innerHTML = html;
+        box.innerHTML = html + '</div>';
+      }).catch(function () {
+        aAccesosBusy = false;
+        var box2 = $('a-accesos');
+        if (box2) box2.innerHTML = '<div class="hint-line">No se pudo leer el registro (sin conexión).</div>';
+      });
+    }
+
+    // Resumen del user agent: modelo de cel / sistema y navegador.
+    function aUAShort_(ua) {
+      var s = String(ua || '');
+      if (!s) return 'dispositivo desconocido';
+      var m = s.match(/Android[^;)]*; ?([^;)]+)(?:;|\))/);
+      var dev = '';
+      if (m) dev = 'Android · ' + m[1].split(' Build')[0].trim();
+      else if (/iPhone/.test(s)) dev = 'iPhone';
+      else if (/iPad/.test(s)) dev = 'iPad';
+      else if (/Macintosh/.test(s)) dev = 'Mac';
+      else if (/Windows/.test(s)) dev = 'Windows';
+      else if (/Linux/.test(s)) dev = 'Linux';
+      var nav = '';
+      if (/Edg\//.test(s)) nav = 'Edge';
+      else if (/OPR\//.test(s)) nav = 'Opera';
+      else if (/SamsungBrowser\//.test(s)) nav = 'Samsung Internet';
+      else if (/Firefox\//.test(s)) nav = 'Firefox';
+      else if (/CriOS\//.test(s)) nav = 'Chrome';
+      else if (/Chrome\//.test(s)) nav = 'Chrome';
+      else if (/Safari\//.test(s)) nav = 'Safari';
+      if (dev && nav) return dev + ' · ' + nav;
+      return dev || nav || s.slice(0, 40);
+    }
+
     function aLoadStatus() {
+
       if (!adminCred) return;
       call('apiAdminStatus', [adminCred])
         .then(function (resp) {
@@ -8155,6 +8269,15 @@
       document.body.className = 'admin';
       $('hdr-title').textContent = 'Panel de profes';
       $('hdr-sub').textContent = EVENT_NAME;
+      // Sesion persistente: si hay token guardado y no vencio, el panel
+      // abre sin pedir la clave (si vencio, la carga lo vuelve al gate).
+      if (!adminCred) {
+        var ses = aSessionLoad_();
+        if (ses) {
+          adminCred = String(ses.token);
+          aRole = String(ses.role || 'admin');
+        }
+      }
       $('btn-pin').addEventListener('click', function () {
         var pin = $('input-pin').value;
         if (!pin) return;
@@ -8172,6 +8295,7 @@
         aDownloadCsv();
       });
       $('btn-arefresh').addEventListener('click', function () { aLoad(false); });
+      $('btn-accesos').addEventListener('click', aLoadAccesos);
       $('btn-salir').addEventListener('click', aLogout);
       var buscarTimer = 0;
       $('input-buscar').addEventListener('input', function () {
