@@ -571,6 +571,44 @@ function apiAdminMailPreview(cred) {
   }
 }
 
+// Manda el recordatorio a UNA casilla, con el asunto marcado como prueba y
+// sin anotarla en Mails: sirve para revisar como llega antes de mandarlo a
+// todos.
+function apiAdminSendTestMail(cred, to) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  if (auth.role !== ROLE_ADMIN) return { ok: false, message: 'Tu clave no permite esta acción.' };
+  var dest = String(to == null ? '' : to).trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dest)) return { ok: false, message: 'Poné un mail válido para la prueba.' };
+  if (mailQuota_() === 0) return { ok: false, message: 'No queda cuota de mails por hoy.' };
+  try {
+    var cfg = readConfigCached_();
+    var rows = reminderRecipients_();
+    var sample = rows[0] || null;
+    if (!sample) {
+      var slots = readSlotsCached_();
+      var items = [];
+      for (var i = 0; i < slots.length; i++) {
+        items.push({ slot: slots[i].nombre, inicio: slots[i].inicio, fin: slots[i].fin, titulo: '', lugar: '', elegida: false });
+      }
+      sample = { nombre: 'Alumno', apellido: 'de prueba', curso: '2°B', items: items };
+    }
+    var subject = 'PRUEBA · ' + reminderSubject_(cfg);
+    var opts = {
+      to: dest,
+      subject: subject,
+      body: reminderBody_(sample, cfg),
+      name: EVENT_TITLE_
+    };
+    var sender = mailSender_(cfg);
+    if (sender) { opts.from = sender; opts.replyTo = sender; }
+    MailApp.sendEmail(opts);
+    return { ok: true, to: dest, subject: subject, quota: Math.max(0, mailQuota_() - 1) };
+  } catch (err) {
+    return { ok: false, message: 'No se pudo mandar la prueba: ' + (err && err.message ? err.message : err) };
+  }
+}
+
 function apiAdminSendReminders(cred, offset, limit) {
   var auth = adminAuth_(cred);
   if (!auth.ok) return { ok: false, message: auth.message };
@@ -1023,6 +1061,7 @@ var API_FN_MAP_ = {
   apiAdminSetPresentBatch: apiAdminSetPresentBatch,
   apiAdminReports: apiAdminReports,
   apiAdminMailPreview: apiAdminMailPreview,
+  apiAdminSendTestMail: apiAdminSendTestMail,
   apiAdminSendReminders: apiAdminSendReminders,
   apiAdminGetConfig: apiAdminGetConfig,
   apiAdminSetConfig: apiAdminSetConfig,

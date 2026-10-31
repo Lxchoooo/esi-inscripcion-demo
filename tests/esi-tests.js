@@ -1857,6 +1857,41 @@ t('apiAdminSendReminders dice que mails fallaron', () => {
   assertEq(r.done, true, 'termino igual');
 });
 
+t('apiAdminSendTestMail manda una sola prueba sin ensuciar Mails', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  const out = [];
+  services.MailApp = {
+    getRemainingDailyQuota: () => 50,
+    sendEmail: (msg) => { out.push(msg); }
+  };
+  const api = backendApi(services, 'apiAdminSendTestMail');
+  assertEq(api.apiAdminSendTestMail('', 'profe@secundariosalsipuedes.edu.ar').ok, false, 'pide clave');
+  assertEq(api.apiAdminSendTestMail('1111', 'no-es-un-mail').ok, false, 'valida el destino');
+  const r = api.apiAdminSendTestMail('1111', 'Profe@Test.com');
+  assertEq(r.ok, true, 'manda la prueba');
+  assertEq(r.to, 'profe@test.com', 'normaliza el destino');
+  assertEq(out.length, 1, 'un solo mail');
+  assertEq(out[0].to, 'profe@test.com', 'va a esa casilla');
+  if (out[0].subject.indexOf('PRUEBA') !== 0) throw new Error('el asunto no dice PRUEBA');
+  if (!/Tus charlas:/.test(out[0].body)) throw new Error('el cuerpo no es el recordatorio');
+  const mails = services.sheets.Mails.data;
+  assertEq(mails.length, 1, 'Mails queda vacia: la prueba no cuenta como envio');
+  const bigote = api.apiAdminSendTestMail('1111', '');
+  assertEq(bigote.ok, false, 'rechaza vacio');
+});
+
+t('r15: el panel tiene boton de prueba de mail', () => {
+  for (const needle of ['id="mail-test-to"', 'id="btn-mail-test"', 'Mandar prueba']) {
+    if (panelHtml.indexOf(needle) < 0) throw new Error('falta ' + needle);
+  }
+  if (panelHtml.indexOf("call('apiAdminSendTestMail'") < 0) throw new Error('el boton no llama al api');
+  if (panelHtml.indexOf("$('btn-mail-test').addEventListener('click', aSendTestMail)") < 0) {
+    throw new Error('el boton no esta conectado');
+  }
+  if (panelHtml.indexOf("if (fn === 'apiAdminSendTestMail')") < 0) throw new Error('el demo no lo implementa');
+});
+
 t('apiAdminGetConfig and apiAdminSetConfig validate admin changes', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig');
