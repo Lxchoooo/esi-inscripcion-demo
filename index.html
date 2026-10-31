@@ -2458,7 +2458,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v44';
+    var APP_VERSION = 'v45';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4848,6 +4848,7 @@
             return;
           }
           if (resp.data) sState.data = resp.data;
+          sApplyTestModeFrom_(resp);
           if (resp.student) sState.student = resp.student;
           if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
           if (resp.session) sSetSession_(resp.session);
@@ -4913,6 +4914,7 @@
             sState.apellido = resp.student.apellido || '';
             sState.curso = resp.student.curso;
             sState.data = resp.data;
+            sApplyTestModeFrom_(resp);
             sState.recordatorio = !!resp.recordatorio;
             sState.login = '';
             sSetSession_(resp.session || savedToken);
@@ -5239,9 +5241,6 @@
       $('btn-alumno-salir').addEventListener('click', sSalir);
       $('btn-hello-yes').addEventListener('click', sHelloYes);
       $('btn-hello-no').addEventListener('click', sHelloNo);
-      call('apiBootstrap', []).then(function (b) {
-        if (b && b.ok) aApplyTestMode_(b.event && b.event.modo_prueba);
-      }).catch(function () { });
       $('select-anio').addEventListener('change', function () {
         sFillDivisions(this.value, '');
       });
@@ -7369,6 +7368,16 @@
       $('gate-msg').style.display = 'block';
     }
 
+    // El modo ensayo se avisa con el cartelito, pero no hace falta un pedido
+    // aparte: ya viene en los datos que trae cada pantalla. Antes era una
+    // llamada extra (2-3 s) en cada carga de la pagina.
+    function sApplyTestModeFrom_(resp) {
+      try {
+        if (resp && resp.data && resp.data.event && resp.data.event.modo_prueba != null) {
+          aApplyTestMode_(!!resp.data.event.modo_prueba);
+        }
+      } catch (e) { }
+    }
     function aApplyTestMode_(on) {
       if (document.body && document.body.classList) {
         document.body.classList.toggle('test-mode', !!on);
