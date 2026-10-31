@@ -1127,6 +1127,14 @@
     .roster-row:hover { background: var(--surface-2); }
     .roster-row:focus-within { background: var(--accent-soft); }
     .admin-actions.top { margin: 0 0 12px; }
+    .panel-exit { text-align: center; margin: 0; }
+    .panel-exit button {
+      min-height: 44px; padding: 10px 18px; background: none; border: 0;
+      color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 3px; border-radius: 10px;
+    }
+    .panel-exit button.is-armed { color: var(--danger); }
+    .panel-exit button:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
     .sel-bar {
       display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
       padding: 11px 20px max(11px, env(safe-area-inset-bottom));
@@ -1960,9 +1968,7 @@
             </label>
           </div>
         </div>
-        <div class="head-actions">
-          <button id="btn-alumno-salir" class="btn link" type="button" style="display:none">Salir</button>
-        </div>
+        <div class="head-actions"></div>
       </div>
       <div class="summary" id="summary"></div>
       <div id="mini-summary" class="mini-summary" hidden></div>
@@ -1970,6 +1976,9 @@
       <div class="panel-tools"></div>
       <div class="chips" id="chips" hidden></div>
       <div id="slots-container"></div>
+      <p class="panel-exit">
+        <button id="btn-alumno-salir" type="button">Cerrar sesión</button>
+      </p>
     </section>
     <div class="sel-bar" id="sel-bar">
       <div class="sel-bar-inner">
@@ -2458,7 +2467,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v47';
+    var APP_VERSION = 'v48';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -5238,7 +5247,28 @@
         sLoginSubmit();
       });
       $('select-mail-year').addEventListener('change', sMailYearHint_);
-      $('btn-alumno-salir').addEventListener('click', sSalir);
+      var exitArm = 0;
+      $('btn-alumno-salir').addEventListener('click', function () {
+        var b = $('btn-alumno-salir');
+        var now = Date.now();
+        if (now < exitArm) {
+          exitArm = 0;
+          b.classList.remove('is-armed');
+          b.textContent = 'Cerrar sesión';
+          sSalir();
+          return;
+        }
+        exitArm = now + 4000;
+        b.classList.add('is-armed');
+        b.textContent = '¿Cerrar la sesión en este teléfono? Tocá de nuevo';
+        setTimeout(function () {
+          if (Date.now() >= exitArm) {
+            exitArm = 0;
+            b.classList.remove('is-armed');
+            b.textContent = 'Cerrar sesión';
+          }
+        }, 4300);
+      });
       $('btn-hello-yes').addEventListener('click', sHelloYes);
       $('btn-hello-no').addEventListener('click', sHelloNo);
       $('select-anio').addEventListener('change', function () {
@@ -5278,8 +5308,11 @@
           toast('No se pudo guardar la preferencia de mail.', 'err');
         });
       });
-      // btn-cambiar-datos y btn-alumno-salir eliminados de la UI: la sesión queda en este dispositivo.
-      // Si alguien necesita cambiar datos, debe contactar al staff/preceptores.
+      // btn-alumno-salir del fondo cierra la sesion con doble toque: queda al
+      // fondo de la pantalla de charlas, chico y gris, para que nadie lo toque
+      // por error, pero para que el que necesita salir en el telefono del staff
+      // pueda. El que toca una vez sola solo ve la confirmacion.
+      // btn-cambiar-datos sigue eliminado: los datos se corrigen por el staff.
 
       showPagesNotice_();
       function sUpdateConn_() {

@@ -3876,6 +3876,28 @@ t('r16: los horarios se leen como se ve la hoja, sin el offset de 1899', () => {
   if (api.slotTime_('9:40', '') !== '09:40') throw new Error('perdio el respaldo de texto crudo');
 });
 
+t('r16: el alumno cierra sesion abajo del fondo, chico y con doble toque', () => {
+  if (!/id="panel-exit"|class="panel-exit"/.test(panelHtml)) throw new Error('sin estilo discreto de salida');
+  const i = panelHtml.indexOf('id="slots-container"');
+  if (i < 0) throw new Error('sin franjas');
+  const j = panelHtml.indexOf('id="btn-alumno-salir"', i);
+  if (j < 0) throw new Error('el boton de salir no queda al fondo de las charlas');
+  const k = panelHtml.indexOf('</section>', j);
+  if (k < 0 || k > j + 220) throw new Error('el boton queda lejos del pie de la seccion');
+  if (!/min-height: 44px[^}]*panel-exit|panel-exit button \{[\s\S]{0,200}min-height: 44px/.test(panelHtml)) {
+    throw new Error('el boton chico pierde el area de toque de 44px');
+  }
+  if (!/btn-alumno-salir[\s\S]{0,900}?is-armed[\s\S]{0,400}?sSalir\(\)/.test(panelSrc)) {
+    throw new Error('no hay doble toque antes de sSalir');
+  }
+  if (panelSrc.indexOf('exitArm = now + 4000') < 0) {
+    throw new Error('sin ventana de confirmacion');
+  }
+  const aArm = panelSrc.indexOf('exitArm = now + 4000');
+  const exit = panelSrc.slice(aArm, aArm + 200);
+  if (!/Toc[a-úá]* de nuevo/.test(exit)) throw new Error('la confirmacion no pide un segundo toque');
+});
+
 t('r15: updateSessionsStudent_ busca el mail por encabezado', () => {
   const i = codeSrc.indexOf('function updateSessionsStudent_');
   const body = codeSrc.slice(i, codeSrc.indexOf('function updateRosterStudent_', i));
