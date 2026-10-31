@@ -225,6 +225,10 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
 4. Abrir Pages una vez con `?api=<URL-/exec>` y compartir `/exec?admin=1` con
    profes y guias. Solo se acepta `https://script.google.com/macros/s/<id>/exec`;
    cualquier otro valor se descarta y no se guarda. `?api=` vacio lo borra.
+   Deployment activo: `AKfycbwkl-bCNFqUYzjjezaSzpgaC2U0fxe0B1JznKTLODG7VI4ZlVLAb06R1zvZ332kslEVkQ`
+   (v47). Los deployments @56 (v43) y @59 (simulacro) se borraron con
+   `clasp undeploy`: sus URLs hoy dan 404. El @HEAD solo sirve con login del
+   dueno, no lo compartan.
 5. Probar en una copia de la planilla: ticket de login, correcciones, modo
    ensayo, respaldo, cierre y borrado. Nunca probar el borrado sobre datos
    reales.
