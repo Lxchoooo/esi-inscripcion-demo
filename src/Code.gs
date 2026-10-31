@@ -30,7 +30,12 @@ var CONFIG_BACKUP_ACTIVE = 'backup_activo';
 var CONFIG_DRIVE_BACKUP = 'backup_drive_activo';
 var ERRORS_SHEET = 'Errors';
 var MAX_ERROR_ROWS = 500;
-var DRIVE_BACKUP_FOLDER = 'ESI 2026 Respaldos';
+// Un solo lugar en el Drive: ESI/ con una carpeta por cosa, para que no se
+// mezcle todo en el inicio.
+var DRIVE_ROOT_FOLDER = 'ESI';
+var DRIVE_BACKUP_SUB = 'Respaldos';
+var DRIVE_EXPORT_SUB = 'Exportaciones';
+var DRIVE_BACKUP_FOLDER = 'ESI 2026 Respaldos'; // carpeta vieja, se adopta si existe
 var DRIVE_BACKUP_KEEP = 14;
 // 2026-11-04 23:59:59 -03. Sessions can live 24 h past the event.
 var EVENT_DEFAULT_DATE_ = '2026-11-04';
@@ -1267,10 +1272,35 @@ function apiLogError(payload, sid) {
   }
 }
 
-function driveBackupFolder_() {
-  var it = DriveApp.getFoldersByName(DRIVE_BACKUP_FOLDER);
+function driveFolderIn_(parent, name) {
+  var it = parent ? parent.getFoldersByName(name) : DriveApp.getFoldersByName(name);
   if (it.hasNext()) return it.next();
-  return DriveApp.createFolder(DRIVE_BACKUP_FOLDER);
+  return parent ? parent.createFolder(name) : DriveApp.createFolder(name);
+}
+
+function driveRootFolder_() {
+  return driveFolderIn_(null, DRIVE_ROOT_FOLDER);
+}
+
+function driveBackupFolder_() {
+  var root = driveRootFolder_();
+  var it = root.getFoldersByName(DRIVE_BACKUP_SUB);
+  if (it.hasNext()) return it.next();
+  // Si la version anterior dejo la carpeta suelta en el inicio, se mueve a ESI.
+  try {
+    var old = DriveApp.getFoldersByName(DRIVE_BACKUP_FOLDER);
+    if (old.hasNext()) {
+      var legacy = old.next();
+      try { root.addFolder(legacy); } catch (e1) { }
+      try { legacy.setName(DRIVE_BACKUP_SUB); } catch (e2) { }
+      return legacy;
+    }
+  } catch (e3) { }
+  return root.createFolder(DRIVE_BACKUP_SUB);
+}
+
+function driveExportFolder_() {
+  return driveFolderIn_(driveRootFolder_(), DRIVE_EXPORT_SUB);
 }
 
 function pruneDriveBackups_(folder) {
@@ -3354,8 +3384,11 @@ function exportPersonalData_(signups) {
       ].map(csvCell_).join(','));
     }
     var name = 'esi-datos-' + new Date().toISOString().replace(/[:.]/g, '-') + '.csv';
-    var file = DriveApp.createFile(name, lines.join('\n'), 'text/csv');
-    return { ok: true, name: name, fileId: file.getId() };
+    var body = lines.join('\n');
+    var folder = null;
+    try { folder = driveExportFolder_(); } catch (e2) { folder = null; }
+    var file = folder ? folder.createFile(name, body, 'text/csv') : DriveApp.createFile(name, body, 'text/csv');
+    return { ok: true, name: name, fileId: file.getId(), folder: folder ? DRIVE_EXPORT_SUB : '' };
   } catch (e) {
     return { ok: false, message: e && e.message ? e.message : String(e) };
   }
