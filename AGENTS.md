@@ -10,32 +10,29 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: ronda 15 + auditoria publicadas en `main` (panel `v43`,
-  backend `v43`): un solo panel con la misma clave para guias, preceptores y
-  profes; pantalla "Listo para el evento" de solo lectura con 9 controles; docs
-  del dia; tests 222/0, smoke OK, CI tests y Pages verdes. Backend real sin
-  deployar; MailApp y dispositivo siguen sin probarse. El logo y la barra del
-  panel ya no se rompen en pantallas de 360 px (logo sin filtro, botones solo
-  con icono). De la auditoria salieron: `[hidden]` global, sesion que se borra
-  al vencer, ticket consumido antes de emitir la sesion, asistencias encoladas
-  antes de la request y guardadas por lote (`apiAdminSetPresentBatch`, hasta
-  100 por viaje; el flush manda bloques de 50), cambio de charla que desmarca la
-  asistencia, `presente` por encabezado, horas con la zona del script, topes
-  sticky medidos en `--nav-h` y manifest con 192x192 y maskable.
+- Estado: v47 publicada en `main` (panel `v47`, backend `v47`). Correcciones de
+  ronda 16: los horarios se leen del texto visible de la hoja
+  (`getDisplayValues`, no del instante) porque las celdas de hora viven con
+  fecha base 1899-12-30 y formatear por zona aplicaba el offset historico
+  (mostraba `8:13` en vez de `10:30`); el logo del encabezado usa URL absoluta
+  a Pages para verse tambien en `/exec`. Ademas: un solo panel con la misma
+  clave para guias, preceptores y profes; pantalla "Listo para el evento" de
+  solo lectura con 9 controles; docs del dia; tests 238/0, smoke OK, CI y
+  Pages verdes. Backend real sin deployar; MailApp y dispositivo siguen sin
+  probarse. De la ronda anterior: sesion que se borra al vencer, ticket
+  consumido antes de emitir la sesion, asistencias encoladas antes de la
+  request y guardadas por lote, cambio de charla que desmarca la asistencia,
+  `presente` por encabezado, tope sticky medido en `--nav-h`, manifest con
+  192x192 y maskable.
 
 ## Donde trabajar
 
-- Checkout completo: el directorio con `.git`, `src/Code.gs`, `src/Panel.html`,
-  `index.html` y `tests/`. Los clones temporales bajo
+- Checkout completo en `~/repos/esi-inscripcion-demo`: `.git`, `src/Code.gs`,
+  `src/Panel.html`, `index.html` y `tests/`. Recuperar con
+  `esi-restore esi-inscripcion-demo [rama]`. Los clones temporales bajo
   `/data/data/com.termux/files/usr/tmp/opencode` pueden desaparecer.
-- Copia local: `/data/data/com.termux/files/home/proyecto/esi-panel/` tiene
-  `Code.gs`, `Panel.html`, `web/index.html`, `README.md` y `AGENTS.md`; no
-  tiene `src/`, `tests/` ni `.git`. No pushear desde ahi.
-- Tests de la copia: `/data/data/com.termux/files/home/proyecto/build/esi-tests.js`
-  y `ui-smoke.js`.
-- Resumen y bitacora externos:
-  `/storage/emulated/0/esi-inscripcion/RESUMEN-PARA-OTRA-IA.txt` y
-  `esi-inscripcion-cambios.txt`. Actualizarlos cuando cambie el estado.
+- No pushear desde clones temporales sin `.git` completo.
+- Tests: `tests/esi-tests.js` y `tests/ui-smoke.js` del repositorio.
 
 ## Comandos
 
