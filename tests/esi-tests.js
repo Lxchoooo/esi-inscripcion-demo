@@ -1078,6 +1078,10 @@ function fakeSheet(name, headers, rows) {
     getLastColumn() { return sh.data[0] ? sh.data[0].length : 0; },
     deleteRow(r) { sh.data.splice(r - 1, 1); },
     setFrozenRows() { },
+    setFontWeight() { },
+    getCharts() { return sh.charts || []; },
+    removeChart(c) { sh.charts = (sh.charts || []).filter((x) => x !== c); },
+    insertChart(c) { (sh.charts = sh.charts || []).push(c); },
     clear() { sh.data = [headers.slice()]; },
     clearContent() {
       for (let i = 0; i < sh.data.length; i++) sh.data[i] = sh.data[i].map(() => '');
@@ -2918,6 +2922,64 @@ t('setup creates and rebuilds the Reporte sheet', () => {
   if (!report) throw new Error('Reporte sheet missing');
   if (!report.data || report.data.length < 2) throw new Error('Reporte was not written');
   assertEq(report.data[1][0], 'ID', 'report header');
+});
+
+t('la hoja Alumnos ordena por ciclo, curso y apellido', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'setup, apiAdminGetData, alumnosRows_');
+  api.setup();
+  const slots = [
+    { id: 1, nombre: '1ra', inicio: '10:30', fin: '11:20', orden: 1 },
+    { id: 2, nombre: '2da', inicio: '11:30', fin: '12:20', orden: 2 }
+  ];
+  const talks = [
+    { id: 'B1', titulo: 'Ansiedad', ciclo: 'basico', slot_id: 1, lugar: 'Aula 1' },
+    { id: 'B2', titulo: 'Alcohol', ciclo: 'basico', slot_id: 2, lugar: 'Aula 2' },
+    { id: 'O1', titulo: 'Ansiedad', ciclo: 'orientado', slot_id: 1, lugar: 'Aula 1' }
+  ];
+  const rows = api.alumnosRows_([
+    { email: 'z@x.com', nombre: 'Zoe Paz', apellido: '', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: false, prueba: false },
+    { email: 'a@x.com', nombre: 'Ana Ruiz', apellido: '', curso: '2°B', ciclo: 'basico', slot_id: 2, talk_id: 'B2', presente: true, prueba: false },
+    { email: 'm@x.com', nombre: 'Max Sosa', apellido: '', curso: '10°A', ciclo: 'orientado', slot_id: 1, talk_id: 'O1', presente: false, prueba: false },
+    { email: 'b@x.com', nombre: 'Bruno Diaz', apellido: '', curso: '1°A', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: false, prueba: false },
+    { email: 'a2@x.com', nombre: 'Ana Ruiz', apellido: '', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1', presente: false, prueba: true }
+  ], talks, slots, { 'a@x.com': 'Ruiz', 'z@x.com': 'Paz', 'm@x.com': 'Sosa', 'b@x.com': 'Diaz', 'a2@x.com': 'Ruiz' });
+  assertEq(rows[0][0], 'Ciclo', 'cabecera');
+  const orden = rows.slice(1).map((r) => r[1] + '/' + r[2]);
+  assertEq(orden[0], '1°A/Diaz', 'curso mas chico primero: ' + orden.join(' '));
+  assertEq(orden[1], '2°B/Paz', 'apellido ordena dentro del curso: ' + orden.join(' '));
+  assertEq(orden[2], '2°B/Ruiz', 'Paz antes que Ruiz: ' + orden.join(' '));
+  assertEq(orden[3], '2°B/Ruiz', 'la fila de prueba queda en su curso: ' + orden.join(' '));
+  assertEq(orden[4], '10°A/Sosa', 'orientado al final y 10 despues de 2: ' + orden.join(' '));
+  assertEq(rows[4][8], 'no', 'presente se escribe si/no');
+  assertEq(rows[4][9], 'si', 'prueba marcada en su columna');
+  assertEq(rows[3][8], 'si', 'Ana Ruiz presente');
+  assertEq(rows[1][6], 'B1 · Ansiedad', 'charla con id y titulo');
+  assertEq(rows[1][5], '10:30 a 11:20', 'horario de la charla');
+});
+
+t('el panel mantiene al dia las hojas Alumnos y Reporte', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Signups = fakeSheet('Signups',
+    ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'],
+    [['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '3°A', 'basico', 1, 'B1', true]]);
+  const api = backendApi(services, 'setup, apiAdminGetData');
+  api.setup();
+  const data = api.apiAdminGetData('1111');
+  assertEq(data.ok, true, 'lectura ok: ' + data.message);
+  const alumnos = services.sheets.Alumnos;
+  if (!alumnos) throw new Error('falta la hoja Alumnos');
+  assertEq(alumnos.data[0][4], 'Mail', 'cabecera de Alumnos');
+  assertEq(alumnos.data[1][1], '3°A', 'curso del alumno');
+  if (!/^Ana/.test(String(alumnos.data[1][3]))) throw new Error('nombre: ' + alumnos.data[1][3]);
+  const reporte = services.sheets.Reporte;
+  if (!reporte) throw new Error('falta la hoja Reporte');
+  assertEq(reporte.data[1][8], 'Presentes', 'el reporte cuenta presentes');
+  let presentes = 0;
+  for (let i = 2; i < reporte.data.length; i++) {
+    if (String(reporte.data[i][0]) === 'B1') presentes = reporte.data[i][8];
+  }
+  assertEq(presentes, 1, 'un presente en B1');
 });
 
 t('setup repairs Signups after an aggregate erase', () => {

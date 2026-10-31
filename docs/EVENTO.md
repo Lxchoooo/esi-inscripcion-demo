@@ -246,7 +246,13 @@ cambia después del evento.
 | `Log` | Acciones del panel | Cuando alguien borra, corrige o mueve |
 | `Backup` | Copia de `Signups` cada media hora, se queda con las últimas veinte | Automático |
 | `Resumen` | Totales por charla para los reportes | Cada cambio de inscripción |
+| `Alumnos` | Una fila por chico: ciclo, curso, apellido, nombre, mail, horario, charla y si vino. Ordenado por curso y alfabético | Solo, cuando el panel lee (cada 15 segundos) |
+| `Reporte` | Charlas con cupo, anotados, restantes y presentes, más un gráfico de barras | Solo, cuando el panel lee (cada 15 segundos) |
 | `Errors` | Errores del servidor, sin datos personales | Si algo falla |
+
+`Alumnos` y `Reporte` son de solo lectura: se reescriben solas desde
+`Signups`, así que no hace falta tocarlas ni sirven para editar. Si alguien
+les agrega una columna a mano, se pierde en la próxima actualización.
 
 Los respaldos a Drive se guardan una vez por día y se conservan los últimos
 catorce. Las sesiones vencen solas a los siete días.

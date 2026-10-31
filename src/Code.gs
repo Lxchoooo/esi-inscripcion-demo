@@ -1166,6 +1166,7 @@ function setup() {
   configureBackupTrigger_();
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
+  try { rebuildAlumnos_(); } catch (e) { }
 }
 
 function noteSetupRun_() {
@@ -2791,6 +2792,8 @@ function apiAdminGetData(cred) {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
     var admin = isAdmin_(auth);
+    // Mantiene al dia las hojas derivadas (Alumnos y Reporte) cuando el panel lee.
+    if (admin) { try { maybeRebuildReport_(); } catch (e0) { } }
     var cfg = readConfigCached_();
     var slots = readSlotsCached_();
     var talks = readTalksCached_();
@@ -2951,6 +2954,7 @@ function apiAdminDeleteSignup(cred, signupId) {
   });
   if (resp && resp.ok) {
     try { rebuildReport_(); } catch (e) { }
+    try { rebuildAlumnos_(); } catch (e) { }
   }
   return resp;
 }
@@ -3317,6 +3321,7 @@ function apiAdminDeleteStudent(cred, email) {
   });
   if (resp && resp.ok) {
     try { rebuildReport_(); } catch (e) { }
+    try { rebuildAlumnos_(); } catch (e) { }
   }
   return resp;
 }
@@ -3345,6 +3350,7 @@ function apiAdminDeleteTestData(cred, confirmation) {
   });
   if (resp && resp.ok) {
     try { rebuildReport_(); } catch (e) { }
+    try { rebuildAlumnos_(); } catch (e) { }
   }
   return resp;
 }
@@ -3474,6 +3480,7 @@ function apiAdminErasePersonalData(cred, confirmation) {
   });
   if (resp && resp.ok) {
     try { rebuildReport_(); } catch (e) { }
+    try { rebuildAlumnos_(); } catch (e) { }
   }
   return resp;
 }
@@ -3942,6 +3949,8 @@ function apiAdminReports(cred) {
 }
 
 var REPORTE_SHEET = 'Reporte';
+var ALUMNOS_SHEET = 'Alumnos';
+var ALUMNOS_HEADERS = ['Ciclo', 'Curso', 'Apellido', 'Nombre', 'Mail', 'Horario', 'Charla', 'Lugar', 'Presente', 'Prueba'];
 
 // El reporte es cosmetico (los numeros salen de Signups) y reescribirlo en cada
 // inscripcion cuesta una hoja entera. Se refresca como mucho cada 15 segundos.
@@ -3951,7 +3960,108 @@ function maybeRebuildReport_() {
     if (cache.get('report_rebuild')) return;
     cache.put('report_rebuild', '1', 15);
     rebuildReport_();
+    try { rebuildAlumnos_(); } catch (e2) { }
   } catch (e) { }
+}
+
+// Orden de curso para la hoja de alumnos: 1°A antes que 2°B, y 10° al final.
+function cursoKey_(curso) {
+  var s = String(curso || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  var m = s.match(/(\d+)/);
+  var n = m ? parseInt(m[1], 10) : 99;
+  return (n < 10 ? '0' : '') + n + '|' + s;
+}
+
+// Filas de la hoja Alumnos: por ciclo, por curso y alfabetico dentro de cada curso.
+function alumnosRows_(signups, talks, slots, apellidos) {
+  var titulos = {};
+  var lugares = {};
+  for (var t = 0; t < talks.length; t++) {
+    titulos[talks[t].id] = talks[t].titulo || '';
+    lugares[talks[t].id] = talks[t].lugar || '';
+  }
+  var cicloLabel = { basico: 'Básico', orientado: 'Orientado' };
+  var list = [];
+  for (var i = 0; i < signups.length; i++) {
+    var s = signups[i];
+    var ape = (apellidos && (apellidos[s.emailKey] || apellidos[EsiCore.normalizeEmail(s.email)])) || s.apellido || '';
+    list.push({
+      ciclo: s.ciclo,
+      curso: s.curso,
+      apellido: ape,
+      nombre: givenName_(s.nombre, ape),
+      email: s.email,
+      slot: slotLabelFor_(slots, s.slot_id),
+      talk: s.talk_id,
+      titulo: titulos[s.talk_id] || s.talk_id,
+      lugar: lugares[s.talk_id] || '',
+      presente: s.presente ? 'si' : 'no',
+      prueba: s.prueba ? 'si' : 'no'
+    });
+  }
+  list.sort(function (a, b) {
+    var ka = (a.ciclo === 'orientado' ? '1' : '0') + cursoKey_(a.curso);
+    var kb = (b.ciclo === 'orientado' ? '1' : '0') + cursoKey_(b.curso);
+    if (ka !== kb) return ka < kb ? -1 : 1;
+    var na = (String(a.apellido) + ' ' + String(a.nombre)).toLowerCase();
+    var nb = (String(b.apellido) + ' ' + String(b.nombre)).toLowerCase();
+    if (na !== nb) return na < nb ? -1 : 1;
+    if (a.titulo !== b.titulo) return a.titulo < b.titulo ? -1 : 1;
+    return 0;
+  });
+  var rows = [ALUMNOS_HEADERS.slice()];
+  for (var j = 0; j < list.length; j++) {
+    var r = list[j];
+    rows.push([
+      cicloLabel[r.ciclo] || r.ciclo, r.curso, r.apellido, r.nombre, r.email,
+      r.slot, r.talk + ' · ' + r.titulo, r.lugar, r.presente, r.prueba
+    ]);
+  }
+  return rows;
+}
+
+function rebuildAlumnos_() {
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(ALUMNOS_SHEET) || ss.insertSheet(ALUMNOS_SHEET);
+  var apellidos = {};
+  try {
+    var students = readStudentsCached_();
+    for (var i = 0; i < students.length; i++) {
+      apellidos[students[i].emailKey || EsiCore.normalizeEmail(students[i].email)] = students[i].apellido || '';
+    }
+  } catch (e) { }
+  var rows = alumnosRows_(readSignups_(), readTalks_(), readSlots_(), apellidos);
+  var width = ALUMNOS_HEADERS.length;
+  var lastRow = sh.getLastRow();
+  if (lastRow > 0) sh.getRange(1, 1, lastRow, Math.max(width, sh.getLastColumn() || width)).clearContent();
+  sh.getRange(1, 1, rows.length, width).setValues(rows);
+  try { sh.getRange(1, 1, 1, width).setFontWeight('bold'); } catch (e1) { }
+  try { sh.setFrozenRows(1); } catch (e2) { }
+  return rows.length - 1;
+}
+
+// Grafico de barras: anotados y presentes por charla.
+function drawReportChart_(sh, first, last) {
+  try {
+    var charts = sh.getCharts();
+    for (var i = 0; i < charts.length; i++) sh.removeChart(charts[i]);
+  } catch (e) { }
+  if (typeof Charts === 'undefined' || last < first) return;
+  try {
+    var n = last - first + 1;
+    var chart = sh.newChart()
+      .setChartType(Charts.ChartType.COLUMN)
+      .addRange(sh.getRange(first, 1, n, 1))
+      .addRange(sh.getRange(first, 7, n, 1))
+      .addRange(sh.getRange(first, 9, n, 1))
+      .setPosition(2, 11, 0, 0)
+      .setOption('title', 'Anotados y presentes por charla')
+      .setOption('legend', { position: 'top' })
+      .setOption('width', 720)
+      .setOption('height', 400)
+      .build();
+    sh.insertChart(chart);
+  } catch (e2) { }
 }
 
 function rebuildReport_() {
@@ -3960,11 +4070,16 @@ function rebuildReport_() {
     var sh = ss.getSheetByName(REPORTE_SHEET) || ss.insertSheet(REPORTE_SHEET);
     var slots = readSlots_();
     var talks = readTalks_();
-    var agg = EsiCore.aggregateTalks(readSignups_(), talks);
+    var signups = readSignups_();
+    var presentes = {};
+    for (var p = 0; p < signups.length; p++) {
+      if (signups[p].presente) presentes[signups[p].talk_id] = (presentes[signups[p].talk_id] || 0) + 1;
+    }
+    var agg = EsiCore.aggregateTalks(signups, talks);
     var cfg = readConfig_();
     var rows = [];
     rows.push(['Estado', isOpen_(cfg) ? 'INSCRIPCIÓN ABIERTA' : 'INSCRIPCIÓN CERRADA', '', 'Actualizado', new Date(), '', 'Total', agg.total]);
-    rows.push(['ID', 'Ciclo', 'Horario', 'Charla', 'Lugar', 'Cupo', 'Anotados', 'Restantes']);
+    rows.push(['ID', 'Ciclo', 'Horario', 'Charla', 'Lugar', 'Cupo', 'Anotados', 'Restantes', 'Presentes']);
     var cicloLabel = { basico: 'Básico', orientado: 'Orientado' };
     for (var i = 0; i < agg.rows.length; i++) {
       var t = agg.rows[i];
@@ -3976,16 +4091,19 @@ function rebuildReport_() {
         t.lugar,
         t.cupo,
         t.anotados,
-        t.restantes
+        t.restantes,
+        presentes[t.id] || 0
       ]);
     }
-    rows.push(['', '', '', 'Ciclo Básico', '', '', agg.porCiclo.basico, '']);
-    rows.push(['', '', '', 'Ciclo Orientado', '', '', agg.porCiclo.orientado, '']);
-    var width = 8;
+    rows.push(['', '', '', 'Ciclo Básico', '', '', agg.porCiclo.basico, '', '']);
+    rows.push(['', '', '', 'Ciclo Orientado', '', '', agg.porCiclo.orientado, '', '']);
+    var width = 9;
     var lastRow = sh.getLastRow();
     if (lastRow > 0) sh.getRange(1, 1, lastRow, Math.max(width, sh.getLastColumn() || width)).clearContent();
     sh.getRange(1, 1, rows.length, width).setValues(rows);
     sh.setFrozenRows(2);
+    // Las charlas van de la fila 3 hasta antes de los totales por ciclo.
+    drawReportChart_(sh, 3, 1 + agg.rows.length);
   } catch (e) {
     Logger.log('rebuildReport_ fallo: ' + e);
   }
