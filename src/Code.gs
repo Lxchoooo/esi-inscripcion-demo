@@ -26,6 +26,9 @@ var LOGIN_TICKET_PREFIX = 'l_';
 var LOGIN_TICKET_TTL = 300;
 var CONFIG_TEST_MODE = 'modo_prueba';
 var CONFIG_DATA_ERASED = 'datos_personales_borrados';
+// Marca para diferir el reproceso de Reporte y Alumnos al trigger de la cola:
+// si el borrado espera esos writes, el panel tarda varios segundos.
+var REBUILD_FLAG = 'rebuild_derived_pending';
 var CONFIG_BACKUP_ACTIVE = 'backup_activo';
 var CONFIG_DRIVE_BACKUP = 'backup_drive_activo';
 var ERRORS_SHEET = 'Errors';
@@ -55,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v49';
+var BACKEND_VERSION = 'v50';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -651,6 +654,33 @@ function changeBody_(name, horario, talk) {
   return lines.join('\n');
 }
 
+// Reporte y Alumnos son hojas derivadas: en vez de recalcularlas dentro de
+// cada alta o borrado (frena al admin), el borrado solo deja la marca y la
+// corrida del trigger las ejecuta en un minuto, una sola vez.
+function scheduleRebuilds_() {
+  try {
+    PropertiesService.getScriptProperties().setProperty(REBUILD_FLAG, 'si');
+    ensureMailQueueTrigger_();
+  } catch (e) { }
+}
+
+function runPendingRebuilds_() {
+  var props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty(REBUILD_FLAG)) !== 'si') return false;
+  // Encadenar los dos rebuilds con el lock evita leer mientras nadie esta
+  // anotandose; si el lock esta ocupado devuelve busy sin limpiar la marca.
+  var ran = withScriptLock_(ADMIN_LOCK_MS, function () {
+    try { rebuildReport_(); } catch (ee) { }
+    try { rebuildAlumnos_(); } catch (ee2) { }
+    return { ok: true };
+  });
+  if (ran && ran.ok) {
+    try { props.setProperty(REBUILD_FLAG, 'no'); } catch (e3) { }
+    return true;
+  }
+  return false;
+}
+
 // Se llama dentro del lock del registro con el estado fresco del alumno:
 // prev (filas antes del movimiento) y post (filas ya reflejadas).
 function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action) {
@@ -745,6 +775,7 @@ function ensureMailQueueTrigger_() {
 // Trigger cada minuto. nowMs opcional para pruebas: la gracia es lo que evita
 // mandar la bienvenida a quien la esta cambiando.
 function flushMailQueue_(nowMs) {
+  try { runPendingRebuilds_(); } catch (eRb) { }
   var now = nowMs == null ? Date.now() : Number(nowMs);
   var cfg;
   try { cfg = readConfig_(); } catch (e) { return { sent: 0 }; }
@@ -3336,8 +3367,7 @@ function apiAdminDeleteSignup(cred, signupId) {
     }
   });
   if (resp && resp.ok) {
-    try { rebuildReport_(); } catch (e) { }
-    try { rebuildAlumnos_(); } catch (e) { }
+    scheduleRebuilds_();
   }
   return resp;
 }
@@ -3703,8 +3733,7 @@ function apiAdminDeleteStudent(cred, email) {
     }
   });
   if (resp && resp.ok) {
-    try { rebuildReport_(); } catch (e) { }
-    try { rebuildAlumnos_(); } catch (e) { }
+    scheduleRebuilds_();
   }
   return resp;
 }
@@ -3777,8 +3806,7 @@ function apiDrillCleanup(marca) {
   if (!todos && !/^simulacro\d{10,}-$/.test(m)) return { ok: false, message: 'Marca inválida.' };
   var borradas = todos ? drillCleanupTodos_() : drillCleanup_(m);
   invalidateDataCache_();
-  try { rebuildReport_(); } catch (e) { }
-  try { rebuildAlumnos_(); } catch (e) { }
+  scheduleRebuilds_();
   return { ok: true, borradas: borradas };
 }
 
@@ -3844,8 +3872,7 @@ function apiAdminDeleteTestData(cred, confirmation) {
     }
   });
   if (resp && resp.ok) {
-    try { rebuildReport_(); } catch (e) { }
-    try { rebuildAlumnos_(); } catch (e) { }
+    scheduleRebuilds_();
   }
   return resp;
 }
@@ -3983,8 +4010,7 @@ function apiAdminErasePersonalData(cred, confirmation) {
     }
   });
   if (resp && resp.ok) {
-    try { rebuildReport_(); } catch (e) { }
-    try { rebuildAlumnos_(); } catch (e) { }
+    scheduleRebuilds_();
   }
   return resp;
 }
