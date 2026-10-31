@@ -2871,7 +2871,7 @@ t('admin r12 status, duplicates, manual fixes, test data, close and erase', () =
   assertEq(services.sheets.Signups.data[0].indexOf('email') >= 0, true, 'Signups email header kept');
   assertEq(!!services.sheets.Resumen, true, 'Resumen sheet created');
   if (!services.sheets.Reporte) throw new Error('Reporte sheet not rebuilt after erase');
-  assertEq(services.sheets.Reporte.data[2][6], 0, 'Reporte has no personal rows');
+  assertEq(services.sheets.Reporte.data[1][6], 0, 'Reporte has no personal rows');
 });
 
 t('Session identity wins over client course and cycle', () => {
@@ -2921,7 +2921,7 @@ t('setup creates and rebuilds the Reporte sheet', () => {
   const report = services.sheets.Reporte;
   if (!report) throw new Error('Reporte sheet missing');
   if (!report.data || report.data.length < 2) throw new Error('Reporte was not written');
-  assertEq(report.data[1][0], 'ID', 'report header');
+  assertEq(report.data[0][0], 'ID', 'report header');
 });
 
 t('la hoja Alumnos ordena por ciclo, curso y apellido', () => {
@@ -2974,12 +2974,59 @@ t('el panel mantiene al dia las hojas Alumnos y Reporte', () => {
   if (!/^Ana/.test(String(alumnos.data[1][3]))) throw new Error('nombre: ' + alumnos.data[1][3]);
   const reporte = services.sheets.Reporte;
   if (!reporte) throw new Error('falta la hoja Reporte');
-  assertEq(reporte.data[1][8], 'Presentes', 'el reporte cuenta presentes');
+  assertEq(reporte.data[0][8], 'Presentes', 'el reporte cuenta presentes');
   let presentes = 0;
-  for (let i = 2; i < reporte.data.length; i++) {
+  for (let i = 1; i < reporte.data.length; i++) {
     if (String(reporte.data[i][0]) === 'B1') presentes = reporte.data[i][8];
   }
   assertEq(presentes, 1, 'un presente en B1');
+});
+
+t('las hojas derivadas conservan lo que se escribe a mano', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Signups = fakeSheet('Signups',
+    ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'],
+    [
+      ['s1', new Date(), 'ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '3°A', 'basico', 1, 'B1', false],
+      ['s2', new Date(), 'bruno@secundariosalsipuedes.edu.ar', 'Bruno Diaz', '2°B', 'basico', 1, 'B2', false]
+    ]);
+  const api = backendApi(services, 'setup, rebuildAlumnos_, rebuildReport_');
+  api.setup();
+  const alumnos = services.sheets.Alumnos;
+  if (!alumnos) throw new Error('falta Alumnos');
+
+  // Alguien agrega una columna y escribe una fila a mano.
+  alumnos.data[0].push('Nota');
+  const filaAna = alumnos.data.findIndex((r) => String(r[4]).indexOf('ana@') === 0);
+  if (filaAna < 1) throw new Error('no encontre la fila de Ana: ' + JSON.stringify(alumnos.data));
+  alumnos.data[filaAna][10] = 'llegó tarde';
+  alumnos.data.push(['Básico', '1°A', 'Extra', 'Alumno', 'z@x.com', '10:30 a 11:20', 'B9 · Manual', '', 'no', 'no', 'anotado a mano']);
+
+  api.rebuildAlumnos_();
+
+  const head = alumnos.data[0];
+  assertEq(head[head.length - 1], 'Nota', 'la columna agregada sobrevive: ' + head.join(','));
+  const anaAhora = alumnos.data.find((r) => String(r[4]).indexOf('ana@') === 0);
+  if (!anaAhora) throw new Error('Ana desaparecio');
+  assertEq(anaAhora[anaAhora.length - 1], 'llegó tarde', 'el dato a mano sigue en su fila');
+  const manuales = alumnos.data.filter((r) => String(r[4]) === 'z@x.com');
+  assertEq(manuales.length, 1, 'la fila manual sigue una sola vez');
+
+  // Otra pasada: no se duplica nada.
+  api.rebuildAlumnos_();
+  assertEq(alumnos.data.filter((r) => String(r[4]) === 'z@x.com').length, 1, 'idempotente');
+
+  // Reporte: misma idea.
+  const reporte = services.sheets.Reporte;
+  if (!reporte) throw new Error('falta Reporte');
+  reporte.data[0].push('Aula real');
+  reporte.data[1][9] = 'Aula 12';
+  api.rebuildReport_();
+  const headR = reporte.data[0];
+  assertEq(headR[headR.length - 1], 'Aula real', 'columna del Reporte conservada');
+  assertEq(reporte.data[1][9], 'Aula 12', 'dato del Reporte conservado');
+  assertEq(reporte.data.filter((r) => String(r[0]) === 'B1').length, 1, 'B1 una sola vez');
+
 });
 
 t('setup repairs Signups after an aggregate erase', () => {

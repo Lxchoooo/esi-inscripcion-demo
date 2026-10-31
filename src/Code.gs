@@ -4020,6 +4020,91 @@ function alumnosRows_(signups, talks, slots, apellidos) {
   return rows;
 }
 
+// Escribe una hoja derivada sin pisar lo que el equipo agrego a mano.
+// - Las columnas propias se recalculan y se buscan por NOMBRE de encabezado.
+// - Las columnas extra (Nota, Firma, lo que sea) se conservan por clave de fila.
+// - Las filas cargadas a mano que no salen de Signups se dejan al final.
+function writeDerived_(sh, headers, rows, keyOf) {
+  var existing = [];
+  try {
+    if (sh.getLastRow() > 0) existing = sh.getDataRange().getValues();
+  } catch (e) { }
+  var oldHead = existing.length ? existing[0].map(function (v) { return String(v).trim(); }) : [];
+  var oldRows = existing.length > 1 ? existing.slice(1) : [];
+  var extra = [];
+  for (var c = 0; c < oldHead.length; c++) {
+    if (oldHead[c] && headers.indexOf(oldHead[c]) < 0) extra.push({ col: c, name: oldHead[c] });
+  }
+  var pos = {};
+  for (var h = 0; h < headers.length; h++) pos[headers[h]] = oldHead.indexOf(headers[h]);
+  var nuevas = {};
+  for (var n = 1; n < rows.length; n++) {
+    var kn = keyOf(rows[n]);
+    if (kn) nuevas[kn] = true;
+  }
+  var saved = {};
+  var manual = [];
+  for (var r = 0; r < oldRows.length; r++) {
+    var v = oldRows[r];
+    var tieneAlgo = false;
+    for (var q = 0; q < v.length; q++) {
+      if (String(v[q]) !== '') { tieneAlgo = true; break; }
+    }
+    if (!tieneAlgo) continue;
+    var mine = [];
+    for (var m = 0; m < headers.length; m++) {
+      var idx = pos[headers[m]];
+      mine.push(idx >= 0 ? v[idx] : '');
+    }
+    var extras = {};
+    for (var e = 0; e < extra.length; e++) extras[extra[e].name] = v[extra[e].col];
+    var key = keyOf(mine);
+    // Si la fila sigue saliendo de Signups, se le recolocan sus columnas extra.
+    // Si no, la escribio una persona: se deja tal cual al final.
+    if (key && nuevas[key]) saved[key] = extras;
+    else manual.push({ mine: mine, extras: extras });
+  }
+  var head = headers.concat(extra.map(function (x) { return x.name; }));
+  var out = [head];
+  for (var i = 1; i < rows.length; i++) {
+    var fila = rows[i].slice();
+    var k = keyOf(rows[i]);
+    var ex = (k && saved[k]) || {};
+    for (var x = 0; x < extra.length; x++) {
+      fila.push(ex[extra[x].name] != null ? ex[extra[x].name] : '');
+    }
+    out.push(fila);
+  }
+  for (var j = 0; j < manual.length; j++) {
+    var linea = manual[j].mine.slice();
+    for (var y = 0; y < extra.length; y++) {
+      linea.push(manual[j].extras[extra[y].name] != null ? manual[j].extras[extra[y].name] : '');
+    }
+    out.push(linea);
+  }
+  var width = head.length;
+  var lastRow = sh.getLastRow();
+  if (lastRow > 0) sh.getRange(1, 1, lastRow, Math.max(width, sh.getLastColumn() || width)).clearContent();
+  sh.getRange(1, 1, out.length, width).setValues(out);
+  try { sh.getRange(1, 1, 1, width).setFontWeight('bold'); } catch (e1) { }
+  try { sh.setFrozenRows(1); } catch (e2) { }
+  return out.length - 1;
+}
+
+var REPORT_HEADERS = ['ID', 'Ciclo', 'Horario', 'Charla', 'Lugar', 'Cupo', 'Anotados', 'Restantes', 'Presentes'];
+
+function reportKey_(row) {
+  var id = String(row[0] || '').trim();
+  var nombre = String(row[3] || '').trim();
+  return id || nombre ? id + '|' + nombre : '';
+}
+
+function alumnosKey_(row) {
+  var mail = String(row[4] || '').toLowerCase();
+  var talk = String(row[6] || '').split(' \u00b7 ')[0];
+  return mail && talk ? mail + '|' + talk : '';
+}
+
 function rebuildAlumnos_() {
   var ss = SpreadsheetApp.getActive();
   var sh = ss.getSheetByName(ALUMNOS_SHEET) || ss.insertSheet(ALUMNOS_SHEET);
@@ -4031,13 +4116,7 @@ function rebuildAlumnos_() {
     }
   } catch (e) { }
   var rows = alumnosRows_(readSignups_(), readTalks_(), readSlots_(), apellidos);
-  var width = ALUMNOS_HEADERS.length;
-  var lastRow = sh.getLastRow();
-  if (lastRow > 0) sh.getRange(1, 1, lastRow, Math.max(width, sh.getLastColumn() || width)).clearContent();
-  sh.getRange(1, 1, rows.length, width).setValues(rows);
-  try { sh.getRange(1, 1, 1, width).setFontWeight('bold'); } catch (e1) { }
-  try { sh.setFrozenRows(1); } catch (e2) { }
-  return rows.length - 1;
+  return writeDerived_(sh, ALUMNOS_HEADERS, rows, alumnosKey_);
 }
 
 // Grafico de barras: anotados y presentes por charla.
@@ -4077,9 +4156,7 @@ function rebuildReport_() {
     }
     var agg = EsiCore.aggregateTalks(signups, talks);
     var cfg = readConfig_();
-    var rows = [];
-    rows.push(['Estado', isOpen_(cfg) ? 'INSCRIPCIÓN ABIERTA' : 'INSCRIPCIÓN CERRADA', '', 'Actualizado', new Date(), '', 'Total', agg.total]);
-    rows.push(['ID', 'Ciclo', 'Horario', 'Charla', 'Lugar', 'Cupo', 'Anotados', 'Restantes', 'Presentes']);
+    var rows = [REPORT_HEADERS.slice()];
     var cicloLabel = { basico: 'Básico', orientado: 'Orientado' };
     for (var i = 0; i < agg.rows.length; i++) {
       var t = agg.rows[i];
@@ -4097,13 +4174,11 @@ function rebuildReport_() {
     }
     rows.push(['', '', '', 'Ciclo Básico', '', '', agg.porCiclo.basico, '', '']);
     rows.push(['', '', '', 'Ciclo Orientado', '', '', agg.porCiclo.orientado, '', '']);
-    var width = 9;
-    var lastRow = sh.getLastRow();
-    if (lastRow > 0) sh.getRange(1, 1, lastRow, Math.max(width, sh.getLastColumn() || width)).clearContent();
-    sh.getRange(1, 1, rows.length, width).setValues(rows);
-    sh.setFrozenRows(2);
-    // Las charlas van de la fila 3 hasta antes de los totales por ciclo.
-    drawReportChart_(sh, 3, 1 + agg.rows.length);
+    rows.push(['', '', '', 'Total inscriptos', '', '', agg.total, '', '']);
+    rows.push(['', '', '', 'Inscripción', isOpen_(cfg) ? 'ABIERTA' : 'CERRADA', '', '', '', '']);
+    writeDerived_(sh, REPORT_HEADERS, rows, reportKey_);
+    // Las charlas van de la fila 2 hasta antes de los totales.
+    drawReportChart_(sh, 2, 1 + agg.rows.length);
   } catch (e) {
     Logger.log('rebuildReport_ fallo: ' + e);
   }
