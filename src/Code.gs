@@ -52,7 +52,10 @@ var BACKEND_VERSION = 'v43';
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
 var BUSY_MESSAGE = 'Hay mucha gente anotándose: esperá unos segundos y volvé a tocar.';
-var REGISTER_LOCK_MS = 8000;
+// La cola del registro: cada alta tiene el lock ~2 s, asi que una fila de 15
+// chicos tarda ~30 s. 40 s de espera evita que el que esta ultimo reciba
+// "ocupado" sin haber tenido turno.
+var REGISTER_LOCK_MS = 40000;
 var A_MARK_BATCH_MAX = 100;
 var ADMIN_LOCK_MS = 5000;
 
@@ -1080,6 +1083,8 @@ var API_FN_MAP_ = {
   apiAdminMergeDuplicates: apiAdminMergeDuplicates,
   apiAdminDeleteStudent: apiAdminDeleteStudent,
   apiAdminDeleteTestData: apiAdminDeleteTestData,
+  apiAdminDrill: apiAdminDrill,
+  apiDrillCleanup: apiDrillCleanup,
   apiAdminCloseEvent: apiAdminCloseEvent,
   apiAdminErasePersonalData: apiAdminErasePersonalData,
   apiAdminBackupDrive: apiAdminBackupDrive,
@@ -1823,6 +1828,8 @@ function readStudentsCached_() {
 }
 
 function readTalksCached_() {
+  var memo = memoGet_('talks');
+  if (memo) return memo;
   try {
     var hit = CacheService.getScriptCache().get('talks_v1');
     if (hit) return JSON.parse(hit);
@@ -1831,10 +1838,16 @@ function readTalksCached_() {
   try {
     CacheService.getScriptCache().put('talks_v1', JSON.stringify(talks), DATA_CACHE_TTL);
   } catch (e) { }
-  return talks;
+  return memoSet_('talks', talks);
 }
 
+var MEMO_READS_ = {};
+function memoGet_(k) { return Object.prototype.hasOwnProperty.call(MEMO_READS_, k) ? MEMO_READS_[k] : null; }
+function memoSet_(k, v) { MEMO_READS_[k] = v; return v; }
+
 function readSlotsCached_() {
+  var memo = memoGet_('slots');
+  if (memo) return memo;
   try {
     var hit = CacheService.getScriptCache().get('slots_v1');
     if (hit) return JSON.parse(hit);
@@ -1843,7 +1856,7 @@ function readSlotsCached_() {
   try {
     CacheService.getScriptCache().put('slots_v1', JSON.stringify(slots), DATA_CACHE_TTL);
   } catch (e) { }
-  return slots;
+  return memoSet_('slots', slots);
 }
 
 function readConfigCached_() {
@@ -1859,6 +1872,7 @@ function readConfigCached_() {
 }
 
 function invalidateDataCache_() {
+  MEMO_READS_ = {};
   try {
     var cache = CacheService.getScriptCache();
     cache.remove('signups_v1');
@@ -1867,6 +1881,18 @@ function invalidateDataCache_() {
     cache.remove('talks_v1');
     cache.remove('slots_v1');
     cache.remove('config_v1');
+  } catch (e) { }
+}
+
+// Al anotarse alguien solo cambian las inscripciones: charlas, horarios y
+// config siguen igual y borrarlos obligaria a releer la planilla de nuevo.
+function invalidateSignupsCache_() {
+  MEMO_READS_ = {};
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove('signups_v1');
+    cache.remove('signups_v2');
+    cache.remove('students_v1');
   } catch (e) { }
 }
 
@@ -2521,9 +2547,31 @@ function apiStudentLogout(token) {
 }
 
 function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, loginToken) {
+  // Filtro barato antes de la cola: una charla que no existe no hace falta
+  // esperar el lock ni leer la planilla entera para rechazarla.
+  try {
+    var talks0 = readTalksCached_();
+    var existe = false;
+    for (var t0 = 0; t0 < talks0.length; t0++) {
+      if (String(talks0[t0].id) === String(talkId)) { existe = true; break; }
+    }
+    if (!existe) return { ok: false, message: ERROR_MESSAGES_.talkNotFound };
+  } catch (e0) { }
   var resp = withScriptLock_(REGISTER_LOCK_MS, function () {
     return registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken);
   });
+  // Las sesiones se rotan recien aca, con el lock ya suelto: asi los que
+  // estan en la cola no esperan a que se escriba la hoja de sesiones.
+  if (resp && resp.ok && resp._rotar) {
+    var rot = resp._rotar;
+    delete resp._rotar;
+    try {
+      revokeSessionsForEmail_(rot.email, rot.keepHash);
+      if (!rot.current) resp.session = issueStudentSession_(rot.student);
+    } catch (e) { }
+  } else if (resp) {
+    delete resp._rotar;
+  }
   // La inscripcion del alumno no rehace hojas derivadas: eran dos hojas
   // enteras por cada alta y el alumno esperaba varios segundos de mas.
   return resp;
@@ -2594,7 +2642,8 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     }
 
     if (plan.action !== 'none') {
-      var fresh = readSignups_();
+      // Ya estamos dentro del lock: signups se leyo recien y nadie mas escribe.
+      var fresh = signups;
       var duplicate = false;
       if (plan.action === 'insert') {
         for (var d = 0; d < fresh.length; d++) {
@@ -2621,7 +2670,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     var message = '';
     if (plan.action === 'insert') {
       var slot = slotLabelFor_(slots, talk.slot_id);
-      s.recordatorio = reminderOptIn_(readSignups_(), s.email);
+      s.recordatorio = reminderOptIn_(fresh, s.email);
       s.prueba = convertBool_(cfg.modo_prueba);
       appendSignupRow_(s, talk);
       message = 'Listo, quedaste anotado.';
@@ -2641,23 +2690,26 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     }
 
     var rotated = '';
+    var rotar = null;
     if (plan.action === 'insert' || plan.action === 'change') {
       var keepHash = current && sessionToken ? studentTokenHash_(sessionToken) : '';
       if (ticket) consumeLoginTicket_(loginToken);
-      revokeSessionsForEmail_(s.email, keepHash);
-      if (!current) rotated = issueStudentSession_(s);
+      // Las sesiones no viven en Signups: se rotan afuera del lock para no
+      // hacer esperar a los demas mientras se toca otra hoja (~2 s).
+      rotar = { email: s.email, keepHash: keepHash, current: !!current, student: s };
     } else if (ticket) {
       consumeLoginTicket_(loginToken);
     }
     var fresh = readSignups_();
-    invalidateDataCache_();
+    invalidateSignupsCache_();
     return {
       ok: true,
       message: message,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
       data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh),
       recordatorio: reminderOptIn_(fresh, s.email),
-      session: rotated
+      session: rotated,
+      _rotar: rotar
     };
   } catch (err) {
     return { ok: false, message: 'Error inesperado: ' + (err && err.message ? err.message : err) };
@@ -3339,6 +3391,118 @@ function apiAdminDeleteStudent(cred, email) {
     try { rebuildAlumnos_(); } catch (e) { }
   }
   return resp;
+}
+
+// Simulacro de carga: anota N alumnos de prueba en una charla, mide cuanto
+// tarda cada alta y despues borra esas filas. Con eso se sabe cuanto esperaria
+// el ultimo de una fila de N chicos. Solo con el modo ensayo prendido, porque
+// las filas quedan marcadas como prueba y las limpia tambien el boton de
+// "borrar datos de prueba" si algo fallara.
+function apiAdminDrill(cred, n, talkId) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  try {
+    if (!convertBool_(readConfig_().modo_prueba)) {
+      return { ok: false, message: 'Prendé el modo ensayo antes de hacer el simulacro.' };
+    }
+    var total = Math.max(1, Math.min(60, Number(n) || 30));
+    var talks = readTalksCached_();
+    var talk = null;
+    for (var i = 0; i < talks.length; i++) {
+      var t = talks[i];
+      if (t.activa && (!talkId || String(t.id) === String(talkId))) { talk = t; break; }
+    }
+    if (!talk) return { ok: false, message: 'No hay una charla activa para el simulacro.' };
+    var marca = 'simulacro' + Date.now() + '-';
+    var ms = [];
+    var okCount = 0;
+    var fallas = {};
+    for (var k = 1; k <= total; k++) {
+      var email = marca + k + '@secundariosalsipuedes.edu.ar';
+      var t0 = Date.now();
+      var r = registerLocked_(email, 'Alumno Simulacro', '2°A', talk.id, 'Simulacro', '', '');
+      ms.push(Date.now() - t0);
+      if (r && r.ok) okCount++;
+      else {
+        var key = (r && r.message) || 'sin mensaje';
+        fallas[key] = (fallas[key] || 0) + 1;
+      }
+    }
+    var borradas = drillCleanup_(marca);
+    ms.sort(function (a, b) { return a - b; });
+    var suma = 0;
+    for (var m = 0; m < ms.length; m++) suma += ms[m];
+    logAction_('drill', talk.id, 'n=' + total + ' ok=' + okCount + ' borradas=' + borradas);
+    invalidateDataCache_();
+    return {
+      ok: true,
+      talk: talk.id,
+      n: total,
+      anotados: okCount,
+      borradas: borradas,
+      ms_promedio: Math.round(suma / (ms.length || 1)),
+      ms_p50: ms[Math.floor(ms.length / 2)] || 0,
+      ms_max: ms[ms.length - 1] || 0,
+      espera_estimada_ultimo: Math.round((suma / (ms.length || 1)) * Math.max(0, okCount - 1)),
+      fallas: fallas
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+// Limpia las filas que deja el simulacro. No pide clave a proposito: solo
+// acepta el prefijo exacto que genera el simulacro ("simulacro<epoch>-"), asi
+// no puede borrar nada de un alumno real.
+function apiDrillCleanup(marca) {
+  var m = String(marca || '');
+  var todos = m === 'simulacro-todos';
+  if (!todos && !/^simulacro\d{10,}-$/.test(m)) return { ok: false, message: 'Marca inválida.' };
+  var borradas = todos ? drillCleanupTodos_() : drillCleanup_(m);
+  invalidateDataCache_();
+  try { rebuildReport_(); } catch (e) { }
+  try { rebuildAlumnos_(); } catch (e) { }
+  return { ok: true, borradas: borradas };
+}
+
+// Borra cualquier fila que haya dejado un simulacro, aunque se haya perdido la
+// marca exacta (por ejemplo si la respuesta se corto a mitad de camino).
+function drillCleanupTodos_() {
+  try {
+    var signups = readSignups_();
+    var rows = [];
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      if (s && /^simulacro\d{10,}-\d+@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
+        rows.push(findSignupRow_(s.id));
+      }
+    }
+    rows.sort(function (a, b) { return b - a; });
+    var sh = sheet_(SIGNUPS_SHEET);
+    for (var j = 0; j < rows.length; j++) if (rows[j] > 0) sh.deleteRow(rows[j]);
+    return rows.length;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Borra las filas del simulacro identificadas por el prefijo del mail.
+function drillCleanup_(marca) {
+  try {
+    var signups = readSignups_();
+    var rows = [];
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      if (s && s.email && s.email.indexOf(marca) === 0) rows.push(findSignupRow_(s.id));
+    }
+    rows.sort(function (a, b) { return b - a; });
+    var sh = sheet_(SIGNUPS_SHEET);
+    for (var j = 0; j < rows.length; j++) if (rows[j] > 0) sh.deleteRow(rows[j]);
+    return rows.length;
+  } catch (e) {
+    return 0;
+  }
 }
 
 function apiAdminDeleteTestData(cred, confirmation) {
