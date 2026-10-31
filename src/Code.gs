@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v56';
+var BACKEND_VERSION = 'v57';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -725,7 +725,8 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
   if (!dest) {
     dest = String(s.email || '').trim().toLowerCase();
     if (!dest) return;
-    try { logAction_('mail_ensayo_alumno', s.email, 'ensayo sin remitente: la bienvenida va a la casilla del alumno'); } catch (eLog) { }
+    // El Log no guarda mails completos (regla del repo): queda el detalle.
+    try { logAction_('mail_ensayo_alumno', '', 'ensayo sin remitente: la bienvenida va a la casilla del alumno'); } catch (eLog) { }
   }
   var wasPending = upsertPendingMail_(dest, 'bienvenida', mailWelcomeSubject_(cfg), welcomeBody_(name, items, cfg));
   // Solo manda el cambio aparte si la bienvenida ya salio y el cambio no
@@ -741,6 +742,10 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
 // y cuerpo) y la re-agenda: el ultimo movimiento define el contenido, pero no
 // duplica mails.
 function upsertPendingMail_(email, tipo, subject, body) {
+  // Limitacion conocida: con modo ensayo y remitente compartido, dos alumnos
+  // distintos caen en la misma casilla (el cleaner ve un solo pendiente por
+  // casilla). Si algun dia hacen falta dos mails simultaneos para el mismo
+  // destino, la cola necesita columna de alumno propio.
   var q = readMailQueueRaw_();
   var due = Date.now() + MAIL_QUEUE_GRACE_MS;
   if (q.map && q.map.email >= 0) {
@@ -763,7 +768,7 @@ function upsertPendingMail_(email, tipo, subject, body) {
 }
 
 function ensureMailQueueTrigger_() {
-  if (typeof ScriptApp === 'undefined') return;
+  if (typeof ScriptApp === 'undefined') return false;
   try {
     var props = PropertiesService.getScriptProperties();
     // La bandera vieja creia que ya estaba y no miraba: si alguien borra el
@@ -773,12 +778,15 @@ function ensureMailQueueTrigger_() {
     for (var i = 0; i < triggers.length; i++) {
       if (triggers[i].getHandlerFunction() === 'flushMailQueue_') {
         props.setProperty('MAIL_QUEUE_TRIGGER_OK', '1');
-        return;
+        return false;
       }
     }
     ScriptApp.newTrigger('flushMailQueue_').timeBased().everyMinutes(1).create();
     props.setProperty('MAIL_QUEUE_TRIGGER_OK', '1');
-  } catch (e) { }
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /* Watchdog: un trigger propio repone lo que se muere sin que nadie este
@@ -796,6 +804,31 @@ function watchdogEnsureSheets_(ss) {
       }
     } catch (e) { }
   }
+  // Hojas fuera del EXPECTED pero vivas en la logica: si el watchdog se muere,
+  // el Admin queda sin datos de registro y sin Reporte de una vez.
+  try {
+    if (!ss.getSheetByName(STUDENTS_SHEET)) {
+      ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
+      fixes.push('hoja Students');
+    }
+  } catch (eStudents) { }
+  try {
+    if (!ss.getSheetByName(ERRORS_SHEET)) {
+      ensureSheet_(ss, ERRORS_SHEET, ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []);
+      fixes.push('hoja Errors');
+    }
+  } catch (eErrors) { }
+  // Config es la hoja de la que cuelga todo (evento, modo ensayo, mails): si
+  // desaparece, el panel queda mudo y el flush de mails se corta.
+  try {
+    if (!ss.getSheetByName(CONFIG_SHEET)) {
+      ensureSheet_(ss, CONFIG_SHEET, ['clave', 'valor'], []);
+      fixes.push('hoja Config');
+    }
+    var antes = String(readConfig_()[CONFIG_MAIL_WELCOME] || '').trim();
+    ensureConfigDefault_(CONFIG_MAIL_WELCOME, 'si');
+    if (!antes && String(readConfig_()[CONFIG_MAIL_WELCOME] || '').trim()) fixes.push('Config ' + CONFIG_MAIL_WELCOME);
+  } catch (eConfig) { }
   return fixes;
 }
 
@@ -811,8 +844,9 @@ function watchdog() {
       if (trs[i].getHandlerFunction() === 'flushMailQueue_') { hay = true; break; }
     }
     if (!hay) {
-      ensureMailQueueTrigger_();
-      fixes.push('trigger mails');
+      // Solo se anuncia como arreglado si de verdad se pudo crear: si la
+      // creacion falla (cuota de triggers, autorizacion), lo deja a la vista.
+      if (ensureMailQueueTrigger_()) fixes.push('trigger mails');
     }
   } catch (eTrigger) { }
   try { configureDriveBackupTrigger_(); } catch (eBackup) { }
@@ -837,6 +871,22 @@ function ensureWatchdogTrigger_() {
 // Trigger cada minuto. nowMs opcional para pruebas: la gracia es lo que evita
 // mandar la bienvenida a quien la esta cambiando.
 function flushMailQueue_(nowMs) {
+  // Un solo flush por vez: el trigger por minuto puede solaparse con el
+  // watchdog o con dos corridas del mismo handler y mandar dos veces el mismo
+  // pendiente (MailApp a veces despacha con segundos de diferencia).
+  var lock = null;
+  try { lock = LockService.getScriptLock(); } catch (eLock0) { }
+  var locked = false;
+  try { if (lock) locked = !!lock.tryLock(5); } catch (eLock) { }
+  if (!locked) return { sent: 0, lock: 'ocupado' };
+  try {
+    return flushMailQueueLocked_(nowMs);
+  } finally {
+    try { if (lock) lock.releaseLock(); } catch (eRel) { }
+  }
+}
+
+function flushMailQueueLocked_(nowMs) {
   try { runPendingRebuilds_(); } catch (eRb) { }
   var now = nowMs == null ? Date.now() : Number(nowMs);
   var cfg;
@@ -3125,6 +3175,10 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       scheduleStudentMail_(signups, fresh, s, (plan.action === 'change' ? talk : null), slots, talksById, cfg, plan.action);
     } catch (eMail) { }
     invalidateSignupsCache_();
+    // La inscripcion del alumno tambien cambia Reporte y Alumnos (hojas
+    // derivadas): queda marcada y la corro el trigger, que unicamente hace
+    // un trabajo para el grupo de cambios.
+    scheduleRebuilds_();
     return {
       ok: true,
       message: message,
@@ -3652,7 +3706,10 @@ function apiAdminAddStudent(cred, data) {
       var talkById = {};
       for (var i = 0; i < talks.length; i++) talkById[String(talks[i].id)] = talks[i];
       var signups = readSignups_();
-      var counts = countByTalk_(signups);
+      // El cupo se cuenta como para el alumno: las filas de ensayo no bloquean
+      // en el evento real.
+      var cfg = readConfig_();
+      var counts = cupoCounts_(signups, cfg);
       var bySlot = {};
       var mine = {};
       for (var m = 0; m < signups.length; m++) {
@@ -3765,7 +3822,7 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       if (Number(talk.slot_id) !== Number(current.slot_id)) return { ok: false, message: 'Solo se puede mover dentro del mismo horario.' };
       if (talk.ciclo !== current.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
       if (String(talk.id) === String(current.talk_id)) return { ok: true, changed: false };
-      var counts = countByTalk_(signups);
+      var counts = cupoCounts_(signups, readConfig_());
       if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
       for (var k = 0; k < signups.length; k++) {
         if (signups[k].emailKey === current.emailKey && String(signups[k].talk_id) === String(talk.id)) {
@@ -3889,17 +3946,24 @@ function apiAdminDrill(cred, n, talkId) {
     var ms = [];
     var okCount = 0;
     var fallas = {};
-    for (var k = 1; k <= total; k++) {
-      var email = marca + k + '@secundariosalsipuedes.edu.ar';
-      var t0 = Date.now();
-      var r = registerLocked_(email, 'Alumno Simulacro', '2°A', talk.id, 'Simulacro', '', '');
-      ms.push(Date.now() - t0);
-      if (r && r.ok) okCount++;
-      else {
-        var key = (r && r.message) || 'sin mensaje';
-        fallas[key] = (fallas[key] || 0) + 1;
+    // La tanda completa va bajo un solo lock: es exactamente lo que vivira
+    // una fila real de chicos, y evita que un registro suelto del panel se
+    // cuele entre dos altas del simulacro con datos a mitad de relectura.
+    var tanda = withScriptLock_(ADMIN_LOCK_MS * 10, function () {
+      for (var k = 1; k <= total; k++) {
+        var email = marca + k + '@secundariosalsipuedes.edu.ar';
+        var t0 = Date.now();
+        var r = registerLocked_(email, 'Alumno Simulacro', '2°A', talk.id, 'Simulacro', '', '');
+        ms.push(Date.now() - t0);
+        if (r && r.ok) okCount++;
+        else {
+          var key = (r && r.message) || 'sin mensaje';
+          fallas[key] = (fallas[key] || 0) + 1;
+        }
       }
-    }
+      return true;
+    });
+    if (tanda && tanda.busy) return { ok: false, busy: true, message: BUSY_MESSAGE };
     var borradas = drillCleanup_(marca);
     ms.sort(function (a, b) { return a - b; });
     var suma = 0;
@@ -4641,6 +4705,10 @@ function derivedFingerprint_() {
 
 function maybeRebuildReport_() {
   try {
+    // Si hay trabajo marcado por el trigger (altas, cambios, borrados), se
+    // corre ya: el admin no debería mirar hojas viejas hasta la corrida de
+    // reloj.
+    if (runPendingRebuilds_()) return;
     var cache = CacheService.getScriptCache();
     var fp = derivedFingerprint_();
     if (cache.get('report_fp') === fp) return;

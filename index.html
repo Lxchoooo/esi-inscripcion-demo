@@ -2510,7 +2510,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v56';
+    var APP_VERSION = 'v57';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -3423,12 +3423,15 @@
       if (!v.ok) return { ok: false, message: STUDENT_MSG[v.error] || 'Datos inválidos.' };
       var ids = d.talkIds || [];
       if (!ids.length) return { ok: false, message: 'Elegí al menos una charla.' };
-      var signups = demoSignups();
+      var signups0 = demoSignups();
+      // Igual que cupoCounts_ en el backend: si el evento no esta en modo
+      // ensayo, las filas de prueba no bloquean cupo.
+      var sinPrueba = demoEvent().modo_prueba ? signups0 : signups0.filter(function (x) { return !x.prueba; });
       var counts = {};
-      for (var i = 0; i < signups.length; i++) counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
+      for (var i = 0; i < sinPrueba.length; i++) counts[sinPrueba[i].talk_id] = (counts[sinPrueba[i].talk_id] || 0) + 1;
       var bySlot = {};
-      for (var m = 0; m < signups.length; m++) {
-        if (EsiClient.normalizeEmail(signups[m].email) === v.email) bySlot[Number(signups[m].slot_id)] = true;
+      for (var m = 0; m < sinPrueba.length; m++) {
+        if (EsiClient.normalizeEmail(sinPrueba[m].email) === v.email) bySlot[Number(sinPrueba[m].slot_id)] = true;
       }
       for (var j = 0; j < ids.length; j++) {
         var talk = DEMO_TALKS.filter(function (x) { return x.id === String(ids[j]); })[0];
@@ -3438,15 +3441,16 @@
         if ((counts[talk.id] || 0) >= talk.cupo) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
         bySlot[Number(talk.slot_id)] = true;
         counts[talk.id] = (counts[talk.id] || 0) + 1;
-        signups.push({
+        signups0.push({
           id: 'd' + Date.now() + '_' + Math.floor(Math.random() * 100000), ts: Date.now(),
           email: v.email, emailKey: v.email, nombre: v.nombre, apellido: v.apellido, curso: v.curso,
           ciclo: v.ciclo, slot_id: Number(talk.slot_id), talk_id: String(talk.id),
           recordatorio: false, prueba: demoEvent().modo_prueba
         });
       }
-      demoWrite('esi_demo_signups', signups);
-      return { ok: true, added: ids.length };
+      demoWrite('esi_demo_signups', signups0);
+      // Igual que el backend real: added es la lista de charlas nuevas.
+      return { ok: true, added: ids.map(function (x) { return String(x); }) };
     }
     function demoAdminCorrectStudent(email, data) {
       var key = EsiClient.normalizeEmail(email);
@@ -4383,21 +4387,32 @@
     // por ejemplo) y actualiza el cache del dispositivo.
     function sRefreshQuiet_() {
       var token = sSessionToken_();
-      if (sState.busy || !token) return;
+      var loginToken = sState.login || '';
+      if (sState.busy || (!token && !loginToken)) return;
       var email = sState.email || sState.student.email || '';
       if (!email) return;
       sState.busy = true;
-      call('apiGetData', [email, sState.nombre, sState.curso, token, sState.apellido || ''])
+      call('apiGetData', [email, sState.nombre, sState.curso, token, sState.apellido || '', loginToken])
         .then(function (resp) {
           sState.busy = false;
           if (resp && resp.ok) {
             sState.student = resp.student || sState.student;
             sState.data = resp.data;
+            if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
+            if (resp.session) sSetSession_(resp.session);
             lsSet('esi_last_data', JSON.stringify({
               ts: Date.now(), student: sState.student, data: resp.data,
               recordatorio: !!resp.recordatorio
             }));
-            sRender();
+            // Revalidar el estado confirmado con datos frescos: el alumno que
+            // completa las tres franjas por otro lado debe ir a la pantalla
+            // Listo, no quedarse cebando en la lista vieja.
+            sSyncConfirmed_();
+            if (sState.confirmed) {
+              sRenderDone_();
+            } else {
+              sRender();
+            }
           }
         })
         .catch(function () { sState.busy = false; });
@@ -4943,7 +4958,10 @@
           if (resp.needsLogin || resp.expired) {
             sState.session = null;
             sState.login = null;
-            sSetSession_(null);
+            // Se va todo, cache del device incluido: puede ser el celular
+            // compartido de la familia y esos datos ya no son de quien lo
+            // tiene en la mano.
+            sClearStudentSession_();
             toast(resp.message || 'Tu sesión venció: entrá de nuevo con tu mail institucional.', 'err');
             showScreen(S_SCREENS, 's-screen-login');
             return;
@@ -5054,6 +5072,11 @@
           sState.busy = false;
           var cached = null;
           try { cached = JSON.parse(lsGet('esi_last_data') || 'null'); } catch (e) { cached = null; }
+          if (cached && cached.data && cached.student) {
+            // El cache del device es unico en celulares compartidos: solo sirve
+            // si es del mismo alumno que estan mirando.
+            if (sState.email && cached.student.email && cached.student.email !== sState.email) cached = null;
+          }
           if (cached && cached.data && cached.student) {
             sState.student = cached.student;
             sState.nombre = cached.student.nombre || sState.nombre;
@@ -5493,6 +5516,13 @@
             showScreen(S_SCREENS, 's-screen-mail');
           })
           .catch(function () {
+            // Sin red no es igual que sesion vencida: si el boot ya dibujo el
+            // cache del propio alumno, queda en su pantalla y el banner avisa.
+            // Patear a login descartaba datos validos por un corte de wifi.
+            if (sState.data) {
+              sBanner('No pude actualizar: muestro lo guardado en este equipo.', 'err');
+              return;
+            }
             sBanner('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
             showScreen(S_SCREENS, 's-screen-mail');
           });
@@ -5706,6 +5736,7 @@
             return;
           }
           aData = resp;
+          aUpdatedAt = Date.now();
           aCacheSet_('data', resp, true);
           aRender();
           if (!silent) aBanner('Actualizado.', 'ok');
@@ -6221,7 +6252,8 @@
       if (!aMailPreview) { aLoadMailPreview(); aMailMsg_('Cargá la vista previa antes de enviar.', 'err'); return; }
       var pending = aMailPreview.pending == null ? aMailPreview.total : aMailPreview.pending;
       if (!pending) { aMailMsg_('No hay recordatorios pendientes.', 'ok'); return; }
-      if (!window.confirm('Se enviarán ' + pending + ' mails. ¿Continuar?')) return;
+      var plural = pending === 1 ? ' mail' : ' mails';
+      if (!window.confirm('Se enviarán ' + pending + plural + '. ¿Continuar?')) return;
       aMailBusy = true;
       $('btn-mail-send').disabled = true;
       $('btn-mail-preview').disabled = true;
@@ -6604,6 +6636,9 @@
             aBanner(resp.message || 'No se pudo marcar.', 'err');
             return;
           }
+          // El servidor ya la guardo: sin esto la marca queda pendiente en el
+          // telefono y se reintenta de mas al futuro.
+          aUnqueue_(signupId);
           aLoadReports();
         })
         .catch(function () {
@@ -8014,6 +8049,12 @@
         if (!raw) return null;
         var hit = JSON.parse(raw);
         if (!hit || !hit.data || !hit.data.students) return null;
+        // Misma vida util que el resto del cache del device: pasadas 6 h el
+        // borrador de la lista de esa charla ya no sirve.
+        if (Date.now() - Number(hit.at || 0) > A_CACHE_TTL) {
+          lsDel(aTalkCacheKey_(talkId));
+          return null;
+        }
         return hit;
       } catch (e) { return null; }
     }
@@ -8663,16 +8704,13 @@
         showScreen(A_SCREENS, 'a-screen-panel');
         aKeepAwake_();
         aLoad(true);
+        // Reingreso con sesion guardada: sin esto el panel quedaba sin refresh
+        // automatico hasta que un logueo nuevo pasara por aLogin.
+        aStartAutoRefresh();
       } else {
         aDemoHint();
         showScreen(A_SCREENS, 'a-screen-gate');
       }
-
-      window.setInterval(function () {
-        if (document.visibilityState === 'visible' && adminCred && aData && !aBusy) {
-          aLoad(true);
-        }
-      }, 30000);
     }
 
     function initReveal() {
