@@ -10,14 +10,17 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: v47 publicada en `main` (panel `v47`, backend `v47`). Correcciones de
-  ronda 16: los horarios se leen del texto visible de la hoja
+- Estado: v48 publicada en `main` (panel `v48`, backend `v48`; deployment
+  activo `AKfycbwkl...` republicado a @65). Mejoras de ronda 16: los horarios
+  se leen del texto visible de la hoja
   (`getDisplayValues`, no del instante) porque las celdas de hora viven con
   fecha base 1899-12-30 y formatear por zona aplicaba el offset historico
   (mostraba `8:13` en vez de `10:30`); el logo del encabezado usa URL absoluta
-  a Pages para verse tambien en `/exec`. Ademas: un solo panel con la misma
+  a Pages para verse tambien en `/exec`; el alumno puede cerrar sesion con un
+  boton minimo al fondo de la pantalla de charlas, con doble toque
+  (`btn-alumno-salir`, `panel-exit`). Ademas: un solo panel con la misma
   clave para guias, preceptores y profes; pantalla "Listo para el evento" de
-  solo lectura con 9 controles; docs del dia; tests 238/0, smoke OK, CI y
+  solo lectura con 9 controles; docs del dia; tests 239/0, smoke OK, CI y
   Pages verdes. Backend real sin deployar; MailApp y dispositivo siguen sin
   probarse. De la ronda anterior: sesion que se borra al vencer, ticket
   consumido antes de emitir la sesion, asistencias encoladas antes de la
