@@ -2510,7 +2510,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v54';
+    var APP_VERSION = 'v55';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4553,6 +4553,20 @@
       if (el && !el.children.length) el.innerHTML = aSkeletonRows_();
     }
 
+    // La vista al reentrar: si ya completo las tres franjas, la pagina abre en
+    // "¡Ya estas inscripto!" y no en la lista con el boton Confirmar (que es
+    // como se inscribieron dos veces por accidente).
+    function sSyncConfirmed_() {
+      var d = sState.data;
+      if (!d) return;
+      var slots = d.slots || [];
+      var mine = d.mine || {};
+      sState.confirmed = !!slots.length && slots.every(function (s) {
+        var id = mine[Number(s.id)];
+        return id && sTalkById(id);
+      });
+    }
+
     function sMissingSlots() {
       var d = sState.data || {};
       var slots = d.slots || [];
@@ -5012,8 +5026,13 @@
               recordatorio: !!resp.recordatorio
             }));
             sBanner('');
-            showScreen(S_SCREENS, 's-screen-panel');
-            sRender();
+            sSyncConfirmed_();
+            if (sState.confirmed) {
+              showScreen(S_SCREENS, 's-screen-done');
+            } else {
+              showScreen(S_SCREENS, 's-screen-panel');
+              sRender();
+            }
           } else {
             sBanner(resp.message || 'No se pudo cargar.', 'err',
               'Reintentar', function () { sRetry_(); });
@@ -5040,8 +5059,13 @@
             sState.curso = cached.student.curso || sState.curso;
             sState.data = cached.data;
             sState.recordatorio = !!cached.recordatorio;
-            showScreen(S_SCREENS, 's-screen-panel');
-            sRender();
+            sSyncConfirmed_();
+            if (sState.confirmed) {
+              showScreen(S_SCREENS, 's-screen-done');
+            } else {
+              showScreen(S_SCREENS, 's-screen-panel');
+              sRender();
+            }
             sBanner('Sin conexión: te muestro lo último guardado. Revisá el wifi o los datos.', 'err',
               'Reintentar', function () { sRetry_(); });
             return;
@@ -5429,9 +5453,14 @@
           sState.curso = cachedBoot.student.curso || '';
           sState.data = cachedBoot.data;
           sState.recordatorio = !!cachedBoot.recordatorio;
-          showScreen(S_SCREENS, 's-screen-panel');
-          sRender();
+          sSyncConfirmed_();
           sBanner('Actualizado a ' + sBootCacheAge_(cachedBoot.ts) + '. Buscando novedades...', 'ok');
+          if (sState.confirmed) {
+            showScreen(S_SCREENS, 's-screen-done');
+          } else {
+            showScreen(S_SCREENS, 's-screen-panel');
+            sRender();
+          }
         }
         call('apiResumeSession', [token])
           .then(function (resp) {
@@ -5448,8 +5477,13 @@
                 recordatorio: !!resp.recordatorio
               }));
               sBanner('');
-              showScreen(S_SCREENS, 's-screen-panel');
-              sRender();
+              sSyncConfirmed_();
+              if (sState.confirmed) {
+                showScreen(S_SCREENS, 's-screen-done');
+              } else {
+                showScreen(S_SCREENS, 's-screen-panel');
+                sRender();
+              }
               return;
             }
             sClearStudentSession_();

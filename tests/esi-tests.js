@@ -883,6 +883,13 @@ t('r22: el watchdog repone hojas y triggers muertos y es idempotente', () => {
   assertEq(createdTriggers.length, 1, 'no duplica triggers');
 });
 
+t('r23: al reentrar ya inscripto abre "¡Ya estas inscripto!" y no la lista con Confirmar', () => {
+  if (!/function sSyncConfirmed_\(\)/.test(panelSrc)) throw new Error('no hay sync de confirmed');
+  const calls = panelSrc.split('sSyncConfirmed_();').length - 1;
+  assertEq(calls, 4, 'boot-cache, resume, sEnterPanel y cache offline');
+  if (panelSrc.split('s-screen-done\')').length - 1 < 4) throw new Error('los reingresos no abren el done');
+});
+
 t('Code.gs issues a session token that replaces the pin on later calls', () => {
   const props = { ADMIN_PIN: '9876' };
   const fakeProps = {
