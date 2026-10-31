@@ -1505,7 +1505,9 @@ t('Code.gs both keys read the same views', () => {
 });
 
 t('Code.gs caches reads and invalidates on writes', () => {
-  if (!/DATA_CACHE_TTL\s*=\s*12/.test(codeSrc)) throw new Error('cache ttl missing');
+  if (!/DATA_CACHE_TTL\s*=\s*\d+/.test(codeSrc)) throw new Error('cache ttl missing');
+  const ttl = Number((codeSrc.match(/DATA_CACHE_TTL\s*=\s*(\d+)/) || [])[1]);
+  if (!(ttl >= 10 && ttl <= 90)) throw new Error('ttl fuera de rango: ' + ttl);
   if (!/function readSignupsCached_/.test(codeSrc)) throw new Error('cached signups missing');
   if (!/function readStudentsCached_/.test(codeSrc)) throw new Error('cached students missing');
   if (!/function invalidateDataCache_/.test(codeSrc)) throw new Error('invalidate missing');
@@ -3459,12 +3461,28 @@ t('auditoria: las filas de ensayo no gastan cupo real', () => {
   assertEq(api.cupoCounts_([], null).B1, undefined, 'lista vacia');
 });
 
-t('auditoria: el reporte se rehace como mucho cada 15 segundos', () => {
-  if (codeSrc.indexOf('function maybeRebuildReport_') < 0) throw new Error('falta el throttle');
-  if (!/cache\.put\('report_rebuild', '1', 15\)/.test(codeSrc)) throw new Error('no usa CacheService con 15 s');
-  const api = codeSrc.slice(codeSrc.indexOf('function apiRegister'), codeSrc.indexOf('function registerLocked_'));
-  if (api.indexOf('maybeRebuildReport_()') < 0) throw new Error('apiRegister no usa el throttle');
-  if (/rebuildReport_\(\)/.test(api)) throw new Error('apiRegister rehace el reporte en cada alta');
+t('las hojas derivadas se rehacen solo si cambio algo y no en el alta', () => {
+  if (codeSrc.indexOf('function derivedFingerprint_') < 0) throw new Error('falta la huella');
+  const alta = codeSrc.slice(codeSrc.indexOf('function apiRegister'), codeSrc.indexOf('function registerLocked_'));
+  if (alta.indexOf('maybeRebuildReport_') >= 0) throw new Error('apiRegister sigue rehaciendo hojas');
+
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'setup, apiAdminGetData, apiRegister');
+  api.setup();
+  const reporte = services.sheets.Reporte;
+  if (!reporte) throw new Error('falta Reporte');
+  // Primera lectura: guarda la huella (y rehace una vez).
+  api.apiAdminGetData('1111');
+  // Marca que solo se pierde si la hoja se reescribe.
+  reporte.data[0][0] = 'MARCA';
+  api.apiAdminGetData('1111');
+  assertEq(reporte.data[0][0], 'MARCA', 'sin cambios no reescribe');
+  // Un alta real fuerza la reescritura (y el alta en si no la hace).
+  const inscripcion = api.apiRegister('nuevo@secundariosalsipuedes.edu.ar', 'Nuevo Alumno', '4°Turismo', 'O1');
+  assertEq(inscripcion.ok, true, 'alta ok: ' + inscripcion.message);
+  assertEq(reporte.data[0][0], 'MARCA', 'el alta no rehace la hoja');
+  api.apiAdminGetData('1111');
+  assertEq(reporte.data[0][0], 'ID', 'con un alta nueva si reescribe');
 });
 
 t('auditoria: el respaldo aguanta filas de distinto ancho', () => {
