@@ -48,7 +48,9 @@ var ROLE_ADMIN = 'admin';
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
 var BACKEND_VERSION = 'v43';
-var DATA_CACHE_TTL = 12;
+// Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
+// TTL solo evita releer 5 hojas en cada toque del panel.
+var DATA_CACHE_TTL = 45;
 var BUSY_MESSAGE = 'El servidor está ocupado: esperá unos segundos y probá de nuevo.';
 var REGISTER_LOCK_MS = 8000;
 var A_MARK_BATCH_MAX = 100;
@@ -2522,8 +2524,8 @@ function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, login
   var resp = withScriptLock_(REGISTER_LOCK_MS, function () {
     return registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken);
   });
-  if (resp && resp.busy) return resp;
-  if (resp && resp.ok) maybeRebuildReport_();
+  // La inscripcion del alumno no rehace hojas derivadas: eran dos hojas
+  // enteras por cada alta y el alumno esperaba varios segundos de mas.
   return resp;
 }
 
@@ -3954,13 +3956,35 @@ var ALUMNOS_HEADERS = ['Ciclo', 'Curso', 'Apellido', 'Nombre', 'Mail', 'Horario'
 
 // El reporte es cosmetico (los numeros salen de Signups) y reescribirlo en cada
 // inscripcion cuesta una hoja entera. Se refresca como mucho cada 15 segundos.
+// Huella barata de lo que alimenta las hojas derivadas: si nada cambio, no se
+// reescriben.
+function derivedFingerprint_() {
+  try {
+    var signups = readSignupsCached_();
+    var presentes = 0;
+    var last = '';
+    for (var i = 0; i < signups.length; i++) {
+      if (signups[i].presente) presentes++;
+      last = String(signups[i].id || '');
+    }
+    var talks = readTalksCached_();
+    var cupos = 0;
+    for (var t = 0; t < talks.length; t++) cupos += Number(talks[t].cupo) || 0;
+    return signups.length + ':' + presentes + ':' + last + ':' + talks.length + ':' + cupos
+      + ':' + (isOpen_(readConfigCached_()) ? '1' : '0');
+  } catch (e) {
+    return 'sin-datos';
+  }
+}
+
 function maybeRebuildReport_() {
   try {
     var cache = CacheService.getScriptCache();
-    if (cache.get('report_rebuild')) return;
-    cache.put('report_rebuild', '1', 15);
+    var fp = derivedFingerprint_();
+    if (cache.get('report_fp') === fp) return;
     rebuildReport_();
     try { rebuildAlumnos_(); } catch (e2) { }
+    cache.put('report_fp', fp, 21600);
   } catch (e) { }
 }
 
