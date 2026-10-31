@@ -3642,6 +3642,34 @@ t('ninguna pantalla arranca con el atributo hidden', () => {
   }
 });
 
+t('demo: la sesion sobrevive a cerrar y volver a abrir el navegador', () => {
+  // Simula una recarga: dos instancias del panel con el mismo localStorage.
+  const store = {};
+  const ls = {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v); },
+    removeItem: (k) => { delete store[k]; }
+  };
+  const boot = () => {
+    const win = { location: { search: '' }, localStorage: ls };
+    const doc = {
+      addEventListener: function () { },
+      body: { appendChild: function () { }, classList: { add: function () { }, toggle: function () { }, remove: function () { } } }
+    };
+    return new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
+  };
+  const mail = 'nueva@secundariosalsipuedes.edu.ar';
+  return boot().call('apiGetData', [mail, 'Nueva', '2°B', '', 'Gómez', '']).then((r1) => {
+    assertEq(r1.ok, true, 'primer ingreso');
+    if (!r1.session) throw new Error('no emitio sesion');
+    return boot().call('apiResumeSession', [r1.session]).then((r2) => {
+      if (r2.expired) throw new Error('el demo olvida la sesion al recargar: ' + r2.message);
+      assertEq(r2.ok, true, 'reanuda sin pedir mail');
+      assertEq(r2.student.email, mail, 'mismo alumno');
+    });
+  });
+});
+
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
   if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');
