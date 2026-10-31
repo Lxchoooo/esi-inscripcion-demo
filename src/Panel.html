@@ -2510,7 +2510,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v52';
+    var APP_VERSION = 'v53';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4370,6 +4370,37 @@
       out.textContent = 'Tu mail termina en ' + egreso + '.';
     }
 
+    // Edad del cache del device, para el cartel de "actualizado a ...".
+    function sBootCacheAge_(ts) {
+      var mins = Math.max(0, Math.round((Date.now() - Number(ts || 0)) / 60000));
+      if (mins < 1) return 'hace menos de 1 min';
+      return 'hace ' + mins + ' min';
+    }
+
+    // Refresh sin cartel: trae datos frescos (despues de un rechazo de cupo,
+    // por ejemplo) y actualiza el cache del dispositivo.
+    function sRefreshQuiet_() {
+      var token = sSessionToken_();
+      if (sState.busy || !token) return;
+      var email = sState.email || sState.student.email || '';
+      if (!email) return;
+      sState.busy = true;
+      call('apiGetData', [email, sState.nombre, sState.curso, token, sState.apellido || ''])
+        .then(function (resp) {
+          sState.busy = false;
+          if (resp && resp.ok) {
+            sState.student = resp.student || sState.student;
+            sState.data = resp.data;
+            lsSet('esi_last_data', JSON.stringify({
+              ts: Date.now(), student: sState.student, data: resp.data,
+              recordatorio: !!resp.recordatorio
+            }));
+            sRender();
+          }
+        })
+        .catch(function () { sState.busy = false; });
+    }
+
     function sBanner(text, type, actionLabel, actionFn) {
       var el = $('s-banner');
       if (!el) return;
@@ -4911,8 +4942,12 @@
             sState.confirmed = false;
             haptic_(10);
             sRenderChange(slotId, prevId, talkId);
+          } else {
+            sRender();
+            // Cupo rechazado en el servidor: los cupos de la vista pueden estar
+            // viejos por el cache. Traigo datos frescos en segundo plano.
+            if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
           }
-          else sRender();
         })
         .catch(function () {
           sState.busy = false;
@@ -5382,8 +5417,22 @@
 
       var token = sSessionToken_();
       if (token) {
-        showScreen(S_SCREENS, 's-screen-mail');
-        sBanner('Entrando...', 'ok');
+        // Caching: si hay datos guardados del device, el panel abre
+        // al instante y el resume va en segundo plano.
+        var cachedBoot = null;
+        try { cachedBoot = JSON.parse(lsGet('esi_last_data') || 'null'); } catch (e) { cachedBoot = null; }
+        if (cachedBoot && cachedBoot.data && cachedBoot.student) {
+          sState.email = cachedBoot.student.email || '';
+          sState.student = cachedBoot.student;
+          sState.nombre = cachedBoot.student.nombre || '';
+          sState.apellido = cachedBoot.student.apellido || '';
+          sState.curso = cachedBoot.student.curso || '';
+          sState.data = cachedBoot.data;
+          sState.recordatorio = !!cachedBoot.recordatorio;
+          showScreen(S_SCREENS, 's-screen-panel');
+          sRender();
+          sBanner('Actualizado a ' + sBootCacheAge_(cachedBoot.ts) + '. Buscando novedades...', 'ok');
+        }
         call('apiResumeSession', [token])
           .then(function (resp) {
             if (resp.ok) {
@@ -5394,6 +5443,10 @@
               sState.curso = resp.student.curso;
               sState.data = resp.data;
               sState.recordatorio = !!resp.recordatorio;
+              lsSet('esi_last_data', JSON.stringify({
+                ts: Date.now(), student: resp.student, data: resp.data,
+                recordatorio: !!resp.recordatorio
+              }));
               sBanner('');
               showScreen(S_SCREENS, 's-screen-panel');
               sRender();
@@ -5445,6 +5498,54 @@
     }
     function aSessionClear_() {
       lsDel(A_SESSION_KEY);
+    }
+
+    // Cache en el dispositivo del panel admin: la vista abre con los datos
+    // guardados de la ultima carga y la fresca llega de fondo. Los mails de
+    // los alumnos NUNCA quedan en el cache (solo la vista viva los usa).
+    var A_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 h: despues de eso no vale ni para orientar
+    function aCacheKey_(key) {
+      return 'esi_admin_cache_' + APP_VERSION + '_' + key;
+    }
+    function aCacheSet_(key, value, stripMails) {
+      if (TRANSPORT === 'demo') return;
+      try {
+        var copy = JSON.parse(JSON.stringify(value));
+        if (stripMails) {
+          if (copy.students) {
+            for (var i = 0; i < copy.students.length; i++) delete copy.students[i].email;
+          }
+          if (copy.list) {
+            for (var j = 0; j < copy.list.length; j++) delete copy.list[j].email;
+          }
+        }
+        lsSet(aCacheKey_(key), JSON.stringify({ at: Date.now(), data: copy }));
+      } catch (e) { }
+    }
+    function aCacheGet_(key) {
+      try {
+        var hit = JSON.parse(lsGet(aCacheKey_(key)) || 'null');
+        if (!hit || !hit.data) return null;
+        if (Date.now() - Number(hit.at) > A_CACHE_TTL) {
+          lsDel(aCacheKey_(key));
+          return null;
+        }
+        return hit;
+      } catch (e) {
+        return null;
+      }
+    }
+    function aClearAdminCaches_() {
+      try {
+        var storage = window.localStorage;
+        if (!storage || typeof storage.length !== 'number' || !storage.key) return;
+        var keys = [];
+        for (var i = 0; i < storage.length; i++) {
+          var k = storage.key(i);
+          if (k && k.indexOf('esi_admin_cache_') === 0) keys.push(k);
+        }
+        for (var j = 0; j < keys.length; j++) lsDel(keys[j]);
+      } catch (e) { }
     }
     var aMailPreview = null;
     var aConfigLoaded = false;
@@ -5533,6 +5634,7 @@
       aReleaseAwake_();
       if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
       aClearTalkCaches_();
+      aClearAdminCaches_();
       aData = null;
       $('gate-msg').textContent = msg || 'Sesión vencida. Entrá de nuevo.';
       $('gate-msg').style.display = 'block';
@@ -5546,6 +5648,17 @@
         showScreen(A_SCREENS, 'a-screen-gate');
         return;
       }
+      // Cache local primero: la lista abre sin esperar al servidor.
+      if (!aData) {
+        var hit = aCacheGet_('data');
+        if (hit) {
+          aData = hit.data;
+          aUpdatedAt = hit.at;
+          aRender();
+          aUpdateAges();
+          aBanner('Datos de hace ' + aOfflineAge_(hit.at) + '. Actualizando...', 'ok');
+        }
+      }
       aBusy = true;
       if (!silent) aBanner('Actualizando', 'ok');
       call('apiAdminGetData', [adminCred])
@@ -5557,8 +5670,10 @@
             return;
           }
           aData = resp;
+          aCacheSet_('data', resp, true);
           aRender();
           if (!silent) aBanner('Actualizado.', 'ok');
+          else aBanner('');
         })
         .catch(function () {
           aBusy = false;
@@ -5636,6 +5751,17 @@
       var talkId = sel && sel.value ? sel.value : aTalkId;
       if (!talkId) return;
       aTalkId = talkId;
+      // Cache local primero: el roster de esta charla abre al instante y la
+      // version fresca llega de fondo reemplazandolo.
+      if (!aTalkData) {
+        var hitT = aReadTalkCache_(talkId);
+        if (hitT) {
+          aTalkData = hitT.data;
+          aApplyQueued_(aTalkData);
+          aUpdatedAt = hitT.at;
+          aRenderTalk();
+        }
+      }
       btnLoading_('btn-refresh-charla', true);
       aSkeletonIfEmpty_('charla-list');
       call('apiAdminTalkRoster', [adminCred, talkId])
@@ -6105,6 +6231,14 @@
 
     function aLoadPending() {
       if (!adminCred) return;
+      // Cache local primero: la lista abre con lo guardado y refresca de fondo.
+      if (!aPendingData) {
+        var hit = aCacheGet_('pend');
+        if (hit) {
+          aPendingData = hit.data;
+          aRenderPending();
+        }
+      }
       btnLoading_('btn-refresh-pend', true);
       aSkeletonIfEmpty_('pend-list');
       call('apiAdminPending', [adminCred])
@@ -6115,12 +6249,22 @@
             return;
           }
           aPendingData = resp;
+          aCacheSet_('pend', resp, true);
           aUpdatedAt = Date.now();
           aUpdateAges();
           aRenderPending();
         })
         .catch(function () {
           btnLoading_('btn-refresh-pend', false);
+          if (!aPendingData) {
+            var hitE = aCacheGet_('pend');
+            if (hitE) {
+              aPendingData = hitE.data;
+              aRenderPending();
+              aBanner('Sin conexión. Mostrando datos guardados.', 'err');
+              return;
+            }
+          }
           aBanner('Sin conexión.', 'err');
         });
     }
@@ -7585,6 +7729,7 @@
       aReleaseAwake_();
       if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
       aClearTalkCaches_();
+      aClearAdminCaches_();
       aClearMarkQueue_();
       adminCred = '';
       aRole = 'admin';
