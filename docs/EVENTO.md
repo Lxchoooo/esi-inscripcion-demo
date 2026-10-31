@@ -250,9 +250,15 @@ cambia después del evento.
 | `Reporte` | Charlas con cupo, anotados, restantes y presentes, más un gráfico de barras | Solo, cuando el panel lee (cada 15 segundos) |
 | `Errors` | Errores del servidor, sin datos personales | Si algo falla |
 
-`Alumnos` y `Reporte` son de solo lectura: se reescriben solas desde
-`Signups`, así que no hace falta tocarlas ni sirven para editar. Si alguien
-les agrega una columna a mano, se pierde en la próxima actualización.
+`Alumnos` y `Reporte` se recalculan solas desde `Signups`, pero **se pueden
+editar**. Si agregan una columna al final (un tilde, una nota, una firma) el
+dato se conserva y se vuelve a ubicar en la fila del alumno aunque cambie el
+orden. Las filas escritas a mano que no salen de `Signups` quedan al final de
+la hoja.
+
+Lo único que no sobrevive es editar las **columnas propias** (curso, mail,
+charla, presentes): esas se recalculan en cada pasada. Si hay un dato mal, se
+corrige desde el panel.
 
 Los respaldos a Drive se guardan una vez por día y se conservan los últimos
 catorce. Las sesiones vencen solas a los siete días.
