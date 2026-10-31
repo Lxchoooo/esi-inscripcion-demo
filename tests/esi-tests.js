@@ -978,7 +978,7 @@ t('Panel carries the ISS identity and an accessible green palette', () => {
   for (const needle of ['brand-logo', 'Instituto Secundario Salsipuedes (ISS)',
     'ISS · Jornada ESI 2026', '<title>ISS · Jornada ESI 2026</title>',
     'aria-label="Inicio, Instituto Secundario Salsipuedes"',
-    'src="assets/logo.png"',
+    'src="https://lxchoooo.github.io/esi-inscripcion-demo/assets/logo.png"',
     '<span class="brand-school">Instituto Secundario Salsipuedes</span>']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
@@ -1037,14 +1037,24 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
   if (!/\.panel-head \{ flex-wrap: wrap; \}/.test(panelHtml)) throw new Error('panel head does not wrap');
 });
 
-function fakeSheet(name, headers, rows) {
+function fakeSheet(name, headers, rows, disp) {
+  // Emula lo que Sheets muestra en cada celda. Para los Dates (celdas de hora
+  // con fecha base 1899-12-30) la hoja muestra el HH:mm del serial, que es el
+  // instante en UTC; String(Date) reescribiria la hora con la zona local.
+  const displayOf = (x) => (x instanceof Date
+    ? ('0' + x.getUTCHours()).slice(-2) + ':' + ('0' + x.getUTCMinutes()).slice(-2)
+    : String(x == null ? '' : x));
   const sh = {
     name: name,
     data: [headers.slice()].concat((rows || []).map((r) => r.slice())),
+    disp: disp ? [headers.slice()].concat(disp.map((r) => r.slice())) : null,
     getLastColumn() { return sh.data.reduce((n, r) => Math.max(n, (r || []).length), 1); },
     getLastRow() { return sh.data.length; },
     getDataRange() {
-      return { getValues: () => sh.data.map((r) => r.slice()) };
+      return {
+        getValues: () => sh.data.map((r) => r.slice()),
+        getDisplayValues: () => (sh.disp || sh.data).map((r) => r.map(displayOf))
+      };
     },
     appendRow(row) { sh.data.push(row.slice()); },
     getRange(r, c, nr, nc) {
@@ -1056,6 +1066,19 @@ function fakeSheet(name, headers, rows) {
             for (let j = 0; j < (nc || 1); j++) {
               const cell = sh.data[r - 1 + i] || [];
               row.push(cell[c - 1 + j]);
+            }
+            out.push(row);
+          }
+          return out;
+        },
+        getDisplayValues: () => {
+          const src = sh.disp || sh.data;
+          const out = [];
+          for (let i = 0; i < (nr || 1); i++) {
+            const row = [];
+            for (let j = 0; j < (nc || 1); j++) {
+              const cell = src[r - 1 + i] || [];
+              row.push(displayOf(cell[c - 1 + j]));
             }
             out.push(row);
           }
@@ -3828,11 +3851,29 @@ t('r15: reportes y asistencia no pierden marcas y no se pisan', () => {
   if (!/aApplyQueuedReports_\(\);/.test(panelHtml)) throw new Error('aLoadReports no aplica la cola');
 });
 
-t('r15: las horas de la hoja respetan la zona del script', () => {
+t('r16: los horarios se leen como se ve la hoja, sin el offset de 1899', () => {
   if (/v\.getUTCHours\(\)/.test(codeSrc)) throw new Error('slotTime_ sigue usando UTC');
-  if (!/Utilities\.formatDate\(v, Session\.getScriptTimeZone\(\), 'HH:mm'\)/.test(codeSrc)) {
-    throw new Error('slotTime_ no formatea en la zona del script');
+  const rs = codeSrc.slice(codeSrc.indexOf('function readSlots_'), codeSrc.indexOf('function convertBool_'));
+  if (rs.indexOf('getDisplayValues()') < 0) throw new Error('readSlots_ no lee el texto visible de la hoja');
+  const st = codeSrc.slice(codeSrc.indexOf('function slotTime_'), codeSrc.indexOf('function readSlots_'));
+  if (st.indexOf("String(display == null ? '' : display)") < 0) throw new Error('slotTime_ no consulta el texto visible');
+  if (!/Utilities\.formatDate\(v, Session\.getScriptTimeZone\(\), 'HH:mm'\)/.test(st)) {
+    throw new Error('slotTime_ perdio el respaldo por zona del script');
   }
+  // Funcional: celda de hora con fecha base 1899 (valor crudo malo) cuyo
+  // texto visible en la hoja es el correcto. El mock de Utilities devuelve
+  // "13:30" a proposito: si iconica el display, el test falla.
+  const fake = new Date('1899-12-30T13:30:00Z');
+  const services = backendStub();
+  services.sheets.Slots = fakeSheet('Slots', ['id', 'nombre', 'inicio', 'fin', 'orden'],
+    [[1, '1ra', fake, fake, 1]], [[1, '1ra', '10:30', '11:20', 1]]);
+  const api = backendApi(services, 'readSlots_,slotTime_');
+  const slots = api.readSlots_();
+  if (slots[0].inicio !== '10:30' || slots[0].fin !== '11:20') {
+    throw new Error('no lee lo que se ve en la hoja: ' + slots[0].inicio + ' a ' + slots[0].fin);
+  }
+  if (api.slotTime_(fake, ' 12:30 ') !== '12:30') throw new Error('no normaliza el texto visible');
+  if (api.slotTime_('9:40', '') !== '09:40') throw new Error('perdio el respaldo de texto crudo');
 });
 
 t('r15: updateSessionsStudent_ busca el mail por encabezado', () => {
