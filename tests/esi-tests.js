@@ -1306,7 +1306,7 @@ t('El panel agrupa las secciones en un menú lateral', () => {
 t('El panel permite agregar un alumno con un formulario claro', () => {
   for (const needle of ['id="roster-one"', 'id="roster-mail"', 'id="roster-nombre"',
     'id="roster-apellido"', 'id="roster-anio"', 'id="roster-division"',
-    'id="roster-dni"', 'id="btn-roster-add"', 'Agregar a la lista',
+    'id="roster-dni"', 'id="btn-roster-add"', 'Agregar e inscribir',
     'Pegar varios alumnos de una vez', 'mail;apellido;nombre;curso;dni']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
@@ -4286,6 +4286,45 @@ t('r17: el borrado deja la marca y el trigger la consume una vez', () => {
   // El panel ve el total menos una (hay filas de semilla Ademas de las de Alumna).
   const data = api.apiAdminGetData(cred);
   assertEq(data.total, all.length - 1, 'el panel ve la fila borrada por fuera');
+});
+
+/* ==== r18: ficha del alumno, alta con charlas y faltantes claros ==== */
+
+t('r18: la ficha del alumno trae curso con año, DNI, charlas y mail', () => {
+  if (!/title: 'Ficha del alumno'/.test(panelSrc)) throw new Error('sin ficha del alumno');
+  if (!/data-dni="/.test(panelSrc)) throw new Error('sin DNI en el boton de fila');
+  if (!/data-charlas="/.test(panelSrc)) throw new Error('sin charlas en el boton de fila');
+  if (!/Año '/.test(panelSrc) || !/División '/.test(panelSrc)) throw new Error('sin año y division deesarrollados');
+  if (!/dni: dnis\[/.test(codeSrc)) throw new Error('el backend no manda el DNI en las filas');
+  const ficha = panelSrc.match(/function aShowMail_\([\s\S]*?\n    \}/);
+  if (!ficha) throw new Error('no se encontro la ficha');
+  if (ficha[0].indexOf('Copiar mail') < 0) throw new Error('la ficha perdio el copiar mail');
+});
+
+t('r18: el alta manual permite elegir charlas y encadena la inscripcion', () => {
+  for (const needle of ['id="roster-charla-1"', 'id="roster-charla-2"', 'id="roster-charla-3"',
+    'aRosterCharlasFill_', 'aRosterAddOk_', 'apiAdminAddStudent']) {
+    if (!panelHtml.includes(needle) && !panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  const alta = panelSrc.match(/function aRosterAdd_\([\s\S]*?\n    \}/);
+  if (!alta) throw new Error('no se encontro el alta');
+  if (alta[0].indexOf('apiAdminImportRoster') < 0 || alta[0].indexOf('apiAdminAddStudent') < 0) {
+    throw new Error('el alta con charlas debe usar lista + inscripcion');
+  }
+  const ok = panelSrc.match(/function aRosterAddOk_\(resp\) \{[\s\S]*?\n    \}/);
+  if (!ok || ok[0].indexOf("roster-charla-'") < 0) throw new Error('los selects no se limpian al terminar');
+});
+
+t('r18: la pestana de faltantes se explica y se llama Faltan charlas', () => {
+  if (!/Faltan charlas/.test(panelHtml)) throw new Error('sin el nombre claro');
+  if (!/todavía no eligieron las tres charlas/.test(panelHtml)) throw new Error('sin explicacion');
+});
+
+t('r18: los graficos de barras usan colores distintos y avisan cupo lleno', () => {
+  if (!/cfull/.test(panelSrc)) throw new Error('sin clase de cupo lleno');
+  if (!/c' \+ \(\(i % 3\) \+ 1\)/.test(panelSrc)) throw new Error('sin paleta rotante');
+  panelCss().indexOf('.bar-fill.c1') >= 0 || (() => { throw new Error('sin CSS de colores'); })();
+  if (panelCss().indexOf('.bar-fill.cfull') < 0) throw new Error('sin CSS de cupo lleno');
 });
 
 summary();
