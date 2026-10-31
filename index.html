@@ -2276,6 +2276,12 @@
             <button id="btn-mail-preview" class="btn secondary small" type="button">Vista previa</button>
             <button id="btn-mail-send" class="btn small" type="button">Enviar recordatorios</button>
           </div>
+          <div class="toolbar">
+            <label class="sr-only" for="mail-test-to">Mail para la prueba</label>
+            <input id="mail-test-to" type="email" inputmode="email" autocomplete="off" maxlength="120"
+              spellcheck="false" autocapitalize="none" placeholder="Tu mail, para probar">
+            <button id="btn-mail-test" class="btn secondary small" type="button">Mandar prueba</button>
+          </div>
           <div id="mail-send-msg" class="banner" role="status" aria-live="polite"></div>
         </div>
       </div>
@@ -4122,6 +4128,12 @@
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         return Promise.resolve(demoMailPreview());
       }
+      if (fn === 'apiAdminSendTestMail') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        var destT = String(a[1] || '').trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(destT)) return Promise.resolve({ ok: false, message: 'Poné un mail válido para la prueba.' });
+        return Promise.resolve({ ok: true, to: destT, subject: 'PRUEBA · Recordatorio', quota: 99 });
+      }
       if (fn === 'apiAdminSendReminders') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         var totalR = demoReminderRows_().length;
@@ -5778,6 +5790,28 @@
         })
         .catch(function () { aMailMsg_('Sin conexión.', 'err'); });
     }
+    function aSendTestMail() {
+      var input = $('mail-test-to');
+      var to = input ? String(input.value || '').trim() : '';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) {
+        aMailMsg_('Escribí un mail válido para la prueba.', 'err');
+        if (input) input.focus();
+        return;
+      }
+      btnLoading_('btn-mail-test', true);
+      call('apiAdminSendTestMail', [adminCred, to])
+        .then(function (resp) {
+          btnLoading_('btn-mail-test', false);
+          if (!resp.ok) { aMailMsg_(resp.message || 'No se pudo mandar la prueba.', 'err'); return; }
+          aMailMsg_('Prueba enviada a ' + resp.to + '. Revisá la bandeja y el spam; si está bien, mandá los recordatorios.', 'ok');
+          aLoadMailPreview();
+        })
+        .catch(function () {
+          btnLoading_('btn-mail-test', false);
+          aMailMsg_('Sin conexión.', 'err');
+        });
+    }
+
     function aSendReminders() {
       if (!adminCred || aMailBusy) return;
       if (!aMailPreview) { aLoadMailPreview(); aMailMsg_('Cargá la vista previa antes de enviar.', 'err'); return; }
@@ -5815,6 +5849,7 @@
               msg += ' Revisá: ' + short + '. Volvé a apretar Enviar para reintentarlos.';
             }
             aMailMsg_(msg, failed ? 'err' : 'ok');
+            aLoadMailPreview();
           })
           .catch(function () {
             aMailBusy = false;
@@ -7797,6 +7832,7 @@
       $('btn-save-config').addEventListener('click', aSaveConfig);
       $('btn-mail-preview').addEventListener('click', aLoadMailPreview);
       $('btn-mail-send').addEventListener('click', aSendReminders);
+      if ($('btn-mail-test')) $('btn-mail-test').addEventListener('click', aSendTestMail);
       $('btn-import-add').addEventListener('click', function () { aImport('agregar'); });
       $('btn-import-rep').addEventListener('click', function () { aImport('reemplazar'); });
       if ($('roster-anio')) $('roster-anio').addEventListener('change', aRosterDivisions_);
