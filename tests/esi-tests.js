@@ -4045,5 +4045,204 @@ t('r15: los campos de los filtros no se salen de la tarjeta', () => {
     });
 });
 
+/* ==== r16: avisos por mail (bienvenida con 2 min de gracia y cambios) ==== */
+
+function registerThreeSlots_(services, email) {
+  addStubTalk_(services);
+  const api = backendApi(services, 'issueLoginTicket_,apiRegister');
+  const out = [];
+  let session = '';
+  for (const talkId of ['B1', 'B2', 'B3']) {
+    const resp = api.apiRegister(email, 'Ana Gomez', '2°B', talkId, 'Gomez', session, '');
+    if (!resp.ok) throw new Error('no registro ' + talkId + ': ' + resp.message);
+    if (resp.session) session = resp.session;
+    out.push(resp);
+  }
+  return out;
+}
+
+// La cola de avisos necesita un MailApp que capture lo enviado. No entra en el
+// stub generico: hay tests que exigen que la cuota sea -1 sin MailApp.
+function enableMail_(services) {
+  if (!services.sentMails) services.sentMails = [];
+  services.MailApp = {
+    getRemainingDailyQuota: () => 100,
+    sendEmail: (opts) => { services.sentMails.push(opts); }
+  };
+  return services;
+}
+
+// En el stub hay una charla por franja. Para completar las tres basico y
+// para probar el cambio hace falta mas charlas: van antes de que el cache
+// se caliente.
+function addStubTalk_(services) {
+  services.sheets.Talks.data.push(['B5', 'Charla cuatro', 'basico', 1, 'Aula 4', 50, 'si']);
+  services.sheets.Talks.data.push(['B3', 'Charla tresB', 'basico', 3, 'Aula 5', 50, 'si']);
+}
+
+function setConfigValue_(services, key, value) {
+  services.sheets.Config.data.push([key, value]);
+}
+
+function queueRows_(services) {
+  const sh = services.sheets.MailQueue;
+  if (!sh) return [];
+  return sh.data.slice(1);
+}
+
+t('r16: la bienvenida se encola al completar las tres franjas y sale pasados los 2 minutos', () => {
+  const services = backendStub({});  enableMail_(services);
+
+  setConfigValue_(services, 'avisos_mail', 'si');
+  registerThreeSlots_(services, 'alumna@secundariosalsipuedes.edu.ar');
+  const rows = queueRows_(services);
+  assertEq(rows.length, 1, 'una fila en la cola');
+  assertEq(rows[0][4], 'bienvenida', 'tipo bienvenida');
+  assertEq(rows[0][5], 'pendiente', 'pendiente hasta la gracia');
+  assertEq(services.sentMails.length, 0, 'nada sale antes de la gracia');
+
+  const api = backendApi(services, 'flushMailQueue_');
+  const antes = api.flushMailQueue_(Date.now());
+  assertEq(antes.sent, 0, 'la gracia retiene el envio');
+  assertEq(services.sentMails.length, 0, 'no se mando nada todavia');
+
+  const despues = api.flushMailQueue_(Date.now() + 130000);
+  assertEq(despues.sent, 1, 'un mail enviado');
+  assertEq(services.sentMails.length, 1, 'MailApp recibio uno');
+  const mail = services.sentMails[0];
+  assertEq(mail.to, 'alumna@secundariosalsipuedes.edu.ar', 'destinatario');
+  if (String(mail.subject).indexOf('Jornada ESI 2026') < 0) throw new Error('sin asunto del evento');
+  const body = String(mail.body);
+  if (body.indexOf('Ana') < 0 || body.indexOf('Gomez') < 0) throw new Error('sin nombre y apellido');
+  if (body.indexOf('26.150') < 0) throw new Error('sin la ley de la ESI');
+  if (body.indexOf('102') < 0 || body.indexOf('144') < 0 || body.indexOf('0800-222-3444') < 0) throw new Error('sin las lineas de ayuda');
+  for (const titulo of ['Charla uno', 'Charla dos', 'Charla tres']) {
+    if (body.indexOf(titulo) < 0) throw new Error('sin la charla ' + titulo);
+  }
+  const enviada = queueRows_(services);
+  assertEq(enviada[0][5], 'enviado', 'quedo marcada como enviado');
+});
+
+t('r16: anotarse de a una no manda nada hasta completar', () => {
+  const services = backendStub({});
+  setConfigValue_(services, 'avisos_mail', 'si');
+  const api = backendApi(services, 'issueLoginTicket_,apiRegister');
+  let session = '';
+  for (const talkId of ['B1', 'B2']) {
+    const resp = api.apiRegister('alumna@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', talkId, 'Gomez', session, '');
+    if (!resp.ok) throw new Error('no registro ' + talkId + ': ' + resp.message);
+    if (resp.session) session = resp.session;
+    assertEq(queueRows_(services).length, 0, 'sin completar las tres no hay mail pendiente');
+  }
+});
+
+t('r16: cambiar charla dentro de la gracia actualiza la bienvenida y no manda dos mails', () => {
+  const services = backendStub({});
+  enableMail_(services);
+
+  setConfigValue_(services, 'avisos_mail', 'si');
+  addStubTalk_(services);
+  const api = backendApi(services, 'issueLoginTicket_,apiRegister');
+  let session = '';
+  for (const talkId of ['B1', 'B2', 'B3']) {
+    const resp = api.apiRegister('alumna@secundariosalsipuedes.edu.ar', 'Ana', '2°B', talkId, 'Gomez', session, '');
+    if (!resp.ok) throw new Error('no registro ' + talkId + ': ' + resp.message);
+    if (resp.session) session = resp.session;
+  }
+  // Cambia la charla del primer horario (B1 -> B5) dentro de la gracia.
+  const cambio = api.apiRegister('', '', '', 'B5', '', session, '');
+  if (!cambio.ok) throw new Error('no cambio: ' + cambio.message);
+  assertEq(queueRows_(services).length, 1, 'sigue en una fila, no se duplico');
+  const rows = queueRows_(services);
+  if (rows[0][4] !== 'bienvenida') throw new Error('el pendiente debe seguir siendo la bienvenida');
+  if (String(rows[0][8]).indexOf('Charla cuatro') < 0) throw new Error('la bienvenida pendiente no reflejo el cambio');
+  const flush = backendApi(services, 'flushMailQueue_');
+  flush.flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 1, 'un solo mail al final');
+});
+
+t('r16: cambiar charla despues de la bienvenida manda solo el cambio', () => {
+  const services = backendStub({});
+  enableMail_(services);
+
+  setConfigValue_(services, 'avisos_mail', 'si');
+  addStubTalk_(services);
+  const api = backendApi(services, 'issueLoginTicket_,apiRegister');
+  let session = '';
+  for (const talkId of ['B1', 'B2', 'B3']) {
+    const resp = api.apiRegister('alumna@secundariosalsipuedes.edu.ar', 'Ana', '2°B', talkId, 'Gomez', session, '');
+    if (!resp.ok) throw new Error('no registro ' + talkId + ': ' + resp.message);
+    if (resp.session) session = resp.session;
+  }
+  const flush = backendApi(services, 'flushMailQueue_');
+  flush.flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 1, 'bienvenida ya enviada');
+  const cambio = api.apiRegister('', '', '', 'B5', '', session, '');
+  if (!cambio.ok) throw new Error('no cambio: ' + cambio.message);
+  const rows = queueRows_(services);
+  assertEq(rows.length, 2, 'bienvenida enviada + cambio pendiente');
+  assertEq(rows[1][4], 'cambio', 'el pendiente es del tipo cambio');
+  const bodyCambio = String(rows[1][8]);
+  if (bodyCambio.indexOf('26.150') >= 0) throw new Error('el cambio no debe repetir el mail completo');
+  if (bodyCambio.indexOf('Charla cuatro') < 0) throw new Error('sin la charla nueva');
+  if (bodyCambio.indexOf('B5') >= 0 && bodyCambio.indexOf('es id del sistema') >= 0) {
+    throw new Error('no conviene exponer el id tecnico');
+  }
+  flush.flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 2, 'un mail de cambio, nada mas');
+  const changeMail = services.sentMails[1];
+  if (String(changeMail.subject).indexOf('Cambio') < 0) throw new Error('asunto del cambio');
+});
+
+t('r16: con los avisos apagados no hay cola ni envio', () => {
+  const services = backendStub({});
+  setConfigValue_(services, 'avisos_mail', 'no');
+  registerThreeSlots_(services, 'alumna@secundariosalsipuedes.edu.ar');
+  assertEq(queueRows_(services).length, 0, 'sin avisos, sin cola');
+  const flush = backendApi(services, 'flushMailQueue_');
+  assertEq(flush.flushMailQueue_(Date.now() + 130000).sent, 0, 'flush no manda');
+});
+
+t('r16: modo ensayo va a la casilla del remitente y el error marca intentos', () => {
+  const services = backendStub({});  enableMail_(services);
+
+  setConfigValue_(services, 'avisos_mail', 'si');
+  setConfigValue_(services, 'modo_prueba', 'si');
+  setConfigValue_(services, 'mail_remitente', 'staff@secundariosalsipuedes.edu.ar');
+  registerThreeSlots_(services, 'alumna@secundariosalsipuedes.edu.ar');
+  const rows = queueRows_(services);
+  assertEq(rows[0][3], 'staff@secundariosalsipuedes.edu.ar', 'redirect en modo ensayo');
+  // Forzar fallos: rompemos el mock y despues lo reponemos.
+  const realSend = services.MailApp.sendEmail;
+  services.MailApp.sendEmail = () => { throw new Error('quota'); };
+  const flush = backendApi(services, 'flushMailQueue_');
+  flush.flushMailQueue_(Date.now() + 130000);
+  flush.flushMailQueue_(Date.now() + 130000);
+  assertEq(queueRows_(services)[0][6], 2, 'dos intentos fallidos');
+  services.MailApp.sendEmail = realSend;
+  flush.flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 1, 'se recupera al reponer MailApp');
+});
+
+t('r16: setup crea MailQueue y deja los avisos prendidos, y el borrado la vacia', () => {
+  const services = backendStub({ ADMIN_PIN: '123456' });
+  const api = backendApi(services, 'setup,apiAdminErasePersonalData,apiAdminLogin');
+  api.setup();
+  const q = services.sheets.MailQueue;
+  if (!q || String(q.data[0][0]) !== 'id') throw new Error('MailQueue sin encabezado');
+  const cfg = {};
+  services.sheets.Config.data.slice(1).forEach((r) => { cfg[r[0]] = r[1]; });
+  if (convertStubBool(cfg.avisos_mail) !== true) throw new Error('avisos_mail debe arrancar en si');
+  const cred = api.apiAdminLogin('123456').token;
+  const resp = api.apiAdminErasePersonalData(cred, 'BORRAR');
+  if (!resp.ok) throw new Error('borrado: ' + resp.message);
+  assertEq(queueRows_(services).length, 0, 'la cola se vacia con el borrado');
+});
+
+function convertStubBool(v) {
+  const s = String(v == null ? '' : v).trim().toLowerCase();
+  return s === 'true' || s === 'si' || s === 'sí' || s === '1';
+}
+
 summary();
 process.exitCode = fail ? 1 : 0;
