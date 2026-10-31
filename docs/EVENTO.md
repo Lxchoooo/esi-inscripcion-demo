@@ -123,25 +123,31 @@ Se vuelve con `git revert`, nunca con `git reset` ni con `--force`: eso reescrib
 El envío de mails es lo único que nunca corrió de verdad. Se prueba una sola vez,
 con tu propio mail, y no se manda nada a los alumnos hasta verlo funcionar.
 
+El recordatorio le llega a **todos los inscriptos**, hayan tildado algo o no.
+
 1. En **Configuración**, revisá el remitente. Si queda vacío, el mail sale con la
    cuenta del instituto, que suele ser la correcta.
-2. Andá a la página del alumno y anotate en una charla con un mail de la lista del
-   curso. En la confirmación, tildá **Quiero recibir un mail de recordatorio**.
-3. Volvé al panel, sección de mails, y tocá **Vista previa**: muestra el texto y
-   cuánta cuota queda. Si no hay cuota, ahí se ve antes de intentar.
-4. Tocá **Enviar recordatorios**. La tanda es de veinte y nunca pasa de cuarenta
-   por día, así que con un alumno alcanza.
-5. Revisá tres cosas: que el mail llegue, que en la hoja `Mails` quede una fila y
-   que al tocar **Enviar recordatorios** otra vez no se duplique.
+2. Volvé al panel, sección de mails, y tocá **Vista previa**: muestra el texto,
+   cuántos inscriptos son y cuánta cuota queda.
+3. Escribí **tu mail** en el campo `Tu mail, para probar` y tocá **Mandar prueba**.
+   Llega con el asunto prefijado `PRUEBA ·` y no se anota en `Mails`, así que no
+   bloquea el envío real. Revisá bandeja y spam.
+4. Si la prueba está bien, tocá **Enviar recordatorios**. La tanda es de veinte y
+   al final lista los mails que fallaron para reintentar.
+5. Revisá que en la hoja `Mails` quede una fila por destinatario y que al tocar
+   **Enviar recordatorios** otra vez no se duplique.
 6. Mirá **Listo para el evento**: el control de mails tiene que seguir en verde y
    con la cuota descontada.
+
+Ojo con la cuota: una cuenta Gmail común permite unos 100 mails por día, así que
+con 500 inscriptos el envío se corta ese día y sigue al siguiente (los enviados
+quedan anotados). Con Google Workspace del colegio el tope es 1500 por día.
 
 Si no llega: revisá spam, que el remitente sea una cuenta con permiso para enviar
 y que los permisos de envío estén autorizados (los pide la primera ejecución de
 `setup()`). Sin cuota no hay reintento: se espera al día siguiente.
 
-Cuando termines la prueba, borrá esa inscripción desde **Arreglar datos** y que el
-alumno destilde el recordatorio si no lo quiere.
+La prueba no inscribe a nadie: no hay que borrar nada después.
 
 ## Simulacro de carga (antes del evento, sobre una copia)
 

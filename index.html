@@ -2326,10 +2326,7 @@
         <h2 class="intro" id="done-title">¡Ya estás inscripto!</h2>
       </div>
       <div id="done-list" class="card"></div>
-      <label class="sheet-check" style="margin:14px 0 0">
-        <input type="checkbox" id="done-recordatorio">
-        <span>Quiero recibir un mail de recordatorio</span>
-      </label>
+      <p class="hint-line" style="margin:14px 0 0">Te vamos a mandar un mail de recordatorio con tus charlas.</p>
       <div class="toolbar" style="margin-top:16px">
         <button id="btn-done-volver" class="btn" type="button">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 5v6h6"/></svg>
@@ -3911,7 +3908,6 @@
       var rows = [];
       for (var j = 0; j < order.length; j++) {
         var r = by[order[j]];
-        if (!r.recordatorio) continue;
         rows.push({
           email: r.email,
           nombre: demoGiven_(r.nombre || 'Alumno', r.apellido),
@@ -5779,7 +5775,7 @@
           if (!resp.ok) { aMailMsg_(resp.message || 'No se pudo preparar el recordatorio.', 'err'); return; }
           aMailPreview = resp;
           var pending = resp.pending == null ? resp.total : resp.pending;
-          var meta = pending + ' pendientes de ' + resp.total + ' destinatarios con recordatorio. ';
+          var meta = pending + ' pendientes de ' + resp.total + ' inscriptos. ';
           if (!resp.dedup) meta += 'Falta la hoja Mails: ejecutá setup(). ';
           meta += resp.quota < 0 ? 'El envío no está disponible en este entorno.' : 'Cuota restante: ' + resp.quota + ' mails.';
           if (resp.from) meta += ' Remitente: ' + resp.from + '.';

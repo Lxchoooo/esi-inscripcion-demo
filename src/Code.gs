@@ -426,7 +426,6 @@ function reminderRecipients_() {
   var out = [];
   for (var j = 0; j < order.length; j++) {
     var r = byEmail[order[j]];
-    if (!r.recordatorio) continue;
     var items = [];
     for (var k = 0; k < slots.length; k++) {
       var choice = r.bySlot[Number(slots[k].id)];

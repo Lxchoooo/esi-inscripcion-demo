@@ -1857,6 +1857,16 @@ t('apiAdminSendReminders dice que mails fallaron', () => {
   assertEq(r.done, true, 'termino igual');
 });
 
+t('el recordatorio va a todos los inscriptos, tilden o no', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  services.sheets.Signups.data[6][10] = false; // Carla no tildo el checkbox
+  const api = backendApi(services, 'apiAdminMailPreview');
+  const p = api.apiAdminMailPreview('1111');
+  assertEq(p.ok, true, 'preview ok');
+  assertEq(p.total, 3, 'incluye a quien no pidio el recordatorio');
+});
+
 t('apiAdminSendTestMail manda una sola prueba sin ensuciar Mails', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
@@ -2592,7 +2602,7 @@ t('apiRegister rejects a formula in the course and stores it canonical', () => {
   assertEq(row[4], '2°B', 'course canonical before write');
 });
 
-t('Reminder opt-in is stored per mail and filters recipients', () => {
+t('Reminder opt-in is stored per mail and no longer filters recipients', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
   const sh = services.sheets.Signups;
@@ -2603,14 +2613,14 @@ t('Reminder opt-in is stored per mail and filters recipients', () => {
   const got = api.apiGetData('', '', '', '', '', ticket);
   assertEq(got.recordatorio, false, 'existing opt-out returned');
   assertEq(api.apiResumeSession(got.session).recordatorio, false, 'resume returns opt-out');
-  assertEq(api.apiAdminMailPreview('1111').total, 2, 'only opted-in recipients');
+  assertEq(api.apiAdminMailPreview('1111').total, 3, 'reciben todos, tilden o no');
   const on = api.apiSetReminder(got.session, true);
   assertEq(on.ok, true, 'set reminder ok');
   assertEq(on.updated, 3, 'all rows for the mail updated');
-  assertEq(api.apiAdminMailPreview('1111').total, 3, 'opt-in adds recipient');
+  assertEq(api.apiAdminMailPreview('1111').total, 3, 'el opt-in no cambia el total');
   const off = api.apiSetReminder(got.session, false);
   assertEq(off.recordatorio, false, 'opt-out returned');
-  assertEq(api.apiAdminMailPreview('1111').total, 2, 'opt-out removes recipient');
+  assertEq(api.apiAdminMailPreview('1111').total, 3, 'el opt-out tampoco');
   assertEq(api.apiSetReminder('bad-token', true).ok, false, 'bad session rejected');
 });
 
@@ -2693,7 +2703,7 @@ t('Panel shows the /exec notice only on GitHub Pages', () => {
   if (!/function showPagesNotice_\(\)/.test(panelSrc) || !/github\\.io/.test(panelSrc)) throw new Error('pages detection missing');
 });
 
-t('Panel demo backend stores reminder opt-in and filters preview', () => {
+t('Panel demo backend stores reminder opt-in and lists every signup', () => {
   const store = {};
   const ls = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
   const win = { location: { search: '' }, localStorage: ls };
@@ -2716,13 +2726,13 @@ t('Panel demo backend stores reminder opt-in and filters preview', () => {
     assertEq(got.recordatorio, false, 'demo opt-out returned');
     return api.call('apiAdminMailPreview', ['demo']);
   }).then((p1) => {
-    assertEq(p1.total, 1, 'demo preview filters opt-in');
+    assertEq(p1.total, 2, 'el demo lista a todos los inscriptos');
     return api.call('apiSetReminder', [sess, true]);
   }).then((on) => {
     assertEq(on.ok, true, 'demo opt-in ok');
     return api.call('apiAdminMailPreview', ['demo']);
   }).then((p2) => {
-    assertEq(p2.total, 2, 'demo opt-in adds recipient');
+    assertEq(p2.total, 2, 'el opt-in no cambia el total');
   });
 });
 
