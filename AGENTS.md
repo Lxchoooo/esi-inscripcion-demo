@@ -10,24 +10,30 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: v49 en `main` (panel `v49`, backend `v49`; deployment
-  activo `AKfycbwkl...` republicado a @66). Avisos por mail a cada alumno
-  (ronda 17): al completar las tres franjas se encola en la hoja nueva
-  `MailQueue` un mail de bienvenida personalizado con nombre y apellido,
-  resumen de la ESI (Ley 26.150, lineas 102/144/0800-222-3444) y las charlas
-  elegidas con horario y lugar; sale pasado un dato de gracia de 2 minutos
-  (`MAIL_QUEUE_GRACE_MS`) con trigger cada 1 min
-  (`flushMailQueue_`, se autoinstala con flag `MAIL_QUEUE_TRIGGER_OK`), tope
-  20 envios por corrida y 5 reintentos antes de marcar `error`. Si el alumno
-  cambia una charla y la bienvenida ya salio, se manda solo una linea con el
-  cambio; si el mail todavia esta pendiente, se re-escribe la fila (no
-  duplica). Se apaga con el switch `avisos_mail` del panel de Config (default
-  `si`); en modo ensayo todo va a la casilla del remitente
-  (`queueDestination_`). El borrado de datos personales vacia la cola.
-  `setup()` crea la hoja `MailQueue` y deja `avisos_mail=si`; si el admin
-  demora el setup, el primer registro auto-repara la hoja. Tests 246/0,
-  smoke OK, CI y Pages verdes. Backend real sin deployar; MailApp y
-  dispositivo siguen sin probarse. Mejoras de ronda 16: los horarios
+- Estado: v50 en `main` (panel `v50`, backend `v50`; deployment
+  activo `AKfycbwkl...` republicado a @68). Ronda 18: borrado rapido en el
+  panel: Reporte y Alumnos no se reconstruyen dentro del alta o del borrado
+  (antes frenaban la respuesta); el borrado solo deja la marca
+  `rebuild_derived_pending` y la corrida del trigger de la cola la consume
+  bajo lock una vez por minuto. El borrado de inscripcion muestra banner de
+  estado (`wip`, dos pulsos) y actualiza la lista y el contador de cupo
+  localmente, sin pedir el panel entero. "Borrar alumno" ya no pide el mail
+  a mano: dentro de la hoja hay lista de inscriptos (ordenada por apellido,
+  con curso y cantidad de charlas) y un segundo paso con la eleccion
+  separada: borrar una sola charla con su confirmacion, o el alumno completo
+  (apiAdminDeleteStudent) con la suya; ambas aplican el update local y
+  re-render. "Avisos por mail" sigue la ronda 17. Tests 248/0, smoke OK, CI
+  y Pages verdes. Backend real sin deployar hasta la republicacion de esta
+  ronda; MailApp y dispositivo siguen sin probarse. De la ronda 17: avisos por
+  mail a cada alumno; la bienvenida (ESI, Ley 26.150, lineas 102/144/0800,
+  charlas con horario y lugar) sale como maximo 2 min despues de completar
+  las tres franjas (cola `MailQueue` + trigger cada 1 min, gracia
+  `MAIL_QUEUE_GRACE_MS`, tope 20 por corrida, 5 reintentos a `error`); si
+  cambia una charla con la bienvenida pendiente se re-escribe la fila sin
+  duplicar, y si ya salio, se manda un mail corto solo del cambio. Switch
+  `avisos_mail` en Config (default `si`); en modo ensayo va a la casilla del
+  remitente; el borrado de datos personales vacia la cola. Mejoras de ronda 16: los
+  horarios
   se leen del texto visible de la hoja
   (`getDisplayValues`, no del instante) porque las celdas de hora viven con
   fecha base 1899-12-30 y formatear por zona aplicaba el offset historico
