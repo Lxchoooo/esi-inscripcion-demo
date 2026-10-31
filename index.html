@@ -2304,6 +2304,7 @@
             <label for="cfg-zona">Zona horaria<input id="cfg-zona" type="text" spellcheck="false" placeholder="America/Argentina/Cordoba"></label>
             <label for="cfg-remitente">Remitente de los mails<input id="cfg-remitente" type="email" autocomplete="off" placeholder="Opcional: recordatorios@secundariosalsipuedes.edu.ar"></label>
             <label class="check-row" for="cfg-modo-prueba"><input id="cfg-modo-prueba" type="checkbox">Modo ensayo</label>
+            <label class="check-row" for="cfg-avisos-mail"><input id="cfg-avisos-mail" type="checkbox">Mail de bienvenida y avisos de cambio</label>
             <label class="check-row" for="cfg-backup"><input id="cfg-backup" type="checkbox">Respaldo automático cada 30 min</label>
           </div>
           <button id="btn-save-config" class="btn secondary small" type="button">
@@ -2349,7 +2350,7 @@
         <h2 class="intro" id="done-title">¡Ya estás inscripto!</h2>
       </div>
       <div id="done-list" class="card"></div>
-      <p class="hint-line" style="margin:14px 0 0">Te vamos a mandar un mail de recordatorio con tus charlas.</p>
+      <p class="hint-line" style="margin:14px 0 0">En un par de minutos te llega un mail con tu inscripción completa. Si después cambiás una charla, te avisamos por mail con el cambio.</p>
       <div class="toolbar" style="margin-top:16px">
         <button id="btn-done-volver" class="btn" type="button">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 5v6h6"/></svg>
@@ -2467,7 +2468,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v48';
+    var APP_VERSION = 'v49';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -3155,6 +3156,7 @@
         ev.remitente = sender;
       }
       if (v.modo_prueba != null) demoWrite('esi_demo_modo', !!v.modo_prueba);
+      if (v.avisos_mail != null) demoWrite('esi_demo_avisos', !!v.avisos_mail);
       if (v.backup_activo != null) demoWrite('esi_demo_backup', !!v.backup_activo);
       lsSet('esi_demo_event', JSON.stringify(ev));
       return {
@@ -3162,6 +3164,7 @@
         evento_abierto: demoOpen(),
         event: ev,
         mail_remitente: ev.remitente || '',
+        avisos_mail: demoRead('esi_demo_avisos', true),
         backup_activo: demoRead('esi_demo_backup', true)
       };
     }
@@ -4105,7 +4108,7 @@
       if (fn === 'apiAdminReports') return Promise.resolve(demoReports(demoRole_(a[0])));
       if (fn === 'apiAdminGetConfig') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
-        return Promise.resolve({ ok: true, evento_abierto: demoOpen(), event: demoEvent(), mail_remitente: demoEvent().remitente || '', backup_activo: demoRead('esi_demo_backup', true) });
+        return Promise.resolve({ ok: true, evento_abierto: demoOpen(), event: demoEvent(), mail_remitente: demoEvent().remitente || '', avisos_mail: demoRead('esi_demo_avisos', true), backup_activo: demoRead('esi_demo_backup', true) });
       }
       if (fn === 'apiAdminSetConfig') return Promise.resolve(demoAdminSetConfig(a[0], a[1]));
       if (fn === 'apiAdminStatus') return Promise.resolve(demoStatus());
@@ -6643,6 +6646,7 @@
         $('cfg-zona').value = evCfg.zona || EVENT_TZ;
         if ($('cfg-remitente')) $('cfg-remitente').value = d.mail_remitente || '';
         if ($('cfg-modo-prueba')) $('cfg-modo-prueba').checked = !!(d.event && d.event.modo_prueba);
+        if ($('cfg-avisos-mail')) $('cfg-avisos-mail').checked = d.avisos_mail !== false;
         if ($('cfg-backup')) $('cfg-backup').checked = d.backup_activo !== false;
         aConfigLoaded = true;
       }
@@ -7324,6 +7328,7 @@
         evento_zona: $('cfg-zona').value,
         mail_remitente: $('cfg-remitente') ? $('cfg-remitente').value : '',
         modo_prueba: !!($('cfg-modo-prueba') && $('cfg-modo-prueba').checked),
+        avisos_mail: !!($('cfg-avisos-mail') && $('cfg-avisos-mail').checked),
         backup_activo: !!($('cfg-backup') && $('cfg-backup').checked)
       }]).then(function (resp) {
         if (btn) btn.disabled = false;
