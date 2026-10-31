@@ -1597,10 +1597,22 @@ function isOpen_(cfg) {
   return v === 'abierto' || v === 'true';
 }
 
-function slotTime_(v) {
+function slotTime_(v, display) {
+  // Para el horario importa lo que se ve en la celda, no el instante. Las
+  // celdas de hora viven con fecha base 1899-12-30 y con esa fecha la zona del
+  // script aplica el offset historico (4:16:48), que movia "10:30" a "9:13".
+  var d = String(display == null ? '' : display).trim();
+  var m = d.match(/(\d{1,2}):(\d{2})/);
+  if (m) {
+    var hh = Number(m[1]);
+    var mm = Number(m[2]);
+    if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60) {
+      return ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2);
+    }
+  }
   if (Object.prototype.toString.call(v) === '[object Date]') {
-    // La hoja guarda las horas en la zona del script: con getUTCHours una
-    // franja de 10:30 en Buenos Aires salia 13:30.
+    // Sin texto visible: la hoja guarda las horas en la zona del script; con
+    // getUTCHours una franja de 10:30 en Buenos Aires salia 13:30.
     try {
       return Utilities.formatDate(v, Session.getScriptTimeZone(), 'HH:mm');
     } catch (e) {
@@ -1608,20 +1620,23 @@ function slotTime_(v) {
     }
   }
   var s = String(v == null ? '' : v).trim();
-  var m = s.match(/^(\d{1,2}):(\d{2})/);
+  m = s.match(/^(\d{1,2}):(\d{2})/);
   return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : s;
 }
 
 function readSlots_() {
-  var vals = sheet_(SLOTS_SHEET).getDataRange().getValues();
+  var sh = sheet_(SLOTS_SHEET);
+  var rng = sh.getDataRange();
+  var vals = rng.getValues();
+  var disp = rng.getDisplayValues();
   var slots = [];
   for (var i = 1; i < vals.length; i++) {
     if (vals[i][0] === '') continue;
     slots.push({
       id: Number(vals[i][0]),
       nombre: String(vals[i][1]),
-      inicio: slotTime_(vals[i][2]),
-      fin: slotTime_(vals[i][3]),
+      inicio: slotTime_(vals[i][2], disp[i][2]),
+      fin: slotTime_(vals[i][3], disp[i][3]),
       orden: Number(vals[i][4] || 0)
     });
   }
