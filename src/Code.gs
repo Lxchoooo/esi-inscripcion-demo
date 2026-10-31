@@ -47,7 +47,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v45';
+var BACKEND_VERSION = 'v46';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -2672,7 +2672,25 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       var slot = slotLabelFor_(slots, talk.slot_id);
       s.recordatorio = reminderOptIn_(fresh, s.email);
       s.prueba = convertBool_(cfg.modo_prueba);
-      appendSignupRow_(s, talk);
+      var nuevoId = appendSignupRow_(s, talk);
+      // La fila nueva se arma en memoria: releer la hoja entera costaba medio
+      // segundo de lock y frena a los que estan en la cola.
+      fresh = signups.slice();
+      fresh.push({
+        id: String(nuevoId),
+        ts: new Date(),
+        email: s.email,
+        emailKey: s.emailKey,
+        nombre: s.nombre,
+        apellido: s.apellido || '',
+        curso: s.curso,
+        ciclo: s.ciclo,
+        slot_id: Number(talk.slot_id),
+        talk_id: String(talk.id),
+        presente: false,
+        recordatorio: !!s.recordatorio,
+        prueba: !!s.prueba
+      });
       message = 'Listo, quedaste anotado.';
     } else if (plan.action === 'change') {
       var row = findSignupRow_(plan.signupId);
@@ -2684,6 +2702,16 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       sh.getRange(row, map.ts + 1).setValue(new Date());
       sh.getRange(row, map.talk_id + 1).setValue(talkId);
       if (map.presente >= 0) sh.getRange(row, map.presente + 1).setValue('');
+      fresh = signups.map(function (x) {
+        if (String(x.id) !== String(plan.signupId)) return x;
+        var copia = {};
+        for (var k in x) if (Object.prototype.hasOwnProperty.call(x, k)) copia[k] = x[k];
+        copia.ts = new Date();
+        copia.talk_id = String(talk.id);
+        copia.slot_id = Number(talk.slot_id);
+        copia.presente = false;
+        return copia;
+      });
       message = 'Cambiaste tu charla de ese horario a ' + talk.titulo + '.';
     } else {
       message = 'Ya estabas anotado.';
@@ -2700,7 +2728,8 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     } else if (ticket) {
       consumeLoginTicket_(loginToken);
     }
-    var fresh = readSignups_();
+    // fresh ya refleja el alta (insert) o el cambio, sin releer la planilla.
+    if (!fresh) fresh = signups;
     invalidateSignupsCache_();
     return {
       ok: true,
