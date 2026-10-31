@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v53';
+var BACKEND_VERSION = 'v54';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -719,7 +719,14 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
   }
   var items = itemsForEmail_(mineMap_(post, s.email), slots, talksById);
   var dest = queueDestination_(s.email, cfg);
-  if (!dest) { try { logAction_('mail_ko', '', 'sin casilla de ensayo'); } catch (e0) { } return; }
+  // Ensayo sin remitente: ni una fila ni nada. Antes el aviso se perdian en
+  // silencio (bug del 31/10). Ahora va a la casilla de quien se inscribio y
+  // queda logueado para que el admin lo vea.
+  if (!dest) {
+    dest = String(s.email || '').trim().toLowerCase();
+    if (!dest) return;
+    try { logAction_('mail_ensayo_alumno', s.email, 'ensayo sin remitente: la bienvenida va a la casilla del alumno'); } catch (eLog) { }
+  }
   var wasPending = upsertPendingMail_(dest, 'bienvenida', mailWelcomeSubject_(cfg), welcomeBody_(name, items, cfg));
   // Solo manda el cambio aparte si la bienvenida ya salio y el cambio no
   // rompe el horario seleccionado antes.
@@ -759,7 +766,9 @@ function ensureMailQueueTrigger_() {
   if (typeof ScriptApp === 'undefined') return;
   try {
     var props = PropertiesService.getScriptProperties();
-    if (props.getProperty('MAIL_QUEUE_TRIGGER_OK')) return;
+    // La bandera vieja creia que ya estaba y no miraba: si alguien borra el
+    // trigger, los mails dejarian de salir para siempre. Ahora se mira
+    // siempre: enumerar triggers es barato y se arregla solo.
     var triggers = ScriptApp.getProjectTriggers();
     for (var i = 0; i < triggers.length; i++) {
       if (triggers[i].getHandlerFunction() === 'flushMailQueue_') {
@@ -769,6 +778,59 @@ function ensureMailQueueTrigger_() {
     }
     ScriptApp.newTrigger('flushMailQueue_').timeBased().everyMinutes(1).create();
     props.setProperty('MAIL_QUEUE_TRIGGER_OK', '1');
+  } catch (e) { }
+}
+
+/* Watchdog: un trigger propio repone lo que se muere sin que nadie este
+   mirando: hojas del sistema borradas, el trigger de la cola de mails, el
+   del respaldo, y los rebuilds que quedaron marcados. Es la parte automatica
+   de setup(): repone la estructura, nunca toca datos. */
+function watchdogEnsureSheets_(ss) {
+  var fixes = [];
+  for (var name in EXPECTED_COLUMNS_) {
+    if (!Object.prototype.hasOwnProperty.call(EXPECTED_COLUMNS_, name)) continue;
+    try {
+      if (!ss.getSheetByName(name)) {
+        ensureSheet_(ss, name, EXPECTED_COLUMNS_[name], []);
+        fixes.push('hoja ' + name);
+      }
+    } catch (e) { }
+  }
+  return fixes;
+}
+
+function watchdog() {
+  var fixes = [];
+  try {
+    fixes = fixes.concat(watchdogEnsureSheets_(SpreadsheetApp.getActive()));
+  } catch (e0) { }
+  try {
+    var trs = ScriptApp.getProjectTriggers();
+    var hay = false;
+    for (var i = 0; i < trs.length; i++) {
+      if (trs[i].getHandlerFunction() === 'flushMailQueue_') { hay = true; break; }
+    }
+    if (!hay) {
+      ensureMailQueueTrigger_();
+      fixes.push('trigger mails');
+    }
+  } catch (eTrigger) { }
+  try { configureDriveBackupTrigger_(); } catch (eBackup) { }
+  try { runPendingRebuilds_(); } catch (eRebuild) { }
+  if (fixes.length) {
+    try { logAction_('watchdog_fix', 'panel', fixes.join(', ')); } catch (eLog) { }
+  }
+  return { ok: true, fixes: fixes };
+}
+
+function ensureWatchdogTrigger_() {
+  if (typeof ScriptApp === 'undefined') return;
+  try {
+    var trs = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < trs.length; i++) {
+      if (trs[i].getHandlerFunction() === 'watchdog') return;
+    }
+    ScriptApp.newTrigger('watchdog').timeBased().everyMinutes(5).create();
   } catch (e) { }
 }
 
@@ -1218,6 +1280,16 @@ function checkTalks_(talks, slots) {
   return checkItem_('charlas', 'Charlas por franja', 'verde', resumen + ' charlas activas, todas las franjas cubiertas.');
 }
 
+function checkAvisos_(cfg) {
+  if (!convertBool_(cfg && cfg[CONFIG_MAIL_WELCOME])) {
+    return checkItem_('avisos', 'Avisos por mail', 'amarillo', 'Los avisos de bienvenida y cambio estan apagados: nadie va a recibir mails hasta que los enciendas.');
+  }
+  if (convertBool_(cfg && cfg[CONFIG_TEST_MODE]) && !String((cfg && cfg.mail_remitente) || '').trim()) {
+    return checkItem_('avisos', 'Avisos por mail', 'amarillo', 'Modo ensayo sin remitente: el bienvenida se manda a la casilla de cada inscripto. Si era tu propia inscripcion, miralo en tu casilla.');
+  }
+  return checkItem_('avisos', 'Avisos por mail', 'verde', 'Avisos de bienvenida y cambio activos.');
+}
+
 function checkMails_(mailOk, quota) {
   if (!mailOk) return checkItem_('mails', 'Mails', 'rojo', 'MailApp no responde: no van a salir los recordatorios.');
   var q = Number(quota);
@@ -1268,6 +1340,7 @@ function buildEventCheck_(ctx) {
     checkOpenAndDate_(c.cfg, c.expectedDate, c.expectedZone),
     checkTalks_(c.talks, c.slots),
     checkMails_(c.mailOk, c.quota),
+    checkAvisos_(c.cfg),
     checkSessions_(c.sessions, c.signups, Number(c.todayStart || 0), now),
     checkVersion_(String(c.version || ''), String(c.lastSetupAt || ''), String(c.lastSetupVersion || ''), c.appVersion)
   ];
@@ -1470,6 +1543,7 @@ function setup() {
   noteSetupRun_();
   configureBackupTrigger_();
   try { ensureMailQueueTrigger_(); } catch (eQ) { }
+  try { ensureWatchdogTrigger_(); } catch (eW) { }
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
   try { rebuildAlumnos_(); } catch (e) { }
@@ -3227,6 +3301,9 @@ function apiAdminLogin(pin, ua) {
     logAccess_(true, auth.role, ua);
     // Instala el trigger diario de respaldo la primera vez que entra un admin.
     try { configureDriveBackupTrigger_(); } catch (e) { }
+    // El watchdog es la parte automatica de setup(): sin el, si algo se cae
+    // mientras nadie mira, queda muerto hasta que el admin vuelva.
+    try { ensureWatchdogTrigger_(); } catch (eW) { }
     // Los datos del panel viajan en el mismo viaje que el login: el panel abria
     // con dos llamadas de ~2,5 s cada una.
     var data = adminDataFor_(auth);
