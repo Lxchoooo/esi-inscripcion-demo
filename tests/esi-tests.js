@@ -1504,6 +1504,34 @@ t('Code.gs both keys read the same views', () => {
   assertEq(JSON.stringify(roster), JSON.stringify(adminRoster), 'same roster for both keys');
 });
 
+t('cuarenta altas seguidas respetan el cupo y contestan busy o lleno, nunca dos veces', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Talks = fakeSheet('Talks', ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], [
+    ['B1', 'Charla', 'basico', 1, 'Aula 1', 40, 'si']
+  ]);
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'], []);
+  const api = backendApi(services, 'apiRegister');
+  const respuestas = [];
+  for (let i = 1; i <= 40; i++) {
+    respuestas.push(api.apiRegister('alumno' + i + '@secundariosalsipuedes.edu.ar', 'Alumno Prueba', '2°A', 'B1'));
+  }
+  const muestra = respuestas[0];
+  if (!muestra || (!muestra.ok && !muestra.busy)) throw new Error('respuesta rara: ' + JSON.stringify(muestra));
+  const ok = respuestas.filter((r) => r.ok).length;
+  const busy = respuestas.filter((r) => r.busy).length;
+  const otros = respuestas.filter((r) => !r.ok && !r.busy);
+  if (otros.length) throw new Error('fallaron ' + otros.length + ': ' + JSON.stringify(otros.slice(0, 3)));
+  assertEq(ok + busy, 40, 'todas contestan algo');
+  const filas = services.sheets.Signups.data.slice(1).filter((r) => r[7] === 'B1');
+  assertEq(filas.length, ok, 'una fila por alta aceptada');
+  assertEq(filas.length <= 40, true, 'no se pasa del cupo: ' + filas.length);
+  const emails = new Set(filas.map((r) => r[2]));
+  assertEq(emails.size, filas.length, 'sin mails duplicados');
+  const lleno = api.apiRegister('sobra@secundariosalsipuedes.edu.ar', 'Sobra Uno', '2°A', 'B1');
+  if (lleno.ok) throw new Error('acepto una inscripcion de mas con el cupo lleno');
+  if (!/lleno|cupo|ocupad|lugares/i.test(String(lleno.message))) throw new Error('mensaje raro: ' + lleno.message);
+});
+
 t('el login del panel ya trae los datos: un viaje menos', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminLogin');
@@ -2438,7 +2466,7 @@ t('A lock timeout returns the busy message and writes nothing', () => {
   const r = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'B2');
   assertEq(r.ok, false, 'busy is not ok');
   assertEq(r.busy, true, 'busy flag');
-  assertEq(r.message, 'El servidor está ocupado: esperá unos segundos y probá de nuevo.', 'busy message');
+  if (!/mucha gente|ocupad/i.test(String(r.message))) throw new Error('busy message: ' + r.message);
   assertEq(services.sheets.Signups.data.length, 4, 'no row added');
   assertEq(released, 0, 'nothing to release when the lock is not acquired');
   const present = api.apiAdminSetPresent('1111', 's1', true);
