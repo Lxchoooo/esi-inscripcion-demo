@@ -4224,6 +4224,23 @@ t('r16: modo ensayo va a la casilla del remitente y el error marca intentos', ()
   assertEq(services.sentMails.length, 1, 'se recupera al reponer MailApp');
 });
 
+t('r17: el borrado muestra estado, no repite el reload y Borrar queda blindado', () => {
+  if (!/aBanner\('Borrando\.\.\.', 'wip'\)/.test(panelSrc)) {
+    throw new Error('el borrado no muestra el banner de estado en vivo');
+  }
+  const fn = panelSrc.match(/function aDeleteConfirmed\(signupId\) \{[\s\S]*?\n    \}/);
+  if (!fn) throw new Error('no se encontro aDeleteConfirmed');
+  if (fn[0].indexOf('aLoad(true)') >= 0) {
+    throw new Error('borrar no debe pedi el panel entero de nuevo, afine el update local');
+  }
+  if (fn[0].indexOf('aRemoveSignupLocal_') < 0 || fn[0].indexOf('aRender()') < 0) {
+    throw new Error('el borrado deve aplicar el update local y re-render');
+  }
+  const local = panelSrc.match(/function aRemoveSignupLocal_\(signupId\) \{[\s\S]*?\n    \}/);
+  if (!local) throw new Error('no se encontro aRemoveSignupLocal_');
+  if (local[0].indexOf('anotados') < 0) throw new Error('el contador de la charla debe bajar un anotado');
+});
+
 t('r16: setup crea MailQueue y deja los avisos prendidos, y el borrado la vacia', () => {
   const services = backendStub({ ADMIN_PIN: '123456' });
   const api = backendApi(services, 'setup,apiAdminErasePersonalData,apiAdminLogin');
@@ -4243,6 +4260,33 @@ function convertStubBool(v) {
   const s = String(v == null ? '' : v).trim().toLowerCase();
   return s === 'true' || s === 'si' || s === 'sí' || s === '1';
 }
+
+/* ==== r17: borrado rapido y reproceso diferido de Reporte y Alumnos ==== */
+
+t('r17: el borrado deja la marca y el trigger la consume una vez', () => {
+  const services = backendStub({ ADMIN_PIN: '123456' });
+  enableMail_(services);
+  setConfigValue_(services, 'avisos_mail', 'si');
+  registerThreeSlots_(services, 'alumna@secundariosalsipuedes.edu.ar');
+  const api = backendApi(services, 'apiAdminLogin,apiAdminDeleteSignup,flushMailQueue_,apiAdminGetData');
+  const cred = api.apiAdminLogin('123456').token;
+  const all = services.sheets.Signups.data.slice(1);
+  const alumna = all.filter((r) => String(r[2]).indexOf('alumna@') === 0);
+  assertEq(alumna.length, 3, 'tres inscripciones de Alumna antes del borrado');
+  const resp = api.apiAdminDeleteSignup(cred, String(alumna[0][0]));
+  assertEq(resp.ok, true, 'borrado');
+  const props = services.PropertiesService.getScriptProperties();
+  assertEq(String(props.getProperty('rebuild_derived_pending')), 'si', 'la marca queda puesta');
+  // Reproducir el reproceso dos veces: la marca se consume y no vuelve.
+  api.flushMailQueue_(Date.now() + 130000);
+  assertEq(String(props.getProperty('rebuild_derived_pending')), 'no', 'la consumicion dejo la marca limpia');
+  assertEq(services.sheets.Signups.data.slice(1).filter((r) => String(r[2]).indexOf('alumna@') === 0).length, 2, 'dos inscripciones de Alumna despues del borrado');
+  api.flushMailQueue_(Date.now() + 130000);
+  assertEq(String(props.getProperty('rebuild_derived_pending')), 'no', 'sin marca no reprocesa');
+  // El panel ve el total menos una (hay filas de semilla Ademas de las de Alumna).
+  const data = api.apiAdminGetData(cred);
+  assertEq(data.total, all.length - 1, 'el panel ve la fila borrada por fuera');
+});
 
 summary();
 process.exitCode = fail ? 1 : 0;
