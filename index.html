@@ -2510,7 +2510,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v55';
+    var APP_VERSION = 'v56';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -2545,7 +2545,9 @@
     }
 
     function sClearStudentSession_() {
-      var keys = ['esi_session', 'esi_student', 'esi_student_data'];
+      // Hasta el cache del device se va: son datos del alumno que cerro, y
+      // el telefono puede cambiar de manos.
+      var keys = ['esi_session', 'esi_student', 'esi_student_data', 'esi_last_data'];
       for (var i = 0; i < keys.length; i++) {
         lsDel(keys[i]);
         ssDel(keys[i]);
@@ -5028,7 +5030,7 @@
             sBanner('');
             sSyncConfirmed_();
             if (sState.confirmed) {
-              showScreen(S_SCREENS, 's-screen-done');
+              sRenderDone_();
             } else {
               showScreen(S_SCREENS, 's-screen-panel');
               sRender();
@@ -5061,7 +5063,7 @@
             sState.recordatorio = !!cached.recordatorio;
             sSyncConfirmed_();
             if (sState.confirmed) {
-              showScreen(S_SCREENS, 's-screen-done');
+              sRenderDone_();
             } else {
               showScreen(S_SCREENS, 's-screen-panel');
               sRender();
@@ -5456,7 +5458,7 @@
           sSyncConfirmed_();
           sBanner('Actualizado a ' + sBootCacheAge_(cachedBoot.ts) + '. Buscando novedades...', 'ok');
           if (sState.confirmed) {
-            showScreen(S_SCREENS, 's-screen-done');
+            sRenderDone_();
           } else {
             showScreen(S_SCREENS, 's-screen-panel');
             sRender();
@@ -5479,7 +5481,7 @@
               sBanner('');
               sSyncConfirmed_();
               if (sState.confirmed) {
-                showScreen(S_SCREENS, 's-screen-done');
+                sRenderDone_();
               } else {
                 showScreen(S_SCREENS, 's-screen-panel');
                 sRender();

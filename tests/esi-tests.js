@@ -887,7 +887,19 @@ t('r23: al reentrar ya inscripto abre "¡Ya estas inscripto!" y no la lista con 
   if (!/function sSyncConfirmed_\(\)/.test(panelSrc)) throw new Error('no hay sync de confirmed');
   const calls = panelSrc.split('sSyncConfirmed_();').length - 1;
   assertEq(calls, 4, 'boot-cache, resume, sEnterPanel y cache offline');
-  if (panelSrc.split('s-screen-done\')').length - 1 < 4) throw new Error('los reingresos no abren el done');
+  // La pantalla Listo se llena s renders con sRenderDone_ (): si algun reingreso
+  // la muestra con showScreen a secas, la lista puede quedar con charlas viejas
+  // de otra sesion (bug visto en la ronda de busquio de errores post-r23).
+  const doneDirect = panelSrc.split("showScreen(S_SCREENS, 's-screen-done')").length - 1;
+  assertEq(doneDirect, 1, 'solo sRenderDone_ muestra la pantalla listo');
+  const doneFilled = panelSrc.split('sRenderDone_();').length - 1;
+  if (doneFilled < 4) throw new Error('los reingresos no rellenan la pantalla listo (' + doneFilled + ')');
+});
+
+t('r24: al cerrar sesion del alumno se va tambien el cache del device', () => {
+  if (!panelSrc.includes("'esi_session', 'esi_student', 'esi_student_data', 'esi_last_data'")) {
+    throw new Error('sClearStudentSession_ deja el cache del alumno en el telefono');
+  }
 });
 
 t('Code.gs issues a session token that replaces the pin on later calls', () => {
