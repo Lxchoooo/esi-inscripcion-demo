@@ -824,6 +824,15 @@ t('Panel keeps the admin session in localStorage and logs device on login', () =
   }
 });
 
+t('Panel caches data on device for fast open (stale-while-revalidate)', () => {
+  for (const needle of ["aCacheGet_('data')", "aCacheGet_('pend')",
+    'aCacheSet_(\'data\', resp, true)', 'aClearAdminCaches_();',
+    "lsGet('esi_last_data') || 'null'", 'sRefreshQuiet_();',
+    'aReadTalkCache_(talkId)', 'sBootCacheAge_']) {
+    if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+});
+
 t('Code.gs issues a session token that replaces the pin on later calls', () => {
   const props = { ADMIN_PIN: '9876' };
   const fakeProps = {
