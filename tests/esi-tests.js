@@ -833,6 +833,56 @@ t('Panel caches data on device for fast open (stale-while-revalidate)', () => {
   }
 });
 
+t('r21: ensayo sin remitente NO se pierde: la fila va al mail del alumno', () => {
+  const services = backendStub({});
+  enableMail_(services);
+  setConfigValue_(services, 'avisos_mail', 'si');
+  setConfigValue_(services, 'modo_prueba', 'si');
+  // La casilla del remitente NO esta configurada: hoy el aviso salta en
+  // silencio y el alto de prueba no recibe nada (bug reportado obs recens).
+  registerThreeSlots_(services, 'juana@secundariosalsipuedes.edu.ar');
+  const rows = queueRows_(services);
+  assertEq(rows.length, 1, 'la bienvenida no se pierde');
+  assertEq(rows[0][3], 'juana@secundariosalsipuedes.edu.ar', 'va a la casilla del que se inscribio');
+  const flush = backendApi(services, 'flushMailQueue_');
+  flush.flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 1, 'el ensayo recibe el mail');
+});
+
+t('r21: el trigger de mails se auto-repara si alguien lo borro', () => {
+  const created = [];
+  const services = backendStub({});
+  services.ScriptApp = {
+    getProjectTriggers: () => [],
+    newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => created.push(fn) }) }) })
+  };
+  const api = backendApi(services, 'ensureMailQueueTrigger_');
+  services.PropertiesService.getScriptProperties().setProperty('MAIL_QUEUE_TRIGGER_OK', '1'); // bandera pegada de una corrida vieja
+  api.ensureMailQueueTrigger_();
+  assertEq(created.length, 1, 'recrea el trigger aunque la bandera diga que ya existe');
+});
+
+t('r22: el watchdog repone hojas y triggers muertos y es idempotente', () => {
+  const services = backendStub({});
+  const createdTriggers = [];
+  services.ScriptApp = {
+    getProjectTriggers: () => [],
+    newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => createdTriggers.push(fn) }) }) })
+  };
+  delete services.sheets.Log;
+  delete services.sheets.MailQueue;
+  const api = backendApi(services, 'watchdog');
+  const r = api.watchdog();
+  assertEq(r.ok, true, 'watchdog ok');
+  if (!services.sheets.Log || !services.sheets.MailQueue) throw new Error('no repuso las hojas');
+  assertEq(createdTriggers.indexOf('flushMailQueue_') >= 0, true, 'recrea el trigger de mails');
+  // Segunda corrida: nada nuevo para arreglar.
+  services.ScriptApp.getProjectTriggers = () => [{ getHandlerFunction: () => 'flushMailQueue_' }].concat(createdTriggers.map((f) => ({ getHandlerFunction: () => f })));
+  const r2 = api.watchdog();
+  assertEq(r2.fixes.length, 0, 'segunda corrida no repasa nada');
+  assertEq(createdTriggers.length, 1, 'no duplica triggers');
+});
+
 t('Code.gs issues a session token that replaces the pin on later calls', () => {
   const props = { ADMIN_PIN: '9876' };
   const fakeProps = {
@@ -1234,11 +1284,15 @@ function loginTicketFor(services, email, nombre, curso, apellido) {
 function backendApi(services, names) {
   const src = names.split(',').map((n) => n.trim());
   const body = src.map((n) => n + ': ' + n).join(',');
-  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp', 'Session',
+  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp', 'Session', 'ScriptApp',
     codeSrc + '\nreturn {' + body + '};')(
     services.PropertiesService, services.LockService, services.CacheService,
     services.SpreadsheetApp, services.Utilities, services.MailApp,
-    services.Session || { getScriptTimeZone: () => 'UTC' });
+    services.Session || { getScriptTimeZone: () => 'UTC' },
+    services.ScriptApp || {
+      getProjectTriggers: () => [],
+      newTrigger: () => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => { } }), hourlyTrigger: () => ({ atHour: () => ({ nearHour: () => ({ create: () => { } }) }) }) }) })
+    });
 }
 
 t('Landing opens with the event poster and a primary call to action', () => {
@@ -3343,7 +3397,7 @@ const checkApi = new Function(
 );
 function checkCtx(over) {
   const base = {
-    cfg: { evento_abierto: 'abierto', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Cordoba', modo_prueba: 'no', backup_activo: 'si' },
+    cfg: { evento_abierto: 'abierto', evento_fecha: '2026-11-04', evento_zona: 'America/Argentina/Cordoba', modo_prueba: 'no', backup_activo: 'si', avisos_mail: 'si' },
     sheets: {},
     pins: { admin: '482913', guide: '731204' },
     trigger: { backup: true },
@@ -3384,9 +3438,9 @@ t('r15: el control previo da verde con todo en orden', () => {
   const r = api.buildEventCheck_(checkCtx());
   assertEq(r.ok, true, 'ok');
   assertEq(r.estado, 'verde', 'estado');
-  assertEq(r.controles.length, 9, 'nueve controles');
+  assertEq(r.controles.length, 10, 'diez controles');
   const ids = r.controles.map((c) => c.id).join(',');
-  assertEq(ids, 'hojas,respaldo,claves,prueba,inscripcion,charlas,mails,sesiones,version', 'orden');
+  assertEq(ids, 'hojas,respaldo,claves,prueba,inscripcion,charlas,mails,avisos,sesiones,version', 'orden');
   r.controles.forEach((c) => {
     if (!c.titulo || !c.detalle) throw new Error('control sin texto: ' + c.id);
   });
@@ -3467,7 +3521,7 @@ t('r15: las dos claves entran al control previo y no ven claves', () => {
   assertEq(sinClave.ok, false, 'sin clave');
   const conGuia = api.apiAdminEventCheck('731204', 'v42');
   assertEq(conGuia.ok, true, 'la segunda clave entra');
-  assertEq(conGuia.controles.length, 9, 'nueve controles');
+  assertEq(conGuia.controles.length, 10, 'diez controles');
   const json = JSON.stringify(conGuia);
   if (json.indexOf('482913') >= 0 || json.indexOf('731204') >= 0) throw new Error('el endpoint devuelve una clave');
 });
