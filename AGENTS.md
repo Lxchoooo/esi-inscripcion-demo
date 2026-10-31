@@ -10,7 +10,7 @@ guia marca presentes sin ver mails.
 - Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
-- Estado: v50 en `main` (panel `v50`, backend `v50`; deployment
+- Estado: v51 en `main` (panel `v51`, backend `v51`; deployment activo `AKfycbwkl...` republicado a @70). Ronda 19: la ficha del alumno (tap en el nombre) muestra nombre completo, año y división, DNI (desde la lista, si esta), charlas elegidas con horario, titulo y presente, y mail copiable; el alta manual de la lista ahora tiene tres selects de charlas (una por franja, solo activas del ciclo del año elegido y con cupos restantes): agrega a la lista y encadena apiAdminAddStudent (cupo, ciclo y franja los revalida el backend; si falla queda en la lista + mensaje). El tab "Sin completar" paso a "Faltan charlas" y explica que lista a quien no eligio las tres franjas, para irlos a buscar antes del evento. Barras de los reportes con paleta rotante (tint 1/2/3) y rojo cuando la charla llega al 90% del cupo. De la ronda 18 (v50): borrado rapido (rebuild de Reporte y Alumnos diferido a la corrida del trigger via marca `rebuild_derived_pending`), banner de estado del borrado, update local de lista y cupos, y "Borrar alumno" con lista de inscriptos y eleccion separada charla/alumno.
   activo `AKfycbwkl...` republicado a @68). Ronda 18: borrado rapido en el
   panel: Reporte y Alumnos no se reconstruyen dentro del alta o del borrado
   (antes frenaban la respuesta); el borrado solo deja la marca
