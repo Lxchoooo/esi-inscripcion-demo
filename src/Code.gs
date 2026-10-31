@@ -43,11 +43,19 @@ var EVENT_DEFAULT_TZ_ = 'America/Argentina/Cordoba';
 var EVENT_TITLE_ = 'Jornada ESI 2026';
 var REMINDER_BATCH_ = 20;
 var REMINDER_MAX_BATCH_ = 40;
+// Avisos por mail a cada alumno. Bienvenida cuando completa las tres franjas
+// con 2 minutos de gracia por si cambia una charla; despues, solo la linea del
+// cambio.
+var MAIL_QUEUE_SHEET = 'MailQueue';
+var CONFIG_MAIL_WELCOME = 'avisos_mail';
+var MAIL_QUEUE_GRACE_MS = 120000;
+var MAIL_QUEUE_MAX_TASKS = 20;
+var MAIL_QUEUE_MAX_TRIES = 5;
 var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v48';
+var BACKEND_VERSION = 'v49';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -534,6 +542,254 @@ function appendSentMail_(email, subject) {
   sheet_(SENT_MAILS_SHEET).appendRow([String(email).trim().toLowerCase(), new Date(), String(subject)]);
 }
 
+/* ==== avisos por mail a cada alumno (bienvenida y cambios) ====
+   La cola vive en MailQueue: registramos la fila con estado 'pendiente' y un
+   trigger por minuto la manda cuando pasan los 2 minutos de gracia. Si el
+   alumno cambia una charla y la bienvenida no salio, el pendiente se
+   actualiza con las charlas nuevas; si ya salio, se encola una linea corta
+   solo del cambio. Todo eso evita el doble mail si se arrepiente enseguida. */
+
+function mailQueueHeaderMap_(head) {
+  var map = { id: -1, ts: -1, envio_at: -1, email: -1, tipo: -1, estado: -1, intentos: -1, asunto: -1, cuerpo: -1 };
+  for (var i = 0; i < (head || []).length; i++) {
+    var h = EsiCore.normalizeText(head[i]);
+    if (map[h] !== undefined) map[h] = i;
+  }
+  return map;
+}
+
+function readMailQueueRaw_() {
+  var sh = sheet_(MAIL_QUEUE_SHEET);
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return { sh: sh, map: null, vals: vals };
+  return { sh: sh, map: mailQueueHeaderMap_(vals[0]), vals: vals };
+}
+
+// En modo ensayo la fila va a la casilla del remitente: nadie quiera mails con
+// datos de prueba en la casilla real de un alumno.
+function queueDestination_(email, cfg) {
+  if (!convertBool_(cfg && cfg.modo_prueba)) return email;
+  var test = String((cfg && cfg.mail_remitente) || '').trim().toLowerCase();
+  return test || '';
+}
+
+function mailWelcomeSubject_(cfg) {
+  return 'Tu inscripción a la ' + EVENT_TITLE_ + ' del ' + eventDateLabel_(cfg);
+}
+
+function mailChangeSubject_(cfg) {
+  return 'Cambio en tu inscripción a la ' + EVENT_TITLE_;
+}
+
+// items con la misma forma que usan los recordatorios: slot, inicio, fin,
+// titulo, lugar, elegida.
+function itemsForEmail_(bySlot, slots, talkById) {
+  var items = [];
+  for (var i = 0; i < slots.length; i++) {
+    var choice = bySlot[Number(slots[i].id)];
+    var info = choice ? talkById[String(choice)] : null;
+    items.push({
+      slot: slots[i].nombre,
+      inicio: slots[i].inicio,
+      fin: slots[i].fin,
+      titulo: info ? info.titulo : '',
+      lugar: info ? (info.lugar || '') : '',
+      elegida: !!info
+    });
+  }
+  return items;
+}
+
+function mailCharlasList_(items) {
+  var lines = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var when = mailLine_(it.inicio) + ' a ' + mailLine_(it.fin);
+    if (it.elegida) {
+      lines.push('- Horario ' + when + ': ' + mailLine_(it.titulo) + (it.lugar ? ' (' + mailLine_(it.lugar) + ')' : ''));
+    } else {
+      lines.push('- Horario ' + when + ': todavía no elegiste.');
+    }
+  }
+  return lines;
+}
+
+function welcomeBody_(name, items, cfg) {
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Gracias por inscribirte a la ' + EVENT_TITLE_ + ' del ' + eventDateLabel_(cfg) +
+      '. Acá vas a encontrarte con charlas sobre la Educación Sexual Integral (ESI).',
+    '',
+    'La ESI es la Ley 26.150, del año 2006: todos los alumnos tienen derecho a recibirla en la escuela, pública y privada.',
+    'No es una materia: es un espacio para hablar con lenguaje sereno y cuidado sobre el cuerpo, la salud, los afectos, el género y los derechos, mirándolos en lo biológico, lo psicológico, lo social, lo afectivo y lo ético.',
+    '',
+    'Línea 102: niñez y adolescencia. Línea 144: violencia de género. 0800-222-3444: salud sexual, gratuita y confidencial. También podés hablar con un docente o preceptor de confianza.',
+    '',
+    'Tus charlas:'
+  ];
+  lines = lines.concat(mailCharlasList_(items));
+  lines.push('');
+  lines.push('Llegá 10 minutos antes de cada charla. Si cambiás una, te avisamos por mail con la charla nueva.');
+  lines.push('');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
+  return lines.join('\n');
+}
+
+function changeBody_(name, horario, talk) {
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Te confirmamos el cambio que hiciste en tu inscripción: en el horario de ' +
+      mailLine_(horario) + ' ahora estás en "' + mailLine_(talk.titulo) + '"' +
+      (talk.lugar ? ' (' + mailLine_(talk.lugar) + ')' : '') + '.',
+    '',
+    'El resto de tus charlas sigue igual.',
+    '',
+    'Equipo ESI · Instituto Secundario Salsipuedes'
+  ];
+  return lines.join('\n');
+}
+
+// Se llama dentro del lock del registro con el estado fresco del alumno:
+// prev (filas antes del movimiento) y post (filas ya reflejadas).
+function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action) {
+  if (!convertBool_(cfg && cfg[CONFIG_MAIL_WELCOME])) return;
+  // setup() crea MailQueue, pero si todavia no corrio, la primera cola
+  // se auto-repara para que el aviso no dependa de que nadie abra el panel.
+  try {
+    var ssq = SpreadsheetApp.getActive();
+    if (!ssq.getSheetByName(MAIL_QUEUE_SHEET)) {
+      ensureSheet_(ssq, MAIL_QUEUE_SHEET,
+        ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+    }
+  } catch (eSheet) { return; }
+  var slotsCount = slots.length;
+  if (!slotsCount) return;
+  var slotsBefore = {};
+  for (var i = 0; i < prev.length; i++) {
+    if (prev[i].emailKey === s.emailKey) slotsBefore[Number(prev[i].slot_id)] = true;
+  }
+  var slotsAfter = {};
+  for (var j = 0; j < post.length; j++) {
+    if (post[j].emailKey === s.emailKey) slotsAfter[Number(post[j].slot_id)] = true;
+  }
+  var doneBefore = Object.keys(slotsBefore).length >= slotsCount;
+  var doneAfter = Object.keys(slotsAfter).length >= slotsCount;
+  if (!doneAfter) return;
+  // validateStudentInput ya puede traer el apellido pegado al nombre: no lo
+  // repite (Ana + Gomez = "Ana Gomez", no "Ana Gomez Gomez").
+  var nombre = String(s.nombre || '').trim();
+  var apellido = String(s.apellido || '').trim();
+  var name = nombre;
+  if (apellido) {
+    var normN = EsiCore.normalizeText(nombre);
+    var normA = EsiCore.normalizeText(apellido);
+    if (normN.slice(-normA.length) !== normA) name = nombre + ' ' + apellido;
+  }
+  var items = itemsForEmail_(mineMap_(post, s.email), slots, talksById);
+  var dest = queueDestination_(s.email, cfg);
+  if (!dest) { try { logAction_('mail_ko', '', 'sin casilla de ensayo'); } catch (e0) { } return; }
+  var wasPending = upsertPendingMail_(dest, 'bienvenida', mailWelcomeSubject_(cfg), welcomeBody_(name, items, cfg));
+  // Solo manda el cambio aparte si la bienvenida ya salio y el cambio no
+  // rompe el horario seleccionado antes.
+  if (!wasPending && doneBefore && action === 'change' && talk) {
+    var horario = slotLabelFor_(slots, talk.slot_id);
+    upsertPendingMail_(dest, 'cambio', mailChangeSubject_(cfg), changeBody_(name, horario, talk));
+  }
+  try { ensureMailQueueTrigger_(); } catch (eTrigger) { }
+}
+
+// Si hay una fila pendiente del mismo destinatario la re-escribe (tipo, asunto
+// y cuerpo) y la re-agenda: el ultimo movimiento define el contenido, pero no
+// duplica mails.
+function upsertPendingMail_(email, tipo, subject, body) {
+  var q = readMailQueueRaw_();
+  var due = Date.now() + MAIL_QUEUE_GRACE_MS;
+  if (q.map && q.map.email >= 0) {
+    for (var i = 1; i < q.vals.length; i++) {
+      var row = q.vals[i];
+      if (String(row[q.map.email]).trim().toLowerCase() !== String(email).trim().toLowerCase()) continue;
+      if (String(row[q.map.estado]) !== 'pendiente') continue;
+      q.sh.getRange(i + 1, q.map.tipo + 1).setValue(tipo);
+      q.sh.getRange(i + 1, q.map.asunto + 1).setValue(subject);
+      q.sh.getRange(i + 1, q.map.cuerpo + 1).setValue(body);
+      q.sh.getRange(i + 1, q.map.envio_at + 1).setValue(new Date(due));
+      q.sh.getRange(i + 1, q.map.intentos + 1).setValue(0);
+      return true;
+    }
+    // Sin pendiente: si ya vio una fila de bienvenida enviada y pide otra,
+    // el flujo decide: tipo 'bienvenida' pide una fila nueva de todas formas.
+  }
+  q.sh.appendRow([Utilities.getUuid(), new Date(), new Date(due), email, tipo, 'pendiente', 0, subject, body]);
+  return false;
+}
+
+function ensureMailQueueTrigger_() {
+  if (typeof ScriptApp === 'undefined') return;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (props.getProperty('MAIL_QUEUE_TRIGGER_OK')) return;
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'flushMailQueue_') {
+        props.setProperty('MAIL_QUEUE_TRIGGER_OK', '1');
+        return;
+      }
+    }
+    ScriptApp.newTrigger('flushMailQueue_').timeBased().everyMinutes(1).create();
+    props.setProperty('MAIL_QUEUE_TRIGGER_OK', '1');
+  } catch (e) { }
+}
+
+// Trigger cada minuto. nowMs opcional para pruebas: la gracia es lo que evita
+// mandar la bienvenida a quien la esta cambiando.
+function flushMailQueue_(nowMs) {
+  var now = nowMs == null ? Date.now() : Number(nowMs);
+  var cfg;
+  try { cfg = readConfig_(); } catch (e) { return { sent: 0 }; }
+  if (!convertBool_(cfg[CONFIG_MAIL_WELCOME])) return { sent: 0 };
+  if (mailQuota_() <= 0) return { sent: 0 };
+  var sent = 0;
+  var q;
+  try { q = readMailQueueRaw_(); } catch (e2) { return { sent: 0 }; }
+  if (!q.map || q.map.envio_at < 0 || q.map.estado < 0) return { sent: 0 };
+  var updates = [];
+  var sender = mailSender_(cfg);
+  for (var i = 1; i < q.vals.length; i++) {
+    var row = q.vals[i];
+    var estado = String(row[q.map.estado]).trim().toLowerCase();
+    var tries = Number(row[q.map.intentos] || 0);
+    if (estado !== 'pendiente' || tries >= MAIL_QUEUE_MAX_TRIES) continue;
+    var due = row[q.map.envio_at] instanceof Date ? row[q.map.envio_at].getTime() : Number(row[q.map.envio_at]);
+    if (!(due <= now)) continue;
+    if (sent >= MAIL_QUEUE_MAX_TASKS) break;
+    var opts = {
+      to: String(row[q.map.email]).trim(),
+      subject: String(row[q.map.asunto] || ''),
+      body: String(row[q.map.cuerpo] || ''),
+      name: EVENT_TITLE_
+    };
+    if (sender) { opts.from = sender; opts.replyTo = sender; }
+    var data = false;
+    try { MailApp.sendEmail(opts); data = true; } catch (eMail) { data = false; }
+    if (data) {
+      updates.push([i + 1, 'enviado', tries]);
+      sent++;
+      try { appendSentMail_(opts.to, opts.subject); } catch (eArch) { }
+    } else {
+      tries++;
+      updates.push([i + 1, tries >= MAIL_QUEUE_MAX_TRIES ? 'error' : 'pendiente', tries]);
+    }
+  }
+  for (var u = 0; u < updates.length; u++) {
+    var r_i = updates[u][0];
+    q.sh.getRange(r_i, q.map.estado + 1).setValue(updates[u][1]);
+    q.sh.getRange(r_i, q.map.intentos + 1).setValue(updates[u][2]);
+  }
+  return { sent: sent };
+}
+
 function apiAdminMailPreview(cred) {
   var auth = adminAuth_(cred);
   if (!auth.ok) return { ok: false, message: auth.message };
@@ -711,6 +967,7 @@ function apiAdminGetConfig(cred) {
       evento_abierto: isOpen_(cfg),
       event: eventInfo_(cfg),
       mail_remitente: mailSender_(cfg),
+      avisos_mail: convertBool_(cfg[CONFIG_MAIL_WELCOME]),
       backup_activo: convertBool_(cfg[CONFIG_BACKUP_ACTIVE])
     };
   } catch (err) {
@@ -764,6 +1021,9 @@ function apiAdminSetConfig(cred, values) {
       if (v.modo_prueba != null) {
         writeConfig_(CONFIG_TEST_MODE, convertBool_(v.modo_prueba) ? 'si' : 'no');
       }
+      if (v.avisos_mail != null) {
+        writeConfig_(CONFIG_MAIL_WELCOME, convertBool_(v.avisos_mail) ? 'si' : 'no');
+      }
       if (v.backup_activo != null) {
         writeConfig_(CONFIG_BACKUP_ACTIVE, convertBool_(v.backup_activo) ? 'si' : 'no');
         configureBackupTrigger_();
@@ -775,6 +1035,7 @@ function apiAdminSetConfig(cred, values) {
         evento_abierto: isOpen_(cfg),
         event: eventInfo_(cfg),
         mail_remitente: mailSender_(cfg),
+        avisos_mail: convertBool_(cfg[CONFIG_MAIL_WELCOME]),
         backup_activo: convertBool_(cfg[CONFIG_BACKUP_ACTIVE])
       };
     } catch (err) {
@@ -792,6 +1053,7 @@ var EXPECTED_COLUMNS_ = {
   Signups: ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
   Sessions: ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'],
   Mails: ['email', 'fecha', 'asunto'],
+  MailQueue: ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
   Log: ['fecha', 'accion', 'signup_id', 'detalle'],
   Backup: ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
   Resumen: ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes']
@@ -1162,6 +1424,8 @@ function setup() {
   ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
   ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
   ensureSheet_(ss, ERRORS_SHEET, ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []);
+  ensureSheet_(ss, MAIL_QUEUE_SHEET, ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  ensureConfigDefault_(CONFIG_MAIL_WELCOME, 'si');
   var signupsSh = sheet_(SIGNUPS_SHEET);
   ensureColumn_(signupsSh, 'presente');
   ensureColumn_(signupsSh, 'apellido');
@@ -1171,6 +1435,7 @@ function setup() {
   ensureGuidePin_();
   noteSetupRun_();
   configureBackupTrigger_();
+  try { ensureMailQueueTrigger_(); } catch (eQ) { }
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
   try { rebuildAlumnos_(); } catch (e) { }
@@ -2745,6 +3010,12 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     }
     // fresh ya refleja el alta (insert) o el cambio, sin releer la planilla.
     if (!fresh) fresh = signups;
+    // El mail de bienvenida sale cuando el alumno completa las franjas, con 2
+    // min de gracia; si cambia una charla, sale la linea del cambio (todo
+    // falla silencioso: el mail no puede bloquear el alta).
+    try {
+      scheduleStudentMail_(signups, fresh, s, (plan.action === 'change' ? talk : null), slots, talksById, cfg, plan.action);
+    } catch (eMail) { }
     invalidateSignupsCache_();
     return {
       ok: true,
@@ -2968,6 +3239,7 @@ function adminDataFor_(auth) {
       role: auth.role,
       evento_abierto: isOpen_(cfg),
       mail_remitente: mailSender_(cfg),
+      avisos_mail: convertBool_(cfg[CONFIG_MAIL_WELCOME]),
       backup_activo: convertBool_(cfg[CONFIG_BACKUP_ACTIVE]),
       rosterLoaded: students.length > 0,
       rosterCount: students.length,
@@ -3677,6 +3949,15 @@ function apiAdminErasePersonalData(cred, confirmation) {
       mailsSh.clearContents();
       mailsSh.getRange(1, 1, 1, mailHead.length).setValues([mailHead]);
 
+      // La cola de avisos guarda nombre, casilla y charlas en el cuerpo: la
+      // cuenta para no dejar mails en el medio de la fila.
+      var queueSh = ensureSheet_(ss, MAIL_QUEUE_SHEET,
+        ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+      var queueCount = Math.max(0, queueSh.getLastRow() - 1);
+      var queueHead = queueSh.getRange(1, 1, 1, Math.max(1, queueSh.getLastColumn())).getValues()[0];
+      queueSh.clearContents();
+      queueSh.getRange(1, 1, 1, queueHead.length).setValues([queueHead]);
+
       var studentsSh = ss.getSheetByName(STUDENTS_SHEET);
       if (studentsSh) {
         var studentsHead = studentsSh.getRange(1, 1, 1, Math.max(1, studentsSh.getLastColumn())).getValues()[0];
@@ -3691,11 +3972,11 @@ function apiAdminErasePersonalData(cred, confirmation) {
 
       writeConfig_('evento_abierto', 'cerrado');
       writeConfig_(CONFIG_DATA_ERASED, 'si');
-      logAction_('erase_personal_data', '', 'signups=' + signups.length + ';sessions=' + sessions.length + ';mails=' + mailCount);
+      logAction_('erase_personal_data', '', 'signups=' + signups.length + ';sessions=' + sessions.length + ';mails=' + mailCount + ';cola=' + queueCount);
       invalidateDataCache_();
       return {
         ok: true, signups: signups.length, sessions: sessions.length, mails: mailCount,
-        talks: order.length, export: dump.name || ''
+        cola: queueCount, talks: order.length, export: dump.name || ''
       };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
