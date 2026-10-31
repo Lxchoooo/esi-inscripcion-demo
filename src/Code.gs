@@ -51,7 +51,7 @@ var BACKEND_VERSION = 'v43';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
-var BUSY_MESSAGE = 'El servidor está ocupado: esperá unos segundos y probá de nuevo.';
+var BUSY_MESSAGE = 'Hay mucha gente anotándose: esperá unos segundos y volvé a tocar.';
 var REGISTER_LOCK_MS = 8000;
 var A_MARK_BATCH_MAX = 100;
 var ADMIN_LOCK_MS = 5000;

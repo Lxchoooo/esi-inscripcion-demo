@@ -2947,19 +2947,22 @@
 
     function retryTransient_(attemptFn, waitFn) {
       var wait = waitFn || wait_;
-      var delays = [400, 1200];
-      var failures = 0;
+      // "ocupado" es una cola: conviene esperar hasta ~20 s, que es lo que tarda
+      // un curso entero apretando a la vez. Un error de red, en cambio, se
+      // rinde rápido para mostrar "sin conexión" y no dejar el botón colgado.
+      var busyDelays = [500, 1000, 2000, 3000, 5000, 8000];
+      var netDelays = [400, 1200];
+      var busyTries = 0;
+      var netTries = 0;
       function attempt() {
         return attemptFn().then(function (resp) {
-          if (resp && resp.busy && failures < delays.length) {
-            var ms = delays[failures++];
-            return wait(ms).then(attempt);
+          if (resp && resp.busy && busyTries < busyDelays.length) {
+            return wait(busyDelays[busyTries++]).then(attempt);
           }
           return resp;
         }, function (err) {
-          if (failures < delays.length && isTransient_(err)) {
-            var ms = delays[failures++];
-            return wait(ms).then(attempt);
+          if (netTries < netDelays.length && isTransient_(err)) {
+            return wait(netDelays[netTries++]).then(attempt);
           }
           throw err;
         });
@@ -4804,9 +4807,13 @@
       var slotId = target ? target.slot_id : null;
       var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
       sState.busy = true;
+      // Con la cola del servidor el aviso puede tardar: que el alumno vea que
+      // se esta guardando y no toque de nuevo.
+      sBanner('Guardando…', 'ok');
       call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_()])
         .then(function (resp) {
           sState.busy = false;
+          sBanner('');
           if (resp.needsLogin || resp.expired) {
             sState.session = null;
             sState.login = null;
