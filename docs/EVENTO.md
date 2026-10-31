@@ -172,7 +172,33 @@ planilla) desde Drive con su cuenta. El script no puede escribir en el
 Drive de otra cuenta: los archivos quedan a nombre de la cuenta que corre
 el script, y se comparten por permiso.
 
-## Simulacro de carga (antes del evento, sobre una copia)
+## Simulacro de carga (desde el panel)
+
+El panel tiene "Simulacro de carga" en Configuración, con dos botones:
+
+- **De a una**: anota N alumnos de prueba, mide milisegundos por alta y los
+  borra. Sirve para saber cuánto cuesta una inscripción.
+- **Todas juntas**: dispara N altas simultáneas, cuenta cuántas entraron y
+  cuántas recibieron "ocupado", y borra sus filas. Es la prueba realista.
+
+Los dos piden el **modo ensayo** prendido: así, si la limpieza fallara, el botón
+"Borrar datos de prueba" junta esas filas igual.
+
+Números medidos el 31/10 contra la planilla real (hoja vacía):
+
+| Escenario | Antes | Ahora |
+|---|---|---|
+| Una inscripción sola | ~9 s | ~6 s (con la cola, ~2,5 s de lock) |
+| 10 chicos a la vez | 5 de 10, 5 "ocupado" | 10 de 10 en ~28 s |
+| 30 chicos a la vez | — | ~11 entran en la primera tanda |
+
+Cada alta tiene el lock ~2,5 s, así que una fila de 15 tarda ~35 s. El panel
+reintenta solo hasta ~45 s con el cartel "Guardando…": el chico no tiene que
+hacer nada. Si un curso entero se anota junto, conviene mandarlo en dos tandas.
+
+## Simulacro de carga sobre una copia
+
+También se puede correr contra una copia de la planilla con `scripts/loadtest.js`.
 
 Sirve para saber cuántos alumnos aguantan el backend y ver los "ocupado" antes
 de que los vean los chicos. **Escribe inscripciones de verdad**, así que corre

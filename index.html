@@ -2303,6 +2303,20 @@
           </button>
           <div id="cfg-msg" class="banner"></div>
         </div>
+        <div class="card">
+          <h3>Simulacro de carga</h3>
+          <p class="hint-line">Anota 30 alumnos de prueba, mide cuánto tarda cada alta y los borra solo. Necesita el modo ensayo prendido. Sirve para saber cuánto esperaría el último de una fila larga.</p>
+          <div class="toolbar">
+            <label class="sr-only" for="drill-talk">Charla del simulacro</label>
+            <select id="drill-talk"></select>
+            <label class="sr-only" for="drill-n">Cuántos</label>
+            <input id="drill-n" type="number" inputmode="numeric" min="1" max="60" value="30" style="max-width:90px"
+              autocomplete="off">
+            <button id="btn-drill" class="btn secondary small" type="button">De a una</button>
+            <button id="btn-drill-burst" class="btn small" type="button">Todas juntas</button>
+          </div>
+          <div id="drill-msg" class="banner" role="status" aria-live="polite"></div>
+        </div>
         <details class="card danger-card">
           <summary>Zona de peligro<span class="summary-hint">Acciones irreversibles</span></summary>
           <p class="hint-line">El cierre exporta el CSV antes de cerrar. El borrado de datos personales deja solo contadores.</p>
@@ -2950,7 +2964,7 @@
       // "ocupado" es una cola: conviene esperar hasta ~20 s, que es lo que tarda
       // un curso entero apretando a la vez. Un error de red, en cambio, se
       // rinde rápido para mostrar "sin conexión" y no dejar el botón colgado.
-      var busyDelays = [500, 1000, 2000, 3000, 5000, 8000];
+      var busyDelays = [800, 1500, 2500, 4000, 6000, 8000, 10000, 12000];
       var netDelays = [400, 1200];
       var busyTries = 0;
       var netTries = 0;
@@ -4114,6 +4128,17 @@
       if (fn === 'apiAdminDeleteTestData') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         return Promise.resolve(demoAdminDeleteTestData(a[1]));
+      }
+      if (fn === 'apiAdminDrillBurst') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        return Promise.resolve({ ok: false, message: 'El simulacro corre sobre la planilla real, no en la demo.' });
+      }
+      if (fn === 'apiDrillCleanup') {
+        return Promise.resolve({ ok: true, borradas: 0 });
+      }
+      if (fn === 'apiAdminDrill') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        return Promise.resolve({ ok: false, message: 'El simulacro corre sobre la planilla real, no en la demo.' });
       }
       if (fn === 'apiAdminCloseEvent') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
@@ -5799,6 +5824,102 @@
           body.hidden = !resp.sample;
         })
         .catch(function () { aMailMsg_('Sin conexión.', 'err'); });
+    }
+    function aDrillMsg_(txt, kind) {
+      var el = $('drill-msg');
+      if (!el) return;
+      el.textContent = txt || '';
+      el.className = 'banner' + (kind ? ' ' + kind : '');
+      el.hidden = !txt;
+    }
+    function aDrillTalks_() {
+      var sel = $('drill-talk');
+      if (!sel || !aData) return;
+      var talks = (aData.talks || []).filter(function (t) { return t.activa; });
+      sel.innerHTML = '';
+      talks.forEach(function (t) {
+        var o = document.createElement('option');
+        o.value = t.id;
+        o.textContent = t.id + ' · ' + t.titulo + ' (' + (t.restantes == null ? '?' : t.restantes) + ' libres)';
+        sel.appendChild(o);
+      });
+      if (!talks.length) {
+        var o2 = document.createElement('option');
+        o2.value = '';
+        o2.textContent = 'No hay charlas activas';
+        sel.appendChild(o2);
+      }
+    }
+    function aRunDrill() {
+      if (!adminCred) return;
+      aDrillTalks_();
+      var sel = $('drill-talk');
+      var n = Number(($('drill-n') || {}).value) || 30;
+      var talkId = sel ? sel.value : '';
+      if (!talkId) { aDrillMsg_('No hay charlas activas para el simulacro.', 'err'); return; }
+      btnLoading_('btn-drill', true);
+      aDrillMsg_('Simulando ' + n + ' altas en ' + talkId + '…', '');
+      call('apiAdminDrill', [adminCred, n, talkId])
+        .then(function (resp) {
+          btnLoading_('btn-drill', false);
+          if (!resp.ok) { aDrillMsg_(resp.message || 'No se pudo hacer el simulacro.', 'err'); return; }
+          var txt = resp.anotados + ' de ' + resp.n + ' altas OK · ' +
+            resp.ms_promedio + ' ms por alta (máx ' + resp.ms_max + ' ms) · ' +
+            'el último de esa fila esperaría ~' + Math.round(resp.espera_estimada_ultimo / 1000) + ' s · ' +
+            'borradas ' + resp.borradas + ' filas';
+          var fallas = Object.keys(resp.fallas || {});
+          if (fallas.length) txt += ' · fallas: ' + fallas.map(function (k) { return resp.fallas[k] + '× ' + k; }).join(', ');
+          aDrillMsg_(txt, fallas.length ? 'err' : 'ok');
+          aLoad(true);
+        })
+        .catch(function () {
+          btnLoading_('btn-drill', false);
+          aDrillMsg_('Sin conexión.', 'err');
+        });
+    }
+    function aRunDrillBurst() {
+      if (!adminCred) return;
+      aDrillTalks_();
+      var sel = $('drill-talk');
+      var n = Math.max(1, Math.min(50, Number(($('drill-n') || {}).value) || 30));
+      var talkId = sel ? sel.value : '';
+      if (!talkId) { aDrillMsg_('No hay charlas activas para el simulacro.', 'err'); return; }
+      var marca = 'simulacro' + Date.now() + '-';
+      btnLoading_('btn-drill-burst', true);
+      aDrillMsg_('Disparando ' + n + ' altas a la vez en ' + talkId + '… puede tardar medio minuto.', '');
+      var t0 = Date.now();
+      var jobs = [];
+      for (var k = 1; k <= n; k++) {
+        jobs.push(callOnce_('apiRegister', [marca + k + '@secundariosalsipuedes.edu.ar', 'Alumno Simulacro', '2°A', talkId])
+          .catch(function () { return { ok: false, message: 'sin conexión' }; }));
+      }
+      Promise.all(jobs).then(function (resps) {
+        var pared = Date.now() - t0;
+        var ok = 0;
+        var busy = 0;
+        var otros = {};
+        (resps || []).forEach(function (r) {
+          if (r && r.ok) ok++;
+          else if (r && r.busy) busy++;
+          else {
+            var key = (r && r.message) || 'sin respuesta';
+            otros[key] = (otros[key] || 0) + 1;
+          }
+        });
+        return call('apiDrillCleanup', [marca]).then(function (clean) {
+          var txt = ok + ' de ' + n + ' entraron · ' + busy + ' recibieron "ocupado" · ' +
+            'la tanda tardó ' + (pared / 1000).toFixed(1) + ' s · borradas ' +
+            ((clean && clean.borradas) || 0) + ' filas';
+          var claves = Object.keys(otros);
+          if (claves.length) txt += ' · otras: ' + claves.map(function (k2) { return otros[k2] + '× ' + k2; }).join(', ');
+          aDrillMsg_(txt, (busy || claves.length) ? 'err' : 'ok');
+          aLoad(true);
+        });
+      }).catch(function () {
+        aDrillMsg_('Sin conexión.', 'err');
+      }).then(function () {
+        btnLoading_('btn-drill-burst', false);
+      });
     }
     function aSendTestMail() {
       var input = $('mail-test-to');
@@ -7840,6 +7961,8 @@
       });
       $('btn-refresh-pend').addEventListener('click', function () { aLoadPending(); });
       $('btn-save-config').addEventListener('click', aSaveConfig);
+      if ($('btn-drill')) $('btn-drill').addEventListener('click', aRunDrill);
+      if ($('btn-drill-burst')) $('btn-drill-burst').addEventListener('click', aRunDrillBurst);
       $('btn-mail-preview').addEventListener('click', aLoadMailPreview);
       $('btn-mail-send').addEventListener('click', aSendReminders);
       if ($('btn-mail-test')) $('btn-mail-test').addEventListener('click', aSendTestMail);

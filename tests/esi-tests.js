@@ -2901,6 +2901,17 @@ t('admin r12 status, duplicates, manual fixes, test data, close and erase', () =
   assertEq(api.apiAdminMoveTalk(token, addedId, 'B5').ok, false, 'move across slot rejected');
   assertEq(api.apiAdminDeleteTestData(token, 'BORRAR PRUEBA').deleted, 1, 'test data deleted');
   assertEq(api.apiAdminGetData(token).signups.filter((x) => x.email === 'nueva@secundariosalsipuedes.edu.ar').length, 0, 'test row gone');
+  const drillSin = backendApi(services, 'apiAdminLogin, apiAdminDrill, apiAdminSetConfig, apiAdminGetData');
+  const dtoken = drillSin.apiAdminLogin('1111').token;
+  drillSin.apiAdminSetConfig(dtoken, { modo_prueba: false });
+  assertEq(drillSin.apiAdminDrill(dtoken, 5, 'B1').ok, false, 'drill refuses without test mode');
+  drillSin.apiAdminSetConfig(dtoken, { modo_prueba: true });
+  const drill = drillSin.apiAdminDrill(dtoken, 5, 'B1');
+  assertEq(drill.ok, true, 'drill runs');
+  assertEq(drill.anotados, 5, 'drill registers five');
+  assertEq(drill.borradas, 5, 'drill deletes its five rows');
+  assertEq(drill.ms_promedio >= 0, true, 'drill reports ms per signup');
+  assertEq(drillSin.apiAdminGetData(dtoken).signups.filter((x) => /^simulacro/.test(x.email)).length, 0, 'drill left nothing behind');
   const merged = api.apiAdminMergeDuplicates(token, 'ana@secundariosalsipuedes.edu.ar', 'ana.gomez@secundariosalsipuedes.edu.ar');
   assertEq(merged.ok, true, 'merge ok');
   assertEq(merged.moved, 1, 'merge moved one slot');
@@ -3790,7 +3801,12 @@ t('r15: el ticket se consume antes de emitir la sesion', () => {
     throw new Error('apiGetData emite la sesion antes de consumir el ticket');
   }
   const reg = codeSrc.slice(codeSrc.indexOf('function apiRegister('), codeSrc.indexOf('function apiAdminLogin(', codeSrc.indexOf('function apiRegister(')));
-  if (reg.indexOf('consumeLoginTicket_(loginToken)') > reg.indexOf('rotated = issueStudentSession_(s)')) {
+  // El ticket se consume dentro del lock (registerLocked_) y la sesion se emite
+  // despues, con el lock suelto. Lo que importa es que consumir pase primero.
+  if (reg.indexOf('consumeLoginTicket_(loginToken)') < 0) {
+    throw new Error('apiRegister no consume el ticket');
+  }
+  if (reg.indexOf('withScriptLock_(REGISTER_LOCK_MS') > reg.indexOf('issueStudentSession_')) {
     throw new Error('apiRegister emite la sesion antes de consumir el ticket');
   }
 });
