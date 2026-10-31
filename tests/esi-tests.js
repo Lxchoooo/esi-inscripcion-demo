@@ -688,7 +688,7 @@ t('Code.gs keeps the admin key in Script Properties and rate limits failures', (
     setProperty: (k, v) => { props[k] = String(v); },
     deleteProperty: (k) => { delete props[k]; }
   };
-  const lock = { waitLock: function () { }, releaseLock: function () { } };
+  const lock = { waitLock: function () { }, tryLock: function () { return true; }, releaseLock: function () { } };
   const services = {
     PropertiesService: { getScriptProperties: () => fakeProps },
     LockService: { getScriptLock: () => lock }
@@ -787,7 +787,7 @@ t('Code.gs admin APIs reject invalid keys before reading data', () => {
       setProperty: (k, v) => { props[k] = String(v); },
       deleteProperty: (k) => { delete props[k]; }
     };
-    const lock = { waitLock: function () { }, releaseLock: function () { } };
+    const lock = { waitLock: function () { }, tryLock: function () { return true; }, releaseLock: function () { } };
     const api = new Function('PropertiesService', 'LockService', codeSrc + '\nreturn {' + names.join(',') + '};')(
       { getScriptProperties: () => fakeProps },
       { getScriptLock: () => lock }
@@ -886,7 +886,7 @@ t('r22: el watchdog repone hojas y triggers muertos y es idempotente', () => {
 t('r23: al reentrar ya inscripto abre "¡Ya estas inscripto!" y no la lista con Confirmar', () => {
   if (!/function sSyncConfirmed_\(\)/.test(panelSrc)) throw new Error('no hay sync de confirmed');
   const calls = panelSrc.split('sSyncConfirmed_();').length - 1;
-  assertEq(calls, 4, 'boot-cache, resume, sEnterPanel y cache offline');
+  assertEq(calls, 5, 'boot-cache, resume, sEnterPanel, cache offline y quiet-refresh');
   // La pantalla Listo se llena s renders con sRenderDone_ (): si algun reingreso
   // la muestra con showScreen a secas, la lista puede quedar con charlas viejas
   // de otra sesion (bug visto en la ronda de busquio de errores post-r23).
@@ -915,7 +915,7 @@ t('Code.gs issues a session token that replaces the pin on later calls', () => {
     props,
     cache,
     PropertiesService: { getScriptProperties: () => fakeProps },
-    LockService: { getScriptLock: () => ({ waitLock: function () { }, releaseLock: function () { } }) },
+    LockService: { getScriptLock: () => ({ waitLock: function () { }, tryLock: function () { return true; }, releaseLock: function () { } }) },
     CacheService: {
       getScriptCache: () => ({
         get: (k) => (cache.has(k) ? cache.get(k) : null),
@@ -1272,7 +1272,7 @@ function backendStub(props, seed) {
     cache: cache,
     sheets: sheets,
     PropertiesService: { getScriptProperties: () => fakeProps },
-    LockService: { getScriptLock: () => ({ waitLock: function () { }, releaseLock: function () { } }) },
+    LockService: { getScriptLock: () => ({ waitLock: function () { }, tryLock: function () { return true; }, releaseLock: function () { } }) },
     CacheService: {
       getScriptCache: () => ({
         get: (k) => (cache.has(k) ? cache.get(k) : null),
@@ -4438,6 +4438,121 @@ t('r18: los graficos de barras usan colores distintos y avisan cupo lleno', () =
   if (!/c' \+ \(\(i % 3\) \+ 1\)/.test(panelSrc)) throw new Error('sin paleta rotante');
   panelCss().indexOf('.bar-fill.c1') >= 0 || (() => { throw new Error('sin CSS de colores'); })();
   if (panelCss().indexOf('.bar-fill.cfull') < 0) throw new Error('sin CSS de cupo lleno');
+});
+
+t('r25: la inscripcion del alumno deja la marca de rebuild de las hojas derivadas', () => {
+  const services = backendStub({});
+  registerThreeSlots_(services, 'vero@secundariosalsipuedes.edu.ar');
+  assertEq(String(services.props.rebuild_derived_pending || ''), 'si', 'marca pendiente tras registrar');
+  // La apertura del panel la consume ya, junto a la marca: no hay que esperar
+  // la corrida del trigger para que Reporte y Alumnos reflejen el cambio.
+  services.ScriptApp = {
+    getProjectTriggers: () => [{ getHandlerFunction: () => 'flushMailQueue_' }],
+    newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => null }) }) })
+  };
+  const api = backendApi(services, 'maybeRebuildReport_');
+  api.maybeRebuildReport_();
+  assertEq(String(services.props.rebuild_derived_pending || ''), 'no', 'la apertura consume la marca');
+});
+
+t('r25: las filas de ensayo no bloquean el cupo del alta ni del move en el evento real', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Signups.data[0].push('prueba');
+  services.sheets.Talks.data.push(['B7', 'Chica ensayo', 'basico', 1, 'Aula 7', 2, 'si']);
+  services.sheets.Signups.data.push([
+    'e1', new Date(), 'ensayo1@secundariosalsipuedes.edu.ar', 'Ens Uno', '2°B', 'basico', 1, 'B7', false, true
+  ]);
+  services.sheets.Signups.data.push([
+    'e2', new Date(), 'ensayo2@secundariosalsipuedes.edu.ar', 'Ens Dos', '2°B', 'basico', 1, 'B7', false, true
+  ]);
+  const api = backendApi(services, 'apiAdminLogin, apiAdminAddStudent, apiAdminMoveTalk');
+  const token = api.apiAdminLogin('1111').token;
+  const dani = api.apiAdminAddStudent(token, {
+    email: 'dani@secundariosalsipuedes.edu.ar', nombre: 'Dani Ruiz', apellido: 'Ruiz', curso: '2°B', talkIds: ['B1']
+  });
+  assertEq(dani.ok, true, 'alta normal en B1');
+  const lidia = api.apiAdminAddStudent(token, {
+    email: 'lidia@secundariosalsipuedes.edu.ar', nombre: 'Lidia Perez', apellido: 'Perez', curso: '2°B', talkIds: ['B7']
+  });
+  assertEq(lidia.ok, true, 'el ensayo no bloquea el alta: ' + (lidia.message || ''));
+  const fila = services.sheets.Signups.data.filter((x) => x[2] === 'dani@secundariosalsipuedes.edu.ar')[0];
+  const res = api.apiAdminMoveTalk(token, fila[0], 'B7');
+  assertEq(res.ok, true, 'el ensayo no bloquea el move: ' + (res.message || ''));
+});
+
+t('r25: el flush de mails no corre dos veces en paralelo', () => {
+  const services = backendStub({});
+  services.LockService = {
+    getScriptLock: () => ({
+      waitLock: function () { }, tryLock: function () { return false; }, releaseLock: function () { }
+    })
+  };
+  const api = backendApi(services, 'flushMailQueue_');
+  const r = api.flushMailQueue_(Date.now() + 130000);
+  assertEq(r.sent, 0, 'no manda nada sin lock');
+  assertEq(String(r.lock || ''), 'ocupado', 'avisa ocupado');
+});
+
+t('r25: el watchdog repone la hoja Config y el default de avisos', () => {
+  const services = backendStub({});
+  delete services.sheets.Config;
+  services.ScriptApp = {
+    getProjectTriggers: () => [{ getHandlerFunction: () => 'flushMailQueue_' }],
+    newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => null }) }) })
+  };
+  const api = backendApi(services, 'watchdog');
+  const r = api.watchdog();
+  assertEq(r.ok, true, 'watchdog ok');
+  if (!services.sheets.Config) throw new Error('no repuso Config');
+  const claves = services.sheets.Config.data.slice(1).map((x) => String(x[0]));
+  if (claves.indexOf('avisos_mail') < 0) throw new Error('no sembro avisos_mail');
+  const r2 = api.watchdog();
+  assertEq(r2.fixes.length, 0, 'idempotente');
+});
+
+t('r25: el panel sin red se queda con el cache del propio alumno', () => {
+  if (!/Sin red no es igual que sesion vencida/.test(panelSrc)) throw new Error('resume-fail no distingue caida de sesion vencida');
+  if (!/No pude actualizar: muestro lo guardado en este equipo/.test(panelSrc)) throw new Error('sin mensaje cache vivo');
+  if (!/El cache del device es unico en celulares compartidos/.test(panelSrc)) throw new Error('sin guard de identidad');
+});
+
+t('r25: el reingreso de admin arranca el refresh automatico y hay un solo poller', () => {
+  const idx = panelSrc.indexOf("showScreen(A_SCREENS, 'a-screen-panel');");
+  if (idx < 0) throw new Error('sin boot del panel');
+  if (!/aStartAutoRefresh\(\);/.test(panelSrc.slice(idx, idx + 400))) throw new Error('restore sin auto-refresh');
+  if (/window\.setInterval\(function \(\) \{\n        if \(document\.visibilityState === 'visible' && adminCred && aData/.test(panelSrc)) {
+    throw new Error('poller doble en aInit');
+  }
+});
+
+t('r25: la cola de presentes del reporte se desencola cuando el server confirma', () => {
+  const n = panelSrc.split('aUnqueue_(signupId);').length - 1;
+  assertEq(n, 2, 'falla y exito desencolan');
+});
+
+t('r25: needsLogin del registro borra tambien el cache del device', () => {
+  const idx = panelSrc.indexOf('if (resp.needsLogin || resp.expired) {');
+  if (idx < 0) throw new Error('sin rama needsLogin del registro');
+  if (!/sClearStudentSession_\(\);/.test(panelSrc.slice(idx, idx + 500))) throw new Error('no limpia el cache al vencer');
+});
+
+t('r25: el quiet refresh manda el token de login y revalida confirmed', () => {
+  if (!/call\('apiGetData', \[email, sState\.nombre, sState\.curso, token, sState\.apellido \|\| '', loginToken\]\)/.test(panelSrc)) {
+    throw new Error('quiet refresh sin token de login');
+  }
+  const sec = panelSrc.indexOf('function sRefreshQuiet_');
+  if (!/sSyncConfirmed_\(\);/.test(panelSrc.slice(sec, sec + 1400))) throw new Error('quiet refresh sin sync de confirmed');
+});
+
+t('r25: el cache de charlas vence como el resto del cache del device', () => {
+  const idx = panelSrc.indexOf('function aReadTalkCache_');
+  if (!/A_CACHE_TTL/.test(panelSrc.slice(idx, idx + 800))) throw new Error('sin TTL en cache de charla');
+  if (!/aData = resp;\n          aUpdatedAt = Date\.now\(\);/.test(panelSrc)) throw new Error('aLoad sin aUpdatedAt');
+});
+
+t('r25: el aviso de recordatorios distingue el singular y el demo devuelve added como lista', () => {
+  if (!/=== 1 \? ' mail' : ' mails'/.test(panelSrc)) throw new Error('sin singular en 1 mail');
+  if (!/added: ids\.map/.test(panelSrc)) throw new Error('demo sin added lista');
 });
 
 summary();
