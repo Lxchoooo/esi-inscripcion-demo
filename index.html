@@ -718,6 +718,9 @@
     }
     .banner.ok { display: block; background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent-line); }
     .banner.err { display: block; background: var(--danger-soft); color: var(--danger); border-color: var(--danger-line); }
+    .banner.wip { display: block; background: var(--surface); color: var(--ink-soft); border-color: var(--line); }
+    @keyframes banner-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+    .banner.wip { animation: banner-pulse 1.2s var(--ease-out) 2; }
 
     .toast {
       position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 90;
@@ -2468,7 +2471,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v49';
+    var APP_VERSION = 'v50';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -5401,7 +5404,7 @@
       var el = $('a-msg');
       if (!el) return;
       el.textContent = text || '';
-      el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
+      el.className = 'banner ' + (type === 'err' ? 'err' : (type === 'wip' ? 'wip' : 'ok'));
       el.style.display = text ? 'block' : 'none';
       if (text && actionLabel && actionFn) {
         el.classList.add('banner-action');
@@ -7216,19 +7219,50 @@
       });
     };
 
+    function aRemoveSignupLocal_(signupId) {
+      var d = aData;
+      if (!d || !d.signups) return;
+      var out = [];
+      var talkId = null;
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        if (String(s.id) === String(signupId)) {
+          talkId = s.talk_id;
+          continue;
+        }
+        out.push(s);
+      }
+      d.signups = out;
+      d.total = out.length;
+      // La fila de la charla baja un anotado: el panel usa este contador para
+      // el tambor y el cupo, sin pedir el panel entero de nuevo.
+      if (d.talks && talkId != null) {
+        for (var t = 0; t < d.talks.length; t++) {
+          if (String(d.talks[t].id) === String(talkId)) {
+            d.talks[t].anotados = Math.max(0, Number(d.talks[t].anotados || 0) - 1);
+            break;
+          }
+        }
+      }
+    }
+
     function aDeleteConfirmed(signupId) {
       if (aBusy) return;
       aBusy = true;
+      // Estado en vivo: el borrado puede tardar (lock + fila). El banner late
+      // (clase wip) y aBusy impide tocar cualquier otra accion hasta terminar.
+      aBanner('Borrando...', 'wip');
       call('apiAdminDeleteSignup', [adminCred, signupId])
         .then(function (resp) {
           aBusy = false;
-          if (resp.ok) {
-            aBanner('Inscripción borrada.', 'ok');
-            aLoad(true);
-          } else {
+          if (!resp.ok) {
             if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo borrar.', 'err');
+            return;
           }
+          aRemoveSignupLocal_(signupId);
+          aRender();
+          aBanner('Inscripción borrada.', 'ok');
         })
         .catch(function () {
           aBusy = false;
@@ -7647,24 +7681,166 @@
       });
     }
 
+    function aCorrDeleteList_() {
+      var d = aData;
+      if (!d || !d.signups) return '';
+      var groups = {};
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        var key = String(s.email || '').trim().toLowerCase();
+        if (!key) continue;
+        if (!groups[key]) {
+          groups[key] = { email: key, apellido: s.apellido || '', nombre: s.nombre || '', curso: s.curso || '', n: 0 };
+        }
+        groups[key].n++;
+      }
+      var out = [];
+      for (var k in groups) {
+        if (Object.prototype.hasOwnProperty.call(groups, k)) out.push(groups[k]);
+      }
+      out.sort(function (a, b) {
+        var c1 = String(a.apellido || '').localeCompare(String(b.apellido || ''), 'es');
+        if (c1) return c1;
+        c1 = String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+        if (c1) return c1;
+        return String(a.curso || '').localeCompare(String(b.curso || ''), 'es');
+      });
+      var html = '';
+      for (var j = 0; j < out.length; j++) {
+        var g = out[j];
+        html += '<option value="' + esc(g.email) + '">'
+          + esc((g.apellido ? g.apellido + ', ' : '') + g.nombre + ' · ' + g.curso + ' · ' + g.n + (g.n === 1 ? ' charla' : ' charlas'))
+          + '</option>';
+      }
+      return html;
+    }
+
     function aCorrDelete_() {
       if (!aData || aBusy) return;
+      var lista = aCorrDeleteList_();
+      if (!lista) {
+        aCorrMsg_('No hay inscriptos todavía.', 'ok');
+        return;
+      }
       openSheet({
-        title: 'Borrar alumno',
-        body: '<div class="corr-form"><label for="corr-del-email">Mail institucional<input id="corr-del-email" type="email" autocomplete="off"></label></div>'
-          + '<p class="sheet-warn">Se borran todas sus inscripciones y su sesión.</p>',
+        title: 'Borrar alumno o charla',
+        body: '<div class="corr-form"><label for="corr-del-pick">Inscriptos de la jornada'
+          + '<select id="corr-del-pick">' + lista + '</select></label></div>'
+          + '<p class="hint-line">Ordenado por apellido. La lista muestra el curso y cuántas charlas tiene.</p>'
+          + '<p class="sheet-warn">En el paso siguiente elegís si borrás una sola charla o el alumno completo.</p>',
+        confirm: 'Siguiente',
+        onConfirm: function () {
+          var email = String($('corr-del-pick').value || '').trim().toLowerCase();
+          if (email) aCorrDeleteChoose_(email);
+        }
+      });
+    }
+
+    function aCorrDeleteChoose_(email) {
+      if (!aData || aBusy) return;
+      var signups = [];
+      var d = aData;
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        if (String(s.email || '').trim().toLowerCase() === email) signups.push(s);
+      }
+      if (!signups.length) {
+        aCorrMsg_('Ese alumno ya no tiene inscripciones.', 'err');
+        return;
+      }
+      signups.sort(function (a, b) { return String(a.slotLabel || '').localeCompare(String(b.slotLabel || ''), 'es'); });
+      var nombre = (signups[0].apellido ? signups[0].apellido + ', ' : '') + (signups[0].nombre || '');
+      var options = '';
+      for (var k = 0; k < signups.length; k++) {
+        options += '<option value="' + esc(String(signups[k].id)) + '">'
+          + esc(signups[k].slotLabel + ' · ' + signups[k].talkTitulo)
+          + '</option>';
+      }
+      if (signups.length > 1) {
+        options += '<option value="todo">El alumno completo (' + signups.length + ' charlas y su sesión)</option>';
+      }
+      openSheet({
+        title: '¿Qué le borro a ' + nombre + '?',
+        body: '<div class="corr-form"><label for="corr-del-what">La charla o el alumno'
+          + '<select id="corr-del-what">' + options + '</select></label></div>'
+          + '<p class="hint-line">Si borrás un alumno completo, todas sus charlas quedan liberadas y no vuelve a entrar con ese mail sin empezar de cero.</p>',
+        confirm: 'Borrar la selección',
+        danger: true,
+        onConfirm: function () {
+          var pick = $('corr-del-what').value;
+          if (pick === 'todo') aCorrDeleteStudent_(email, signups.length, nombre);
+          else aCorrDeleteSignup_(String(pick));
+        }
+      });
+    }
+
+    function aCorrDeleteSignup_(signupId) {
+      openSheet({
+        title: '¿Borrar esta charla?',
+        body: '<p class="sheet-warn">El lugar queda libre; el resto de sus charlas sigue igual.</p>',
         confirm: 'Borrar',
         danger: true,
         onConfirm: function () {
+          if (aBusy) return;
           aBusy = true;
-          call('apiAdminDeleteStudent', [adminCred, $('corr-del-email').value]).then(function (resp) {
+          aCorrMsg_('Borrando la charla...', 'wip');
+          call('apiAdminDeleteSignup', [adminCred, signupId]).then(function (resp) {
             aBusy = false;
             if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo borrar.', 'err'); return; }
-            aCorrMsg_('Alumno borrado.', 'ok');
-            aLoad(true);
+            aRemoveSignupLocal_(signupId);
+            aRender();
+            aCorrMsg_('Charla borrada.', 'ok');
+            aBanner('Charla borrada.', 'ok');
           }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
         }
       });
+    }
+
+    function aCorrDeleteStudent_(email, n, nombre) {
+      openSheet({
+        title: '¿Borrar el alumno completo?',
+        body: '<p class="sheet-warn">Se borran las ' + (n || 1) + ' charlas de ' + (nombre || 'ese alumno')
+          + ' y su sesión. Queda registro del cambio.</p>',
+        confirm: 'Borrar todo',
+        danger: true,
+        onConfirm: function () {
+          if (aBusy) return;
+          aBusy = true;
+          aCorrMsg_('Borrando al alumno...', 'wip');
+          call('apiAdminDeleteStudent', [adminCred, email]).then(function (resp) {
+            aBusy = false;
+            if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo borrar.', 'err'); return; }
+            aRemoveStudentLocal_(email);
+            aRender();
+            aCorrMsg_('Alumno borrado.', 'ok');
+            aBanner('Alumno borrado.', 'ok');
+          }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
+        }
+      });
+    }
+
+    function aRemoveStudentLocal_(email) {
+      var d = aData;
+      if (!d || !d.signups) return;
+      var key = String(email || '').trim().toLowerCase();
+      var out = [];
+      var borradas = {};
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        if (String(s.email || '').trim().toLowerCase() === key) {
+          borradas[s.talk_id] = (borradas[s.talk_id] || 0) + 1;
+          continue;
+        }
+        out.push(s);
+      }
+      d.signups = out;
+      d.total = out.length;
+      if (d.talks) {
+        for (var t = 0; t < d.talks.length; t++) {
+          var n = borradas[d.talks[t].id];
+          if (n) d.talks[t].anotados = Math.max(0, Number(d.talks[t].anotados || 0) - n);
+        }
+      }
     }
 
     function aCorrDuplicates_() {
