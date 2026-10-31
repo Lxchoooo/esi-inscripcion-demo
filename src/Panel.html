@@ -3010,7 +3010,21 @@
     function demoWrite(key, value) {
       lsSet(key, JSON.stringify(value));
     }
-    var DEMO_SESSIONS = {};
+    // El backend real guarda las sesiones en la hoja Sessions: el demo tiene
+    // que hacer lo mismo en el telefono, si no al recargar dice "tu sesion
+    // vencio" sin motivo.
+    var DEMO_SESSIONS = (function () {
+      var all = demoRead('esi_demo_sessions', {}) || {};
+      var now = Date.now();
+      var vivos = {};
+      for (var k in all) {
+        if (Object.prototype.hasOwnProperty.call(all, k) && all[k] && Number(all[k].expires) > now) vivos[k] = all[k];
+      }
+      return vivos;
+    })();
+    function demoSaveSessions_() {
+      try { demoWrite('esi_demo_sessions', DEMO_SESSIONS); } catch (e) { }
+    }
     var DEMO_LOGIN_TICKETS = {};
     function demoIssueLoginTicket_(entry) {
       var token = 'l_demo_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -3047,6 +3061,7 @@
       if (!sess) return null;
       if (sess.expires <= Date.now()) {
         delete DEMO_SESSIONS[raw];
+        demoSaveSessions_();
         return null;
       }
       return sess;
@@ -3057,6 +3072,7 @@
         if (k === keep) return;
         if (EsiClient.normalizeEmail(DEMO_SESSIONS[k].email) === key) delete DEMO_SESSIONS[k];
       });
+      demoSaveSessions_();
     }
     function demoIssueSession_(student) {
       var raw = 's_demo_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -3068,6 +3084,7 @@
         ciclo: student.ciclo,
         expires: Date.now() + 7 * 24 * 60 * 60 * 1000
       };
+      demoSaveSessions_();
       return raw;
     }
     function demoOpen() {
@@ -3968,6 +3985,7 @@
       }
       if (fn === 'apiStudentLogout') {
         delete DEMO_SESSIONS[String(a[0] || '')];
+        demoSaveSessions_();
         return Promise.resolve({ ok: true });
       }
       if (fn === 'apiSetReminder') {
