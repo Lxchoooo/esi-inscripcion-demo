@@ -5359,7 +5359,14 @@
             $('gate-msg').style.display = 'none';
             showScreen(A_SCREENS, 'a-screen-panel');
             aApplyRole();
-            aLoad(true);
+            // El login ya trae los datos del panel: sin segunda llamada.
+            if (resp.signups) {
+              aData = resp;
+              aUpdatedAt = Date.now();
+              aRender();
+            } else {
+              aLoad(true);
+            }
             aRefreshView();
             aStartAutoRefresh();
           } else {

@@ -2783,7 +2783,12 @@ function apiAdminLogin(pin) {
     if (!token) return { ok: false, message: 'No se pudo emitir sesión.' };
     // Instala el trigger diario de respaldo la primera vez que entra un admin.
     try { configureDriveBackupTrigger_(); } catch (e) { }
-    return { ok: true, role: auth.role, token: token };
+    // Los datos del panel viajan en el mismo viaje que el login: el panel abria
+    // con dos llamadas de ~2,5 s cada una.
+    var data = adminDataFor_(auth);
+    if (!data.ok) return { ok: true, role: auth.role, token: token };
+    data.token = token;
+    return data;
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
@@ -2793,6 +2798,14 @@ function apiAdminGetData(cred) {
   try {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
+    return adminDataFor_(auth);
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function adminDataFor_(auth) {
+  try {
     var admin = isAdmin_(auth);
     // Mantiene al dia las hojas derivadas (Alumnos y Reporte) cuando el panel lee.
     if (admin) { try { maybeRebuildReport_(); } catch (e0) { } }

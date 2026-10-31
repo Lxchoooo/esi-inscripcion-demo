@@ -1504,6 +1504,22 @@ t('Code.gs both keys read the same views', () => {
   assertEq(JSON.stringify(roster), JSON.stringify(adminRoster), 'same roster for both keys');
 });
 
+t('el login del panel ya trae los datos: un viaje menos', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'apiAdminLogin');
+  const admin = api.apiAdminLogin('1111');
+  assertEq(admin.ok, true, 'login admin ok');
+  assertEq(!!admin.token, true, 'token emitido');
+  if (!Array.isArray(admin.signups)) throw new Error('el login no trae signups');
+  if (!Array.isArray(admin.talks)) throw new Error('el login no trae talks');
+  const guia = api.apiAdminLogin('2222');
+  assertEq(guia.ok, true, 'login guia ok');
+  if (!Array.isArray(guia.signups)) throw new Error('el login guia tampoco trae datos');
+  const panel = read('../src/Panel.html');
+  if (panel.indexOf('if (resp.signups)') < 0) throw new Error('el panel no usa los datos del login');
+  if (!/aData = resp;\s*\n\s*aUpdatedAt = Date\.now\(\);/.test(panel)) throw new Error('el panel no fija aData con el login');
+});
+
 t('Code.gs caches reads and invalidates on writes', () => {
   if (!/DATA_CACHE_TTL\s*=\s*\d+/.test(codeSrc)) throw new Error('cache ttl missing');
   const ttl = Number((codeSrc.match(/DATA_CACHE_TTL\s*=\s*(\d+)/) || [])[1]);
