@@ -766,6 +766,11 @@
     }
     .chip.miss { background: transparent; border: 1px dashed var(--line-ui); color: var(--muted); font-weight: 500; }
 
+    /* Ficha del alumno en el panel admin */
+    .st-charlas { margin: 6px 0 10px; padding: 0 0 0 18px; }
+    .st-charlas li { margin: 4px 0; font-size: 13.5px; overflow-wrap: anywhere; }
+    .st-charlas .chip { padding: 1px 8px; margin: 0 0 0 4px; font-size: 11px; }
+
     .slot h2 {
       display: flex; align-items: center; gap: 10px;
       font-size: 14px; font-weight: 600; margin: 28px 0 10px;
@@ -1568,6 +1573,10 @@
     .bar-name { overflow-wrap: anywhere; }
     .bar-track { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
     .bar-fill { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+    .bar-fill.c1 { background: var(--tint-1); }
+    .bar-fill.c2 { background: var(--tint-2); }
+    .bar-fill.c3 { background: var(--tint-3); }
+    .bar-fill.cfull { background: var(--danger); }
     .bar-value { font-variant-numeric: tabular-nums; color: var(--muted); }
     .next-talk { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--card); }
     .next-talk b { display: block; margin-bottom: 4px; }
@@ -2058,7 +2067,7 @@
             </button>
             <button id="tab-pend" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-pend" tabindex="-1">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.3 2.9-6 6.5-6 1.4 0 2.7.4 3.8 1.1"/><circle cx="18" cy="18" r="3.2"/><path d="M18 16.4v1.8l1.2.8"/></svg>
-              <span>Sin completar</span>
+              <span>Faltan charlas</span>
             </button>
           </div>
           <div class="side-group" role="presentation">
@@ -2158,8 +2167,9 @@
           <div class="view-head">
             <span class="view-count" id="pend-count">0 sin completar</span>
             <span class="hint-line" id="pend-updated">Actualizado hace 0s</span>
-            <button id="btn-refresh-pend" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
+            <button id="btn-refresh-pend" class="btn secondary small" type="button" aria-label="Refrescar la lista de faltantes" title="Actualiza ahora"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
           </div>
+          <p class="hint-line" style="margin-top:8px">Esta lista junta a los alumnos de las inscripciones que todavía no eligieron las tres charlas. Sirve para ir a buscarlos antes del evento: en cada fila ves qué franja le falta.</p>
           <div id="pend-list"></div>
         </div>
       </div>
@@ -2260,9 +2270,22 @@
                 <input id="roster-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Solo números">
               </label>
             </div>
+            <p class="form-title" style="margin-top:14px">Inscribirle charlas (opcional)</p>
+            <p class="hint-line" style="margin:4px 0 0">Si el chico no puede anotarse solo, elegíle acá una charla por franja y se inscribe de una. Si lo dejás vacío solo entra en la lista.</p>
+            <div class="roster-grid roster-charlas">
+              <label for="roster-charla-1">1ra franja
+                <select id="roster-charla-1" data-slot="1"><option value="">Anotarse después</option></select>
+              </label>
+              <label for="roster-charla-2">2da franja
+                <select id="roster-charla-2" data-slot="2"><option value="">Anotarse después</option></select>
+              </label>
+              <label for="roster-charla-3">3ra franja
+                <select id="roster-charla-3" data-slot="3"><option value="">Anotarse después</option></select>
+              </label>
+            </div>
             <button id="btn-roster-add" class="btn small" type="submit">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.3 2.9-6 6.5-6 1.4 0 2.7.4 3.8 1.1"/><path d="M19 8v6M22 11h-6"/></svg>
-              Agregar a la lista
+              Agregar e inscribir
             </button>
             <div id="roster-add-msg" class="banner" role="status" aria-live="polite"></div>
           </form>
@@ -2471,7 +2494,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v50';
+    var APP_VERSION = 'v51';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -6185,8 +6208,9 @@
         var it = items[i];
         var max = Number(it.max || 0) || 1;
         var pct = Math.max(0, Math.min(100, Math.round(Number(it.value || 0) * 100 / max)));
+        var ccls = pct >= 90 ? ' cfull' : ' c' + ((i % 3) + 1);
         html += '<div class="bar-row"><span class="bar-name">' + esc(it.label) + '</span>'
-          + '<span class="bar-track" aria-hidden="true"><span class="bar-fill' + barIn_('b' + it.label + pct) + '" style="width:' + pct + '%"></span></span>'
+          + '<span class="bar-track" aria-hidden="true"><span class="bar-fill' + ccls + barIn_('b' + it.label + pct) + '" style="width:' + pct + '%"></span></span>'
           + '<span class="bar-value">' + Number(it.value || 0) + (it.max != null ? '/' + Number(it.max) : '') + '</span></div>';
         table += '<tr><td>' + esc(it.label) + '</td><td>' + Number(it.value || 0) + '</td><td>' + Number(it.max || 0) + '</td></tr>';
       }
@@ -6684,7 +6708,39 @@
       $('a-cupos').innerHTML = html;
       aFillTalkSelect();
       aFillFilters();
+      aRosterCharlasFill_();
       aRenderTable();
+    }
+
+    // Llena los tres selects de inscripción manual: solo charlas activas del
+    // ciclo que corresponde al año elegido, con los lugares que van quedando.
+    function aRosterCharlasFill_() {
+      var d = aData || {};
+      var anio = $('roster-anio') ? String($('roster-anio').value || '') : '';
+      var ciclo = '';
+      if (anio === '1' || anio === '2' || anio === '3') ciclo = 'basico';
+      else if (anio === '4' || anio === '5' || anio === '6') ciclo = 'orientado';
+      var slots = d.slots || [];
+      var talks = d.talks || [];
+      for (var i = 1; i <= 3; i++) {
+        var sel = $('roster-charla-' + i);
+        if (!sel) continue;
+        var current = sel.value;
+        var slotId = slots[i - 1] ? String(slots[i - 1].id) : String(i);
+        var opts = '<option value="">Anotarse después</option>';
+        if (ciclo) {
+          for (var j = 0; j < talks.length; j++) {
+            var t = talks[j];
+            if (!t.activa || t.ciclo !== ciclo || String(t.slot_id) !== slotId) continue;
+            var libres = Math.max(0, Number(t.cupo || 0) - Number(t.anotados || 0));
+            opts += '<option value="' + esc(String(t.id)) + '">'
+              + esc(t.titulo) + ' (' + libres + (libres === 1 ? ' libre' : ' libres') + ')</option>';
+          }
+        }
+        sel.innerHTML = opts;
+        sel.disabled = !ciclo;
+        if (current && opts.indexOf('value="' + esc(current) + '"') >= 0) sel.value = current;
+      }
     }
 
     function aDisplay_(st, showMail) {
@@ -6709,15 +6765,19 @@
       return '<span class="student-avatar" aria-hidden="true">' + esc(aInitials_(st)) + '</span>';
     }
 
-    function aStudentNameHtml_(st, className, allowMail) {
+    function aStudentNameHtml_(st, className, allowMail, charlas) {
       var name = aDisplay_(st, false);
       var cls = className || 'roster-name';
       var mail = allowMail && st && st.email ? String(st.email).trim() : '';
       if (!mail) return '<span class="' + cls + '">' + esc(name) + '</span>';
+      var dni = st && st.dni ? String(st.dni).trim() : '';
       return '<button class="' + cls + ' student-mail-btn" type="button"'
         + ' data-mail="' + esc(mail) + '" data-name="' + esc(name) + '"'
-        + ' data-curso="' + esc(st.curso || '') + '" title="Ver y copiar el mail"'
-        + ' aria-label="Ver y copiar el mail de ' + esc(name) + '">'
+        + ' data-curso="' + esc(st.curso || '') + '"'
+        + (dni ? ' data-dni="' + esc(dni) + '"' : '')
+        + (charlas ? ' data-charlas="' + esc(charlas) + '"' : '')
+        + ' title="Ver los datos del alumno"'
+        + ' aria-label="Ver los datos de ' + esc(name) + '">'
         + '<span class="student-name-text">' + esc(name) + '</span>'
         + '<span class="mail-cue" aria-hidden="true">mail</span></button>';
     }
@@ -6735,19 +6795,37 @@
       }
     }
 
-    function aShowMail_(email, name, curso) {
+    function aShowMail_(email, name, curso, dni, charlasStr) {
       var mail = String(email || '').trim();
       if (!mail) return;
       var who = String(name || '').replace(/\s+/g, ' ').trim() || 'Alumno';
+      var body = '<div class="mail-detail">'
+        + '<p class="mail-detail-name">' + esc(who) + '</p>';
+      if (curso) {
+        var pc = EsiClient.parseCurso(String(curso));
+        body += pc
+          ? '<p class="sheet-meta">' + esc(curso) + ' · Año ' + esc(pc.slice(0, pc.length - 1)) + ' · División ' + esc(pc.slice(pc.length - 1)) + '</p>'
+          : '<p class="sheet-meta">' + esc(curso) + '</p>';
+      }
+      if (String(dni || '').trim()) {
+        body += '<p class="mail-detail-label">DNI</p><code class="mail-detail-address">' + esc(String(dni).trim()) + '</code>';
+      }
+      var chars = String(charlasStr || '').split(';;').filter(function (x) { return x; });
+      if (chars.length) {
+        body += '<p class="mail-detail-label">Charlas elegidas</p><ul class="st-charlas">';
+        for (var i = 0; i < chars.length; i++) {
+          var parts = chars[i].split('::');
+          body += '<li>' + esc(parts[0] || '') + ' · ' + esc(parts[1] || '')
+            + (parts[2] === '1' ? ' <span class="chip ok">presente</span>' : '') + '</li>';
+        }
+        body += '</ul>';
+      }
+      body += '<p class="mail-detail-label">Mail institucional</p>'
+        + '<code class="mail-detail-address">' + esc(mail) + '</code>'
+        + '<p class="hint-line">Tocá Copiar mail para usarlo en otro lado.</p></div>';
       openSheet({
-        title: 'Mail del alumno',
-        body: '<div class="mail-detail">'
-          + '<p class="mail-detail-name">' + esc(who) + '</p>'
-          + (curso ? '<p class="sheet-meta">' + esc(curso) + '</p>' : '')
-          + '<p class="mail-detail-label">Mail institucional</p>'
-          + '<code class="mail-detail-address">' + esc(mail) + '</code>'
-          + '<p class="hint-line">Tocá Copiar mail para usarlo en otro lado.</p>'
-          + '</div>',
+        title: 'Ficha del alumno',
+        body: body,
         confirm: 'Copiar mail',
         cancel: 'Cerrar',
         onConfirm: function () { aCopyText_(mail, 'Mail copiado.'); }
@@ -7013,7 +7091,12 @@
         var talks = g.signups.slice().sort(function (a, b) {
           return String(a.slotLabel || '').localeCompare(String(b.slotLabel || ''), 'es');
         });
-        var charlasHtml = '';
+        var charlasStr = '';
+        for (var ti0 = 0; ti0 < talks.length; ti0++) {
+          var t0 = talks[ti0];
+          charlasStr += (ti0 ? ';;' : '') + [t0.slotLabel, t0.talkTitulo, t0.presente ? '1' : '0'].join('::');
+        }
+        charlasHtml = '';
         var menuId = 'menu-' + gi + '-' + String(g.key).replace(/[^a-z0-9]/gi, '');
         for (var ti = 0; ti < talks.length; ti++) {
           var t = talks[ti];
@@ -7036,7 +7119,7 @@
         charlasHtml += '</div></div>';
         rows += '<tr style="--i:' + (shown > 12 ? 12 : shown) + '">'
           + '<td class="narrow" data-label="Fecha">' + esc(s0.cuando) + '</td>'
-          + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', true)
+          + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', true, charlasStr)
           + '</td>'
           + '<td data-label="Curso">' + esc(s0.curso) + '</td>'
           + '<td data-label="Charlas" colspan="2">' + charlasHtml + '</td>'
@@ -7075,6 +7158,7 @@
         html += '<option value="' + esc(list[i]) + '">' + esc(list[i]) + '</option>';
       }
       sel.innerHTML = html;
+      aRosterCharlasFill_();
     }
 
     function aRosterLines_() {
@@ -7123,24 +7207,63 @@
       }
       var row = EsiClient.normalizeEmail(mail) + ';' + EsiClient.sanitizeName(apellido) + ';'
         + EsiClient.sanitizeName(nombre) + ';' + curso + (dni ? ';' + dni : '');
+      var ids = [];
+      for (var ci = 1; ci <= 3; ci++) {
+        var selC = $('roster-charla-' + ci);
+        if (selC && selC.value) ids.push(selC.value);
+      }
       aBusy = true;
-      aRosterMsg_('Agregando...', 'ok');
+      aRosterMsg_('Agregando...', 'wip');
       call('apiAdminImportRoster', [adminCred, row, 'agregar']).then(function (resp) {
-        aBusy = false;
         if (!resp.ok) {
+          aBusy = false;
           aRosterMsg_(resp.message || 'No se pudo agregar.', 'err');
           return;
         }
-        var msg = 'Alumno agregado a la lista.';
-        if (resp.dnisDuplicados) msg += ' Ese DNI ya estaba en otro alumno: no va a poder entrar por DNI.';
-        aRosterMsg_(msg, 'ok');
-        var ids = ['roster-mail', 'roster-apellido', 'roster-nombre', 'roster-dni'];
-        for (var i = 0; i < ids.length; i++) if ($(ids[i])) $(ids[i]).value = '';
-        aLoad(true);
+        if (!ids.length) {
+          aBusy = false;
+          aRosterAddOk_(resp);
+          return;
+        }
+        // En la lista: ahora inscribe las charlas elegidas (una por franja).
+        aRosterMsg_('En la lista. Inscribiendo charlas...', 'wip');
+        call('apiAdminAddStudent', [adminCred, {
+          email: EsiClient.normalizeEmail(mail),
+          nombre: EsiClient.sanitizeName(nombre),
+          apellido: EsiClient.sanitizeName(apellido),
+          curso: curso,
+          talkIds: ids
+        }]).then(function (resp2) {
+          aBusy = false;
+          if (!resp2.ok) {
+            aRosterMsg_('En la lista, pero sin charlas: ' + (resp2.message || 'error'), 'err');
+            aRosterAddOk_(resp);
+            return;
+          }
+          aRosterMsg_('Alumno agregado e inscripto en ' + resp2.added.length
+            + (resp2.added.length === 1 ? ' charla.' : ' charlas.'), 'ok');
+          aRosterAddOk_(resp);
+        }, function () {
+          aBusy = false;
+          aRosterMsg_('Sin conexión.', 'err');
+        });
       }).catch(function () {
         aBusy = false;
         aRosterMsg_('Sin conexión.', 'err');
       });
+    }
+
+    function aRosterAddOk_(resp) {
+      var msg = 'Alumno agregado a la lista.';
+      if (resp && resp.dnisDuplicados) msg += ' Ese DNI ya estaba en otro alumno: no va a poder entrar por DNI.';
+      aRosterMsg_(msg, 'ok');
+      var ids = ['roster-mail', 'roster-apellido', 'roster-nombre', 'roster-dni'];
+      for (var i = 0; i < ids.length; i++) if ($(ids[i])) $(ids[i]).value = '';
+      for (var c = 1; c <= 3; c++) {
+        var sel = $('roster-charla-' + c);
+        if (sel) sel.value = '';
+      }
+      aLoad(true);
     }
 
     function aImportMsg(text, type) {
@@ -8202,7 +8325,8 @@
           if (el.getAttribute) {
             var mail = el.getAttribute('data-mail');
             if (mail) {
-              aShowMail_(mail, el.getAttribute('data-name') || '', el.getAttribute('data-curso') || '');
+              aShowMail_(mail, el.getAttribute('data-name') || '', el.getAttribute('data-curso') || '',
+                el.getAttribute('data-dni') || '', el.getAttribute('data-charlas') || '');
               return;
             }
           }

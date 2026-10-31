@@ -332,7 +332,7 @@ function tick() {
   assert(conMail.includes('data-mail="ana@esc.edu.ar"'), 'mail disponible al tocar');
   assert(!conMail.includes('roster-mail'), 'mail no ocupa la fila');
   ui.aShowMail_('ana@esc.edu.ar', 'Gómez, Ana', '2°B');
-  assert(document.getElementById('sheet-title').textContent === 'Mail del alumno', 'sheet del mail');
+  assert(document.getElementById('sheet-title').textContent === 'Ficha del alumno', 'sheet del mail');
   assert(document.getElementById('sheet-body').innerHTML.includes('ana@esc.edu.ar'), 'mail completo en el sheet');
   assert(document.getElementById('sheet-body').innerHTML.includes('Gómez, Ana'), 'nombre en el sheet');
   assert(document.getElementById('sheet-confirm').textContent === 'Copiar mail', 'accion de copiar');

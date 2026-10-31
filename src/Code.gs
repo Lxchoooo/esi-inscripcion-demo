@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v50';
+var BACKEND_VERSION = 'v51';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -3212,8 +3212,10 @@ function adminDataFor_(auth) {
     var talks = readTalksCached_();
     var students = readStudentsCached_();
     var apellidos = {};
+    var dnis = {};
     for (var st = 0; st < students.length; st++) {
       apellidos[students[st].email] = students[st].apellido || '';
+      if (students[st].dni) dnis[students[st].email] = students[st].dni;
     }
     var signupsRaw = readSignupsCached_();
     var counts = countByTalk_(signupsRaw);
@@ -3239,6 +3241,7 @@ function adminDataFor_(auth) {
         slotLabel: slotLabelFor_(slots, s.slot_id),
         talkTitulo: titulos[s.talk_id] || s.talk_id,
         lugar: lugares[s.talk_id] || '',
+        dni: dnis[s.emailKey] || '',
         presente: !!s.presente,
         prueba: !!s.prueba
       };
@@ -4203,6 +4206,13 @@ function apiAdminPending(cred) {
     var admin = isAdmin_(auth);
     var signups = readSignupsCached_();
     var slots = readSlotsCached_();
+    var dnis = {};
+    try {
+      var rosterSt = readStudentsCached_();
+      for (var rx = 0; rx < rosterSt.length; rx++) {
+        if (rosterSt[rx].dni) dnis[rosterSt[rx].emailKey || rosterSt[rx].email] = rosterSt[rx].dni;
+      }
+    } catch (eDni) { }
     var byEmail = {};
     var order = [];
     for (var i = 0; i < signups.length; i++) {
@@ -4236,6 +4246,7 @@ function apiAdminPending(cred) {
         nombre: st.nombre,
         nombreCompleto: st.nombreCompleto,
         curso: st.curso,
+        dni: dnis[order[j]] || '',
         faltan: faltan
       };
       if (admin) row.email = st.email;
