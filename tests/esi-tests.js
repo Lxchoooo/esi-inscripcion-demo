@@ -127,7 +127,11 @@ t('backupToDrive_ copies once per day and prunes old files', () => {
     getFiles: () => {
       let i = 0;
       return { hasNext: () => i < files.length, next: () => files[i++] };
-    }
+    },
+    getFoldersByName: () => ({ hasNext: () => true, next: () => folder }),
+    createFolder: () => folder,
+    addFolder: () => folder,
+    setName: () => folder
   };
   global.DriveApp = {
     getFoldersByName: () => ({ hasNext: () => true, next: () => folder }),
@@ -1900,6 +1904,59 @@ t('r15: el panel tiene boton de prueba de mail', () => {
     throw new Error('el boton no esta conectado');
   }
   if (panelHtml.indexOf("if (fn === 'apiAdminSendTestMail')") < 0) throw new Error('el demo no lo implementa');
+});
+
+t('los respaldos y las exportaciones van a una carpeta ESI', () => {
+  const previo = global.DriveApp;
+  const creadas = [];
+  const archivos = [];
+  function carpeta(nombre) {
+    const f = {
+      name: nombre,
+      hijos: [],
+      getFoldersByName: (n) => {
+        const hits = f.hijos.filter((h) => h.name === n);
+        let i = 0;
+        return { hasNext: () => i < hits.length, next: () => hits[i++] };
+      },
+      createFolder: (n) => { creadas.push(nombre + '/' + n); const c = carpeta(n); f.hijos.push(c); return c; },
+      createFile: (n) => { archivos.push(nombre + '/' + n); const file = { getId: () => 'id-' + n }; return file; },
+      addFolder: (c) => { creadas.push('mueve:' + c.name); f.hijos.push(c); },
+      setName: (n) => { f.name = n; },
+      getFilesByName: () => ({ hasNext: () => false, next: () => null }),
+      getFiles: () => ({ hasNext: () => false, next: () => null })
+    };
+    return f;
+  }
+  const raiz = [];
+  global.DriveApp = {
+    getFoldersByName: (n) => {
+      const hits = raiz.filter((f) => f.name === n);
+      let i = 0;
+      return { hasNext: () => i < hits.length, next: () => hits[i++] };
+    },
+    createFolder: (n) => { creadas.push(n); const c = carpeta(n); raiz.push(c); return c; },
+    createFile: (n) => { archivos.push('raiz/' + n); return { getId: () => 'id-raiz' }; },
+    getFileById: () => ({ makeCopy: () => ({ getId: () => 'copia' }) })
+  };
+  try {
+    const services = backendStub({});
+    const api = backendApi(services, 'driveRootFolder_, driveBackupFolder_, driveExportFolder_, exportPersonalData_');
+    const root = api.driveRootFolder_();
+    assertEq(root.name, 'ESI', 'carpeta global');
+    const b1 = api.driveBackupFolder_();
+    const b2 = api.driveBackupFolder_();
+    assertEq(b1.name, 'Respaldos', 'subcarpeta de respaldos');
+    if (b1 !== b2) throw new Error('crea Respaldos dos veces');
+    assertEq(api.driveExportFolder_().name, 'Exportaciones', 'subcarpeta de exportaciones');
+    const out = api.exportPersonalData_([{ email: 'a@b.com', nombre: 'A', curso: '2°B', ciclo: 'basico', slot_id: 1, talk_id: 'B1' }]);
+    assertEq(out.ok, true, 'export ok');
+    assertEq(out.folder, 'Exportaciones', 'el csv se guarda adentro');
+    if (!archivos.some((a) => a.indexOf('Exportaciones/esi-datos-') === 0)) throw new Error('el csv quedo en la raiz: ' + archivos.join(','));
+    assertEq(raiz.length, 1, 'una sola carpeta nueva en el inicio');
+  } finally {
+    global.DriveApp = previo;
+  }
 });
 
 t('apiAdminGetConfig and apiAdminSetConfig validate admin changes', () => {

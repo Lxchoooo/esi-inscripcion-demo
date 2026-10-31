@@ -149,6 +149,29 @@ y que los permisos de envío estén autorizados (los pide la primera ejecución 
 
 La prueba no inscribe a nadie: no hay que borrar nada después.
 
+## Carpetas en el Drive
+
+Todo lo que el script crea cae en una sola carpeta del inicio:
+
+```
+ESI/
+  Respaldos/        copia diaria de la planilla (quedan 14)
+  Exportaciones/    CSV con los datos, antes de borrar datos personales
+```
+
+La planilla no la crea el script: es la que ya existe. Si querés tenerla
+ordenada, movela a mano dentro de `ESI/`.
+
+Antes esta version dejaba la carpeta `ESI 2026 Respaldos` suelta y los CSV
+en el inicio: la primera vez que corra un respaldo, la carpeta vieja se
+mueve sola adentro de `ESI/` y se renombra a `Respaldos`. Los CSV viejos que
+hayan quedado sueltos se mueven a mano.
+
+Para que otra persona vea todo esto, compartí la carpeta `ESI` (y la
+planilla) desde Drive con su cuenta. El script no puede escribir en el
+Drive de otra cuenta: los archivos quedan a nombre de la cuenta que corre
+el script, y se comparten por permiso.
+
 ## Simulacro de carga (antes del evento, sobre una copia)
 
 Sirve para saber cuántos alumnos aguantan el backend y ver los "ocupado" antes
