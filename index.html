@@ -1504,6 +1504,33 @@
     .side-action:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .side .kbd-hint { display: block; padding: 8px 10px 0; font-size: 11px; line-height: 1.7; }
     .menu-backdrop { position: fixed; z-index: 70; inset: 0; background: rgba(12, 14, 12, .5); }
+    /* Barra de pestañas fija del pie (solo celular,<=959px): los guias
+       cambian de seccion con el pulgar. Sin tocar los tabs de arriba. */
+    .a-tabbar {
+      display: none;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 82;
+      background: var(--nav-bg);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border-top: 1px solid var(--line);
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    }
+    .a-tabbar button {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; min-height: 52px; border: 0; border-radius: 12px;
+      background: none; color: var(--muted);
+      font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .a-tabbar button .nav-ico { width: 21px; height: 21px; }
+    .a-tabbar button.on { color: var(--accent-strong); background: var(--accent-soft); }
+    @media (max-width: 959px) {
+      .a-tabbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+      .a-tabbar button { display: flex; }
+      .workspace { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+    }
+    /* En pantallas tactiles no hay teclado: los atajos (1-9, /) estan de mas. */
+    @media (hover: none) and (pointer: coarse) {
+      .kbd-hint { display: none !important; }
+    }
     @media (min-width: 960px) {
       .panel-shell { grid-template-columns: 224px minmax(0, 1fr); gap: 24px; }
       .side { position: sticky; top: 78px; max-height: calc(100dvh - 94px); overflow-y: auto; }
@@ -2432,6 +2459,27 @@
             </button>
             <span class="kbd-hint" id="kbd-hint">Atajos <kbd>1-9</kbd> secciones <kbd>/</kbd> buscar</span>
           </div>
+        </nav>
+
+        <!-- Barra inferior del celular: espeja las cuatro secciones
+             principales (data-for → tabs de arriba), sin duplicar lógica. -->
+        <nav id="a-tabbar" class="a-tabbar" aria-label="Secciones del panel en celular">
+          <button type="button" data-for="tab-charla" aria-pressed="false">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Asistencia</span>
+          </button>
+          <button type="button" data-for="tab-reportes" aria-pressed="false">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+            <span>Reportes</span>
+          </button>
+          <button type="button" data-for="tab-inscriptos" aria-pressed="false">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".7"/><circle cx="3.5" cy="12" r=".7"/><circle cx="3.5" cy="18" r=".7"/></svg>
+            <span>Inscriptos</span>
+          </button>
+          <button type="button" data-for="tab-config" aria-pressed="false">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+            <span>Configuración</span>
+          </button>
         </nav>
 
         <div class="workspace">
@@ -7908,6 +7956,17 @@
       if (activeEl && activeEl.scrollIntoView) {
         try { activeEl.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { }
       }
+      // La barra del pie espeja el tab activo (solo presentacion).
+      var abar = $('a-tabbar');
+      if (abar && abar.querySelectorAll) {
+        var items = abar.querySelectorAll('[data-for]');
+        for (var bi = 0; bi < items.length; bi++) {
+          var target = $(items[bi].getAttribute('data-for'));
+          var sel = !!(target && target.getAttribute('aria-selected') === 'true');
+          items[bi].classList.toggle('on', sel);
+          items[bi].setAttribute('aria-pressed', sel ? 'true' : 'false');
+        }
+      }
       if (aMenuOpen) {
         aMenuSet_(false);
         var paneEl = $('pane-' + name);
@@ -9226,6 +9285,16 @@
           pin.type = mostrar ? 'text' : 'password';
           pinEye.setAttribute('aria-pressed', mostrar ? 'true' : 'false');
           pinEye.setAttribute('aria-label', mostrar ? 'Ocultar clave' : 'Mostrar clave');
+        });
+      }
+      // Barra del pie: manda el toque al tab real (sin logica duplicada).
+      var abar = $('a-tabbar');
+      if (abar) {
+        abar.addEventListener('click', function (ev) {
+          var b = ev.target && ev.target.closest ? ev.target.closest('[data-for]') : null;
+          if (!b) return;
+          var target = $(b.getAttribute('data-for'));
+          if (target) target.click();
         });
       }
       // Mientras el server piensa (aBusy), los toques del admin no repiten
