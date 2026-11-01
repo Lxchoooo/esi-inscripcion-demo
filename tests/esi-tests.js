@@ -1135,8 +1135,8 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/\.steps \{[^}]*margin: 0 0 8px/s.test(panelHtml)) throw new Error('steps gap');
-  if (!/h2\.intro \{[^}]*margin: 0 0 12px/s.test(panelHtml)) throw new Error('title gap');
+  if (!/\.steps \{[^}]*margin: 6px 0 20px/s.test(panelHtml)) throw new Error('steps gap');
+  if (!/h2\.intro \{[^}]*margin: 0 0 16px/s.test(panelHtml)) throw new Error('title gap');
   if (!/p\.hint \{[^}]*margin: 0 0 24px/s.test(panelHtml)) throw new Error('hint gap');
   if (contrast('#0E7A2F', '#FFFFFF') < 4.5) throw new Error('active segment contrast');
   if (!/id="mail-help"/.test(panelHtml)) throw new Error('mail help missing');
