@@ -4821,7 +4821,15 @@ t('r36: login con validacion viva, foco automatico en datos y resumen "todo list
       throw new Error('sin listener de validacion viva en ' + id);
     }
   }
-  // 3) Al abrir la pantalla de datos: foco al primer casillero vacio.
+  // 3) El DNI prende el check recien con 8 digitos (no hay DNI de 7 en el
+  //    padron del colegio); el maxlength del input tambien clava 8.
+  if (panelSrc.indexOf('return /^\\d{8}$/.test(EsiClient.normalizeDni(v))') < 0) {
+    throw new Error('el check del DNI no exige 8 digitos');
+  }
+  if (!/id="input-dni"[^>]*maxlength="8"/.test(panelHtml)) {
+    throw new Error('el input del DNI no clava el maximo en 8');
+  }
+  // 4) Al abrir la pantalla de datos: foco al primer casillero vacio.
   if (!/function sOpenLoginExtra_\(\) \{\s*showScreen\(S_SCREENS, 's-screen-datos'\);[\s\S]{0,400}'input-nombre', 'input-apellido', 'select-anio'/.test(panelSrc)) {
     throw new Error('sin foco automatico al primer casillero vacio de datos');
   }

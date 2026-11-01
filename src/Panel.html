@@ -2272,7 +2272,7 @@
           </div>
           <div class="field">
             <label for="input-dni">DNI</label>
-            <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
+            <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="8"
               enterkeyhint="go" placeholder="Solo números">
             <p class="hint-line">Sin puntos. Si hay más de un alumno con ese DNI, te vamos a pedir el apellido.</p>
           </div>
@@ -3044,7 +3044,7 @@
     // valida, sin cartones de error ni esperas. El resumen de la pantalla de
     // datos dice "todo listo" cuando el form completo esta bien cargado.
     function sValidMail_(v) { return EsiClient.isInstitutionalEmail(EsiClient.normalizeEmail(v)); }
-    function sValidDni_(v) { return EsiClient.isValidDni(EsiClient.normalizeDni(v)); }
+    function sValidDni_(v) { return /^\d{8}$/.test(EsiClient.normalizeDni(v)); }
     function sValidName_(v) {
       var n = EsiClient.sanitizeName(v);
       return !!n && EsiClient.isValidName(n);
@@ -5882,7 +5882,7 @@
       var dni = EsiClient.normalizeDni($('input-dni').value);
       var apellido = EsiClient.sanitizeName($('input-apellido').value);
       if (!EsiClient.isValidDni(dni)) {
-        sFieldErr_($('input-dni'), 'Revisá el DNI: solo números, 7 u 8 dígitos.');
+        sFieldErr_($('input-dni'), 'Revisá el DNI: 8 números, sin puntos.');
         return;
       }
       if (apellido && !EsiClient.isValidName(apellido)) {
