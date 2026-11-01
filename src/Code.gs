@@ -64,7 +64,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v66';
+var BACKEND_VERSION = 'v67';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -3452,9 +3452,12 @@ function logAccess_(ok, role, ua) {
     var sh = ss.getSheetByName(ACCESS_SHEET);
     if (!sh) sh = ensureSheet_(ss, ACCESS_SHEET, ['fecha', 'resultado', 'rol', 'dispositivo'], []);
     // La hora se FORMATEA al escribir: si guardo Date la hoja la re-lee con
-    // la base cambiada y la hora se desplaza (~8h) segun quien lea. El
-    // string queda lo que es (-3, America/Argentina/Cordoba).
+    // la base cambiada y la hora se desplaza (~3-8h, off real visto en
+    // produccion). Ademas: la columna va a TEXTO, porque Sheets parsea los
+    // strings tipo '1/11/2026 17:02' en fecha con el TZ de la HOJA (que no
+    // es el del script) y vuelve a correr la hora.
     var cuando = Utilities.formatDate(new Date(), 'America/Argentina/Cordoba', 'd/M/yyyy HH:mm');
+    try { sh.getRange(2, 1, ACCESS_MAX_ROWS, 1).setNumberFormat('@'); } catch (eFmt) { }
     sh.appendRow([cuando, ok ? 'entro' : 'fallo', String(role || ''), cleanLogText_(ua, 140)]);
     var last = sh.getLastRow();
     if (last > ACCESS_MAX_ROWS + 1) sh.deleteRows(2, last - 1 - ACCESS_MAX_ROWS);
