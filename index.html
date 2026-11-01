@@ -541,7 +541,17 @@
       font: inherit; font-size: 11px; font-weight: 800; letter-spacing: .04em;
       text-transform: uppercase; cursor: pointer;
     }
-    .ms-head .ms-hint { margin-left: auto; color: var(--accent-strong); letter-spacing: 0; text-transform: none; }
+    /* Fila de progreso: puntos que se van llenando (reemplazo la flecha). */
+    .ms-dots { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; }
+    .ms-dot {
+      width: 10px; height: 10px; border-radius: 999px;
+      background: var(--surface-3); border: 1px solid var(--line-strong);
+    }
+    .ms-dot.on {
+      background: var(--accent); border-color: var(--accent);
+      animation: popIn .24s var(--ease-pop) both;
+    }
+    .ms-head .ms-hint { color: var(--accent-strong); letter-spacing: 0; text-transform: none; }
     .ms-head .ms-chev { width: 14px; height: 14px; transition: transform .22s var(--ease-emph); }
     .mini-summary.is-collapsed .ms-chev { transform: rotate(-90deg); }
     .ms-rows {
@@ -5207,10 +5217,18 @@
       box.innerHTML = '<button class="ms-head" type="button" aria-expanded="'
         + (sState.miniOpen ? 'true' : 'false') + '">'
         + '<span>Tu inscripción</span>'
+        + '<span class="ms-dots" aria-hidden="true">'
+        + (function () {
+          var dots = '';
+          for (var di = 0; di < d.slots.length; di++) {
+            var hecho = !!mine[Number(d.slots[di].id)];
+            dots += '<span class="ms-dot' + (hecho ? ' on' : '') + '" style="--i:' + di + '"></span>';
+          }
+          return dots;
+        })()
+        + '</span>'
         + '<span class="ms-hint">' + listo + ' de ' + d.slots.length + '</span>'
-        + '<svg class="ms-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor"'
-        + ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M4 6.5 8 10.5 12 6.5"/></svg></button>'
+        + '</button>'
         + '<div class="ms-rows">' + out.join('') + '</div>';
       box.hidden = false;
     }
