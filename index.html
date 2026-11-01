@@ -6338,6 +6338,10 @@
 
     var aData = null;
     var aBusy = false;
+    // Los borrados van optimistas: no piden el panel, no roban el slot de
+    // aBusy y pueden superponerse entre ellos (el server serializa por lock).
+    // key = 'api:id'. Si algo falla, se repone el estado con un refresh.
+    var aDelPending_ = {};
     var adminCred = '';
     // La sesion del panel vive 2 h igual que el token del backend;queda en
     // localStorage para survive a recargas y cierre del navegador.
@@ -8503,7 +8507,6 @@
       if (!el.hidden && el.classList) el.classList.add('drop-in');
     };
     window.aOnDelete = function (signupId) {
-      if (aBusy) return;
       openSheet({
         title: '¿Borrar esta inscripción?',
         body: '<p class="sheet-warn">El lugar queda libre.</p>',
@@ -8541,27 +8544,11 @@
     }
 
     function aDeleteConfirmed(signupId) {
-      if (aBusy) return;
-      aBusy = true;
-      // Estado en vivo: el borrado puede tardar (lock + fila). El banner late
-      // (clase wip) y aBusy impide tocar cualquier otra accion hasta terminar.
-      aBanner('Borrando...', 'wip');
-      call('apiAdminDeleteSignup', [adminCred, signupId])
-        .then(function (resp) {
-          aBusy = false;
-          if (!resp.ok) {
-            if (aAuthLost(resp)) return;
-            aBanner(resp.message || 'No se pudo borrar.', 'err');
-            return;
-          }
-          aRemoveSignupLocal_(signupId);
-          aRender();
-          aBanner('Inscripción borrada.', 'ok');
-        })
-        .catch(function () {
-          aBusy = false;
-          aBanner('Sin conexión.', 'err');
-        });
+      // Optimista: la fila sale de la lista al toque y el server confirma
+      // solo (ver aOptimisticDelete_).
+      aOptimisticDelete_('apiAdminDeleteSignup', [adminCred, signupId],
+        function () { aRemoveSignupLocal_(signupId); },
+        'Borrando...', 'Inscripción borrada.');
     }
 
     function aOnToggle() {
@@ -9085,7 +9072,7 @@
     }
 
     function aCorrDelete_() {
-      if (!aData || aBusy) return;
+      if (!aData) return;
       var lista = aCorrDeleteList_();
       if (!lista) {
         aCorrMsg_('No hay inscriptos todavía.', 'ok');
@@ -9106,7 +9093,7 @@
     }
 
     function aCorrDeleteChoose_(email) {
-      if (!aData || aBusy) return;
+      if (!aData) return;
       var signups = [];
       var d = aData;
       for (var i = 0; i < d.signups.length; i++) {
@@ -9150,17 +9137,12 @@
         confirm: 'Borrar',
         danger: true,
         onConfirm: function () {
-          if (aBusy) return;
-          aBusy = true;
-          aCorrMsg_('Borrando la charla...', 'wip');
-          call('apiAdminDeleteSignup', [adminCred, signupId]).then(function (resp) {
-            aBusy = false;
-            if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo borrar.', 'err'); return; }
-            aRemoveSignupLocal_(signupId);
-            aRender();
-            aCorrMsg_('Charla borrada.', 'ok');
-            aBanner('Charla borrada.', 'ok');
-          }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
+          // Optimista: la charla sale de la lista al toque; el server
+          // confirma sola y si algo falla se repone el estado.
+          aOptimisticDelete_('apiAdminDeleteSignup', [adminCred, signupId],
+            function () { aRemoveSignupLocal_(signupId); },
+            'Borrando la charla...', 'Charla borrada.');
+          aCorrMsg_('', 'ok');
         }
       });
     }
@@ -9173,18 +9155,42 @@
         confirm: 'Borrar todo',
         danger: true,
         onConfirm: function () {
-          if (aBusy) return;
-          aBusy = true;
-          aCorrMsg_('Borrando al alumno...', 'wip');
-          call('apiAdminDeleteStudent', [adminCred, email]).then(function (resp) {
-            aBusy = false;
-            if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo borrar.', 'err'); return; }
-            aRemoveStudentLocal_(email);
-            aRender();
-            aCorrMsg_('Alumno borrado.', 'ok');
-            aBanner('Alumno borrado.', 'ok');
-          }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
+          // Optimista: el alumno sale de la lista al toque; el server
+          // confirma sola y si algo falla se repone el estado.
+          var emailKey = String(email);
+          aOptimisticDelete_('apiAdminDeleteStudent', [adminCred, email],
+            function () { aRemoveStudentLocal_(emailKey); },
+            'Borrando al alumno...', 'Alumno borrado.');
+          aCorrMsg_('', 'ok');
         }
+      });
+    }
+
+    // Borrado optimista: 1) marca el par api:id como en vuelo; 2) aplica el
+    // cambio EN LOCAL ahora mismo (la lista y el cupo se ven al toque); 3)
+    // manda la llamada de fondo; si falla, repone el estado via aLoad(true).
+    // No usa aBusy: el docente puede seguir borrando mientras el server
+    // termina las anteriores. Los repetidos quedan cubiertos por aDelPending_.
+    function aOptimisticDelete_(apiFn, args, removeFn, borrandoMsg, okMsg) {
+      var key = apiFn + ':' + String(args[1] || '');
+      if (aDelPending_[key]) return;
+      aDelPending_[key] = true;
+      removeFn();
+      aRender();
+      aBanner(borrandoMsg, 'wip');
+      call(apiFn, args).then(function (resp) {
+        delete aDelPending_[key];
+        if (!resp.ok) {
+          if (aAuthLost(resp)) return;
+          aBanner(resp.message || 'No se pudo borrar. Se reponen los datos.', 'err');
+          aLoad(true);
+          return;
+        }
+        aBanner(okMsg, 'ok');
+      }).catch(function () {
+        delete aDelPending_[key];
+        aBanner('Sin conexión al borrar: se reponen los datos.', 'err');
+        aLoad(true);
       });
     }
 
