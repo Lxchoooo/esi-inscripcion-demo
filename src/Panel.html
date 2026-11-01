@@ -947,14 +947,14 @@
 
     .slot h2 {
       display: flex; align-items: center; gap: 10px;
-      font-size: 14px; font-weight: 600; margin: 28px 0 10px;
+      font-size: 15px; font-weight: 800; letter-spacing: -.01em; margin: 28px 0 10px;
     }
     .slot h2 .time-pill {
-      background: var(--surface-2); color: var(--ink);
-      border: 1px solid var(--line);
-      border-radius: 999px; padding: 4px 11px;
-      font-size: 12px; font-weight: 700; letter-spacing: .02em;
+      background: transparent; border: 0; padding: 0;
+      font-size: 16px; font-weight: 800; letter-spacing: -.01em;
+      color: var(--accent-strong);
     }
+    .slot h2 .slot-time { font-size: 13.5px; font-weight: 600; color: var(--muted); }
     .slot h2 .pick-note { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
 
     .talk {
@@ -1194,9 +1194,9 @@
     .summary .email { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--muted); overflow-wrap: anywhere; }
     .chips { display: none; }
     .slot { margin: 0 0 30px; }
-    .slot h2 { margin: 24px 0 10px; font-size: 15px; font-weight: 700; }
-    .slot h2 .time-pill { padding: 0; border: 0; background: transparent; font-size: 15px; font-weight: 700; color: var(--ink); }
-    .slot h2 .slot-time { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .slot h2 { margin: 24px 0 10px; font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+    .slot h2 .time-pill { padding: 0; border: 0; background: transparent; font-size: 16px; font-weight: 800; color: var(--accent-strong); }
+    .slot h2 .slot-time { font-size: 13.5px; font-weight: 600; color: var(--muted); }
     .slot-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
     @media (min-width: 640px) { .slot-grid { grid-template-columns: 1fr 1fr; } }
     .talk { display: block; margin: 0; padding: 16px; min-height: 64px; border-radius: 14px; animation: none; }
@@ -1921,8 +1921,8 @@
     .mini-summary .ms-t.falta { color: var(--muted); font-weight: 500; font-style: italic; }
     .mini-summary .ms-meta { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
     .slot-done {
-      display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
-      padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+      display: inline-flex; align-items: center; gap: 4px; margin-left: auto;
+      padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800;
       letter-spacing: .02em; text-transform: uppercase;
       background: var(--accent-soft); color: var(--accent-strong);
       animation: popIn .24s var(--ease-pop) both;
