@@ -1118,7 +1118,7 @@ t('Panel stays usable at 360px with 44px targets and safe overflow', () => {
     '100dvh', 'interactive-widget=resizes-content', 'font-size: 16px']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
-  if (!/\.present-btn \{[^}]*min-height: 44px/s.test(panelHtml)) throw new Error('present button target');
+  if (!/\.present-btn \{[^}]*min-height: 48px/s.test(panelHtml)) throw new Error('present button target');
   if (!/\.present-mini \{[^}]*min-height: 44px/s.test(panelHtml)) throw new Error('present mini target');
   if (!/\.sel-bar \{[^}]*z-index: 85/s.test(panelHtml)) throw new Error('sel bar stacking');
 });
