@@ -4578,5 +4578,30 @@ t('r25: el diagnostico de mails es publico, sin datos personales y por estados',
   assertEq(r.trigger, false, 'stub sin triggers: no hay trigger');
 });
 
+t('r25: eleccion optimista de charlas: verde al instante, sin cartel de listo', () => {
+  const idx = panelSrc.indexOf('function sRegister(talkId) {');
+  if (idx < 0) throw new Error('sin sRegister');
+  const cuerpo = panelSrc.slice(idx, idx + 3200);
+  if (!/var snap = sOptimistic_\(slotId, prevId, talkId\);/.test(cuerpo)) throw new Error('sin pintada optimista');
+  if (!/sRenderChange\(slotId, prevId, talkId\);/.test(cuerpo.split('.then(')[0])) {
+    throw new Error('la animacion no corre al tap, corre al confirmar');
+  }
+  if (!/sRestoreOptimistic_\(snap\);/.test(cuerpo)) throw new Error('sin revertir si falla');
+  if (/toast\(resp\.message \|\| \(resp\.ok/.test(cuerpo)) throw new Error('sigue el cartel de listo en cada tap');
+  if (!/esi_last_data/.test(cuerpo)) throw new Error('no guarda cache al confirmar');
+});
+
+t('r25: los carteles del alumno y el toast se ven sin scroll (al pie)', () => {
+  const css = panelCss();
+  const bIdx = css.indexOf('#s-banner {');
+  if (bIdx < 0) throw new Error('sin CSS del banner del alumno');
+  const bCss = css.slice(bIdx, bIdx + 300);
+  if (!/position: fixed/.test(bCss) || !/bottom:/.test(bCss)) throw new Error('el banner sigue arriba');
+  const tIdx = css.indexOf('.toast {');
+  if (!/bottom:/.test(css.slice(tIdx, tIdx + 240)) || /top: calc\(/.test(css.slice(tIdx, tIdx + 240))) {
+    throw new Error('el toast sigue arriba');
+  }
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;

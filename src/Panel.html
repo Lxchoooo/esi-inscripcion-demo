@@ -722,9 +722,18 @@
     @keyframes banner-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
     .banner.wip { animation: banner-pulse 1.2s var(--ease-out) 2; }
 
+    /* El banner del panel de alumno vive al pie, fijo: si scrolleaste para
+    abajo, el aviso aparecia arriba y nadie lo veia. Ahora sale donde esta
+    el pulgar, siempre. */
+    #s-banner {
+      position: fixed; left: 12px; right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      z-index: 80; margin: 0; box-shadow: var(--shadow-lg);
+    }
+
     .toast {
-      position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); z-index: 90;
-      transform: translate(-50%, -12px); opacity: 0; pointer-events: none;
+      position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 90;
+      transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
       width: min(92vw, 430px);
       background: var(--toast-bg); color: var(--toast-ink);
       border-radius: 12px; padding: 13px 16px;
@@ -2510,7 +2519,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v58';
+    var APP_VERSION = 'v59';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4942,20 +4951,49 @@
       });
     }
 
+    function sOptimistic_(slotId, prevId, talkId) {
+      // Eleccion optimista: marca la charla elegida y ajusta los cupos vistos
+      // en local, en el mismo tick del tap. El server confirma en fondo y
+      // corrige; si falla, el snapshot revierte toda la vista.
+      var d = sState.data;
+      if (!d || !slotId) return null;
+      var snap = JSON.stringify({ mine: d.mine, talks: d.talks });
+      if (d.mine) d.mine[Number(slotId)] = String(talkId);
+      var tNew = sTalkById(talkId);
+      var tPrev = prevId ? sTalkById(prevId) : null;
+      if (tNew && tNew.restantes > 0) tNew.restantes--;
+      if (tPrev && tPrev.restantes != null) tPrev.restantes++;
+      return snap;
+    }
+
+    function sRestoreOptimistic_(snap) {
+      if (!snap || !sState.data) return;
+      try {
+        var back = JSON.parse(snap);
+        sState.data.mine = back.mine;
+        sState.data.talks = back.talks;
+        sRender();
+      } catch (eR) { }
+    }
+
     function sRegister(talkId) {
       if (sState.busy) return;
       var target = sTalkById(talkId);
       var slotId = target ? target.slot_id : null;
       var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
+      // Verde y animacion al instante: sin cartel de "listo" en cada tap, la
+      // charla pintada ES el aviso. El server confirma en segundo plano.
+      var snap = sOptimistic_(slotId, prevId, talkId);
+      haptic_(10);
       sState.busy = true;
-      // Con la cola del servidor el aviso puede tardar: que el alumno vea que
-      // se esta guardando y no toque de nuevo.
-      sBanner('Guardando…', 'ok');
+      sState.confirmed = false;
+      sBanner('');
+      sRenderChange(slotId, prevId, talkId);
       call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_()])
         .then(function (resp) {
           sState.busy = false;
-          sBanner('');
           if (resp.needsLogin || resp.expired) {
+            sRestoreOptimistic_(snap);
             sState.session = null;
             sState.login = null;
             // Se va todo, cache del device incluido: puede ser el celular
@@ -4966,30 +5004,37 @@
             showScreen(S_SCREENS, 's-screen-login');
             return;
           }
+          if (!resp.ok) {
+            // El server rechazo: fuera la pintada optimista y aviso.
+            sRestoreOptimistic_(snap);
+            toast(resp.message || 'No se pudo anotar.', 'err');
+            if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
+            return;
+          }
           if (resp.data) sState.data = resp.data;
           sApplyTestModeFrom_(resp);
           if (resp.student) sState.student = resp.student;
           if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
           if (resp.session) sSetSession_(resp.session);
-          toast(resp.message || (resp.ok ? 'Listo.' : 'No se pudo anotar.'), resp.ok ? 'ok' : 'err');
-          if (resp.ok) {
-            sState.confirmed = false;
-            haptic_(10);
-            sRenderChange(slotId, prevId, talkId);
-          } else {
-            sRender();
-            // Cupo rechazado en el servidor: los cupos de la vista pueden estar
-            // viejos por el cache. Traigo datos frescos en segundo plano.
-            if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
-          }
+          // Cache del device al dia con los datos confirmados por el server.
+          try {
+            lsSet('esi_last_data', JSON.stringify({
+              ts: Date.now(), student: sState.student, data: sState.data,
+              recordatorio: !!sState.recordatorio
+            }));
+          } catch (eCache) { }
+          sBanner('');
+          sRender();
         })
         .catch(function () {
           sState.busy = false;
-          toast('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
+          sRestoreOptimistic_(snap);
+          toast('Sin conexión: no pude confirmar. Probá de nuevo.', 'err');
         });
     }
 
     function sRenderChange(slotId, prevId, nextId) {
+      var busyWas = sState.busy;
       if (!slotId || sReduceMotion()) {
         sRender();
         return;
@@ -5012,7 +5057,10 @@
         sState.enterTalk = { slotId: slotId, id: nextId };
         sRender();
         sState.enterTalk = null;
-        sState.busy = false;
+        // Restaurar el valor de busy que habia antes: si la animacion corre
+        // dentro de un registro optimista, no debe apagar el candado de la
+        // request que esta en vuelo.
+        sState.busy = busyWas;
       }, 150);
     }
 
