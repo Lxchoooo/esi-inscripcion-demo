@@ -1895,14 +1895,33 @@
     @keyframes checkDraw { from { stroke-dashoffset: 26; } to { stroke-dashoffset: 0; } }
     @keyframes countPop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 
-    .panel-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
-    .panel-filters #input-buscar-talk { max-width: 280px; margin: 0; }
+    /* Filtros en UNA fila: buscador flexible y el switch de lugares. */
+    .panel-filters { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; margin-top: 10px; }
+    .panel-filters #input-buscar-talk { flex: 1; min-width: 0; max-width: none; margin: 0; }
     .switch-line {
-      display: inline-flex; align-items: center; gap: 7px; min-height: 40px;
+      display: inline-flex; align-items: center; gap: 7px; min-height: 44px; flex: 0 0 auto;
       font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer;
       -webkit-user-select: none; user-select: none;
     }
-    .switch-line input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-fill); }
+    /* Switch visual: el checkbox nativo pasa a ser desemboque (misma semantica). */
+    .switch-line input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 40px; height: 24px; margin: 0; flex: 0 0 auto;
+      border-radius: 999px; background: var(--surface-3);
+      border: 1px solid var(--line-strong); position: relative; cursor: pointer;
+      transition: transform var(--dur-1) var(--ease-out); /* r14: solo transform */
+    }
+    .switch-line input[type="checkbox"]::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--surface); box-shadow: 0 1px 3px rgba(31, 31, 31, .25);
+      transition: transform var(--dur-2) var(--ease-out);
+    }
+    .switch-line input[type="checkbox"]:checked { background: var(--btn-bg-hi); border-color: var(--btn-bg-hi); }
+    .switch-line input[type="checkbox"]:checked::after { transform: translateX(16px); background: #FAF8F5; }
+    @media (prefers-reduced-motion: reduce) {
+      .switch-line input[type="checkbox"]::after { transition: none; }
+    }
     .switch-line:active { transform: scale(.98); }
     .mini-summary {
       display: grid; gap: 6px; margin: 0 0 14px; padding: 12px 14px;
