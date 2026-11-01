@@ -1816,6 +1816,7 @@
     .btn.accent:hover { background: var(--accent-strong); }
     .hero h2 { font-size: clamp(34px, 7vw, 44px); max-width: 16ch; }
     .hero-grid { display: grid; gap: 26px; align-items: start; }
+    .hero-grid > * { min-width: 0; }
     .hero-copy > p:not(.hero-eyebrow) {
       font-size: 16.5px; line-height: 1.65; color: var(--muted);
       max-width: 50ch; margin: 0 0 22px;
@@ -1824,6 +1825,7 @@
     .hero-copy .hero-meta { margin: 0; }
     .hero-poster {
       position: relative; isolation: isolate; overflow: hidden;
+      box-sizing: border-box; width: 100%; min-width: 0;
       padding: 22px; border-radius: 24px;
       background:
         radial-gradient(circle at 100% 0%, rgba(255, 255, 255, .2), transparent 38%),
@@ -1858,6 +1860,7 @@
       .hero-grid { grid-template-columns: minmax(0, 1.3fr) minmax(210px, .7fr); gap: 32px; }
     }
     @media (max-width: 679px) {
+      .hero-grid { grid-template-columns: minmax(0, 1fr); }
       .hero-poster { width: 100%; max-width: none; }
     }
     #s-screen-mail { scroll-margin-top: 82px; }
