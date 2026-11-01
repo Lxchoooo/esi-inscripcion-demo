@@ -3093,7 +3093,12 @@
         var mv = String($('input-mail') ? $('input-mail').value : '');
         g.classList.toggle('has-full', mv.indexOf('@') >= 0);
       }      var mail = $('input-mail');
-      if (mail) sMarkField_(mail, sValidMail_(mail.value));
+      if (mail) {
+        var mlv = String(mail.value || '');
+        // La UI compone el dominio en sLoginSubmit: el ✓ muestra el mismo
+        // veredicto que tendra el server con el valor final.
+        sMarkField_(mail, sValidMail_(mlv.indexOf('@') >= 0 ? mlv : mlv + '@secundariosalsipuedes.edu.ar'));
+      }
       var dni = $('input-dni');
       if (dni) sMarkField_(dni, sValidDni_(dni.value));
       var nombre = $('input-nombre');
