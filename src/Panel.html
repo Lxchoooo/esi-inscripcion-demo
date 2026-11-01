@@ -1904,6 +1904,10 @@
     }
     .back-top:active { background: var(--surface-2, rgba(0, 0, 0, .06)); }
     .back-top .ico { width: 20px; height: 20px; }
+    /* El Volver es absoluto dentro del card: sin ancla el navegador lo pega
+       al documento y lo saca de vista. Los steps se corren para no pisarlo. */
+    #s-screen-login, #s-screen-datos { position: relative; }
+    #s-screen-login .steps, #s-screen-datos .steps { padding-left: 84px; }
     /* Boton ¿No te acordas tu mail? con el signo de pregunta. */
     .btn.ghost.link { background: transparent; box-shadow: none; padding-left: 0; }
     .help-q {
