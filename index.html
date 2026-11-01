@@ -692,12 +692,28 @@
     .btn.small { min-height: 44px; padding: 9px 15px; font-size: 13.5px; border-radius: 10px; box-shadow: none; }
     .btn.full + .btn.secondary.full { margin-top: 8px; }
 
+    /* No scroll horizontal JAMAS (320-412px): el clip corta sin romper los
+       sticky fijos al pie. */
+    html, body { overflow-x: clip; }
+
     label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin: 16px 0 7px; }
     .field { display: grid; gap: 8px; }
     .field { grid-template-columns: minmax(0, 1fr); min-width: 0; }
     .field label { margin: 0; }
     .login-fields { display: grid; gap: 16px; }
     .login-fields > * { min-width: 0; }
+    /* Los inputs tienen un ancho explicito y tope: en laptops de 320-412px
+       el borde derecho no se puede romper aunque el texto sea largo. */
+    .login-fields input, .login-fields select {
+      width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+    }
+    .field-row > div input, .field-row > div select {
+      width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+    }
+    #s-screen-login .field input, #s-screen-login .field select,
+    #s-screen-datos .field input, #s-screen-datos .field select {
+      max-width: 100%;
+    }
     .login-fields input, .login-fields select { max-width: 100%; min-width: 0; }
     .login-form { margin-top: 4px; }
     .login-fields .btn.full { margin: 0; }
