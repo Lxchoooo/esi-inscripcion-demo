@@ -618,13 +618,17 @@
       background: var(--accent);
     }
     .live-dot.off { background: var(--warn); animation: none; box-shadow: none; }
-    .steps-bar { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
+    .steps-bar { display: inline-flex; align-items: center; gap: 5px; margin-left: 2px; }
     .steps-bar i {
-      display: block; width: 13px; height: 4px; border-radius: 999px;
+      display: block; width: 16px; height: 5px; border-radius: 999px;
       background: var(--line); transition: opacity var(--dur-2) var(--ease-out);
     }
     .steps-bar i.done { background: var(--accent-line); }
-    .steps-bar i.on { width: 22px; background: var(--accent); animation: growBar .3s var(--ease-emph) both; }
+    .steps-bar i.on {
+      width: 24px; background: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+      animation: growBar .3s var(--ease-emph) both;
+    }
     @keyframes growBar { from { transform: scaleX(.4); } to { transform: scaleX(1); } }
     h2.intro {
       font-size: clamp(25px, 5.2vw, 32px); font-weight: 650;
@@ -723,6 +727,42 @@
       min-height: 56px; font-size: 16.5px; border-radius: 16px; margin-top: 4px;
     }
     #s-screen-datos .field-row select { padding-right: 40px; }
+    /* Validez viva: la casilla correcta lleva un check verde adentro. */
+    #s-screen-login .field.is-ok input, #s-screen-datos .field.is-ok input {
+      border-color: var(--accent);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='9' fill='%231F6B3F'/%3E%3Cpath d='M5 9.5l3 3 5-6' stroke='%23FAF8F5' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 40px;
+    }
+    #s-screen-login .field.is-ok select, #s-screen-datos .field.is-ok select {
+      border-color: var(--accent);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A8A82' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='9' fill='%231F6B3F'/%3E%3Cpath d='M5 9.5l3 3 5-6' stroke='%23FAF8F5' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat, no-repeat;
+      background-position: right 15px center, right 40px center;
+    }
+    /* Continuar listo: el form completo valido activa el verde. */
+    #s-screen-datos .login-form .btn.full.is-ready {
+      background: var(--accent-strong); color: var(--paper);
+      box-shadow: 0 10px 26px rgba(31, 107, 63, .28);
+    }
+    /* Resumen "Todo listo" del paso 3. */
+    #datos-resumen:not([hidden]) {
+      margin: 0; color: var(--accent-strong); font-weight: 700;
+    }
+    /* Bullets de la pantalla Ingresar. */
+    .login-bullets {
+      list-style: none; padding: 0; margin: 16px 0 0;
+      display: grid; gap: 9px;
+    }
+    .login-bullets li {
+      display: flex; gap: 9px; align-items: flex-start;
+      font-size: 14px; line-height: 1.5; color: var(--muted);
+    }
+    .login-bullets li::before {
+      content: ''; flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+      background: var(--accent-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='%231F6B3F' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") center no-repeat;
+      margin-top: 2px;
+    }
     input[type=text], input[type=password], input[type=email], select, textarea {
       width: 100%; min-height: 50px;
       padding: 12px 14px;
@@ -1939,6 +1979,11 @@
       <h2 class="intro" id="login-title">Ingresar</h2>
       <p class="hint">Vas a necesitar tu mail institucional y tu DNI.</p>
       <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
+      <ul class="login-bullets">
+        <li>Entrás con tu mail institucional (o DNI con apellido).</li>
+        <li>Elegís una charla por horario.</li>
+        <li>Te lleva menos de 2 minutos.</li>
+      </ul>
       <p class="hint-line login-note" id="login-notice" hidden>Profes y guías: ingresen por el panel de administración.</p>
       <p class="hint-line login-note" id="login-note">Si usás un celular compartido, cerrá la pestaña al terminar.</p>
     </section>
@@ -2019,6 +2064,7 @@
               <select id="select-division"></select>
             </div>
           </div>
+          <p class="hint-line" id="datos-resumen" role="status" aria-live="polite" hidden></p>
           <button id="btn-datos-go" class="btn full" type="submit">Continuar</button>
         </div>
       </form>
@@ -2571,7 +2617,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v70';
+    var APP_VERSION = 'v71';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -2638,12 +2684,81 @@
       if ($('select-anio')) $('select-anio').value = '';
       if ($('select-division')) $('select-division').innerHTML = '<option value="">Elegí...</option>';
       if ($('mail-hint')) $('mail-hint').hidden = true;
+      // Las marcas de validez viva tambien se limpian.
+      var campos = ['input-mail', 'input-dni', 'input-nombre', 'input-apellido'];
+      for (var j = 0; j < campos.length; j++) {
+        var inp = $(campos[j]);
+        if (inp) {
+          var f = inp.closest ? inp.closest('.field') : null;
+          if (f) f.classList.remove('is-ok');
+          inp.setAttribute('aria-invalid', 'false');
+        }
+      }
+      if ($('datos-resumen')) $('datos-resumen').hidden = true;
+      if ($('btn-datos-go')) $('btn-datos-go').classList.remove('is-ready');
     }
 
     // Los datos de primera vez viven en su propia pantalla (paso 3): el mail
     // ya no despliega el form "hacia abajo", el paso va adelante.
     function sOpenLoginExtra_() {
       showScreen(S_SCREENS, 's-screen-datos');
+      // Sello de validez al entrar: lo que ya este escrito muestra su estado
+      // sin esperar a que el usuario vuelva a tocar.
+      sUpdateMarks_();
+      // Foco al primer casillero vacio, arriba hacia abajo.
+      var arranque = ['input-nombre', 'input-apellido', 'select-anio'];
+      for (var i = 0; i < arranque.length; i++) {
+        var el = $(arranque[i]);
+        if (el && !String(el.value || '').trim()) {
+          focusField_(el);
+          return;
+        }
+      }
+      if ($('btn-datos-go')) focusField_($('btn-datos-go'));
+    }
+
+    // ---- Validacion viva del login (v71): cada casilla amarca ✓ apenas
+    // valida, sin cartones de error ni esperas. El resumen de la pantalla de
+    // datos dice "todo listo" cuando el form completo esta bien cargado.
+    function sValidMail_(v) { return EsiClient.isInstitutionalEmail(EsiClient.normalizeEmail(v)); }
+    function sValidDni_(v) { return EsiClient.isValidDni(EsiClient.normalizeDni(v)); }
+    function sValidName_(v) {
+      var n = EsiClient.sanitizeName(v);
+      return !!n && EsiClient.isValidName(n);
+    }
+
+    function sMarkField_(input, ok) {
+      var f = input && input.closest ? input.closest('.field') : null;
+      if (!f) return;
+      f.classList.toggle('is-ok', !!ok);
+      input.setAttribute('aria-invalid', ok ? 'false' : (String(input.value || '') ? 'true' : 'false'));
+    }
+
+    function sUpdateMarks_() {
+      var mail = $('input-mail');
+      if (mail) sMarkField_(mail, sValidMail_(mail.value));
+      var dni = $('input-dni');
+      if (dni) sMarkField_(dni, sValidDni_(dni.value));
+      var nombre = $('input-nombre');
+      if (nombre) sMarkField_(nombre, sValidName_(nombre.value));
+      var apellido = $('input-apellido');
+      if (apellido) sMarkField_(apellido, sValidName_(apellido.value));
+      var anio = $('select-anio') ? $('select-anio').value : '';
+      var div = $('select-division') ? $('select-division').value : '';
+      var listo = !!(sValidName_(nombre ? nombre.value : '') && sValidName_(apellido ? apellido.value : '')
+        && anio && div);
+      var res = $('datos-resumen');
+      if (res) {
+        if (listo) {
+          res.textContent = 'Todo listo: ' + EsiClient.sanitizeName(apellido ? apellido.value : '') + ', '
+            + EsiClient.sanitizeName(nombre ? nombre.value : '') + ' — ' + anio + '°' + div;
+          res.hidden = false;
+        } else {
+          res.hidden = true;
+        }
+      }
+      var go = $('btn-datos-go');
+      if (go) go.classList.toggle('is-ready', listo);
     }
 
     function sEmptyState_() {
@@ -5554,6 +5669,12 @@
         focusField_(hasMail ? $('input-mail') : $('btn-login-start'));
       });
       $('select-mail-year').addEventListener('change', sMailYearHint_);
+      // Validacion viva: casilla amarca ✓ apenas es valida.
+      if ($('input-mail')) $('input-mail').addEventListener('input', sUpdateMarks_);
+      if ($('input-dni')) $('input-dni').addEventListener('input', sUpdateMarks_);
+      if ($('input-nombre')) $('input-nombre').addEventListener('input', sUpdateMarks_);
+      if ($('input-apellido')) $('input-apellido').addEventListener('input', sUpdateMarks_);
+      if ($('select-division')) $('select-division').addEventListener('change', sUpdateMarks_);
       var exitArm = 0;
       $('btn-alumno-salir').addEventListener('click', function () {
         var b = $('btn-alumno-salir');
@@ -5580,6 +5701,7 @@
       $('btn-hello-no').addEventListener('click', sHelloNo);
       $('select-anio').addEventListener('change', function () {
         sFillDivisions(this.value, '');
+        sUpdateMarks_();
       });
       $('btn-confirmar').addEventListener('click', sConfirmar);
       if ($('input-buscar-talk')) $('input-buscar-talk').addEventListener('input', function () { sRender(); });
