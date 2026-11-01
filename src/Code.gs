@@ -64,7 +64,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v63';
+var BACKEND_VERSION = 'v64';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -236,13 +236,27 @@ var EsiCore = (function () {
     function clean(value) {
       return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
     }
+    // CSV quote-aware: comillas dobles encierran un campo (con comas adentro,
+    // tipico en nombres compuestos exportados de planillas). Separadores:
+    // ';' y ',' fuera de comillas, y tab. Sin esto, "Gomez Jacoby, Ana"
+    // partia el nombre en dos columnas y el import la rechazaba mal.
     function cells(line) {
-      return String(line == null ? '' : line)
-        .replace(/\t/g, ';')
-        .replace(/,/g, ';')
-        .replace(/\s*;\s*/g, ';')
-        .split(';')
-        .map(clean);
+      var s = String(line == null ? '' : line);
+      var out = [];
+      var cur = '';
+      var enComillas = false;
+      for (var ci = 0; ci < s.length; ci++) {
+        var ch = s[ci];
+        if (enComillas) {
+          if (ch === '"' && s[ci + 1] === '"') { cur += '"'; ci++; }
+          else if (ch === '"') enComillas = false;
+          else cur += ch;
+        } else if (ch === '"') enComillas = true;
+        else if (ch === ';' || ch === ',' || ch === '\t') { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out.map(clean);
     }
     function headerMap(cols) {
       var map = {};
