@@ -4862,7 +4862,19 @@
         }
       }
       if (toastTimer) window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(function () { el.className = 'toast'; el.innerHTML = ''; }, 3400);
+      var hideToast_ = function () {
+        // Si el foco esta sobre la accion del toast (ej. Deshacer por
+        // teclado), no lo esconde debajo del usuario: se sostiene y
+        // reintenta hasta que el foco se va.
+        var btnAct = el.querySelector ? el.querySelector('.toast-btn') : null;
+        if (btnAct && document.activeElement === btnAct) {
+          toastTimer = window.setTimeout(hideToast_, 1500);
+          return;
+        }
+        el.className = 'toast';
+        el.innerHTML = '';
+      };
+      toastTimer = window.setTimeout(hideToast_, 3400);
     }
 
     var sheetCb = null;
@@ -6113,6 +6125,34 @@
       $('mail-help-close').addEventListener('click', function () { sMailSheet_(false); });
       $('mail-help-close2').addEventListener('click', function () { sMailSheet_(false); });
       $('mail-help-backdrop').addEventListener('click', function () { sMailSheet_(false); });
+      // Teclado: Escape cierra el sheet y Tab queda atrapado adentro, igual
+      // que en la sheet generica (openSheet).
+      document.addEventListener('keydown', function (ev) {
+        var mh = $('mail-help');
+        var open = !!(mh && !mh.hidden);
+        if (ev.key === 'Escape' && open) {
+          sMailSheet_(false);
+          return;
+        }
+        if (ev.key !== 'Tab' || !open) return;
+        var items = [];
+        try {
+          items = Array.prototype.slice.call(
+            mh.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+          );
+        } catch (e) { }
+        items = items.filter(function (el2) { return el2 && el2.offsetParent !== null; });
+        if (!items.length) return;
+        var first = items[0];
+        var last = items[items.length - 1];
+        if (ev.shiftKey && document.activeElement === first) {
+          ev.preventDefault();
+          last.focus();
+        } else if (!ev.shiftKey && document.activeElement === last) {
+          ev.preventDefault();
+          first.focus();
+        }
+      });
       // Validacion viva: casilla amarca ✓ apenas es valida.
       if ($('input-mail')) $('input-mail').addEventListener('input', sUpdateMarks_);
       if ($('input-dni')) $('input-dni').addEventListener('input', sUpdateMarks_);
