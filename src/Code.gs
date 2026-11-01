@@ -47,18 +47,21 @@ var EVENT_TITLE_ = 'Jornada ESI 2026';
 var REMINDER_BATCH_ = 20;
 var REMINDER_MAX_BATCH_ = 40;
 // Avisos por mail a cada alumno. Bienvenida cuando completa las tres franjas
-// con 2 minutos de gracia por si cambia una charla; despues, solo la linea del
-// cambio.
+// con 45 segundos de gracia por si cambia una charla; despues, solo la linea
+// del cambio.
 var MAIL_QUEUE_SHEET = 'MailQueue';
 var CONFIG_MAIL_WELCOME = 'avisos_mail';
-var MAIL_QUEUE_GRACE_MS = 120000;
+// Gracia antes del envio: agrupa los cambios en ráfaga (si el alumno cambia
+// de charla dos veces seguidas, sale UN mail con la eleccion final). 45 s:
+// suficiente para la rafaga, rapido para quien castea una vez.
+var MAIL_QUEUE_GRACE_MS = 45000;
 var MAIL_QUEUE_MAX_TASKS = 20;
 var MAIL_QUEUE_MAX_TRIES = 5;
 var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v61';
+var BACKEND_VERSION = 'v62';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -952,7 +955,10 @@ function ensureWatchdogTrigger_() {
     for (var i = 0; i < trs.length; i++) {
       if (trs[i].getHandlerFunction() === 'watchdog') return;
     }
-    ScriptApp.newTrigger('watchdog').timeBased().everyMinutes(5).create();
+    // Cada 2 min: es de facto el empujador de la cola de mails (el trigger
+    // de cada minuto queda a merced del planificador de Google, que se lo
+    // salta). Cadencia corta para que el bienvenida no tarde mas de ~2 min.
+    ScriptApp.newTrigger('watchdog').timeBased().everyMinutes(2).create();
   } catch (e) { }
 }
 

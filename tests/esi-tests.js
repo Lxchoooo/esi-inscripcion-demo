@@ -4646,5 +4646,16 @@ t('r25: el watchdog empuja la cola de mails si el trigger de cada minuto no corr
   assertEq(services.sentMails.length, 1, 'MailApp recibe el envio por watchdog');
 });
 
+t('r25: los mails salen sin esperas de mas: gracia de 45 s y watchdog cada 2 min', () => {
+  if (!/var MAIL_QUEUE_GRACE_MS = 45000;/.test(codeSrc)) {
+    throw new Error('la gracia de la cola no es de 45 s');
+  }
+  const wd = codeSrc.indexOf('function ensureWatchdogTrigger_');
+  if (wd < 0) throw new Error('sin watchdog');
+  if (!/everyMinutes\(2\)/.test(codeSrc.slice(wd, wd + 700))) {
+    throw new Error('el watchdog sigue cada 5 min');
+  }
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
