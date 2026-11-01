@@ -29,6 +29,9 @@ var CONFIG_DATA_ERASED = 'datos_personales_borrados';
 // Marca para diferir el reproceso de Reporte y Alumnos al trigger de la cola:
 // si el borrado espera esos writes, el panel tarda varios segundos.
 var REBUILD_FLAG = 'rebuild_derived_pending';
+// Contador de reintento cuando los rebuilds derivados explotan (evita el
+// ciclo infinito de que el watchdog re-agende para siempre).
+var REBUILD_FAILS = 'rebuild_fail_count';
 var CONFIG_BACKUP_ACTIVE = 'backup_activo';
 var CONFIG_DRIVE_BACKUP = 'backup_drive_activo';
 var ERRORS_SHEET = 'Errors';
@@ -61,7 +64,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v62';
+var BACKEND_VERSION = 'v63';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -541,7 +544,8 @@ function apiMailDiag(args) {
   try {
     var cfg = readConfig_();
     out.avisos_activo = convertBool_(cfg[CONFIG_MAIL_WELCOME]);
-    out.remitente_cfg = convertBool_(cfg.modo_prueba) ? String(cfg.mail_remitente || '').trim().toLowerCase() : '';
+    // Solo el HECHO de haber remitente, nunca el mail (endpoint publico).
+    out.remitente_activo = convertBool_(cfg.modo_prueba) && !!String(cfg.mail_remitente || '').trim();
   } catch (eCfg) { out.cfgError = String(eCfg && eCfg.message || eCfg); }
   try {
     var q = readMailQueueRaw_();
@@ -587,8 +591,18 @@ function apiMailDiag(args) {
     }
   } catch (eT) { out.triggerError = String(eT && eT.message || eT); }
   if (opts === 'empujar') {
+    // Cooldown de 60 s: el empujon es publico (uso operativo) y sin tope un
+    // anonimo puede gastar cuota de MailApp y escrituras a sheets a manija.
     try {
-      out.flush = flushMailQueue_(Date.now() + 5 * 60 * 1000);
+      var propsD = PropertiesService.getScriptProperties();
+      var lastD = Number(propsD.getProperty('diag_empujon_ms')) || 0;
+      var nowMs = Date.now();
+      if (lastD && nowMs - lastD < 60000) {
+        out.empujon_espera = Math.ceil((60000 - (nowMs - lastD)) / 1000);
+      } else {
+        try { propsD.setProperty('diag_empujon_ms', String(nowMs)); } catch (eD3) { }
+        out.flush = flushMailQueue_(Date.now() + 5 * 60 * 1000);
+      }
     } catch (eF) { out.flushError = String(eF && eF.message || eF); }
     // Despues del empujon: estados nuevos.
     try {
@@ -756,13 +770,28 @@ function runPendingRebuilds_() {
   // Encadenar los dos rebuilds con el lock evita leer mientras nadie esta
   // anotandose; si el lock esta ocupado devuelve busy sin limpiar la marca.
   var ran = withScriptLock_(ADMIN_LOCK_MS, function () {
-    try { rebuildReport_(); } catch (ee) { }
-    try { rebuildAlumnos_(); } catch (ee2) { }
-    return { ok: true };
+    var errores = [];
+    try { rebuildReport_(); } catch (ee) { errores.push('reporte: ' + (ee && ee.message ? ee.message : ee)); }
+    try { rebuildAlumnos_(); } catch (ee2) { errores.push('alumnos: ' + (ee2 && ee2.message ? ee2.message : ee2)); }
+    return { ok: errores.length === 0, errores: errores };
   });
   if (ran && ran.ok) {
-    try { props.setProperty(REBUILD_FLAG, 'no'); } catch (e3) { }
+    try { props.setProperty(REBUILD_FLAG, 'no'); props.setProperty(REBUILD_FAILS, '0'); } catch (e3) { }
     return true;
+  }
+  if (!ran) return false; // lock ocupado: la marca queda para la proxima
+  // El rebuild explota: en vez de tragarse el error y limpiar la marca (que
+  // dejaba Reporte/Alumnos desincronizados para siempre), queda el rastro en
+  // el Log y la marca viva para que el watchdog la reintente. Tras 3 fallos
+  // seguidos se abandona dejando el ultimo error registrado.
+  var fails = (Number(props.getProperty(REBUILD_FAILS)) || 0) + 1;
+  try {
+    props.setProperty(REBUILD_FAILS, String(fails));
+    logAction_('rebuild_error', '', String(ran.errores.join(' | ')).slice(0, 180));
+  } catch (e4) { }
+  if (fails >= 3) {
+    try { props.setProperty(REBUILD_FLAG, 'no'); props.setProperty(REBUILD_FAILS, '0'); } catch (e5) { }
+    try { logAction_('rebuild_error', '', 'reintentos agotados: se abandona la marca pendiente'); } catch (e6) { }
   }
   return false;
 }
@@ -814,14 +843,39 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
     // El Log no guarda mails completos (regla del repo): queda el detalle.
     try { logAction_('mail_ensayo_alumno', '', 'ensayo sin remitente: la bienvenida va a la casilla del alumno'); } catch (eLog) { }
   }
-  var wasPending = upsertPendingMail_(dest, 'bienvenida', mailWelcomeSubject_(cfg), welcomeBody_(name, items, cfg));
-  // Solo manda el cambio aparte si la bienvenida ya salio y el cambio no
-  // rompe el horario seleccionado antes.
+  var hist = mailHistoria_(dest);
+  var wasPending = false;
+  // Si la bienvenida ya salio para este alumno, NO se repite: cuando cambio
+  // de charla se estaban mandando la bienvenida completa OTRA VEZ mas el mail
+  // corto del cambio (2 mails). Con historial, unicamente encola el corto.
+  if (!hist.enviado) {
+    wasPending = upsertPendingMail_(dest, 'bienvenida', mailWelcomeSubject_(cfg), welcomeBody_(name, items, cfg));
+  }
+  // Solo manda el cambio aparte si la bienvenida ya salio (o no habia
+  // pendiente que re-escribir) y el cambio no rompe el horario seleccionado
+  // antes.
   if (!wasPending && doneBefore && action === 'change' && talk) {
     var horario = slotLabelFor_(slots, talk.slot_id);
     upsertPendingMail_(dest, 'cambio', mailChangeSubject_(cfg), changeBody_(name, horario, talk));
   }
   try { ensureMailQueueTrigger_(); } catch (eTrigger) { }
+}
+
+// Que hay en la cola para un destinatario: pendiente (una fila esperando
+// envio) y enviado (todo lo que ya salio). La bienvenida se manda una sola
+// vez por alumno; el historial es lo que decide si un cambio va solo.
+function mailHistoria_(email) {
+  var out = { pendiente: false, enviado: false };
+  var q = readMailQueueRaw_();
+  if (!q.map || !q.map.email) return out;
+  var dest = String(email || '').trim().toLowerCase();
+  for (var i = 1; i < q.vals.length; i++) {
+    if (String(q.vals[i][q.map.email]).trim().toLowerCase() !== dest) continue;
+    var est = String(q.vals[i][q.map.estado] || '').trim().toLowerCase();
+    if (est === 'pendiente') out.pendiente = true;
+    else if (est === 'enviado') out.enviado = true;
+  }
+  return out;
 }
 
 // Si hay una fila pendiente del mismo destinatario la re-escribe (tipo, asunto
@@ -2455,6 +2509,10 @@ function withLockIfFree_(fn) {
     lock.waitLock(REGISTER_LOCK_MS);
     tomado = true;
   } catch (e) { }
+  // Lock ocupado: NO corre sin lock. Escribir por indice de fila sin lock
+  // puede tocar la fila equivocada si otra escritura borra filas mientras
+  // tanto (bug de carrera; mejor devolver null y que el caller reintente).
+  if (!tomado) return null;
   try {
     return fn();
   } finally {
@@ -3886,6 +3944,9 @@ function apiAdminCorrectStudent(cred, email, data) {
       updateRosterStudent_(v);
       logAction_('correct_student', rows[0].signup.id, '');
       invalidateDataCache_();
+      // Correcto cambia curso/ciclo/nombre en filas: derivedFingerprint_ es
+      // ciego a eso (solo cuenta). La marca asegura rebuild de Reporte/Alumnos.
+      scheduleRebuilds_();
       return { ok: true, updated: rows.length, student: { email: v.email, nombre: v.nombre, apellido: v.apellido, curso: v.curso, ciclo: v.ciclo } };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -3929,6 +3990,9 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       setSignupFields_(sh, map, row, { talk_id: String(talk.id), presente: '' });
       logAction_('move_talk', signupId, talk.id);
       invalidateDataCache_();
+      // cambiar charla no cambia longitud ni conteos: sin marca quedan las
+      // hojas derivadas viejas (Reporte/Alumnos mostrarian la charla pasada).
+      scheduleRebuilds_();
       return { ok: true, changed: true, talk: { id: talk.id, titulo: talk.titulo } };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -3982,6 +4046,7 @@ function apiAdminMergeDuplicates(cred, keepEmail, dropEmail) {
       revokeSessionsForEmail_(drop);
       logAction_('merge_duplicates', keepSignup.id, 'moved=' + moved + ';deleted=' + deleted.length);
       invalidateDataCache_();
+      scheduleRebuilds_();
       return { ok: true, moved: moved, deleted: deleted.length };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
@@ -4092,6 +4157,7 @@ function apiDrillCleanup(marca) {
   var borradas = todos ? drillCleanupTodos_() : drillCleanup_(m);
   invalidateDataCache_();
   scheduleRebuilds_();
+  if (borradas < 0) return { ok: false, message: 'El sistema está ocupado, probá otra vez en unos segundos.' };
   return { ok: true, borradas: borradas };
 }
 
@@ -4099,39 +4165,55 @@ function apiDrillCleanup(marca) {
 // marca exacta (por ejemplo si la respuesta se corto a mitad de camino).
 function drillCleanupTodos_() {
   try {
-    var signups = readSignups_();
-    var rows = [];
-    for (var i = 0; i < signups.length; i++) {
-      var s = signups[i];
-      if (s && /^simulacro\d{10,}-\d+@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
-        rows.push(findSignupRow_(s.id));
+    return drillDeleteBajoLock_(function () {
+      var signups = readSignups_();
+      var rows = [];
+      for (var i = 0; i < signups.length; i++) {
+        var s = signups[i];
+        if (s && /^simulacro\d{10,}-\d+@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
+          rows.push(findSignupRow_(s.id));
+        }
       }
-    }
-    rows.sort(function (a, b) { return b - a; });
-    var sh = sheet_(SIGNUPS_SHEET);
-    for (var j = 0; j < rows.length; j++) if (rows[j] > 0) sh.deleteRow(rows[j]);
-    return rows.length;
+      return drillBorrarFilas_(rows);
+    });
   } catch (e) {
-    return 0;
+    return -1;
   }
 }
 
 // Borra las filas del simulacro identificadas por el prefijo del mail.
 function drillCleanup_(marca) {
   try {
-    var signups = readSignups_();
-    var rows = [];
-    for (var i = 0; i < signups.length; i++) {
-      var s = signups[i];
-      if (s && s.email && s.email.indexOf(marca) === 0) rows.push(findSignupRow_(s.id));
-    }
-    rows.sort(function (a, b) { return b - a; });
-    var sh = sheet_(SIGNUPS_SHEET);
-    for (var j = 0; j < rows.length; j++) if (rows[j] > 0) sh.deleteRow(rows[j]);
-    return rows.length;
+    return drillDeleteBajoLock_(function () {
+      var signups = readSignups_();
+      var rows = [];
+      for (var i = 0; i < signups.length; i++) {
+        var s = signups[i];
+        if (s && s.email && s.email.indexOf(marca) === 0) rows.push(findSignupRow_(s.id));
+      }
+      return drillBorrarFilas_(rows);
+    });
   } catch (e) {
-    return 0;
+    return -1;
   }
+}
+
+// El borrado corre bajo lock global: sin lock, un deleteRow corre las filas
+// de Signups mientras registerLocked_ escribe por indice (ronda de bugfinds
+// 1/11). Devuelve -1 si el lock estaba ocupado (el caller informa y se
+// reintentable con otro tap).
+function drillDeleteBajoLock_(fn) {
+  var res = null;
+  try { res = withLockIfFree_(fn); } catch (e) { return -1; }
+  if (res === null || res === undefined) return -1;
+  return res;
+}
+
+function drillBorrarFilas_(rows) {
+  rows.sort(function (a, b) { return b - a; });
+  var sh = sheet_(SIGNUPS_SHEET);
+  for (var j = 0; j < rows.length; j++) if (rows[j] > 0) sh.deleteRow(rows[j]);
+  return rows.length;
 }
 
 function apiAdminDeleteTestData(cred, confirmation) {
@@ -4353,7 +4435,10 @@ function importRosterLocked_(auth, text, mode) {
     }
     var last = sh.getLastRow();
     if (last > 1) sh.getRange(2, 1, last - 1, Math.max(5, sh.getLastColumn())).clearContent();
-    var target = sh.getRange(1, 1, outRows.length, Math.max(5, sh.getLastColumn()));
+    // Ancho exacto 5: el rango de setValues TIENE que matchear las filas de
+    // outRows o explota con MismatchedDimension DESPUES del clearContent
+    // (hoja vacia con solo encabezado = DNI login muerto).
+    var target = sh.getRange(1, 1, outRows.length, 5);
     target.setNumberFormat('@');
     target.setValues(outRows);
     invalidateDataCache_();

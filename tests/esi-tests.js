@@ -3721,7 +3721,7 @@ t('auditoria: el lock no se toma dos veces', () => {
   const error = armar(false);
   error.lock.waitLock = () => { throw new Error('ocupado'); };
   const api3 = cargar(error.lock);
-  assertEq(api3.withLockIfFree_(() => 3), 3, 'si no lo consigue igual trabaja');
+  assertEq(api3.withLockIfFree_(() => 3), null, 'si el lock esta ocupado NO trabaja sin lock (r28: escribia por indice de fila y podia tocar la fila equivocada)');
 });
 
 t('auditoria: revocar sesiones y chequear mails van con lock y sin cache', () => {
@@ -4623,6 +4623,43 @@ t('r25: el empujon del diagnostico ejecuta el flush y manda el pendiente', () =>
   assertEq(enviados.length, 1, 'MailApp ya no recibe dos veces');
   assertEq(r.queue.despues.enviado, 1, 'la fila queda enviado');
   assertEq((r.queue.intentos_max || 0) >= 0, true, 'el diag reporta intentos');
+
+  const r2 = api.apiMailDiag('empujar');
+  if (r2.flush) throw new Error('el empujon no tiene cooldown');
+  assertEq((r2.empujon_espera || 0) >= 1, true, 'el cooldown no avisa la espera');
+});
+
+t('r28: mailHistoria_ separa pendiente y enviado por destinatario', () => {
+  const services = backendStub({});
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
+    [
+      ['m1', new Date(), new Date(), 'a@secundariosalsipuedes.edu.ar', 'bienvenida', 'enviado', 1, 's', 'b'],
+      ['m2', new Date(), new Date(Date.now() + 60000), 'a@secundariosalsipuedes.edu.ar', 'cambio', 'pendiente', 0, 'c', 'd']
+    ]);
+  const api = backendApi(services, 'mailHistoria_');
+  const h = api.mailHistoria_('a@secundariosalsipuedes.edu.ar');
+  assertEq(h.enviado, true, 'historial enviado');
+  assertEq(h.pendiente, true, 'historial pendiente');
+  const h2 = api.mailHistoria_('otro@secundariosalsipuedes.edu.ar');
+  if (h2.enviado || h2.pendiente) throw new Error('el historial mezcla destinatarios');
+});
+
+t('r28: needles de la ronda de bugfinds (rebuild con rastro, lock en drill, import a 5 col, historial de mail)', () => {
+  if (!/var REBUILD_FAILS = 'rebuild_fail_count';/.test(codeSrc)) throw new Error('sin contador de reintentos de rebuild');
+  if (!/logAction_\('rebuild_error'/.test(codeSrc)) throw new Error('el rebuild fallido no deja rastro en el Log');
+  if (!/if \(!tomado\) return null;/.test(codeSrc)) throw new Error('el lock ocupado sigue corriendo sin lock');
+  if (/remitente_cfg/.test(codeSrc)) throw new Error('el diag publico sigue filtrando el mail del remitente');
+  if (!/remitente_activo/.test(codeSrc)) throw new Error('diag sin remitente_activo');
+  if (!/diag_empujon_ms/.test(codeSrc)) throw new Error('el empujon sigue sin cooldown');
+  if (/getRange\(1, 1, outRows\.length, Math\.max\(5,/.test(codeSrc)) throw new Error('el import sigue setValues con ancho variable');
+  const dc = codeSrc.indexOf('function drillCleanupTodos_');
+  const dt = codeSrc.indexOf('function apiAdminDeleteTestData');
+  if (dc < 0 || dt < 0 || !/withLockIfFree_/.test(codeSrc.slice(dc, dt))) throw new Error('drill cleanup sigue borrando sin lock');
+  if (!/var hist = mailHistoria_\(dest\);/.test(codeSrc)) throw new Error('sin historial de mail antes de decidir la bienvenida');
+  if (!/logAction_\('move_talk'[\s\S]{0,300}scheduleRebuilds_\(\)/.test(codeSrc)) throw new Error('move_talk no agenda rebuild');
+  if (!/logAction_\('correct_student'[\s\S]{0,300}scheduleRebuilds_\(\)/.test(codeSrc)) throw new Error('correct_student no agenda rebuild');
+  if (!/logAction_\('merge_duplicates'[\s\S]{0,300}scheduleRebuilds_\(\)/.test(codeSrc)) throw new Error('merge_duplicates no agenda rebuild');
 });
 
 t('r25: el watchdog empuja la cola de mails si el trigger de cada minuto no corre', () => {
