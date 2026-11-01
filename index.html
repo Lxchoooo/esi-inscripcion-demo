@@ -6286,7 +6286,6 @@
     var aRole = 'admin';
     var aTalkData = null;
     var aTalkFilter = 'all';
-    var aUndoTimer = null;
     var aBannerSeq_ = 0; // cada banner invalida los limpiadores previos
     var aWakeLock = null;
     function aSessionSave_(token, role) {
@@ -6517,7 +6516,6 @@
       aSessionClear_();
       aStopAutoRefresh();
       aReleaseAwake_();
-      if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
       aClearTalkCaches_();
       aClearAdminCaches_();
       aData = null;
@@ -8646,7 +8644,6 @@
       aStopAutoRefresh();
       aSessionClear_();
       aReleaseAwake_();
-      if (aUndoTimer) { window.clearTimeout(aUndoTimer); aUndoTimer = null; }
       aClearTalkCaches_();
       aClearAdminCaches_();
       aClearMarkQueue_();
