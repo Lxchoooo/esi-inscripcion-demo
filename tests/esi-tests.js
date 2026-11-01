@@ -4776,6 +4776,24 @@ t('r31: el modelo del dispositivo viene de userAgentData o del UA crudo (sin hue
   if (/pantallaRes_/.test(panelSrc)) throw new Error('la huella de pantalla sigue (el dueño la pidió fuera)');
 });
 
+t('r33: drill con overflow borra todas sus filas (el cupo corta al 40, la limpieza no deja nada)', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  const api = backendApi(services, 'apiAdminLogin, apiAdminDrill, apiAdminSetConfig, apiAdminGetData');
+  const tok = api.apiAdminLogin('1111').token;
+  assertEq(api.apiAdminSetConfig(tok, { modo_prueba: true }).ok, true, 'modo ensayo');
+  const drill = api.apiAdminDrill(tok, 60, 'B1');
+  assertEq(drill.ok, true, 'drill corre: ' + (drill.message || ''));
+  assertEq(drill.n, 60, 'tanda de 60');
+  // ana@ ya esta anotada en B1 en el stub: el cupo deja 39 para el simulacro.
+  assertEq(drill.anotados, 39, 'cupo corta en 39 (40 menos la fila previa de ana)');
+  assertEq(Object.keys(drill.fallas).join('|'), 'Sin lugares: elegí otra charla de esa franja.', 'la unica falla es el cupo: ' + JSON.stringify(drill.fallas));
+  assertEq(drill.fallas['Sin lugares: elegí otra charla de esa franja.'], 21, 'los otros 21 quedaron afuera por cupo');
+  assertEq(drill.borradas, 39, 'borra las 39 filas que creo');
+  const restantes = api.apiAdminGetData(tok).signups;
+  assertEq(restantes.filter((x) => /^simulacro/.test(x.email)).length, 0, 'no queda ninguna fila simulacro');
+  assertEq(restantes.filter((x) => x.email === 'ana@secundariosalsipuedes.edu.ar').length, 1, 'la fila real de ana sobrevive');
+});
+
 t('r25: los mails salen sin esperas de mas: gracia de 45 s y watchdog cada 2 min', () => {
   if (!/var MAIL_QUEUE_GRACE_MS = 45000;/.test(codeSrc)) {
     throw new Error('la gracia de la cola no es de 45 s');
