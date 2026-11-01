@@ -1204,9 +1204,16 @@
     .talk .t-title { flex: 1; font-size: 14.5px; line-height: 1.4; }
     .talk .t-meta { justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 12px; }
     .talk .talk-room { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .talk .talk-seats { font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .talk .talk-seats { font-weight: 600; color: var(--muted); white-space: nowrap; font-size: 13px; }
     .talk .talk-seats.low { color: var(--warn); }
     .talk .talk-seats.none { color: var(--danger); }
+    /* Chips de estado del cupo, al lado del contador. */
+    .talk-flag {
+      flex: 0 0 auto; padding: 3px 9px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .talk-flag.low-flag { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-line); }
+    .talk-flag.full-flag { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line-strong); }
     .talk-check {
       display: grid; place-items: center; flex: 0 0 auto;
       width: 18px; height: 18px; border: 1px solid var(--line-ui); border-radius: 50%;
@@ -1215,7 +1222,7 @@
     }
     .talk.selected .talk-check { border-color: var(--accent); background: var(--accent); color: var(--paper); }
     .talk.selected .t-meta::before { content: none; }
-    .seatbar { display: block; height: 4px; margin-top: 9px; overflow: hidden; background: var(--surface-2); border-radius: 999px; }
+    .seatbar { display: block; height: 6px; margin-top: 9px; overflow: hidden; background: var(--surface-2); border-radius: 999px; }
     .seatbar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent-fill); }
     .seatbar > span.is-low { background: var(--warn); }
     .seatbar > span.is-full { background: var(--line-strong); }
@@ -5199,8 +5206,10 @@
       var waiting = !!(chosen && sState.wait && Number(sState.wait) === Number(slot.id));
       var seats = waiting ? 'Confirmando…'
         : chosen ? 'Elegida'
-        : (full ? 'Completa'
-          : (low ? 'Últimos ' + talk.restantes : talk.restantes + ' lugares'));
+        : (anotados + ' de ' + talk.cupo + ' lugares');
+      var flag = waiting || chosen ? ''
+        : (full ? '<span class="talk-flag full-flag">Llena</span>'
+          : (low ? '<span class="talk-flag low-flag">Pocos lugares</span>' : ''));
       var entering = sState.enterTalk
         && Number(sState.enterTalk.slotId) === Number(slot.id)
         && String(sState.enterTalk.id) === String(talk.id);
@@ -5219,7 +5228,7 @@
         + '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true">'
         + '<path d="M3.2 8.6 6.2 11.6 12.8 4.6"/></svg></span></span>'
         + '<span class="t-meta"><span class="talk-room">' + esc(sRoomLabel_(talk.lugar)) + '</span>'
-        + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span></span>'
+        + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span>' + flag + '</span>'
         + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + barIn_('s' + slot.id + ':' + talk.id) + '" style="width:' + pct + '%"></span></span>';
       if (chosen || full) {
         btn.disabled = true;
