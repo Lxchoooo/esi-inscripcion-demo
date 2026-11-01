@@ -72,7 +72,7 @@
       --dur-fast: 120ms;
       --dur-1: 120ms;
       --dur-2: 200ms;
-      --dur-step: 250ms;
+      --dur-step: 200ms;
       --dur-bar: 400ms;
       --dur-3: 300ms;
       --dur-draw: 600ms;
@@ -730,12 +730,12 @@
       box-shadow: 0 0 0 3px var(--danger-soft);
     }
 
-    /* ---- Pantallas de ingreso: inputs renovados (v70) ----
-       Etiquetas en versalita espaciada, casillas mas altas y redondeadas,
-       foco con anillo verde. Sin transiciones nuevas (r14). */
+    /* ---- Pantallas de ingreso: estilo Spotify movil (v72) ----
+       Etiquetas arriba en tamanio normal (no versalita gris), casillas 56px,
+       foco con anillo verde de 2px. Sin transiciones nuevas (r14). */
     #s-screen-login .field label, #s-screen-datos .field label {
-      font-size: 11.5px; font-weight: 800; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--muted);
+      font-size: 14px; font-weight: 700; letter-spacing: .01em;
+      text-transform: none; color: var(--ink);
     }
     #s-screen-login .field input, #s-screen-login .field select,
     #s-screen-datos .field input, #s-screen-datos .field select,
@@ -750,12 +750,34 @@
     #s-screen-datos .field:focus-within input,
     #s-screen-datos .field:focus-within select {
       border-color: var(--accent);
-      box-shadow: 0 0 0 4px var(--accent-soft);
+      box-shadow: 0 0 0 2px var(--accent);
     }
     #s-screen-login .login-form .btn.full, #s-screen-datos .login-form .btn.full {
       min-height: 56px; font-size: 16.5px; border-radius: 16px; margin-top: 4px;
     }
     #s-screen-datos .field-row select { padding-right: 40px; }
+    /* Boton procesando (login): spinner acotado (6 giros) + bloqueado. */
+    .btn.busy { cursor: default; opacity: .85; }
+    .btn.busy::after {
+      content: ''; box-sizing: border-box; width: 16px; height: 16px;
+      border: 2px solid rgba(250, 248, 245, .35); border-top-color: #FAF8F5;
+      border-radius: 50%; margin-left: 6px; animation: btnSpin .8s linear 6;
+    }
+    @keyframes btnSpin { to { transform: rotate(360deg); } }
+    /* Sufijo de mail dentro del input: el alumno escribe la primera parte y
+       ve el dominio del colegio sorteando en gris. Si pega el mail completo,
+       el sufijo desaparece use sea invisible (visibility, el layout no salta). */
+    .mail-group {
+      display: grid; grid-template-columns: minmax(0, 1fr);
+      align-items: center;
+    }
+    .mail-group .mail-suffix {
+      grid-area: 1 / 1; justify-self: end; align-self: center;
+      padding-right: 14px; font-size: 14.5px; font-weight: 700;
+      color: var(--line-ui); pointer-events: none; user-select: none;
+      white-space: nowrap;
+    }
+    .mail-group.has-full .mail-suffix { visibility: hidden; }
     /* Validez viva: la casilla correcta lleva un check verde adentro. */
     #s-screen-login .field.is-ok input, #s-screen-datos .field.is-ok input {
       border-color: var(--accent);
@@ -2029,9 +2051,12 @@
         <div class="login-fields">
           <div class="field">
             <label for="input-mail">Mail institucional</label>
-            <input id="input-mail" type="email" inputmode="email" autocomplete="off" maxlength="120"
-              spellcheck="false" autocapitalize="none" enterkeyhint="go"
-              aria-describedby="mail-hint" placeholder="usuario@secundariosalsipuedes.edu.ar">
+            <div class="mail-group" id="mail-group">
+              <input id="input-mail" type="email" inputmode="email" autocomplete="email" maxlength="120"
+                spellcheck="false" autocapitalize="none" enterkeyhint="go"
+                aria-describedby="mail-hint" placeholder="tu.apellido">
+              <span class="mail-suffix" aria-hidden="true">@secundariosalsipuedes.edu.ar</span>
+            </div>
           </div>
           <details class="mail-help" id="mail-help">
             <summary>¿No te acordás tu mail?</summary>
@@ -2720,6 +2745,8 @@
       if ($('select-division')) $('select-division').innerHTML = '<option value="">Elegí...</option>';
       if ($('mail-hint')) $('mail-hint').hidden = true;
       // Las marcas de validez viva tambien se limpian.
+      var mailGroup = $('mail-group');
+      if (mailGroup) mailGroup.classList.remove('has-full');
       var campos = ['input-mail', 'input-dni', 'input-nombre', 'input-apellido'];
       for (var j = 0; j < campos.length; j++) {
         var inp = $(campos[j]);
@@ -2804,7 +2831,13 @@
       if (p && p.parentNode) p.parentNode.removeChild(p);
     }
 
-    function sUpdateMarks_() {      var mail = $('input-mail');
+    function sUpdateMarks_() {
+      // El sufijo de dominio desaparece en cuanto el mail trae su propia @.
+      var g = $('mail-group');
+      if (g) {
+        var mv = String($('input-mail') ? $('input-mail').value : '');
+        g.classList.toggle('has-full', mv.indexOf('@') >= 0);
+      }      var mail = $('input-mail');
       if (mail) sMarkField_(mail, sValidMail_(mail.value));
       var dni = $('input-dni');
       if (dni) sMarkField_(dni, sValidDni_(dni.value));
@@ -4629,6 +4662,7 @@
       if (!btn) return;
       if (busy && !btn.style.minWidth && btn.offsetWidth) btn.style.minWidth = btn.offsetWidth + "px";
       btn.disabled = !!busy;
+      btn.classList.toggle('busy', !!busy);
       btn.textContent = busy ? label : normal;
     }
 
@@ -5671,6 +5705,13 @@
 
     function sLoginSubmit() {
       if (sState.busy) return;
+      // UI: si el alumno escribio solo la primera parte del mail, completo
+      // el dominio del colegio ANTES de que el server lo lea. Si pego el
+      // mail completo (con @), queda tal cual.
+      var mv = String($('input-mail').value || '').trim();
+      if (mv && mv.indexOf('@') < 0) {
+        $('input-mail').value = mv + '@secundariosalsipuedes.edu.ar';
+      }
       var email = EsiClient.normalizeEmail($('input-mail').value);
       var dni = EsiClient.normalizeDni($('input-dni').value);
       if (email) {
