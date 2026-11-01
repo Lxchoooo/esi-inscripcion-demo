@@ -1063,7 +1063,8 @@
     .section .lead { font-size: 15px; color: var(--muted); max-width: 56ch; margin: 0 0 22px; }
     .how-grid { display: grid; gap: 10px; align-items: stretch; }
     .how-grid .how-card { height: 100%; }
-    .how-grid { grid-auto-rows: 1fr; }
+    /* Alturas parejas SOLO por fila: el igualador entre filas dejaba tarjetas
+       de dos lineas con un vacio enorme abajo en pantallas de una columna. */
     .how-card {
       background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
       padding: 20px; box-shadow: 0 1px 2px rgba(31, 31, 31, .03);
@@ -1922,7 +1923,7 @@
     .mail-year { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
     .mail-year label { font-size: 13px; font-weight: 600; }
     .mail-year select { max-width: 120px; }
-    .esi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; align-items: stretch; grid-auto-rows: 1fr; }
+    .esi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; align-items: stretch; }
     .esi-grid .esi-card { height: 100%; }
     .esi-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 
