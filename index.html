@@ -458,26 +458,22 @@
       content: ""; position: absolute; left: 0; top: 50%; width: 6px; height: 6px;
       margin-top: -3px; border-radius: 50%; background: var(--accent);
     }
+    /* Tarjetas de contenido UNIFICADAS (v72): un solo estilo — borde sutil,
+       solo la paleta verde del colegio, misma altura por fila. */
     .how-card {
-      border-top: 3px solid var(--tint-1);
+      border-top: 3px solid var(--accent);
       transition: transform var(--dur-2) var(--ease-out);
     }
-    .how-card:nth-child(2) { border-top-color: var(--tint-2); }
-    .how-card:nth-child(3) { border-top-color: var(--tint-3); }
-    .how-card:nth-child(1) .how-num { color: var(--tint-1); }
-    .how-card:nth-child(2) .how-num { color: var(--tint-2); }
-    .how-card:nth-child(3) .how-num { color: var(--tint-3); }
-    .how-card:nth-child(1) { background: linear-gradient(180deg, var(--tint-soft-1), var(--surface) 62%); }
-    .how-card:nth-child(2) { background: linear-gradient(180deg, var(--tint-soft-2), var(--surface) 62%); }
-    .how-card:nth-child(3) { background: linear-gradient(180deg, var(--tint-soft-3), var(--surface) 62%); }
+    .how-num { color: var(--accent); }
+    .how-card { background: var(--card); }
     @media (hover: hover) and (pointer: fine) {
       .how-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
     }
     .how-num { animation: popIn .4s var(--ease-pop) both; }
-    .esi-card { border-left: 3px solid var(--tint-1); transition: transform var(--dur-2) var(--ease-out); }
-    .esi-card:nth-child(2) { border-left-color: var(--tint-2); }
-    .esi-card:nth-child(3) { border-left-color: var(--tint-3); }
-    .esi-card:nth-child(4) { border-left-color: var(--tint-2); }
+    .esi-card {
+      border-left: 3px solid var(--accent);
+      transition: transform var(--dur-2) var(--ease-out);
+    }
     .faq[open] > p { animation: fadeUp .24s var(--ease-emph) both; }
 
     .btn.accent {
@@ -986,7 +982,9 @@
     }
     .section h2 { font-size: clamp(24px, 4.6vw, 30px); font-weight: 600; letter-spacing: -.025em; line-height: 1.2; margin: 0 0 8px; }
     .section .lead { font-size: 15px; color: var(--muted); max-width: 56ch; margin: 0 0 22px; }
-    .how-grid { display: grid; gap: 10px; }
+    .how-grid { display: grid; gap: 10px; align-items: stretch; }
+    .how-grid .how-card { height: 100%; }
+    .how-grid { grid-auto-rows: 1fr; }
     .how-card {
       background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
       padding: 20px; box-shadow: 0 1px 2px rgba(31, 31, 31, .03);
@@ -1704,8 +1702,10 @@
     .mail-year { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
     .mail-year label { font-size: 13px; font-weight: 600; }
     .mail-year select { max-width: 120px; }
-    .esi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; }
+    .esi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; align-items: stretch; grid-auto-rows: 1fr; }
+    .esi-grid .esi-card { height: 100%; }
     .esi-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+
     .esi-card h3 { font-size: 16px; margin: 0 0 8px; }
     .esi-card p { margin: 0; line-height: 1.55; font-size: 14.5px; }
     .esi-card a { color: var(--brand-dark); font-weight: 700; }
