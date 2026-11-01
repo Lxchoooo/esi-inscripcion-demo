@@ -336,6 +336,14 @@
       from { opacity: 0; transform: translateY(14px); }
       to { opacity: 1; transform: none; }
     }
+    /* Estado de espera: la charla elegida late suavemente hasta que el server
+       confirma. Todo lo demas queda igual: la eleccion YA esta pintada. */
+    .talk.waiting { opacity:.82; }
+    .talk.waiting .talk-check svg { animation: waitPulse 1.1s ease-in-out 6; }
+    @keyframes waitPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .3; }
+    }
     @keyframes navUnderline {
       from { transform: scaleX(0); }
       to { transform: scaleX(1); }
@@ -2519,7 +2527,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v67';
+    var APP_VERSION = 'v68';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -2600,6 +2608,7 @@
         needsNombre: false, needsApellido: false, needsCurso: false,
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
       onlyAvailable: false, lastChosen: -1, miniOpen: true,
+      queued: null, queuedAt: 0, wait: null,
       confirmed: false,
         student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
       };
@@ -4375,6 +4384,7 @@
       email: '', nombre: '', apellido: '', curso: '', login: '',
       needsNombre: false, needsApellido: false, needsCurso: false,
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
+      queued: null, queuedAt: 0, wait: null,
       student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
     };
 
@@ -4802,7 +4812,9 @@
       var low = talk.restantes > 0 && talk.restantes <= 5;
       var anotados = Math.max(0, talk.cupo - talk.restantes);
       var pct = talk.cupo > 0 ? Math.min(100, Math.round(anotados * 100 / talk.cupo)) : 0;
-      var seats = chosen ? 'Elegida'
+      var waiting = !!(chosen && sState.wait && Number(sState.wait) === Number(slot.id));
+      var seats = waiting ? 'Confirmando…'
+        : chosen ? 'Elegida'
         : (full ? 'Completa'
           : (low ? 'Últimos ' + talk.restantes : talk.restantes + ' lugares'));
       var entering = sState.enterTalk
@@ -4811,11 +4823,11 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'talk' + (chosen ? ' selected' : '') + (full ? ' full' : '') + (low ? ' low' : '')
-        + (entering ? ' entering' : '');
+        + (entering ? ' entering' : '') + (waiting ? ' waiting' : '');
       btn.setAttribute('data-talk-id', talk.id);
       btn.setAttribute('data-slot-id', slot.id);
       btn.setAttribute('aria-pressed', chosen ? 'true' : 'false');
-      btn.setAttribute('aria-label', talk.titulo + ', ' + talk.lugar + ', ' + seats);
+      btn.setAttribute('aria-label', talk.titulo + ', ' + talk.lugar + ', ' + (waiting ? 'confirmando' : seats));
       var barClass = full ? 'is-full' : (low ? 'is-low' : '');
       btn.innerHTML = '<span class="talk-top">'
         + '<span class="t-title">' + esc(talk.titulo) + '</span>'
@@ -4944,7 +4956,15 @@
     }
 
     function sOnTalk(talk) {
-      if (sState.busy || !talk) return;
+      if (!talk) return;
+      if (sState.busy) {
+        // El server esta confirmando la eleccion anterior: el toque NO se
+        // pierde. Queda en cola y se abre solo cuando termina la request.
+        sState.queued = talk.id;
+        sState.queuedAt = Date.now();
+        sBanner('Confirmando la anterior… tu toque quedó en cola y sigue solo.', 'ok');
+        return;
+      }
       var mine = (sState.data && sState.data.mine) || {};
       if (talk.restantes <= 0 && !mine[Number(talk.slot_id)]) return;
       var prevId = mine[Number(talk.slot_id)];
@@ -4990,6 +5010,25 @@
       } catch (eR) { }
     }
 
+    // Apaga el candado y cierra el ciclo del toque: saca el "Confirmando…"
+    // y, si quedo un toque en cola (tocado mientras viajaba la request), lo
+    // procesa ahora. La cola vence a los 5 s: nunca abre una hoja de elegir
+    // espontanea despues de que el usuario ya dejo eso atras.
+    function sUnbusy_(dropQueued) {
+      sState.busy = false;
+      sState.wait = null;
+      if (dropQueued) { sState.queued = null; return; }
+      var fresh = sState.queued && (Date.now() - (sState.queuedAt || 0)) < 5000;
+      if (!fresh) { sState.queued = null; return; }
+      var next = sState.queued;
+      sState.queued = null;
+      var t = sTalkById(next);
+      if (t) {
+        sBanner('');
+        sOnTalk(t);
+      }
+    }
+
     function sRegister(talkId) {
       if (sState.busy) return;
       var target = sTalkById(talkId);
@@ -4999,13 +5038,14 @@
       // charla pintada ES el aviso. El server confirma en segundo plano.
       var snap = sOptimistic_(slotId, prevId, talkId);
       haptic_(10);
+      sState.wait = slotId;
       sState.busy = true;
       sState.confirmed = false;
-      sBanner('');
+      sBanner('Confirmando tu elección…', 'ok');
       sRenderChange(slotId, prevId, talkId);
       call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_()])
         .then(function (resp) {
-          sState.busy = false;
+          sUnbusy_(resp.needsLogin || resp.expired);
           if (resp.needsLogin || resp.expired) {
             sRestoreOptimistic_(snap);
             sState.session = null;
@@ -5024,6 +5064,7 @@
             // La charla vuelve a estar pendiente: fuera el "Listo, quedaste
             // anotado" (pintado por sConfirmar antes de la respuesta).
             sState.confirmed = false;
+            sBanner('');
             toast(resp.message || 'No se pudo anotar.', 'err');
             if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
             return;
@@ -5044,7 +5085,7 @@
           sRender();
         })
         .catch(function () {
-          sState.busy = false;
+          sUnbusy_();
           sRestoreOptimistic_(snap);
           // Sin confirmación del server no hay "listo" en pantalla.
           sState.confirmed = false;
@@ -5097,7 +5138,7 @@
       var loginToken = sState.login || '';
       return call('apiGetData', [sState.email, nombre, curso, savedToken, apellido || sState.apellido || '', loginToken])
         .then(function (resp) {
-          sState.busy = false;
+          sUnbusy_();
           if (resp.ok) {
             sState.student = resp.student;
             sState.nombre = resp.student.nombre;
@@ -5136,7 +5177,7 @@
           }
         })
         .catch(function () {
-          sState.busy = false;
+          sUnbusy_();
           var cached = null;
           try { cached = JSON.parse(lsGet('esi_last_data') || 'null'); } catch (e) { cached = null; }
           if (cached && cached.data && cached.student) {

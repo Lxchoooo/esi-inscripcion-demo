@@ -4776,6 +4776,38 @@ t('r31: el modelo del dispositivo viene de userAgentData o del UA crudo (sin hue
   if (/pantallaRes_/.test(panelSrc)) throw new Error('la huella de pantalla sigue (el dueño la pidió fuera)');
 });
 
+t('r34: toques durante la confirmacion quedan en cola y la charla elegida muestra el chip de espera', () => {
+  // 1) El toque durante busy NO muere en silencio: queda en cola con fecha.
+  if (!/function sOnTalk\(talk\) \{\s*if \(!talk\) return;\s*if \(sState\.busy\) \{/.test(panelSrc)) {
+    throw new Error('sOnTalk no ataja el toque durante la confirmacion');
+  }
+  if (!/sState\.queued = talk\.id;[\s\S]{0,80}sState\.queuedAt = Date\.now\(\);/.test(panelSrc)) {
+    throw new Error('el toque en cola no queda marcado con timestamp');
+  }
+  // 2) sUnbusy_ cierra el ciclo: saca busy + wait y procesa la cola fresca (<5 s).
+  if (!/function sUnbusy_\(dropQueued\) \{[\s\S]{0,200}Date\.now\(\) - \(sState\.queuedAt \|\| 0\)\) < 5000/.test(panelSrc)) {
+    throw new Error('sUnbusy_ no procesa la cola o la cola no vence');
+  }
+  // 3) Register y carga de datos abandonan busy SOLO via sUnbusy_.
+  const reg = panelSrc.slice(panelSrc.indexOf('function sRegister'), panelSrc.indexOf('function sRenderChange'));
+  if (/sState\.busy = false;/.test(reg)) throw new Error('sRegister sigue apagando busy a mano');
+  const ent = panelSrc.slice(panelSrc.indexOf('function sEnterPanel'), panelSrc.indexOf('function sBuildTalk'));
+  if (/sState\.busy = false;/.test(ent)) throw new Error('sEnterPanel sigue apagando busy a mano');
+  // 4) El chip "Confirmando…" reemplaza el estado de la charla mientras viaja la request.
+  if (!/waiting \? 'Confirmando…'[\s\S]{0,40}: chosen \? 'Elegida'/.test(panelSrc)) {
+    throw new Error('sin chip de espera en la charla elegida');
+  }
+  if (!/\+ \(waiting \? ' waiting' : ''\)/.test(panelSrc)) throw new Error('la clase .waiting no se aplica');
+  // 5) CSS del late suave durante la espera (el CSS vive en panelCss()).
+  if (!/\.talk\.waiting \{ opacity/.test(panelCss()) || !/@keyframes waitPulse/.test(panelCss())) {
+    throw new Error('falta el CSS de pulso de espera');
+  }
+  // 6) El banner del registro avisa que se esta confirmando.
+  if (!/sBanner\('Confirmando tu elección…', 'ok'\)/.test(panelSrc)) {
+    throw new Error('sin aviso de confirmacion en curso');
+  }
+});
+
 t('r33: drill con overflow borra todas sus filas (el cupo corta al 40, la limpieza no deja nada)', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const api = backendApi(services, 'apiAdminLogin, apiAdminDrill, apiAdminSetConfig, apiAdminGetData');
