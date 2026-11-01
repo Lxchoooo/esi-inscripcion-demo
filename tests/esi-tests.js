@@ -4555,5 +4555,28 @@ t('r25: el aviso de recordatorios distingue el singular y el demo devuelve added
   if (!/added: ids\.map/.test(panelSrc)) throw new Error('demo sin added lista');
 });
 
+t('r25: el diagnostico de mails es publico, sin datos personales y por estados', () => {
+  const services = backendStub({});
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
+    [
+      ['m1', new Date(), new Date(Date.now() - 999999), 'x@secundariosalsipuedes.edu.ar', 'bienvenida', 'pendiente', 2, 'Asunto', 'Cuerpo'],
+      ['m2', new Date(), new Date(), 'y@secundariosalsipuedes.edu.ar', 'bienvenida', 'enviado', 1, 'Asunto', 'Cuerpo']
+    ]);
+  const api = backendApi(services, 'apiMailDiag');
+  const r = api.apiMailDiag();
+  assertEq(r.ok, true, 'diag ok');
+  assertEq(r.queue.filas, 2, 'dos filas');
+  assertEq(r.queue.estados.pendiente, 1, 'pendientes por agregado');
+  assertEq(r.queue.estados.enviado, 1, 'enviados por agregado');
+  assertEq(r.queue.pendientes_vencidos, 1, 'vencidos por agregado');
+  const s1 = JSON.stringify(r);
+  if (/secundariosalsipuedes|Cuerpo|@/.test(s1.replace(/cfgError|queueError/g, ''))) {
+    throw new Error('el diag filtro datos personales: ' + s1);
+  }
+  assertEq(r.quota, -1, 'sin MailApp en tests: -1');
+  assertEq(r.trigger, false, 'stub sin triggers: no hay trigger');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
