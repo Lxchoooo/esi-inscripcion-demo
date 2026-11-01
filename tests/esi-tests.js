@@ -1113,14 +1113,14 @@ t('Panel uses a dense desktop admin layout with keyboard shortcuts', () => {
 
 t('Panel stays usable at 360px with 44px targets and safe overflow', () => {
   for (const needle of ['@media (max-width: 380px)', 'overflow-wrap: anywhere',
-    'text-overflow: ellipsis', 'min-height: 44px', 'z-index: 50',
+    'text-overflow: ellipsis', 'min-height: 44px', 'z-index: 85',
     'box-shadow: 0 -8px 24px', 'padding-bottom: calc(128px',
     '100dvh', 'interactive-widget=resizes-content', 'font-size: 16px']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
   if (!/\.present-btn \{[^}]*min-height: 44px/s.test(panelHtml)) throw new Error('present button target');
   if (!/\.present-mini \{[^}]*min-height: 44px/s.test(panelHtml)) throw new Error('present mini target');
-  if (!/\.sel-bar \{[^}]*z-index: 50/s.test(panelHtml)) throw new Error('sel bar stacking');
+  if (!/\.sel-bar \{[^}]*z-index: 85/s.test(panelHtml)) throw new Error('sel bar stacking');
 });
 
 t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
@@ -4681,6 +4681,60 @@ t('r25: el watchdog empuja la cola de mails si el trigger de cada minuto no corr
   assertEq(r.ok, true, 'watchdog ok');
   assertEq(queueRows_(services).slice(-1)[0][5], 'enviado', 'la fila sale con el watchdog');
   assertEq(services.sentMails.length, 1, 'MailApp recibe el envio por watchdog');
+});
+
+t('r29: parseRoster respeta comillas (nombre compuesto con coma queda entero)', () => {
+  const txt = [
+    'mail;nombre;curso',
+    '"ana1@secundariosalsipuedes.edu.ar","Gomez Jacoby, Ana Belen",2b',
+    'mateo2@secundariosalsipuedes.edu.ar,Mateo Gomez,5Turismo'
+  ].join('\n');
+  const r = Core.parseRoster(txt);
+  assertEq(r.rows.length, 2, 'rows');
+  assertEq(r.rows[0].nombre, 'Gomez Jacoby, Ana Belen', 'el campo citado conserva la coma interna');
+  assertEq(r.rows[1].nombre, 'Mateo Gomez', 'sin comillas el parseo de coma sigue igual');
+});
+
+t('r29: el parser de la demo es igual al backend (CSV quote-aware)', () => {
+  const txt = [
+    'mail;nombre;curso',
+    '"ana1@secundariosalsipuedes.edu.ar","Gomez Jacoby, Ana Belen",2b'
+  ].join('\n');
+  assertEq(JSON.stringify(Client.parseRoster(txt)), JSON.stringify(Core.parseRoster(txt)), 'paridad demo/live');
+});
+
+t('r29: needles de la ronda de bugfinds del panel', () => {
+  // H1: sConfirmar no marca listo durante una request; y el rechazo/catch
+  // de sRegister despierta el estado "listo".
+  const sc = panelSrc.indexOf('function sConfirmar');
+  if (!/if \(sState\.busy\) return;/.test(panelSrc.slice(sc, sc + 200))) throw new Error('sConfirmar sin guard de busy');
+  const rk = panelSrc.indexOf('El server rechazo');
+  if (!/confirmed = false/.test(panelSrc.slice(rk, rk + 320))) throw new Error('el rechazo no revierte el "Listo"');
+  const cc = panelSrc.indexOf('Sin conexión: no pude confirmar');
+  if (!/confirmed = false/.test(panelSrc.slice(cc - 200, cc + 140))) throw new Error('el catch no revierte el "Listo"');
+  // H2: aAuthLost en los 4 handlers que faltaban.
+  if (!/aAuthLost\(resp\)/.test(panelSrc.slice(panelSrc.indexOf('apiAdminTalkRoster', panelSrc.indexOf('aLoadTalk') + 100), panelSrc.indexOf('apiAdminTalkRoster', panelSrc.indexOf('aLoadTalk') + 100) + 420))) throw new Error('aLoadTalk no chequea sesion vencida');
+  if (!/aAuthLost\(resp\)/.test(panelSrc.slice(panelSrc.indexOf("call('apiAdminPending', [adminCred])"), panelSrc.indexOf("call('apiAdminPending', [adminCred])") + 420))) throw new Error('aLoadPending no chequea sesion vencida');
+  if (!/aAuthLost\(resp\)/.test(panelSrc.slice(panelSrc.lastIndexOf("call('apiAdminSendReminders', [adminCred,"), panelSrc.lastIndexOf("call('apiAdminSendReminders', [adminCred,") + 500))) throw new Error('aSendReminders no chequea sesion vencida');
+  const cfgSave = panelSrc.indexOf('No se pudo guardar.');
+  if (!/aAuthLost\(resp\)/.test(panelSrc.slice(cfgSave - 260, cfgSave + 120))) throw new Error('aSaveConfig no chequea sesion vencida');
+  // H3: el banner de limpieza respeta ok:false del backend v63.
+  const dcIdx = panelSrc.indexOf("call('apiDrillCleanup', [marca])");
+  if (!/clean\.ok/.test(panelSrc.slice(dcIdx, dcIdx + 750))) throw new Error('la limpieza del simulacro ignora el ok del server');
+  // H4: el borrado de datos personales limpia los caches admin.
+  const er = panelSrc.indexOf('Datos personales borrados.');
+  const erBlock = panelSrc.slice(er, panelSrc.indexOf('aLoad(true)', er) + 12);
+  if (!/aClearAdminCaches_\(\)/.test(erBlock) || !/aPendingData = null/.test(erBlock)) throw new Error('el borrado deja cache admin con datos personales');
+  // H5: los banners llevan generacion y el deshacer no borra errores ajenos.
+  if ((panelSrc.match(/aBannerSeq_/g) || []).length < 3) throw new Error('sin generacion de banner para el timer de deshacer');
+  // F2/F3/F4/F6.
+  if (/--ink-soft/.test(panelSrc)) throw new Error('CSS sigue usando la variable inexistente --ink-soft');
+  const sb = panelHtml.indexOf('.sel-bar {', panelHtml.indexOf('.sel-bar {') + 10);
+  if (!/z-index: 85/.test(panelHtml.slice(sb, sb + 220))) throw new Error('la sel-bar sigue debajo del banner');
+  const pr = panelSrc.indexOf('function planRegistration');
+  if (!/if \(!s\.prueba\) counts/.test(panelSrc.slice(pr, pr + 700))) throw new Error('el picker demo sigue contando filas de prueba como cupo');
+  const es = panelSrc.indexOf('function sEmptyState_');
+  if ((panelSrc.slice(es, es + 420).match(/recordatorio: false/g) || []).length !== 1) throw new Error('clave duplicada recordatorio en sEmptyState_');
 });
 
 t('r25: los mails salen sin esperas de mas: gracia de 45 s y watchdog cada 2 min', () => {

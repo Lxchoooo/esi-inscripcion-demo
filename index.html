@@ -718,7 +718,7 @@
     }
     .banner.ok { display: block; background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent-line); }
     .banner.err { display: block; background: var(--danger-soft); color: var(--danger); border-color: var(--danger-line); }
-    .banner.wip { display: block; background: var(--surface); color: var(--ink-soft); border-color: var(--line); }
+    .banner.wip { display: block; background: var(--surface); color: var(--muted); border-color: var(--line); }
     @keyframes banner-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
     .banner.wip { animation: banner-pulse 1.2s var(--ease-out) 2; }
 
@@ -1161,7 +1161,7 @@
     .panel-exit button.is-armed { color: var(--danger); }
     .panel-exit button:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
     .sel-bar {
-      display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+      display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 85;
       padding: 11px 20px max(11px, env(safe-area-inset-bottom));
       background: var(--nav-bg);
       -webkit-backdrop-filter: blur(14px) saturate(1.3);
@@ -2519,7 +2519,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v63';
+    var APP_VERSION = 'v64';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -2600,7 +2600,7 @@
         needsNombre: false, needsApellido: false, needsCurso: false,
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
       onlyAvailable: false, lastChosen: -1, miniOpen: true,
-      confirmed: false, recordatorio: false,
+      confirmed: false,
         student: { email: '', nombre: '', apellido: '', curso: '', ciclo: '' }
       };
     }
@@ -2739,13 +2739,24 @@
     function clean(value) {
       return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
     }
+    // Mismo parser quote-aware que el backend (ver comentario ahi).
     function cells(line) {
-      return String(line == null ? '' : line)
-        .replace(/\t/g, ';')
-        .replace(/,/g, ';')
-        .replace(/\s*;\s*/g, ';')
-        .split(';')
-        .map(clean);
+      var s = String(line == null ? '' : line);
+      var out = [];
+      var cur = '';
+      var enComillas = false;
+      for (var ci = 0; ci < s.length; ci++) {
+        var ch = s[ci];
+        if (enComillas) {
+          if (ch === '"' && s[ci + 1] === '"') { cur += '"'; ci++; }
+          else if (ch === '"') enComillas = false;
+          else cur += ch;
+        } else if (ch === '"') enComillas = true;
+        else if (ch === ';' || ch === ',' || ch === '\t') { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out.map(clean);
     }
     function headerMap(cols) {
       var map = {};
@@ -2866,7 +2877,9 @@
         var mine = [];
         for (var i = 0; i < signups.length; i++) {
           var s = signups[i];
-          counts[s.talk_id] = (counts[s.talk_id] || 0) + 1;
+          // Igual que cupoCounts_ del backend: filas de simulacro (prueba)
+          // no gastan cupo real, o el picker marca "Sin lugares" de mas.
+          if (!s.prueba) counts[s.talk_id] = (counts[s.talk_id] || 0) + 1;
           if (s.emailKey === student.emailKey) mine.push(s);
         }
         var sameSlot = null;
@@ -4887,6 +4900,7 @@
     }
 
     function sConfirmar() {
+      if (sState.busy) return; // doble tap durante la request no marca listo
       var d = sState.data || { slots: [], mine: {} };
       var slots = d.slots || [];
       if (!slots.length) return;
@@ -5007,6 +5021,9 @@
           if (!resp.ok) {
             // El server rechazo: fuera la pintada optimista y aviso.
             sRestoreOptimistic_(snap);
+            // La charla vuelve a estar pendiente: fuera el "Listo, quedaste
+            // anotado" (pintado por sConfirmar antes de la respuesta).
+            sState.confirmed = false;
             toast(resp.message || 'No se pudo anotar.', 'err');
             if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
             return;
@@ -5029,6 +5046,8 @@
         .catch(function () {
           sState.busy = false;
           sRestoreOptimistic_(snap);
+          // Sin confirmación del server no hay "listo" en pantalla.
+          sState.confirmed = false;
           toast('Sin conexión: no pude confirmar. Probá de nuevo.', 'err');
         });
     }
@@ -5591,6 +5610,7 @@
     var aTalkData = null;
     var aTalkFilter = 'all';
     var aUndoTimer = null;
+    var aBannerSeq_ = 0; // cada banner invalida los limpiadores previos
     var aWakeLock = null;
     function aSessionSave_(token, role) {
       if (!token) return;
@@ -5682,6 +5702,10 @@
     function aBanner(text, type, actionLabel, actionFn) {
       var el = $('a-msg');
       if (!el) return;
+      // Cada banner nuevo invalida los timers viejos que apuntaban a limpiar
+      // el cartel anterior (ej. el deshacer de 'presente' borraba el aviso de
+      // error de red a los 5 s).
+      aBannerSeq_ = (aBannerSeq_ || 0) + 1;
       el.textContent = text || '';
       el.className = 'banner ' + (type === 'err' ? 'err' : (type === 'wip' ? 'wip' : 'ok'));
       el.style.display = text ? 'block' : 'none';
@@ -5884,6 +5908,7 @@
           btnLoading_('btn-refresh-charla', false);
           if (talkId !== aTalkId) return;
           if (!resp.ok) {
+            if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo cargar.', 'err');
             return;
           }
@@ -5991,7 +6016,9 @@
             aBanner('Sin conexión. Se reintentará.', 'err');
           });
       });
+      var undoSeq = aBannerSeq_;
       aUndoTimer = window.setTimeout(function () {
+        if (aBannerSeq_ !== undoSeq) return; // otro banner ya tomo el lugar
         var focused = document.activeElement;
         if (focused && el.contains && el.contains(focused)) return;
         aBanner('', 'ok');
@@ -6260,11 +6287,19 @@
         });
         return call('apiDrillCleanup', [marca]).then(function (clean) {
           var txt = ok + ' de ' + n + ' entraron · ' + busy + ' recibieron "ocupado" · ' +
-            'la tanda tardó ' + (pared / 1000).toFixed(1) + ' s · borradas ' +
-            ((clean && clean.borradas) || 0) + ' filas';
+            'la tanda tardó ' + (pared / 1000).toFixed(1) + ' s';
           var claves = Object.keys(otros);
           if (claves.length) txt += ' · otras: ' + claves.map(function (k2) { return otros[k2] + '× ' + k2; }).join(', ');
-          aDrillMsg_(txt, (busy || claves.length) ? 'err' : 'ok');
+          // v63: la limpieza puede fallar (lock ocupado -> ok:false con
+          // message). Antes pintaba "borradas 0 filas" como si hubiera ido
+          // bien y las filas de prueba quedaban ahi.
+          if (clean && clean.ok) {
+            txt += ' · borradas ' + (clean.borradas || 0) + ' filas';
+            aDrillMsg_(txt, (busy || claves.length) ? 'err' : 'ok');
+          } else {
+            txt += ' · limpieza: ' + ((clean && clean.message) || 'sin respuesta del servidor, quedan filas sin limpiar');
+            aDrillMsg_(txt, 'err');
+          }
           aLoad(true);
         });
       }).catch(function () {
@@ -6315,6 +6350,7 @@
               aMailBusy = false;
               $('btn-mail-send').disabled = false;
               $('btn-mail-preview').disabled = false;
+              if (aAuthLost(resp)) return;
               aMailMsg_(resp.message || 'No se pudo enviar.', 'err');
               return;
             }
@@ -6361,6 +6397,7 @@
         .then(function (resp) {
           btnLoading_('btn-refresh-pend', false);
           if (!resp.ok) {
+            if (aAuthLost(resp)) return;
             aBanner(resp.message || 'No se pudo cargar.', 'err');
             return;
           }
@@ -7803,6 +7840,7 @@
       }]).then(function (resp) {
         if (btn) btn.disabled = false;
         if (!resp.ok) {
+          if (aAuthLost(resp)) return;
           if (msg) { msg.textContent = resp.message || 'No se pudo guardar.'; msg.className = 'banner err'; msg.style.display = 'block'; }
           return;
         }
@@ -8512,6 +8550,11 @@
             aDangerMsg_('Datos personales borrados.', 'ok');
             aClearTalkCaches_();
             aClearMarkQueue_();
+            // El caches admin en localStorage y la lista de pendientes en
+            // memoria tienen nombres+apellidos que EL SERVER YA BORRO: si
+            // sobreviven al borrado, al reabrir se muestran como vigentes.
+            aClearAdminCaches_();
+            aPendingData = null;
             aLoad(true);
           }).catch(function () { aBusy = false; aDangerMsg_('Sin conexión.', 'err'); });
         }
