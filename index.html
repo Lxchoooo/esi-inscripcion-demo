@@ -2519,7 +2519,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v64';
+    var APP_VERSION = 'v65';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -5726,10 +5726,64 @@
       try { return String(navigator.userAgent || '').slice(0, 140); } catch (e) { return ''; }
     }
 
+    // Arma la etiqueta legible: "Modelo · Android 14 · Chrome 130". El UA
+    // reducido de Chrome no trae el modelo (manda 'K') por eso se pide via
+    // userAgentData.getHighEntropyValues (envia el doorway async con modelo
+    // real y version del sistema).
+    function aUADesc_(modelo, androidVer, plataforma, ua) {
+      if (!modelo && !androidVer && !plataforma && !ua) return '';
+      var s = String(ua || '');
+      var partes = [];
+      if (modelo) {
+        // 'K' es el marcador del UA reducido: NO es un modelo.
+        if (String(modelo).trim().toLowerCase() !== 'k') partes.push(String(modelo).trim());
+        else if (plataforma) partes.push(String(plataforma).trim());
+      } else if (plataforma) {
+        partes.push(String(plataforma).trim());
+      }
+      var os = '';
+      var pmaj = parseInt(androidVer, 10);
+      if (pmaj > 0) os = 'Android ' + pmaj;
+      else if (/iPhone|iPod/.test(s)) os = 'iOS';
+      else if (/iPad/.test(s)) os = 'iPadOS';
+      else if (/Macintosh/.test(s)) os = 'Mac';
+      else if (/Windows/.test(s)) os = 'Windows';
+      else if (/Linux/.test(s)) os = 'Linux';
+      if (os) partes.push(os);
+      var navegador = '';
+      var mv = '';
+      if (/Edg\/(\d+)/.test(s)) { navegador = 'Edge'; mv = RegExp.$1; }
+      else if (/OPR\/(\d+)/.test(s)) { navegador = 'Opera'; mv = RegExp.$1; }
+      else if (/SamsungBrowser\/(\d+)/.test(s)) { navegador = 'Samsung Internet'; mv = RegExp.$1; }
+      else if (/Firefox\/(\d+)/.test(s)) { navegador = 'Firefox'; mv = RegExp.$1; }
+      else if (/CriOS\/(\d+)/.test(s)) { navegador = 'Chrome'; mv = RegExp.$1; }
+      else if (/Chrome\/(\d+)/.test(s)) { navegador = 'Chrome'; mv = RegExp.$1; }
+      else if (/Safari\/(\d+)/.test(s)) { navegador = 'Safari'; mv = RegExp.$1; }
+      if (navegador) partes.push(mv ? navegador + ' ' + mv : navegador);
+      return partes.join(' · ');
+    }
+
+    // Etiqueta completa del dispositivo (promesa): primero pide al navegador
+    // el modelo real (Chrome da datos altos: modelo y version de Android),
+    // y si no hay nada parsea el UA crudo.
+    function deviceLabelP_() {
+      try {
+        var uad = navigator.userAgentData;
+        if (uad && typeof uad.getHighEntropyValues === 'function') {
+          return uad.getHighEntropyValues(['model', 'platformVersion']).then(function (v) {
+            return aUADesc_(v && v.model, v && v.platformVersion, '', String(navigator.userAgent || ''))
+              || deviceUA_();
+          }).catch(function () { return deviceUA_(); });
+        }
+      } catch (e) { }
+      return Promise.resolve(deviceUA_());
+    }
+
     function aLogin(pin) {
       if (aBusy) return;
       aBusy = true;
-      call('apiAdminLogin', [pin, deviceUA_()])
+      deviceLabelP_().then(function (label) {
+      call('apiAdminLogin', [pin, label || deviceUA_()])
         .then(function (resp) {
           aBusy = false;
           if (resp.ok) {
@@ -5759,6 +5813,7 @@
           $('gate-msg').textContent = 'Sin conexión.';
           $('gate-msg').style.display = 'block';
         });
+      });
     }
 
     function aAuthLost(resp) {
@@ -8038,8 +8093,17 @@
         var html = '<div class="accesos">';
         for (var i = 0; i < resp.rows.length; i++) {
           var r = resp.rows[i];
-          var d = new Date(r.fecha);
-          var cuando = isNaN(d.getTime()) ? String(r.fecha) : d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          var f = String(r.fecha || '');
+          // Nuevo formato: "d/M/yyyy HH:mm" armado por el server en hora
+          // argentina. Las filas viejas estaban en ISO UTC y saigo bien con
+          // el reloj del propio dispositivo.
+          var cuando = f;
+          if (/^\d{4}-\d{2}-\d\d?T/.test(f)) {
+            var d = new Date(f);
+            if (!isNaN(d.getTime())) {
+              cuando = d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            }
+          }
           var fallo = r.resultado !== 'entro';
           html += '<div class="accesos-item">' +
             '<span class="chip ' + (fallo ? 'chip-err' : 'chip-ok') + '">' + (fallo ? 'falló' : 'entró') + '</span>' +
@@ -8056,28 +8120,23 @@
       });
     }
 
-    // Resumen del user agent: modelo de cel / sistema y navegador.
+    // Resumen del user agent: modelo de cel / sistema y navegador. Los
+    // ingresos nuevos ya llegan armados ("Modelo · Android 14 · Chrome 130")
+    // y pasan derecho; los viejos se parsean del UA crudo.
     function aUAShort_(ua) {
       var s = String(ua || '');
       if (!s) return 'dispositivo desconocido';
-      var m = s.match(/Android[^;)]*; ?([^;)]+)(?:;|\))/);
-      var dev = '';
-      if (m) dev = 'Android · ' + m[1].split(' Build')[0].trim();
-      else if (/iPhone/.test(s)) dev = 'iPhone';
-      else if (/iPad/.test(s)) dev = 'iPad';
-      else if (/Macintosh/.test(s)) dev = 'Mac';
-      else if (/Windows/.test(s)) dev = 'Windows';
-      else if (/Linux/.test(s)) dev = 'Linux';
-      var nav = '';
-      if (/Edg\//.test(s)) nav = 'Edge';
-      else if (/OPR\//.test(s)) nav = 'Opera';
-      else if (/SamsungBrowser\//.test(s)) nav = 'Samsung Internet';
-      else if (/Firefox\//.test(s)) nav = 'Firefox';
-      else if (/CriOS\//.test(s)) nav = 'Chrome';
-      else if (/Chrome\//.test(s)) nav = 'Chrome';
-      else if (/Safari\//.test(s)) nav = 'Safari';
-      if (dev && nav) return dev + ' · ' + nav;
-      return dev || nav || s.slice(0, 40);
+      if (s.indexOf(' · ') >= 0 && !/Mozilla|AppleWebKit/.test(s)) return s;
+      var modeloM = s.match(/Android[^;)]*; ?([^;)]+)(?:;|\))/);
+      var modelo = '';
+      if (modeloM) {
+        modelo = modeloM[1].split(' Build')[0].trim();
+        // UA reducido: 'K' no es un modelo.
+        if (modelo.length < 3 || /^(k|sm-)$/i.test(modelo)) modelo = '';
+      }
+      var ver = /Android (\d+)/.test(s) ? RegExp.$1 : '';
+      var plataforma = /iPhone/.test(s) ? 'iPhone' : (/iPad/.test(s) ? 'iPad' : '');
+      return aUADesc_(modelo, ver, plataforma, s) || s.slice(0, 40);
     }
 
     function aLoadStatus() {
