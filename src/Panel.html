@@ -962,7 +962,7 @@
       text-align: left; font-family: inherit; font-size: 15.5px; line-height: 1.35;
       color: var(--ink); background: var(--surface);
       border: 1px solid var(--line-ui); border-radius: var(--radius-sm);
-      padding: 15px 16px; margin: 8px 0; min-height: 64px;
+      padding: 16px; margin: 8px 0; min-height: 64px;
       cursor: pointer;
       box-shadow: 0 1px 1px rgba(31, 31, 31, .02);
       transition: transform var(--dur-1) var(--ease-out), opacity var(--dur-1) var(--ease-out);
@@ -971,13 +971,14 @@
     .talk:hover { border-color: var(--muted); transform: translateY(-1px); box-shadow: var(--shadow); }
     .talk:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .talk.selected {
-      border-color: var(--accent); background: var(--primary-container);
-      border-radius: 22px 8px 22px 8px; box-shadow: 0 10px 26px rgba(31, 107, 63, .16);
+      border-color: var(--accent); border-width: 2px; padding: 15px;
+      background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+      border-radius: var(--radius-sm); box-shadow: 0 10px 26px rgba(31, 107, 63, .16);
     }
     .talk.selected:hover { border-color: var(--accent); transform: translateY(-2px); }
     .talk .t-body { flex: 1; min-width: 0; }
-    .talk .t-title { font-weight: 600; }
-    .talk .t-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 5px; }
+    .talk .t-title { font-size: 16px; font-weight: 650; line-height: 1.3; }
+    .talk .t-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 14px; margin-top: 5px; }
     .talk .seats { font-weight: 600; color: var(--muted); }
     .talk .seats.low { color: var(--warn); }
     .talk .seats.none { color: var(--danger); }
@@ -1198,11 +1199,11 @@
     .slot h2 .slot-time { font-size: 13px; font-weight: 500; color: var(--muted); }
     .slot-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
     @media (min-width: 640px) { .slot-grid { grid-template-columns: 1fr 1fr; } }
-    .talk { display: block; margin: 0; padding: 15px 16px; min-height: 0; border-radius: 14px; animation: none; }
+    .talk { display: block; margin: 0; padding: 16px; min-height: 64px; border-radius: 14px; animation: none; }
     .talk:not(:disabled):hover { transform: translateY(-1px); }
     .talk-top { display: flex; align-items: flex-start; gap: 10px; }
-    .talk .t-title { flex: 1; font-size: 14.5px; line-height: 1.4; }
-    .talk .t-meta { justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 12px; }
+    .talk .t-title { flex: 1; font-size: 16px; line-height: 1.35; }
+    .talk .t-meta { justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 14px; }
     .talk .talk-room { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .talk .talk-seats { font-weight: 600; color: var(--muted); white-space: nowrap; font-size: 13px; }
     .talk .talk-seats.low { color: var(--warn); }
