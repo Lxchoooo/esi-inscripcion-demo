@@ -713,6 +713,23 @@
     .login-fields input, .login-fields select { max-width: 100%; min-width: 0; }
     .login-form { margin-top: 4px; }
     .login-fields .btn.full { margin: 0; }
+    /* Errores EN LINEA: mensaje rojo suave con icono justo debajo del campo
+       (el banner fijo del pie quedaba pegado a la barra del navegador). */
+    .field { position: relative; }
+    .field-err {
+      display: flex; align-items: flex-start; gap: 6px;
+      margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--danger);
+      line-height: 1.45;
+    }
+    .field-err::before {
+      content: ''; flex: 0 0 auto; width: 14px; height: 14px; margin-top: 2px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Ccircle cx='7' cy='7' r='7' fill='%23A6402F'/%3E%3Cpath d='M4.6 4.6l4.8 4.8M9.4 4.6l-4.8 4.8' stroke='%23FAF8F5' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center no-repeat;
+    }
+    .field.is-error input, .field.is-error select {
+      border-color: var(--danger) !important;
+      box-shadow: 0 0 0 3px var(--danger-soft);
+    }
+
     /* ---- Pantallas de ingreso: inputs renovados (v70) ----
        Etiquetas en versalita espaciada, casillas mas altas y redondeadas,
        foco con anillo verde. Sin transiciones nuevas (r14). */
@@ -2077,7 +2094,9 @@
             </div>
             <div>
               <label for="select-division">División</label>
-              <select id="select-division"></select>
+              <select id="select-division">
+                <option value="">Elegí...</option>
+              </select>
             </div>
           </div>
           <p class="hint-line" id="datos-resumen" role="status" aria-live="polite" hidden></p>
@@ -2706,7 +2725,12 @@
         var inp = $(campos[j]);
         if (inp) {
           var f = inp.closest ? inp.closest('.field') : null;
-          if (f) f.classList.remove('is-ok');
+          if (f) {
+            f.classList.remove('is-ok');
+            f.classList.remove('is-error');
+            var perr = f.querySelector('.field-err');
+            if (perr && perr.parentNode) perr.parentNode.removeChild(perr);
+          }
           inp.setAttribute('aria-invalid', 'false');
         }
       }
@@ -2750,15 +2774,52 @@
       input.setAttribute('aria-invalid', ok ? 'false' : (String(input.value || '') ? 'true' : 'false'));
     }
 
-    function sUpdateMarks_() {
-      var mail = $('input-mail');
+    // Error EN LINEA: lo cuelga debajo del campo que fallo, en rojo suave con
+    // icono, y deja el borde en estado de error. No toca al servidor: es
+    // pura presentacion.
+    function sFieldErr_(input, msg) {
+      if (!input) return;
+      var f = input.closest ? input.closest('.field') : null;
+      if (!f) { sBanner(msg, 'err'); return; }
+      f.classList.add('is-error');
+      input.setAttribute('aria-invalid', 'true');
+      var p = f.querySelector('.field-err');
+      if (!p) {
+        p = document.createElement('p');
+        p.className = 'field-err';
+        p.setAttribute('role', 'alert');
+        f.insertBefore(p, null);
+      }
+      p.textContent = msg;
+      shakeField_(input);
+      focusField_(input);
+    }
+
+    function sFieldOk_(input) {
+      if (!input) return;
+      var f = input.closest ? input.closest('.field') : null;
+      if (!f) return;
+      f.classList.remove('is-error');
+      var p = f.querySelector('.field-err');
+      if (p && p.parentNode) p.parentNode.removeChild(p);
+    }
+
+    function sUpdateMarks_() {      var mail = $('input-mail');
       if (mail) sMarkField_(mail, sValidMail_(mail.value));
       var dni = $('input-dni');
       if (dni) sMarkField_(dni, sValidDni_(dni.value));
       var nombre = $('input-nombre');
-      if (nombre) sMarkField_(nombre, sValidName_(nombre.value));
+      if (nombre) {
+        var nbueno = sValidName_(nombre.value);
+        sMarkField_(nombre, nbueno);
+        if (nbueno) sFieldOk_(nombre);
+      }
       var apellido = $('input-apellido');
-      if (apellido) sMarkField_(apellido, sValidName_(apellido.value));
+      if (apellido) {
+        var abueno = sValidName_(apellido.value);
+        sMarkField_(apellido, abueno);
+        if (abueno) sFieldOk_(apellido);
+      }
       var anio = $('select-anio') ? $('select-anio').value : '';
       var div = $('select-division') ? $('select-division').value : '';
       var listo = !!(sValidName_(nombre ? nombre.value : '') && sValidName_(apellido ? apellido.value : '')
@@ -5466,13 +5527,11 @@
       var dni = EsiClient.normalizeDni($('input-dni').value);
       var apellido = EsiClient.sanitizeName($('input-apellido').value);
       if (!EsiClient.isValidDni(dni)) {
-        sBanner('Revisá el DNI: solo números, 7 u 8 dígitos.', 'err');
-        try { $('input-dni').focus(); } catch (e) { }
+        sFieldErr_($('input-dni'), 'Revisá el DNI: solo números, 7 u 8 dígitos.');
         return;
       }
       if (apellido && !EsiClient.isValidName(apellido)) {
-        sBanner('Revisá el apellido: solo letras, espacios, apóstrofe o guion.', 'err');
-        try { $('input-apellido').focus(); } catch (e) { }
+        sFieldErr_($('input-apellido'), 'Revisá el apellido: solo letras, espacios, apóstrofe o guion.');
         return;
       }
       sState.busy = true;
@@ -5486,7 +5545,7 @@
             sBanner(resp.message || 'No pudimos entrar.', 'err');
             if (resp.needsApellido) {
               sOpenLoginExtra_();
-              focusField_($('input-apellido'));
+              sFieldErr_($('input-apellido'), 'Ese DNI necesita tu apellido.');
             }
             return;
           }
@@ -5591,18 +5650,15 @@
       var apellido = needsApellido ? form.apellido : sState.apellido;
       var curso = needsCurso ? form.curso : sState.curso;
       if (needsNombre && !(typeof EsiClient !== 'undefined' && EsiClient.isValidName ? EsiClient.isValidName(nombre) : String(nombre).replace(/\s/g, '').length >= 2)) {
-        sBanner('Escribí tu nombre.', 'err');
-        focusField_($('input-nombre'));
+        sFieldErr_($('input-nombre'), 'Escribí tu nombre.');
         return;
       }
       if (needsApellido && String(apellido).replace(/\s/g, '').length < 2) {
-        sBanner('Escribí tu apellido.', 'err');
-        focusField_($('input-apellido'));
+        sFieldErr_($('input-apellido'), 'Escribí tu apellido.');
         return;
       }
       if (needsCurso && !curso) {
-        sBanner('Elegí año y división.', 'err');
-        focusField_($('select-anio'));
+        sFieldErr_($('select-anio'), 'Elegí año y división.');
         return;
       }
       var full = String(nombre || '').replace(/\s+/g, ' ').trim();

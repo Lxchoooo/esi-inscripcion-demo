@@ -1331,8 +1331,17 @@ t('Login asks for nombre before apellido', () => {
   if (nombre < 0 || apellido < 0 || nombre > apellido) {
     throw new Error('nombre must come before apellido');
   }
-  if (!/function sUseLoginData_[\s\S]*?needsNombre[\s\S]*?focusField_\(\$\(.input-nombre.\)\)/s.test(panelSrc)) {
-    throw new Error('focus order does not start with nombre');
+  // Los errores de datos van EN LINEA (bajo el campo), no al banner del pie.
+  const ul = panelSrc.indexOf('function sUseLoginData_');
+  const body = panelSrc.slice(ul, ul + 2600);
+  if (!/needsNombre &&[\s\S]{0,420}sFieldErr_\(\$('.input-nombre.');/.test(body)) {
+    throw new Error('la falta de nombre no es error en linea');
+  }
+  if (!/needsApellido &&[\s\S]{0,260}sFieldErr_\(\$('.input-apellido.');/.test(body)) {
+    throw new Error('la falta de apellido no es error en linea');
+  }
+  if (!/needsCurso &&[\s\S]{0,260}sFieldErr_\(\$('.select-anio.');/.test(body)) {
+    throw new Error('la falta de curso no es error en linea');
   }
 });
 
