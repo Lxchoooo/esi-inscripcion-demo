@@ -2527,7 +2527,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v68';
+    var APP_VERSION = 'v69';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -5955,6 +5955,7 @@
       if (!aUpdatedAt) return;
       var secs = Math.max(0, Math.round((Date.now() - aUpdatedAt) / 1000));
       var label = 'Actualizado hace ' + secs + 's';
+      if (aBusy) label = 'Actualizando…';
       if (aOfflineAt) label = 'Sin conexión · datos de hace ' + aOfflineAge_(aOfflineAt);
       var el = $('charla-updated');
       if (el) el.textContent = label;
@@ -8711,6 +8712,20 @@
         if (!pin) return;
         aLogin(pin);
       });
+      // Mientras el server piensa (aBusy), los toques del admin no repiten
+      // acciones (recordatorios, drill, borrados) — pero el docente no queda
+      // sin razon: un aviso discreto explica por que el toque no hizo nada.
+      var aTapHintLast = 0;
+      $('a-screen-panel').addEventListener('click', function (ev) {
+        if (!aBusy) return;
+        var el = ev.target;
+        var tactivo = el && (el.tagName === 'BUTTON' || (el.closest && el.closest('button')));
+        if (!tactivo) return;
+        var now = Date.now();
+        if (now - aTapHintLast < 2000) return;
+        aTapHintLast = now;
+        toast('Un segundo: el panel está actualizando datos.', 'ok');
+      }, true);
       $('input-pin').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') $('btn-pin').click();
       });
