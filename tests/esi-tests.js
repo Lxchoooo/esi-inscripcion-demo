@@ -1400,6 +1400,36 @@ t('gate: la clave no se sale del card', () => {
   }
 });
 
+t('borrado admin optimista: la lista se actualiza al toque y falla repone', () => {
+  // Confirmar un borrado no roba el slot global: el docente puede seguir
+  // borrando mientras el server termina.
+  if (!/function aDeleteConfirmed\(signupId\) \{[\s\S]{0,300}aOptimisticDelete_\('apiAdminDeleteSignup'/.test(panelSrc)) {
+    throw new Error('borrado de inscripcion no optimista');
+  }
+  if (!/function aCorrDeleteSignup_\(signupId\) \{[\s\S]{0,700}aOptimisticDelete_\('apiAdminDeleteSignup', \[adminCred, signupId\]/.test(panelSrc)) {
+    throw new Error('borrado de charla no optimista');
+  }
+  if (!/aOptimisticDelete_\('apiAdminDeleteStudent', \[adminCred, email\][\s\S]{0,200}aRemoveStudentLocal_/.test(panelSrc)) {
+    throw new Error('borrado de alumno no optimista');
+  }
+  // Sin aBusy dentro de los confirm de borrado.
+  if (/function aDeleteConfirmed\(signupId\) \{[^}]*aBusy = true/.test(panelSrc)) {
+    throw new Error('confirm de borrado sigue bloqueando con aBusy');
+  }
+  // Helpers de pending y un guardia por id repetido.
+  if (!/var aDelPending_ = \{\};/.test(panelSrc)) throw new Error('sin mapa de pending de borrado');
+  if (!/function aOptimisticDelete_\(apiFn, args, removeFn, borrandoMsg, okMsg\) \{[\s\S]{0,200}if \(aDelPending_\[key\]\) return;/.test(panelSrc)) {
+    throw new Error('sin guardia de borrado repetido');
+  }
+  // Fallo del server repone los datos (aLoad(true)).
+  if (!/No se pudo borrar\. Se reponen los datos\.'[\s\S]{0,80}aLoad\(true\)/.test(panelSrc)) {
+    throw new Error('fallo de borrado no reposiciona con aLoad');
+  }
+  // Los sheets de borrar abren sin depender de aBusy (solo leen datos locales).
+  if (/function aCorrDelete_\(\) \{\s*if \(!aData \|\| aBusy\) return;/.test(panelSrc)) {
+    throw new Error('el sheet de borrado sigue bloqueado por el refresh');
+  }
+});
 t('Cambiar de pantalla mueve el foco y vuelve al inicio', () => {
   for (const id of ['s-screen-mail', 's-screen-login', 's-screen-datos', 's-screen-hello',
     's-screen-panel', 'a-screen-gate', 'a-screen-panel']) {
@@ -4381,16 +4411,20 @@ t('r16: modo ensayo va a la casilla del remitente y el error marca intentos', ()
 });
 
 t('r17: el borrado muestra estado, no repite el reload y Borrar queda blindado', () => {
-  if (!/aBanner\('Borrando\.\.\.', 'wip'\)/.test(panelSrc)) {
+  // El estado en vivo ahora lo emite el helper del borrado optimista.
+  if (!/aBanner\(borrandoMsg, 'wip'\)/.test(panelSrc)) {
     throw new Error('el borrado no muestra el banner de estado en vivo');
   }
   const fn = panelSrc.match(/function aDeleteConfirmed\(signupId\) \{[\s\S]*?\n    \}/);
   if (!fn) throw new Error('no se encontro aDeleteConfirmed');
-  if (fn[0].indexOf('aLoad(true)') >= 0) {
-    throw new Error('borrar no debe pedi el panel entero de nuevo, afine el update local');
-  }
-  if (fn[0].indexOf('aRemoveSignupLocal_') < 0 || fn[0].indexOf('aRender()') < 0) {
+  // El update local sigue aplicandose en el confirm (via closure del helper).
+  if (fn[0].indexOf('aRemoveSignupLocal_') < 0 || fn[0].indexOf('aOptimisticDelete_') < 0) {
     throw new Error('el borrado deve aplicar el update local y re-render');
+  }
+  const helper = panelSrc.match(/function aOptimisticDelete_\(apiFn, args, removeFn, borrandoMsg, okMsg\) \{[\s\S]*?\n    \}/);
+  if (!helper) throw new Error('no se encontro aOptimisticDelete_');
+  if (helper[0].indexOf('aRender()') < 0) {
+    throw new Error('el borrado optimista deve re-render al toque');
   }
   const local = panelSrc.match(/function aRemoveSignupLocal_\(signupId\) \{[\s\S]*?\n    \}/);
   if (!local) throw new Error('no se encontro aRemoveSignupLocal_');
