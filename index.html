@@ -892,13 +892,13 @@
     .toast.show { transform: translate(-50%, 0); opacity: 1; transition-duration: var(--dur-2); }
     .toast.err { background: var(--danger); color: var(--paper); }
     /* Los avisos y toasts viven al pie: aca arrancan por ENCIMA de la barra
-       de progreso (elecciones), que también es fija al pie. Antes los dos
-       carteles quedaban debajo de .sel-bar y uno tapaba al otro. */
+       de progreso (elecciones), que también es fija al pie, en el MISMO
+       slot: uno solo visible a la vez (toast() y sBanner() se exculuyen). */
     body[data-screen="s-screen-panel"] .toast {
       bottom: calc(84px + env(safe-area-inset-bottom));
     }
     body[data-screen="s-screen-panel"] #s-banner {
-      bottom: calc(98px + env(safe-area-inset-bottom));
+      bottom: calc(84px + env(safe-area-inset-bottom));
     }
 
     .summary {
@@ -4668,6 +4668,13 @@
     var toastTimer = null;
     function toast(text, type) {
       var el = $('toast');
+      var bn = $('s-banner');
+      // Un solo cartel a la vez: el toast REEMPLAZA al banner (y no se
+      // apilan; el banner queda despedido y sus flujos lo reponen).
+      if (bn && bn.style.display === 'block') {
+        bn.style.display = 'none';
+        bn.textContent = '';
+      }
       el.textContent = text || '';
       el.className = 'toast show' + (type === 'err' ? ' err' : '');
       if (toastTimer) window.clearTimeout(toastTimer);
@@ -4815,6 +4822,11 @@
     function sBanner(text, type, actionLabel, actionFn) {
       var el = $('s-banner');
       if (!el) return;
+      // Un solo cartel a la vez: el banner reemplaza a un toast activo
+      // (apaga su timer y lo esconde) en vez de apilarse debajo.
+      if (toastTimer) { window.clearTimeout(toastTimer); toastTimer = null; }
+      var t = $('toast');
+      if (t) { t.className = 'toast'; t.textContent = ''; }
       el.textContent = text || '';
       el.className = 'banner ' + (type === 'err' ? 'err' : 'ok');
       el.style.display = text ? 'block' : 'none';
@@ -5324,7 +5336,7 @@
         // pierde. Queda en cola y se abre solo cuando termina la request.
         sState.queued = talk.id;
         sState.queuedAt = Date.now();
-        sBanner('Confirmando la anterior… tu toque quedó en cola y sigue solo.', 'ok');
+        sBanner('Tu toque quedó en cola.', 'ok');
         return;
       }
       var mine = (sState.data && sState.data.mine) || {};
