@@ -5,9 +5,9 @@ Google Apps Script + Google Sheets + HTML/CSS/JS plano, sin build ni
 dependencias. El alumno elige una charla por franja; el profe administra y la
 guia marca presentes sin ver mails.
 
-- Repo: `Lxchoooo/esi-inscripcion-demo`
+- Repo: `Lxchoooo/esi-inscripcion-demo` — PRIVADO desde 1/11/2026 (por pedido del dueño; reversible, `gh repo edit Lxchoooo/esi-inscripcion-demo --visibility public`). Actions corren con minutos cuota free (los runs ~20 s: sin problema).
 - `README.md` es la portada para personas; los agentes se guian por este archivo.
-- Sitio: https://lxchoooo.github.io/esi-inscripcion-demo/
+- Sitio estático GitHub Pages: CAÍDO con el paso a privado (plan free no serve Pages privados; la URL `https://lxchoooo.github.io/esi-inscripcion-demo/` queda 404). Solo perdía la copia espejo de `index.html`: el panel real NO la usa.
 - Panel real: `/exec?admin=1` del Apps Script, no GitHub Pages.
 - Evento: 4/11/2026, ~500 alumnos, dominio `@secundariosalsipuedes.edu.ar`.
 - Estado: ronda borrado-admin-optimista DEPLOYADA: `main` (`a4ef758`) y deploy `AKfycbwkl...` **@106** (verificado en vivo por curl: helper `aOptimisticDelete_` x4, guard `aDelPending_[key]` y banners de borrado en el payload). Los tres borrados del admin (inscripción desde Reporte, una charla y alumno completo desde Borrar alumno) van AHORA OPTIMISTAS: al confirmar la fila sale de la lista y el cupo baja al toque (`aRemoveSignupLocal_`/`aRemoveStudentLocal_` + `aRender()`), la llamada corre de fondo y el server confirma solo; si falla (`ok:false` o sin red) repone el estado con `aLoad(true)` y banner de error. Los borrados NO usan `aBusy` (el mapa `aDelPending_` evita repetir el mismo borrado por id), así el docente encadena borrados sin esperar los ~5 s del exec de Apps Script. Los sheets de borrar y `aOnDelete` dejan de bloquearse mientras corre un refresh: solo leen datos locales. Modifica la decisión de ronda 35 (sin colita en admin) SOLO para borrados; el resto de los taps sigue serial `aBusy`. Backend sin tocar (solo Panel.html + index.html espejo + tests). Tests 296/0 + smoke; CI `tests` OK (run 41363774626) y Pages OK.
