@@ -596,8 +596,8 @@
 
     .steps {
       display: flex; align-items: center; gap: 8px;
-      font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-      color: var(--accent); margin: 6px 0 20px;
+      font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: none;
+      color: var(--muted); margin: 6px 0 20px;
       white-space: nowrap;
     }
     .steps::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-fill); flex: 0 0 auto; }
@@ -613,15 +613,16 @@
       background: var(--accent);
     }
     .live-dot.off { background: var(--warn); animation: none; box-shadow: none; }
-    .steps-bar { display: inline-flex; align-items: center; gap: 5px; margin-left: 2px; }
+    /* Stepper: barra fina continua. Los i son los tramos: hechos y activo
+       en el mismo verde del colegio, pendientes tenues. */
+    .steps-bar { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; }
     .steps-bar i {
-      display: block; width: 16px; height: 5px; border-radius: 999px;
+      display: block; width: 26px; height: 4px; border-radius: 999px;
       background: var(--line); transition: opacity var(--dur-2) var(--ease-out);
     }
-    .steps-bar i.done { background: var(--accent-line); }
+    .steps-bar i.done { background: var(--accent); }
     .steps-bar i.on {
-      width: 24px; background: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-soft);
+      width: 26px; background: var(--accent);
       animation: growBar .3s var(--ease-emph) both;
     }
     @keyframes growBar { from { transform: scaleX(.4); } to { transform: scaleX(1); } }
@@ -1735,9 +1736,59 @@
     .next-talk b { display: block; margin-bottom: 4px; }
     .next-talk .hint-line { margin: 2px 0 0; }
     .panel-tools { margin: 0 0 12px; }
-    .mail-help { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
-    .mail-help summary { cursor: pointer; font-weight: 600; color: var(--brand-dark); min-height: 44px; display: flex; align-items: center; }
-    .mail-help p { margin: 8px 0; font-size: 14px; line-height: 1.5; }
+    /* Ayuda del mail: sheet de fondo movable (antes era un details). */
+    .mail-sheet-backdrop {
+      position: fixed; inset: 0; z-index: 95;
+      background: var(--scrim, rgba(20, 24, 21, .5));
+      opacity: 0; transition: opacity var(--dur-step) ease both;
+    }
+    .mail-sheet-backdrop.show { opacity: 1; }
+    .mail-sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 96;
+      background: var(--card); color: var(--ink);
+      border-radius: 20px 20px 0 0;
+      padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+      max-height: 76vh; overflow-y: auto;
+      box-shadow: 0 -18px 48px rgba(20, 24, 21, .25);
+      transform: translateY(14px); opacity: 0;
+      transition: transform var(--dur-step) var(--ease-out) both, opacity var(--dur-step) ease both;
+    }
+    .mail-sheet.show { transform: none; opacity: 1; }
+    .mail-sheet-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 6px;
+    }
+    .mail-sheet-head strong { font-size: 17px; }
+    .mail-sheet p { margin: 8px 0; font-size: 14px; line-height: 1.5; }
+    .mail-sheet .mail-year { margin-top: 14px; margin-bottom: 10px; }
+    .mail-sheet .btn.full { margin-top: 8px; }
+    .mail-sheet-x {
+      flex: 0 0 auto; min-width: 40px; min-height: 40px; padding: 0 8px;
+      border: none; border-radius: 12px; background: transparent;
+      color: var(--ink); font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .mail-sheet-x:active { background: var(--surface-2, rgba(0, 0, 0, .06)); }
+    /* Boton Volver fantasma con flecha, arriba a la izquierda del card. */
+    .back-top {
+      position: absolute; top: 14px; left: 10px;
+      min-height: 44px; padding: 8px 12px 8px 8px;
+      border: none; border-radius: 12px; background: transparent;
+      color: var(--ink); font-size: 13.5px; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 2px; cursor: pointer;
+    }
+    .back-top:active { background: var(--surface-2, rgba(0, 0, 0, .06)); }
+    .back-top .ico { width: 20px; height: 20px; }
+    /* Boton ¿No te acordas tu mail? con el signo de pregunta. */
+    .btn.ghost.link { background: transparent; box-shadow: none; padding-left: 0; }
+    .help-q {
+      flex: 0 0 auto; width: 20px; height: 20px; margin-right: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%; border: 1.5px solid var(--line-ui);
+      font-size: 12px; font-weight: 800; color: var(--line-ui);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mail-sheet, .mail-sheet-backdrop { transition: none; }
+    }
     .mail-year { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
     .mail-year label { font-size: 13px; font-weight: 600; }
     .mail-year select { max-width: 120px; }
@@ -2044,6 +2095,10 @@
     </section>
 
     <section id="s-screen-login" class="screen card" tabindex="-1" aria-labelledby="login-form-title">
+      <button id="btn-login-back" class="btn ghost back-top" type="button" aria-label="Volver">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        <span>Volver</span>
+      </button>
       <div class="steps"><span>2 de 4</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="on"></i><i></i><i></i></span></div>
       <h2 class="intro" id="login-form-title">Ingresá con tu mail y tu DNI</h2>
       <p class="hint" id="login-intro">Con tu mail y tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.</p>
@@ -2057,24 +2112,11 @@
                 aria-describedby="mail-hint" placeholder="tu.apellido">
               <span class="mail-suffix" aria-hidden="true">@secundariosalsipuedes.edu.ar</span>
             </div>
+            <button id="mail-help-btn" class="btn ghost link" type="button">
+              <span class="help-q" aria-hidden="true">?</span>
+              ¿No te acordás tu mail?
+            </button>
           </div>
-          <details class="mail-help" id="mail-help">
-            <summary>¿No te acordás tu mail?</summary>
-            <p>Tu mail es tu apellido, tu nombre y tu año de egreso, todo junto, en minúsculas, sin tildes y sin ñ, y termina en @secundariosalsipuedes.edu.ar.</p>
-            <p>Ejemplo: <strong>gomezperezmaria2029@secundariosalsipuedes.edu.ar</strong></p>
-            <p>Tu año de egreso: 6° 2026, 5° 2027, 4° 2028, 3° 2029, 2° 2030, 1° 2031.</p>
-            <p>Si repetiste o tu caso es distinto, preguntale a un preceptor.</p>
-            <div class="mail-year">
-              <label for="select-mail-year">¿En qué año estás?</label>
-              <select id="select-mail-year">
-                <option value="">Elegí...</option>
-                <option value="6">6°</option><option value="5">5°</option>
-                <option value="4">4°</option><option value="3">3°</option>
-                <option value="2">2°</option><option value="1">1°</option>
-              </select>
-              <span id="mail-year-out" class="hint-line"></span>
-            </div>
-          </details>
           <div class="field">
             <label for="input-dni">DNI</label>
             <input id="input-dni" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
@@ -2085,10 +2127,36 @@
           <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
         </div>
       </form>
-      <button id="btn-login-back" class="btn link" type="button">Volver</button>
+      <!-- Ayuda del mail: sheet de fondo (antes era un details plegable). -->
+      <div id="mail-help-backdrop" class="mail-sheet-backdrop" hidden></div>
+      <div id="mail-help" class="mail-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="mail-help-title">
+        <div class="mail-sheet-head">
+          <strong id="mail-help-title">¿No te acordás tu mail?</strong>
+          <button id="mail-help-close" class="mail-sheet-x" type="button" aria-label="Cerrar ayuda">✕</button>
+        </div>
+        <p>Tu mail es tu apellido, tu nombre y tu año de egreso, todo junto, en minúsculas, sin tildes y sin ñ, y termina en @secundariosalsipuedes.edu.ar.</p>
+        <p>Ejemplo: <strong>gomezperezmaria2029@secundariosalsipuedes.edu.ar</strong></p>
+        <p>Tu año de egreso: 6° 2026, 5° 2027, 4° 2028, 3° 2029, 2° 2030, 1° 2031.</p>
+        <div class="mail-year">
+          <label for="select-mail-year">¿En qué año estás?</label>
+          <select id="select-mail-year">
+            <option value="">Elegí...</option>
+            <option value="6">6°</option><option value="5">5°</option>
+            <option value="4">4°</option><option value="3">3°</option>
+            <option value="2">2°</option><option value="1">1°</option>
+          </select>
+          <span id="mail-year-out" class="hint-line"></span>
+        </div>
+        <p class="hint-line">Si repetiste o tu caso es distinto, preguntale a un preceptor.</p>
+        <button id="mail-help-close2" class="btn full" type="button">Ya lo sé, volver al formulario</button>
+      </div>
     </section>
 
     <section id="s-screen-datos" class="screen card" tabindex="-1" aria-labelledby="datos-title">
+      <button id="btn-datos-back" class="btn ghost back-top" type="button" aria-label="Volver">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        <span>Volver</span>
+      </button>
       <div class="steps"><span>3 de 4</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="on"></i><i></i></span></div>
       <h2 class="intro" id="datos-title">Contanos quién sos</h2>
       <p class="hint" id="datos-intro">Es tu primera vez: lo pedimos una sola vez para asignarte lugar en tus charlas.</p>
@@ -2128,7 +2196,6 @@
           <button id="btn-datos-go" class="btn full" type="submit">Continuar</button>
         </div>
       </form>
-      <button id="btn-datos-back" class="btn link" type="button">Volver</button>
     </section>
 
     <section id="s-screen-hello" class="screen card" tabindex="-1" aria-labelledby="hello-title">
@@ -5726,6 +5793,25 @@
       try { $('input-mail').focus(); } catch (e) { }
     }
 
+    // Sheet de ayuda del mail: solo UI. Abre/cierra el panel de fondo; los
+    // IDs de adentro (select-mail-year, mail-year-out) quedan intactos.
+    function sMailSheet_(open) {
+      var sh = $('mail-help'), bd = $('mail-help-backdrop');
+      if (!sh) return;
+      sh.hidden = !open;
+      if (bd) bd.hidden = !open;
+      // El frame siguiente activa la transicion de entrada/salida.
+      window.setTimeout(function () {
+        sh.classList.toggle('show', !!open);
+        if (bd) bd.classList.toggle('show', !!open);
+      }, 10);
+      if (open) {
+        try { $('select-mail-year').focus(); } catch (e) { }
+      } else {
+        try { $('mail-help-btn').focus(); } catch (e) { }
+      }
+    }
+
     function sInit() {
       document.body.className = TRANSPORT === 'demo' ? 'demo' : '';
       if (TEXTO_DIRECCION) {
@@ -5782,6 +5868,10 @@
         focusField_(hasMail ? $('input-mail') : $('btn-login-start'));
       });
       $('select-mail-year').addEventListener('change', sMailYearHint_);
+      $('mail-help-btn').addEventListener('click', function () { sMailSheet_(true); });
+      $('mail-help-close').addEventListener('click', function () { sMailSheet_(false); });
+      $('mail-help-close2').addEventListener('click', function () { sMailSheet_(false); });
+      $('mail-help-backdrop').addEventListener('click', function () { sMailSheet_(false); });
       // Validacion viva: casilla amarca ✓ apenas es valida.
       if ($('input-mail')) $('input-mail').addEventListener('input', sUpdateMarks_);
       if ($('input-dni')) $('input-dni').addEventListener('input', sUpdateMarks_);
