@@ -64,7 +64,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v65';
+var BACKEND_VERSION = 'v66';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -3451,7 +3451,11 @@ function logAccess_(ok, role, ua) {
     var ss = SpreadsheetApp.getActive();
     var sh = ss.getSheetByName(ACCESS_SHEET);
     if (!sh) sh = ensureSheet_(ss, ACCESS_SHEET, ['fecha', 'resultado', 'rol', 'dispositivo'], []);
-    sh.appendRow([new Date(), ok ? 'entro' : 'fallo', String(role || ''), cleanLogText_(ua, 140)]);
+    // La hora se FORMATEA al escribir: si guardo Date la hoja la re-lee con
+    // la base cambiada y la hora se desplaza (~8h) segun quien lea. El
+    // string queda lo que es (-3, America/Argentina/Cordoba).
+    var cuando = Utilities.formatDate(new Date(), 'America/Argentina/Cordoba', 'd/M/yyyy HH:mm');
+    sh.appendRow([cuando, ok ? 'entro' : 'fallo', String(role || ''), cleanLogText_(ua, 140)]);
     var last = sh.getLastRow();
     if (last > ACCESS_MAX_ROWS + 1) sh.deleteRows(2, last - 1 - ACCESS_MAX_ROWS);
   } catch (e) { }
@@ -3466,11 +3470,14 @@ function apiAdminAccessLog(cred) {
     var vals = sh.getDataRange().getValues();
     var rows = [];
     for (var i = vals.length - 1; i >= 1 && rows.length < 40; i--) {
+      // Filas nuevas: ya vienen como string en hora argentina (logAccess_
+      // formatea al escribir; la re-lectura de un Date por la hoja corria la
+      // hora ~8h). Filas viejas: Date => formato fijo Buenos_Aires.
+      var raw = vals[i][0];
       rows.push({
-        // Hora local Argentina (-3) formateada segun la zona fija del evento:
-        // antes iba en ISO UTC y el reloj del panel dependia del dispositivo
-        // que lo miraba (off-by-3 para el pibe a cargo).
-        fecha: Utilities.formatDate(new Date(vals[i][0]), 'America/Argentina/Buenos_Aires', 'd/M/yyyy HH:mm'),
+        fecha: (raw instanceof Date)
+          ? Utilities.formatDate(raw, 'America/Argentina/Buenos_Aires', 'd/M/yyyy HH:mm')
+          : String(raw || ''),
         resultado: String(vals[i][1] || ''),
         rol: String(vals[i][2] || ''),
         dispositivo: String(vals[i][3] || '')

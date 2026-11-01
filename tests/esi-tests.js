@@ -4748,9 +4748,15 @@ t('r30: la fecha del acceso sale en hora argentina (formato server)', () => {
 });
 
 t('r30: el registro de accesos muestra modelo, version y hora argentina', () => {
+  // Formatada al ESCRIBIR (la re-lectura de un Date corria la hora ~8h).
+  const lw = codeSrc.indexOf('function logAccess_');
+  const lwBody = codeSrc.slice(lw, lw + 700);
+  if (!/Utilities\.formatDate\(new Date\(\), 'America\/Argentina\/Cordoba'/.test(lwBody)) throw new Error('la hora no se graba formateada en Argentina');
+  if (/appendRow\(\[new Date\(\)/.test(lwBody)) throw new Error('la fila de acceso sigue guardando Date crudo');
+  // Lectura: string pasa tal cual; Date viejo se formatea en Buenos_Aires.
   const al = codeSrc.indexOf('function apiAdminAccessLog');
   const ab = codeSrc.slice(al, al + 900);
-  if (!/Utilities\.formatDate\(new Date\(vals\[i\]\[0\]\), 'America\/Argentina\/Buenos_Aires'/.test(ab)) throw new Error('la fecha del acceso no sale en hora argentina');
+  if (!/Utilities\.formatDate\(raw, 'America\/Argentina\/Buenos_Aires'/.test(ab)) throw new Error('las filas viejas sin formato argentino');
   if (/toISOString\(\)/.test(ab)) throw new Error('la fecha del acceso sigue en UTC');
   if (!/function deviceLabelP_/.test(panelSrc)) throw new Error('sin etiqueta async del dispositivo');
   if (!/getHighEntropyValues\(/.test(panelSrc)) throw new Error('sin datos altos del navegador (modelo real)');
@@ -4760,6 +4766,17 @@ t('r30: el registro de accesos muestra modelo, version y hora argentina', () => 
   if (!/indexOf\(' · '\)/.test(panelSrc.slice(sh, sh + 300))) throw new Error('las etiquetas ya armadas se reparsean');
   const la = panelSrc.indexOf("var f = String(r.fecha || '')");
   if (!/\\d\{4\}/.test(panelSrc.slice(la, la + 900))) throw new Error('el panel no acepta las filas viejas en ISO');
+});
+
+t('r31: el modelo del dispositivo tiene tres fuentes y una huella final', () => {
+  // Fuente 1: datos altos del navegador.
+  if (!/getHighEntropyValues\(\['model', 'platformVersion', 'architecture', 'bitness', 'fullVersionList'\]\)/.test(panelSrc)) throw new Error('sin pedir todo el paquete de datos altos');
+  // Fuente 2: rescate del modelo desde el UA crudo (dentro de aUADesc_).
+  const ad = panelSrc.indexOf('function aUADesc_');
+  if (!/Android\[\^;\)\]\*; \?\(\[\^;\)\]\+\)/.test(panelSrc.slice(ad, ad + 800))) throw new Error('aUADesc_ no rescata el modelo del UA crudo');
+  // Fuente 3: resolucion fisica como huella si nada dio el modelo.
+  if (!/function pantallaRes_/.test(panelSrc)) throw new Error('sin huella de pantalla');
+  if (!/pantallaRes_\(\)/.test(panelSrc.slice(panelSrc.indexOf('function deviceLabelP_'), panelSrc.indexOf('function aLogin')))) throw new Error('la etiqueta no usa la huella de pantalla');
 });
 
 t('r25: los mails salen sin esperas de mas: gracia de 45 s y watchdog cada 2 min', () => {
