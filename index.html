@@ -697,6 +697,32 @@
     .login-fields input, .login-fields select { max-width: 100%; min-width: 0; }
     .login-form { margin-top: 4px; }
     .login-fields .btn.full { margin: 0; }
+    /* ---- Pantallas de ingreso: inputs renovados (v70) ----
+       Etiquetas en versalita espaciada, casillas mas altas y redondeadas,
+       foco con anillo verde. Sin transiciones nuevas (r14). */
+    #s-screen-login .field label, #s-screen-datos .field label {
+      font-size: 11.5px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    #s-screen-login .field input, #s-screen-login .field select,
+    #s-screen-datos .field input, #s-screen-datos .field select,
+    #s-screen-login .login-fields input, #s-screen-login .login-fields select,
+    #s-screen-datos .login-fields input, #s-screen-datos .login-fields select {
+      min-height: 56px; padding: 14px 16px;
+      border: 1.5px solid var(--line-strong); border-radius: 16px;
+      box-shadow: 0 1px 2px rgba(31, 31, 31, .04);
+    }
+    #s-screen-login .field:focus-within input,
+    #s-screen-login .field:focus-within select,
+    #s-screen-datos .field:focus-within input,
+    #s-screen-datos .field:focus-within select {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+    #s-screen-login .login-form .btn.full, #s-screen-datos .login-form .btn.full {
+      min-height: 56px; font-size: 16.5px; border-radius: 16px; margin-top: 4px;
+    }
+    #s-screen-datos .field-row select { padding-right: 40px; }
     input[type=text], input[type=password], input[type=email], select, textarea {
       width: 100%; min-height: 50px;
       padding: 12px 14px;
@@ -751,6 +777,15 @@
     }
     .toast.show { transform: translate(-50%, 0); opacity: 1; transition-duration: var(--dur-2); }
     .toast.err { background: var(--danger); color: var(--paper); }
+    /* Los avisos y toasts viven al pie: aca arrancan por ENCIMA de la barra
+       de progreso (elecciones), que también es fija al pie. Antes los dos
+       carteles quedaban debajo de .sel-bar y uno tapaba al otro. */
+    body[data-screen="s-screen-panel"] .toast {
+      bottom: calc(84px + env(safe-area-inset-bottom));
+    }
+    body[data-screen="s-screen-panel"] #s-banner {
+      bottom: calc(98px + env(safe-area-inset-bottom));
+    }
 
     .summary {
       display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
@@ -1900,7 +1935,7 @@
     </section>
 
     <section id="s-screen-mail" class="screen card" tabindex="-1" aria-labelledby="login-title">
-      <div class="steps"><span>1 de 3</span><span class="steps-bar" aria-hidden="true"><i class="on"></i><i></i><i></i></span></div>
+      <div class="steps"><span>1 de 4</span><span class="steps-bar" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span></div>
       <h2 class="intro" id="login-title">Ingresar</h2>
       <p class="hint">Vas a necesitar tu mail institucional y tu DNI.</p>
       <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
@@ -1909,7 +1944,7 @@
     </section>
 
     <section id="s-screen-login" class="screen card" tabindex="-1" aria-labelledby="login-form-title">
-      <div class="steps"><span>2 de 3</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="on"></i><i></i></span></div>
+      <div class="steps"><span>2 de 4</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="on"></i><i></i><i></i></span></div>
       <h2 class="intro" id="login-form-title">Ingresá con tu mail y tu DNI</h2>
       <p class="hint" id="login-intro">Con tu mail y tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.</p>
       <form id="login-form" class="login-form" novalidate>
@@ -1943,37 +1978,6 @@
               enterkeyhint="go" placeholder="Solo números">
             <p class="hint-line">Sin puntos. Si hay más de un alumno con ese DNI, te vamos a pedir el apellido.</p>
           </div>
-          <details class="mail-help first-time" id="first-time">
-            <summary>Completar mis datos</summary>
-            <div class="field">
-              <label for="input-nombre">Nombre</label>
-              <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
-                autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
-            </div>
-            <div class="field">
-              <label for="input-apellido">Apellido</label>
-              <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
-                autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
-            </div>
-            <div class="field-row">
-              <div>
-                <label for="select-anio">Año</label>
-                <select id="select-anio">
-                  <option value="">Elegí...</option>
-                  <option value="1">1°</option>
-                  <option value="2">2°</option>
-                  <option value="3">3°</option>
-                  <option value="4">4°</option>
-                  <option value="5">5°</option>
-                  <option value="6">6°</option>
-                </select>
-              </div>
-              <div>
-                <label for="select-division">División</label>
-                <select id="select-division"></select>
-              </div>
-            </div>
-          </details>
           <button id="btn-login" class="btn full" type="submit">Ingresar</button>
           <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
         </div>
@@ -1981,8 +1985,48 @@
       <button id="btn-login-back" class="btn link" type="button">Volver</button>
     </section>
 
+    <section id="s-screen-datos" class="screen card" tabindex="-1" aria-labelledby="datos-title">
+      <div class="steps"><span>3 de 4</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="on"></i><i></i></span></div>
+      <h2 class="intro" id="datos-title">Contanos quién sos</h2>
+      <p class="hint" id="datos-intro">Es tu primera vez: lo pedimos una sola vez para asignarte lugar en tus charlas.</p>
+      <form id="datos-form" class="login-form" novalidate>
+        <div class="login-fields">
+          <div class="field">
+            <label for="input-nombre">Nombre</label>
+            <input id="input-nombre" type="text" autocomplete="off" maxlength="60"
+              autocapitalize="words" enterkeyhint="next" placeholder="Tu nombre">
+          </div>
+          <div class="field">
+            <label for="input-apellido">Apellido</label>
+            <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
+              autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
+          </div>
+          <div class="field-row">
+            <div>
+              <label for="select-anio">Año</label>
+              <select id="select-anio">
+                <option value="">Elegí...</option>
+                <option value="1">1°</option>
+                <option value="2">2°</option>
+                <option value="3">3°</option>
+                <option value="4">4°</option>
+                <option value="5">5°</option>
+                <option value="6">6°</option>
+              </select>
+            </div>
+            <div>
+              <label for="select-division">División</label>
+              <select id="select-division"></select>
+            </div>
+          </div>
+          <button id="btn-datos-go" class="btn full" type="submit">Continuar</button>
+        </div>
+      </form>
+      <button id="btn-datos-back" class="btn link" type="button">Volver</button>
+    </section>
+
     <section id="s-screen-hello" class="screen card" tabindex="-1" aria-labelledby="hello-title">
-      <div class="steps">2 de 3</div>
+      <div class="steps">3 de 4</div>
       <h2 class="intro" id="hello-title">Confirmá tus datos</h2>
       <p class="hint" id="hello-text">Hola. ¿Sos vos?</p>
       <button id="btn-hello-yes" class="btn full" type="button">Sí</button>
@@ -1992,7 +2036,7 @@
     <section id="s-screen-panel" class="screen" tabindex="-1" aria-labelledby="panel-title">
       <div class="panel-head">
         <div>
-          <div class="steps"><span>3 de 3</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="on"></i></span></div>
+          <div class="steps"><span>4 de 4</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="done"></i><i class="on"></i></span></div>
           <h2 class="intro" id="panel-title">Elegí tus charlas</h2>
           <p class="hint">Una por horario.</p>
           <p class="hint" id="panel-progress"></p>
@@ -2527,7 +2571,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v69';
+    var APP_VERSION = 'v70';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -2594,12 +2638,12 @@
       if ($('select-anio')) $('select-anio').value = '';
       if ($('select-division')) $('select-division').innerHTML = '<option value="">Elegí...</option>';
       if ($('mail-hint')) $('mail-hint').hidden = true;
-      if ($('first-time')) $('first-time').open = false;
     }
 
+    // Los datos de primera vez viven en su propia pantalla (paso 3): el mail
+    // ya no despliega el form "hacia abajo", el paso va adelante.
     function sOpenLoginExtra_() {
-      var d = $('first-time');
-      if (d && !d.open) d.open = true;
+      showScreen(S_SCREENS, 's-screen-datos');
     }
 
     function sEmptyState_() {
@@ -4377,7 +4421,7 @@
       });
     }
 
-    var S_SCREENS = ['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel', 's-screen-done'];
+    var S_SCREENS = ['s-screen-mail', 's-screen-login', 's-screen-datos', 's-screen-hello', 's-screen-panel', 's-screen-done'];
     var A_SCREENS = ['a-screen-gate', 'a-screen-panel'];
 
     var sState = {
@@ -5482,6 +5526,32 @@
       $('login-form').addEventListener('submit', function (ev) {
         ev.preventDefault();
         sLoginSubmit();
+      });
+      // La pantalla de datos ("Contanos quién sos") reusa la misma lógica:
+      // por mail no pide la respuesta del server (valida local y entra); por
+      // DNI vuelve a golpear el server con el apellido ya cargado. Los
+      // inputs siguen en el DOM aunque la pantalla este oculta, por eso
+      // sLookupDni puede leerlos igual.
+      function sDatosContinue() {
+        if (sState.busy) return;
+        if (sState.email) {
+          sUseLoginData_();
+          return;
+        }
+        if (EsiClient.normalizeDni($('input-dni') ? $('input-dni').value : '')) {
+          sLookupDni();
+          return;
+        }
+        sUseLoginData_();
+      }
+      $('datos-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        sDatosContinue();
+      });
+      $('btn-datos-back').addEventListener('click', function () {
+        var hasMail = EsiClient.normalizeEmail($('input-mail').value);
+        showScreen(S_SCREENS, hasMail ? 's-screen-login' : 's-screen-mail');
+        focusField_(hasMail ? $('input-mail') : $('btn-login-start'));
       });
       $('select-mail-year').addEventListener('change', sMailYearHint_);
       var exitArm = 0;

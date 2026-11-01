@@ -1336,9 +1336,8 @@ t('Login asks for nombre before apellido', () => {
   }
 });
 
-t('El login arranca con mail o DNI y pliega los datos del alumno', () => {
-  const order = ['id="input-mail"', 'id="input-dni"', 'id="first-time"',
-    'id="input-nombre"', 'id="input-apellido"'];
+t('El login arranca con mail o DNI y los datos de primera vez van en su pantalla propia', () => {
+  const order = ['id="s-screen-login"', 'id="s-screen-datos"', 'id="input-nombre"', 'id="input-apellido"'];
   let last = -1;
   for (const needle of order) {
     const at = panelHtml.indexOf(needle);
@@ -1346,19 +1345,41 @@ t('El login arranca con mail o DNI y pliega los datos del alumno', () => {
     if (at < last) throw new Error(needle + ' out of order');
     last = at;
   }
-  if (!/function sOpenLoginExtra_[\s\S]*?first-time/.test(panelSrc)) {
-    throw new Error('no auto-open helper');
+  // Mail y DNI viven en el paso 2; ni nombre ni apellido ahi adentro.
+  const login = panelHtml.slice(panelHtml.indexOf('id="s-screen-login"'), panelHtml.indexOf('id="s-screen-datos"'));
+  const datos = panelHtml.slice(panelHtml.indexOf('id="s-screen-datos"'), panelHtml.indexOf('id="s-screen-hello"'));
+  if (login.indexOf('id="input-nombre"') >= 0 || login.indexOf('id="input-apellido"') >= 0) {
+    throw new Error('el paso 2 sigue pidiendo nombre/apellido');
+  }
+  if (datos.indexOf('id="input-nombre"') < 0 || datos.indexOf('id="input-apellido"') < 0
+    || datos.indexOf('id="select-anio"') < 0 || datos.indexOf('id="select-division"') < 0) {
+    throw new Error('la pantalla de datos no tiene el formulario completo');
+  }
+  if (!/function sOpenLoginExtra_\(\) \{\s*showScreen\(S_SCREENS, 's-screen-datos'\);/.test(panelSrc)) {
+    throw new Error('los datos no llevan a su pantalla propia');
   }
   if (!/function sUseLoginData_[\s\S]*?sOpenLoginExtra_\(\)/.test(panelSrc)) {
-    throw new Error('extra data is not opened when needed');
+    throw new Error('los datos no se abren cuando el server los pide');
   }
   if (!/resp\.needsApellido[\s\S]{0,160}sOpenLoginExtra_\(\)/.test(panelSrc)) {
-    throw new Error('DNI help is not opened');
+    throw new Error('la ayuda del DNI no abre la pantalla de datos');
+  }
+  if (!/id="btn-datos-go"/.test(panelHtml) || !/id="btn-datos-back"/.test(panelHtml)) {
+    throw new Error('pantalla de datos sin Continuar/Volver');
+  }
+  // Continuar sabe por donde entro: por mail termina local; por DNI repite la
+  // llamada con los datos ya cargados.
+  if (!/function sDatosContinue\(\) \{[\s\S]{0,240}sUseLoginData_\(\);[\s\S]{0,240}sLookupDni\(\);/.test(panelSrc)) {
+    throw new Error('Continuar no distingue mail de DNI');
+  }
+  // Volver llega al paso correcto segun lo que tenga el alumno.
+  if (!/btn-datos-back'\)\.addEventListener\('click'[\s\S]{0,320}s-screen-login/.test(panelSrc)) {
+    throw new Error('Volver no sabe volver');
   }
 });
 
 t('Cambiar de pantalla mueve el foco y vuelve al inicio', () => {
-  for (const id of ['s-screen-mail', 's-screen-login', 's-screen-hello',
+  for (const id of ['s-screen-mail', 's-screen-login', 's-screen-datos', 's-screen-hello',
     's-screen-panel', 'a-screen-gate', 'a-screen-panel']) {
     if (!new RegExp('id="' + id + '"[^>]*tabindex="-1"').test(panelHtml)) {
       throw new Error(id + ' is not focusable');
@@ -1519,7 +1540,7 @@ t('Access screen starts with one Ingresar gate and a separate form', () => {
   if (!/btn-login-back'\)\.addEventListener\('click'[\s\S]*?s-screen-mail/.test(panelSrc)) {
     throw new Error('form has no back button');
   }
-  if (!/S_SCREENS = \['s-screen-mail', 's-screen-login', 's-screen-hello', 's-screen-panel', 's-screen-done'\]/.test(panelSrc)) {
+  if (!/S_SCREENS = \['s-screen-mail', 's-screen-login', 's-screen-datos', 's-screen-hello', 's-screen-panel', 's-screen-done'\]/.test(panelSrc)) {
     throw new Error('login screen is not in S_SCREENS');
   }
   if (/id="login-form"[^>]*hidden/.test(panelHtml)) throw new Error('login form is hidden');
