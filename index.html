@@ -43,6 +43,13 @@
       --shadow-lg: 0 24px 60px rgba(31, 31, 31, .16);
       --toast-bg: #1F1F1F;
       --toast-ink: #FAF8F5;
+      /* Escala de espaciado del rediseño UI: 4/8/12/16/24/32. */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
       --radius: 20px;
       --radius-sm: 14px;
       --card: var(--surface);
@@ -697,7 +704,12 @@
     .field { display: grid; gap: 8px; }
     .field { grid-template-columns: minmax(0, 1fr); min-width: 0; }
     .field label { margin: 0; }
-    .login-fields { display: grid; gap: 16px; }
+    /* Los screens de ingreso (Spotify movil) usan radio 16 y el aire de la
+       escala nueva; el resto del sitio conserva su radio propio. */
+    #s-screen-mail, #s-screen-login, #s-screen-datos, #s-screen-hello {
+      border-radius: 16px;
+    }
+    .login-fields { display: grid; gap: var(--space-4); }
     .login-fields > * { min-width: 0; }
     /* Los inputs tienen un ancho explicito y tope: en laptops de 320-412px
        el borde derecho no se puede romper aunque el texto sea largo. */

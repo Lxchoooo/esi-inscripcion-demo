@@ -1131,7 +1131,7 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
     'placeholder="Solo números"',
     '<h2 class="intro" id="login-title">Ingresar</h2>',
     'Con tu mail y tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.',
-    '.login-fields { display: grid; gap: 16px; }',
+    '.login-fields { display: grid; gap: var(--space-4); }',
     '.field { display: grid; gap: 8px; }',
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
@@ -4836,6 +4836,21 @@ t('r36: login con validacion viva, foco automatico en datos y resumen "todo list
   if (!/\.login-bullets \{/.test(panelCss())) throw new Error('sin bullets en Ingresar');
   if (!/\.steps-bar i\.done \{ background: var\(--accent\); \}/.test(panelCss())) {
     throw new Error('stepper sin barra unificada de un solo verde');
+  }
+});
+
+t('estilo: tokens de espaciado y radio 16 en las pantallas de ingreso', () => {
+  const css = panelCss();
+  for (const token of ['--space-1: 4px', '--space-2: 8px', '--space-3: 12px',
+    '--space-4: 16px', '--space-5: 24px', '--space-6: 32px']) {
+    const re = new RegExp(token.replace(/[^a-z0-9: -]/gi, '\\$&') + ';');
+    if (!re.test(css)) throw new Error('falta el token ' + token);
+  }
+  if (!/#s-screen-mail, #s-screen-login, #s-screen-datos, #s-screen-hello \{[\s\S]{0,60}border-radius: 16px;/.test(css)) {
+    throw new Error('screens de ingreso sin radio 16');
+  }
+  if (!/\.login-fields \{ display: grid; gap: var\(--space-4\); \}/.test(css)) {
+    throw new Error('login-fields con espaciado hardcoded');
   }
 });
 
