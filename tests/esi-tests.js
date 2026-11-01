@@ -1390,6 +1390,16 @@ t('El login arranca con mail o DNI y los datos de primera vez van en su pantalla
   }
 });
 
+t('gate: la clave no se sale del card', () => {
+  if (!/\.pin-wrap input\s*\{[^}]*width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;/
+    .test(panelHtml)) {
+    throw new Error('input de clave sin tope de ancho');
+  }
+  if (!/\.pin-wrap, \.gate-form, \.gate-form \.field \{ min-width: 0; max-width: 100%; \}/.test(panelHtml)) {
+    throw new Error('cadena de compactacion del gate incompleta');
+  }
+});
+
 t('Cambiar de pantalla mueve el foco y vuelve al inicio', () => {
   for (const id of ['s-screen-mail', 's-screen-login', 's-screen-datos', 's-screen-hello',
     's-screen-panel', 'a-screen-gate', 'a-screen-panel']) {

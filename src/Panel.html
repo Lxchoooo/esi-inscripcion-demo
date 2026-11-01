@@ -1192,8 +1192,15 @@
     #a-screen-gate .card { max-width: 420px; margin: clamp(24px, 8dvh, 64px) auto; }
     #a-screen-gate .intro { margin-bottom: 24px; }
     .gate-form { display: grid; gap: 16px; }
-    .pin-wrap { position: relative; }
+    .pin-wrap { position: relative; min-width: 0; max-width: 100%; }
     .pin-wrap input { padding-right: 48px; }
+    /* La clave del gate nunca se sale del card: ancho explicito y tope en
+       toda la cadena (360px: el input con padding del ojo no puede superar
+       al contenedor aunque el navegador ajuste el tamano del texto). */
+    .pin-wrap input {
+      width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+    }
+    .pin-wrap, .gate-form, .gate-form .field { min-width: 0; max-width: 100%; }
     .pin-eye {
       position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
       min-width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 10px;
