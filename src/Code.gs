@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v57';
+var BACKEND_VERSION = 'v58';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -520,6 +520,57 @@ function mailQuota_() {
     return -1;
   }
 }
+
+// Diagnostico de la cola de avisos, sin abrir el editor: cuenta filas por
+// estado y pregunta a MailApp si tiene cuota. Cero datos personales: solo
+// agregados. Si la cuota falla, el mensaje dice si es autorizacion y el
+// quejido sale a la vista en vez de quedarse dentro del flush.
+function apiMailDiag() {
+  var out = { ok: true, avisos_activo: null, queue: null, quota: null, trigger: null };
+  try {
+    var cfg = readConfig_();
+    out.avisos_activo = convertBool_(cfg[CONFIG_MAIL_WELCOME]);
+  } catch (eCfg) { out.cfgError = String(eCfg && eCfg.message || eCfg); }
+  try {
+    var q = readMailQueueRaw_();
+    if (!q.map) {
+      out.queue = { filas: Math.max(0, q.vals.length - 1), estados: {}, sin_encabezado: true };
+    } else {
+      var stats = {};
+      var vencidos = 0;
+      var ahora = Date.now();
+      for (var i = 1; i < q.vals.length; i++) {
+        var est = String(q.vals[i][q.map.estado]).trim().toLowerCase();
+        stats[est || 'vacio'] = (stats[est || 'vacio'] || 0) + 1;
+        if (est === 'pendiente') {
+          var due = q.vals[i][q.map.envio_at] instanceof Date ? q.vals[i][q.map.envio_at].getTime() : Number(q.vals[i][q.map.envio_at]);
+          if (Number(due) <= ahora) vencidos++;
+        }
+      }
+      out.queue = { filas: Math.max(0, q.vals.length - 1), estados: stats, pendientes_vencidos: vencidos };
+    }
+  } catch (eQ) { out.queueError = String(eQ && eQ.message || eQ); }
+  try {
+    if (typeof MailApp !== 'undefined' && MailApp) {
+      try {
+        out.quota = Number(MailApp.getRemainingDailyQuota());
+      } catch (eM) { out.quotaError = String(eM && eM.message || eM); }
+    } else {
+      out.quota = -1;
+    }
+  } catch (eM0) { out.quotaError = String(eM0 && eM0.message || eM0); }
+  try {
+    if (typeof ScriptApp !== 'undefined' && ScriptApp) {
+      var trs = ScriptApp.getProjectTriggers();
+      for (var t = 0; t < trs.length; t++) {
+        if (trs[t].getHandlerFunction() === 'flushMailQueue_') { out.trigger = true; break; }
+      }
+      if (!out.trigger) out.trigger = false;
+    }
+  } catch (eT) { out.triggerError = String(eT && eT.message || eT); }
+  return out;
+}
+
 
 function readSentMails_(subject) {
   try {
@@ -1503,6 +1554,7 @@ var API_FN_MAP_ = {
   apiAdminDeleteTestData: apiAdminDeleteTestData,
   apiAdminDrill: apiAdminDrill,
   apiDrillCleanup: apiDrillCleanup,
+  apiMailDiag: apiMailDiag,
   apiAdminCloseEvent: apiAdminCloseEvent,
   apiAdminErasePersonalData: apiAdminErasePersonalData,
   apiAdminBackupDrive: apiAdminBackupDrive,
