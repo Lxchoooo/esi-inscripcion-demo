@@ -64,7 +64,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v64';
+var BACKEND_VERSION = 'v65';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -3467,7 +3467,10 @@ function apiAdminAccessLog(cred) {
     var rows = [];
     for (var i = vals.length - 1; i >= 1 && rows.length < 40; i--) {
       rows.push({
-        fecha: new Date(vals[i][0]).toISOString(),
+        // Hora local Argentina (-3) formateada segun la zona fija del evento:
+        // antes iba en ISO UTC y el reloj del panel dependia del dispositivo
+        // que lo miraba (off-by-3 para el pibe a cargo).
+        fecha: Utilities.formatDate(new Date(vals[i][0]), 'America/Argentina/Buenos_Aires', 'd/M/yyyy HH:mm'),
         resultado: String(vals[i][1] || ''),
         rol: String(vals[i][2] || ''),
         dispositivo: String(vals[i][3] || '')

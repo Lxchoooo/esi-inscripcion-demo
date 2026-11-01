@@ -819,7 +819,7 @@ t('Panel keeps the admin session in localStorage and logs device on login', () =
   if (!panelHtml.includes('Registro de accesos')) throw new Error('missing markup registro');
   for (const needle of ["A_SESSION_KEY = 'esi_admin_session'", 'A_SESSION_MS = 7200000',
     'aSessionSave_(adminCred, aRole)', 'adminCred = String(ses.token);',
-    "call('apiAdminAccessLog', [adminCred])", "call('apiAdminLogin', [pin, deviceUA_()])"]) {
+    "call('apiAdminAccessLog', [adminCred])", "call('apiAdminLogin', [pin, label || deviceUA_()])"]) {
     if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
   }
 });
@@ -4735,6 +4735,31 @@ t('r29: needles de la ronda de bugfinds del panel', () => {
   if (!/if \(!s\.prueba\) counts/.test(panelSrc.slice(pr, pr + 700))) throw new Error('el picker demo sigue contando filas de prueba como cupo');
   const es = panelSrc.indexOf('function sEmptyState_');
   if ((panelSrc.slice(es, es + 420).match(/recordatorio: false/g) || []).length !== 1) throw new Error('clave duplicada recordatorio en sEmptyState_');
+});
+
+t('r30: la fecha del acceso sale en hora argentina (formato server)', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminLogin, apiAdminAccessLog');
+  const login = api.apiAdminLogin('1111', 'prueba dispositivo');
+  const log = api.apiAdminAccessLog(login.token);
+  assertEq(log.ok, true, 'endpoint ok');
+  assertEq(log.rows[0].resultado, 'entro', 'resultado ok');
+  if (String(log.rows[0].fecha).indexOf('T') >= 0) throw new Error('la fecha sigue en ISO UTC: ' + log.rows[0].fecha);
+});
+
+t('r30: el registro de accesos muestra modelo, version y hora argentina', () => {
+  const al = codeSrc.indexOf('function apiAdminAccessLog');
+  const ab = codeSrc.slice(al, al + 900);
+  if (!/Utilities\.formatDate\(new Date\(vals\[i\]\[0\]\), 'America\/Argentina\/Buenos_Aires'/.test(ab)) throw new Error('la fecha del acceso no sale en hora argentina');
+  if (/toISOString\(\)/.test(ab)) throw new Error('la fecha del acceso sigue en UTC');
+  if (!/function deviceLabelP_/.test(panelSrc)) throw new Error('sin etiqueta async del dispositivo');
+  if (!/getHighEntropyValues\(/.test(panelSrc)) throw new Error('sin datos altos del navegador (modelo real)');
+  const lg = panelSrc.indexOf('function aLogin');
+  if (!/deviceLabelP_\(\)/.test(panelSrc.slice(lg, panelSrc.indexOf('function aAuthLost')))) throw new Error('el login sigue mandando el UA crudo');
+  const sh = panelSrc.indexOf('function aUAShort_');
+  if (!/indexOf\(' · '\)/.test(panelSrc.slice(sh, sh + 300))) throw new Error('las etiquetas ya armadas se reparsean');
+  const la = panelSrc.indexOf("var f = String(r.fecha || '')");
+  if (!/\\d\{4\}/.test(panelSrc.slice(la, la + 900))) throw new Error('el panel no acepta las filas viejas en ISO');
 });
 
 t('r25: los mails salen sin esperas de mas: gracia de 45 s y watchdog cada 2 min', () => {
