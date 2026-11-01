@@ -4834,8 +4834,8 @@ t('r36: login con validacion viva, foco automatico en datos y resumen "todo list
     throw new Error('sin check verde en la casilla valida');
   }
   if (!/\.login-bullets \{/.test(panelCss())) throw new Error('sin bullets en Ingresar');
-  if (!/i\.on \{[\s\S]{0,80}box-shadow: 0 0 0 3px var\(--accent-soft\)/.test(panelCss())) {
-    throw new Error('paso activo sin anillo');
+  if (!/\.steps-bar i\.done \{ background: var\(--accent\); \}/.test(panelCss())) {
+    throw new Error('stepper sin barra unificada de un solo verde');
   }
 });
 
