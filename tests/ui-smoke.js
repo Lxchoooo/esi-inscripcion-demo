@@ -316,7 +316,7 @@ function tick() {
   ui.aOnPresent('s1');
   await tick();
   assert(document.getElementById('charla-list').innerHTML.includes('is-present'), 'presente marcado');
-  assert(document.getElementById('a-msg').innerHTML.includes('Deshacer'), 'aviso con deshacer');
+  assert(document.getElementById('toast').innerHTML.includes('Deshacer'), 'aviso con deshacer');
   assert(document.getElementById('charla-presentes').textContent === 'Presentes 1 de 1', 'contador de presentes');
 
   ui.setRole('admin');

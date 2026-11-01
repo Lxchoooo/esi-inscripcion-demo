@@ -901,6 +901,14 @@
     }
     .toast.show { transform: translate(-50%, 0); opacity: 1; transition-duration: var(--dur-2); }
     .toast.err { background: var(--danger); color: var(--paper); }
+    /* Accion dentro del toast (ej. Deshacer). */
+    .toast-btn {
+      flex: 0 0 auto; margin-left: 10px; padding: 7px 14px; min-height: 36px;
+      border: 1px solid rgba(250, 248, 245, .4); border-radius: 999px;
+      background: transparent; color: inherit;
+      font: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+    }
+    .toast-btn:active { transform: scale(.97); }
     /* Los avisos y toasts viven al pie: aca arrancan por ENCIMA de la barra
        de progreso (elecciones), que también es fija al pie, en el MISMO
        slot: uno solo visible a la vez (toast() y sBanner() se exculuyen). */
@@ -1258,10 +1266,49 @@
     }
     .view-count { font-size: 19px; font-weight: 700; }
     .view-head .hint-line { margin: 0; flex: 1; }
+    /* Asistencia (guías): buscador y contador FIJOS arriba mientras scrollean. */
+    .a-asis-head {
+      position: sticky; top: 62px; z-index: 6;
+      background: var(--surface);
+      margin: 0 -18px; padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .a-asis-head .filters input { min-height: 52px; font-size: 16px; }
+    .a-asis-head .view-head { margin: 10px 0 4px; }
+    .a-asis-head .status-chips { margin-top: 4px; }
+    .a-asis-head #charla-updated { font-size: 11.5px; }
+    .asis-bar {
+      height: 6px; border-radius: 999px; background: var(--surface-2);
+      overflow: hidden; margin: 2px 0 10px;
+    }
+    .asis-bar > span {
+      display: block; height: 100%; width: 0; border-radius: 999px;
+      background: var(--accent);
+    }
+    .a-asis-head .live-dot { display: none; }
     .roster-row {
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
       min-height: 56px; padding: 9px 0; border-bottom: 1px solid var(--line);
       font-size: 14.5px;
+    }
+    /* Fila de asistencia en celular: apellido y nombre grandes, curso como
+       chip; el mail queda DETRAS del toque (privacidad: sin mails en la fila),
+       con la pastilla chico como dato secundario. Boton presente 48px. */
+    @media (max-width: 719px) {
+      .roster-row { min-height: 64px; padding: 10px 0; gap: 10px; }
+      .roster-row .roster-who { flex: 1 1 auto; min-width: 0; }
+      .roster-row .student-mail-btn {
+        flex-direction: column; align-items: flex-start; gap: 4px;
+        min-height: 48px; padding: 8px 0;
+      }
+      .roster-row .roster-name { font-size: 16.5px; font-weight: 700; color: var(--ink); }
+      .roster-row .mail-cue { font-size: 10px; padding: 2px 8px; }
+    }
+    .roster-curso {
+      flex: 0 0 auto; padding: 3px 10px; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--line);
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      white-space: nowrap;
     }
     .status-chips { display: flex; gap: 6px; flex-wrap: wrap; }
     .status-chips button {
@@ -1327,12 +1374,13 @@
     .roster-curso { color: var(--muted); font-size: 13px; }
     .roster-faltan { margin-left: auto; color: var(--danger); font-size: 12.5px; font-weight: 700; }
     .present-btn {
-      font-family: inherit; font-size: 11.5px; font-weight: 700;
+      font-family: inherit; font-size: 12.5px; font-weight: 700;
       color: var(--muted); background: transparent;
       border: 1px solid var(--line-ui); border-radius: 999px;
-      padding: 8px 12px; cursor: pointer; min-height: 44px;
+      padding: 8px 16px; cursor: pointer; min-height: 48px; min-width: 84px;
+      transition: transform var(--dur-1) var(--ease-out);
     }
-    .present-btn.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
+    .present-btn.on { color: #FAF8F5; background: var(--btn-bg-hi); border-color: var(--btn-bg-hi); }
     .present-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .roster-row.is-present .roster-name { text-decoration: line-through; opacity: .75; }
     .roster-row { transition: none; }
@@ -2505,16 +2553,21 @@
         <div class="card">
           <div class="filters">
             <select id="select-charla" aria-label="Charla"></select>
-            <input id="input-buscar-charla" type="text" autocomplete="off" placeholder="Nombre, mail o DNI" aria-label="Buscar por nombre, mail o DNI">
             <select id="filter-curso-charla" aria-label="Curso"></select>
           </div>
-          <div class="view-head">
-            <span class="view-count" id="charla-count">0 de 40</span>
-            <span class="hint-line" id="charla-presentes">Presentes 0 de 0</span>
+          <div class="a-asis-head">
+            <div class="filters">
+              <input id="input-buscar-charla" type="text" autocomplete="off" placeholder="Buscar por nombre, mail o DNI" aria-label="Buscar por nombre, mail o DNI">
+            </div>
+            <div class="view-head">
+              <span class="view-count" id="charla-count">0 de 40</span>
+              <span class="hint-line" id="charla-presentes">Presentes 0 de 0</span>
+            </div>
+            <div class="asis-bar" aria-hidden="true"><span id="asis-bar-fill"></span></div>
             <div class="status-chips" id="charla-filtro" role="group" aria-label="Filtrar por asistencia">
               <button type="button" data-filter="all" class="active" aria-pressed="true">Todos</button>
               <button type="button" data-filter="present" aria-pressed="false">Presentes</button>
-  
+              <button type="button" data-filter="faltan" aria-pressed="false">Faltan</button>
             </div>
             <span class="live-dot" id="live-dot" aria-hidden="true"></span>
             <span class="hint-line" id="charla-updated">Actualizado hace 0s</span>
@@ -4766,7 +4819,7 @@
     }
 
     var toastTimer = null;
-    function toast(text, type) {
+    function toast(text, type, act) {
       var el = $('toast');
       var bn = $('s-banner');
       // Un solo cartel a la vez: el toast REEMPLAZA al banner (y no se
@@ -4777,8 +4830,24 @@
       }
       el.textContent = text || '';
       el.className = 'toast show' + (type === 'err' ? ' err' : '');
+      var html = esc(text || '');
+      if (act && act.label && act.fn) {
+        html += '<button type="button" class="toast-btn" aria-label="' + esc(act.label) + '">' + esc(act.label) + '</button>';
+      }
+      el.innerHTML = html;
+      if (act && act.label && act.fn) {
+        var abtn = el.querySelector ? el.querySelector('.toast-btn') : null;
+        if (abtn) {
+          abtn.addEventListener('click', function () {
+            act.fn();
+            window.clearTimeout(toastTimer);
+            el.className = 'toast';
+            el.innerHTML = '';
+          });
+        }
+      }
       if (toastTimer) window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(function () { el.className = 'toast'; }, 3400);
+      toastTimer = window.setTimeout(function () { el.className = 'toast'; el.innerHTML = ''; }, 3400);
     }
 
     var sheetCb = null;
@@ -6653,40 +6722,31 @@
     }
 
     function aOfferUndo_(id, prev) {
-      var el = $('a-msg');
-      if (!el) return;
-      if (aUndoTimer) window.clearTimeout(aUndoTimer);
       var who = '';
       if (aTalkData && aTalkData.students) {
         for (var ui = 0; ui < aTalkData.students.length; ui++) {
           if (String(aTalkData.students[ui].id) === String(id)) { who = aTalkData.students[ui].nombre || ''; break; }
         }
       }
-      el.innerHTML = (who ? esc(who) + ' marcado presente. ' : 'Marcado. ') + '<button type="button" class="undo-btn" id="btn-undo">Deshacer</button>';
-      el.className = 'banner ok';
-      el.style.display = 'block';
-      var btn = $('btn-undo');
-      if (btn) btn.addEventListener('click', function () {
-        if (!adminCred) return;
-        call('apiAdminSetPresent', [adminCred, id, prev])
-          .then(function (resp) {
-            if (!resp.ok) { aBanner(resp.message || 'No se pudo deshacer.', 'err'); return; }
-            aUnqueue_(id);
-            aBanner('Deshecho.', 'ok');
-            aLoadTalk();
-          })
-          .catch(function () {
-            aQueueMark_(id, prev);
-            aBanner('Sin conexión. Se reintentará.', 'err');
-          });
+      // Toast con Deshacer: se ve AUNQUE el guia scrollee al final de la lista
+      // (el banner a-msg vive arriba del pane y scrollea con el contenido).
+      toast((who ? who + ' presente.' : 'Marcado.'), 'ok', {
+        label: 'Deshacer',
+        fn: function () {
+          if (!adminCred) return;
+          call('apiAdminSetPresent', [adminCred, id, prev])
+            .then(function (resp) {
+              if (!resp.ok) { aBanner(resp.message || 'No se pudo deshacer.', 'err'); return; }
+              aUnqueue_(id);
+              aBanner('Deshecho.', 'ok');
+              aLoadTalk();
+            })
+            .catch(function () {
+              aQueueMark_(id, prev);
+              aBanner('Sin conexión. Se reintentará.', 'err');
+            });
+        }
       });
-      var undoSeq = aBannerSeq_;
-      aUndoTimer = window.setTimeout(function () {
-        if (aBannerSeq_ !== undoSeq) return; // otro banner ya tomo el lugar
-        var focused = document.activeElement;
-        if (focused && el.contains && el.contains(focused)) return;
-        aBanner('', 'ok');
-      }, 5000);
     }
 
     function aReadQueue_() {
@@ -6780,6 +6840,12 @@
           popNum_(presentesEl);
         }
       }
+      // Barra de progreso de presentes, bajo el contador fijo (solo UI).
+      var asisFill = $('asis-bar-fill');
+      if (asisFill) {
+        var asisTot = d.count || 0;
+        asisFill.style.width = (asisTot ? Math.min(100, Math.round((d.presentes || 0) * 100 / asisTot)) : 0) + '%';
+      }
       var hdrPresent = $('hdr-present');
       if (hdrPresent) {
         hdrPresent.style.display = adminCred ? 'inline' : 'none';
@@ -6788,16 +6854,18 @@
       var rosterKey = String(aTalkId) + '|' + q + '|' + fCurso + '|' + aTalkFilter;
       aRosterStagger = rosterKey !== aRosterKey;
       aRosterKey = rosterKey;
-      var allChip = null, presChip = null;
+      var allChip = null, presChip = null, faltChip = null;
       try {
         var chipNodes = $('charla-filtro').querySelectorAll('button');
         for (var ci = 0; ci < chipNodes.length; ci++) {
           if (chipNodes[ci].getAttribute('data-filter') === 'all') allChip = chipNodes[ci];
           if (chipNodes[ci].getAttribute('data-filter') === 'present') presChip = chipNodes[ci];
+          if (chipNodes[ci].getAttribute('data-filter') === 'faltan') faltChip = chipNodes[ci];
         }
       } catch (eChips) { }
       if (allChip) allChip.textContent = 'Todos ' + d.count;
       if (presChip) presChip.textContent = 'Presentes ' + (d.presentes || 0);
+      if (faltChip) faltChip.textContent = 'Faltan ' + Math.max(0, d.count - (d.presentes || 0));
       var rows = '';
       var shown = 0;
       var cursos = {};
@@ -6806,6 +6874,7 @@
         if (st.curso) cursos[st.curso] = 1;
         if (fCurso && st.curso !== fCurso) continue;
         if (aTalkFilter === 'present' && !st.presente) continue;
+        if (aTalkFilter === 'faltan' && st.presente) continue;
         // Filtro 'Faltan' eliminado: solo se marcan presentes.
         if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
         shown++;
