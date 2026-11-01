@@ -1141,6 +1141,8 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
   if (!/p\.hint \{[^}]*margin: 0 0 24px/s.test(panelHtml)) throw new Error('hint gap');
   if (contrast('#0E7A2F', '#FFFFFF') < 4.5) throw new Error('active segment contrast');
   if (!/id="mail-help"/.test(panelHtml)) throw new Error('mail help missing');
+  if (!/var mh = \$\('mail-help'\)/.test(panelSrc)) throw new Error('mail help sin teclado (Escape y Tab)');
+  if (!/document\.activeElement === btnAct/.test(panelSrc)) throw new Error('toast no sostiene el foco del Deshacer');
   if (!/Tu mail es tu apellido, tu nombre y tu año de egreso/.test(panelHtml)) throw new Error('mail help text missing');
   if (!/2026 \+ \(6 \- año que cursa\)/.test(panelSrc) && !/2026 \+ \(6 - year\)/.test(panelSrc)) throw new Error('mail help formula missing');
   if (!/\-webkit\-line\-clamp: 2/.test(panelHtml)) throw new Error('school name not clamped');
