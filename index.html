@@ -1185,7 +1185,17 @@
     #a-screen-gate .card { max-width: 420px; margin: clamp(24px, 8dvh, 64px) auto; }
     #a-screen-gate .intro { margin-bottom: 24px; }
     .gate-form { display: grid; gap: 16px; }
-    #gate-msg { margin: 0; }
+    .pin-wrap { position: relative; }
+    .pin-wrap input { padding-right: 48px; }
+    .pin-eye {
+      position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+      min-width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 10px;
+      background: transparent; color: var(--muted); cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .pin-eye:active { background: var(--surface-2); }
+    .pin-eye[aria-pressed="true"] { color: var(--accent-strong); }
+    #gate-msg { margin: -6px 0 0; font-size: 13px; }
     #gate-msg:empty { display: none; }
 
     /* Selección de charlas y ajustes */
@@ -2316,8 +2326,13 @@
         <div class="gate-form">
           <div class="field">
             <label for="input-pin">Clave</label>
-            <input id="input-pin" type="password" inputmode="numeric" autocomplete="off"
-              placeholder="Tu clave">
+            <div class="pin-wrap">
+              <input id="input-pin" type="password" inputmode="numeric" autocomplete="off"
+                placeholder="Tu clave">
+              <button id="pin-eye" class="pin-eye" type="button" aria-label="Mostrar clave" aria-pressed="false">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
           </div>
           <div id="gate-msg" class="banner err" role="alert"></div>
           <button id="btn-pin" class="btn full" type="button">Entrar</button>
@@ -9201,6 +9216,18 @@
         if (!pin) return;
         aLogin(pin);
       });
+      // Ojo de la clave: solo alterna type password/text. Sin IDs nuevos para
+      // la casilla (input-pin sigue exacto).
+      var pinEye = $('pin-eye');
+      if (pinEye) {
+        pinEye.addEventListener('click', function () {
+          var pin = $('input-pin');
+          var mostrar = pin.type === 'password';
+          pin.type = mostrar ? 'text' : 'password';
+          pinEye.setAttribute('aria-pressed', mostrar ? 'true' : 'false');
+          pinEye.setAttribute('aria-label', mostrar ? 'Ocultar clave' : 'Mostrar clave');
+        });
+      }
       // Mientras el server piensa (aBusy), los toques del admin no repiten
       // acciones (recordatorios, drill, borrados) — pero el docente no queda
       // sin razon: un aviso discreto explica por que el toque no hizo nada.
