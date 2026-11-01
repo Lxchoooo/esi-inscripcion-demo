@@ -477,10 +477,9 @@
     .faq[open] > p { animation: fadeUp .24s var(--ease-emph) both; }
 
     .btn.accent {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-      color: var(--paper);
+      background: var(--accent); color: #FAF8F5;
     }
-    .btn.accent:hover { background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent) 100%); }
+    .btn.accent:hover { background: var(--accent-strong); }
 
     /* panel admin */
     .stat { position: relative; overflow: hidden; transition: transform var(--dur-2) var(--ease-out); }
@@ -637,13 +636,14 @@
       font-family: inherit; font-size: 15px; font-weight: 700;
       min-height: 50px; padding: 13px 20px;
       border: 1px solid transparent; border-radius: var(--radius-sm);
-      background: var(--ink); color: var(--paper);
+      /* Primario UNICO en todo el sitio: verde institucional plano. */
+      background: var(--accent-strong); color: #FAF8F5;
       text-decoration: none; cursor: pointer;
-      box-shadow: 0 6px 18px rgba(31, 31, 31, .14);
+      box-shadow: 0 6px 18px rgba(20, 80, 45, .22);
       transition: transform var(--dur-1) var(--ease-out), opacity var(--dur-2) var(--ease-out);
     }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(31, 31, 31, .18); }
-    .btn:active { transform: translateY(0) scale(.985); box-shadow: 0 3px 10px rgba(31, 31, 31, .16); }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(20, 80, 45, .26); }
+    .btn:active { transform: translateY(0) scale(.985); box-shadow: 0 3px 10px rgba(20, 80, 45, .2); }
     .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent); }
     .btn:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
     .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-ui); box-shadow: none; }
@@ -660,7 +660,7 @@
     .btn.red { background: var(--danger); color: var(--paper); }
     .ico { width: 18px; height: 18px; flex: 0 0 auto; }
     .btn.small .ico { width: 16px; height: 16px; }
-    .btn.btn-confirm { background: var(--accent); color: var(--paper); font-size: 17px; min-height: 56px; padding: 16px 28px; box-shadow: 0 8px 24px rgba(47, 111, 78, .35); border-radius: 14px; }
+    .btn.btn-confirm { background: var(--accent); color: #FAF8F5; font-size: 17px; min-height: 56px; padding: 16px 28px; box-shadow: 0 8px 24px rgba(20, 80, 45, .35); border-radius: 14px; }
     .btn.btn-confirm:hover { background: var(--accent-fill); box-shadow: 0 12px 32px rgba(47, 111, 78, .45); }
     .done-hero { text-align: center; padding: 6px 4px 2px; }
     .done-check {
@@ -752,10 +752,10 @@
       background-repeat: no-repeat, no-repeat;
       background-position: right 15px center, right 40px center;
     }
-    /* Continuar listo: el form completo valido activa el verde. */
+    /* Continuar listo: el form completo valido activa el verde brillante. */
     #s-screen-datos .login-form .btn.full.is-ready {
-      background: var(--accent-strong); color: var(--paper);
-      box-shadow: 0 10px 26px rgba(31, 107, 63, .28);
+      background: var(--accent); color: #FAF8F5;
+      box-shadow: 0 10px 26px rgba(31, 107, 63, .32);
     }
     /* Resumen "Todo listo" del paso 3. */
     #datos-resumen:not([hidden]) {
@@ -1710,8 +1710,8 @@
     .esi-card p { margin: 0; line-height: 1.55; font-size: 14.5px; }
     .esi-card a { color: var(--brand-dark); font-weight: 700; }
     /* Inicio editorial y ajustes del formulario */
-    .btn.accent { background: var(--accent); color: var(--paper); }
-    .btn.accent:hover { background: var(--accent-strong); color: var(--paper); }
+    .btn.accent { background: var(--accent); color: #FAF8F5; }
+    .btn.accent:hover { background: var(--accent-strong); }
     .hero h2 { font-size: clamp(34px, 7vw, 44px); max-width: 16ch; }
     .hero-grid { display: grid; gap: 26px; align-items: start; }
     .hero-copy > p:not(.hero-eyebrow) {
