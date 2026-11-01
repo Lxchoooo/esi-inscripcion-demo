@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v60';
+var BACKEND_VERSION = 'v61';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -933,6 +933,11 @@ function watchdog() {
     }
   } catch (eTrigger) { }
   try { configureDriveBackupTrigger_(); } catch (eBackup) { }
+  // Ejectuar el flush como red de seguridad: se vio que el planificador de
+  // Google puede dejar de ejecutar el trigger de cada minuto y el registro
+  // del trigger miente ("existe" no es "corre"). Si el watchdog corre, la
+  // cola avanza aunque el trigger siga dormido.
+  try { flushMailQueue_(Date.now() + 60 * 1000); } catch (eFlush) { }
   try { runPendingRebuilds_(); } catch (eRebuild) { }
   if (fixes.length) {
     try { logAction_('watchdog_fix', 'panel', fixes.join(', ')); } catch (eLog) { }

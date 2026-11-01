@@ -4625,5 +4625,26 @@ t('r25: el empujon del diagnostico ejecuta el flush y manda el pendiente', () =>
   assertEq((r.queue.intentos_max || 0) >= 0, true, 'el diag reporta intentos');
 });
 
+t('r25: el watchdog empuja la cola de mails si el trigger de cada minuto no corre', () => {
+  const services = backendStub({});
+  enableMail_(services);
+  setConfigValue_(services, 'avisos_mail', 'si');
+  setConfigValue_(services, 'modo_prueba', 'si');
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
+    [
+      ['m1', new Date(), new Date(Date.now() - 999999), 'z@secundariosalsipuedes.edu.ar', 'bienvenida', 'pendiente', 0, 'Asunto', 'Cuerpo']
+    ]);
+  services.ScriptApp = {
+    getProjectTriggers: () => [{ getHandlerFunction: () => 'flushMailQueue_' }],
+    newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => null }) }) })
+  };
+  const api = backendApi(services, 'watchdog');
+  const r = api.watchdog();
+  assertEq(r.ok, true, 'watchdog ok');
+  assertEq(queueRows_(services).slice(-1)[0][5], 'enviado', 'la fila sale con el watchdog');
+  assertEq(services.sentMails.length, 1, 'MailApp recibe el envio por watchdog');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
