@@ -1619,6 +1619,9 @@
     .bulk-box summary { display: flex; align-items: center; min-height: 44px; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
     .bulk-box summary::marker { color: var(--accent); }
     .bulk-box #ta-roster { margin-top: 8px; }
+    /* Alta de un alumno: mismo patron de acordeon que el pegado multiple. */
+    .add-box { margin-top: 14px; }
+    .add-box summary { font-size: 14px; color: var(--accent-strong); font-weight: 700; }
     .hint-line { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
     .login-note { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
     .kbd-hint { display: none; align-items: center; gap: 5px; margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
@@ -2660,7 +2663,11 @@
           <p class="roster-status" id="a-roster-info"></p>
           <p class="hint-line">Los mails de esta lista habilitan el ingreso con DNI y los recordatorios. Agregar a la lista no inscribe a nadie: después cada alumno elige sus charlas.</p>
 
-          <form id="roster-one" class="roster-one" novalidate>
+          <!-- Alta y pegado multiples: acordeones cerrados por defecto para
+               que la lista sea lo primero de la pantalla. -->
+          <details class="bulk-box add-box" id="a-add-box">
+            <summary>Agregar e inscribir un alumno</summary>
+            <form id="roster-one" class="roster-one" novalidate>
             <p class="form-title">Agregar un alumno</p>
             <div class="roster-grid">
               <label for="roster-mail">Mail institucional
@@ -2707,6 +2714,7 @@
             </button>
             <div id="roster-add-msg" class="banner" role="status" aria-live="polite"></div>
           </form>
+          </details>
 
           <details class="bulk-box">
             <summary>Pegar varios alumnos de una vez</summary>
@@ -8349,6 +8357,9 @@
       var msg = 'Alumno agregado a la lista.';
       if (resp && resp.dnisDuplicados) msg += ' Ese DNI ya estaba en otro alumno: no va a poder entrar por DNI.';
       aRosterMsg_(msg, 'ok');
+      // El alta vuelve a quedar plegada: la lista es lo principal.
+      var addBox = $('a-add-box');
+      if (addBox) addBox.open = false;
       var ids = ['roster-mail', 'roster-apellido', 'roster-nombre', 'roster-dni'];
       for (var i = 0; i < ids.length; i++) if ($(ids[i])) $(ids[i]).value = '';
       for (var c = 1; c <= 3; c++) {
