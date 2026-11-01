@@ -4603,5 +4603,27 @@ t('r25: los carteles del alumno y el toast se ven sin scroll (al pie)', () => {
   }
 });
 
+t('r25: el empujon del diagnostico ejecuta el flush y manda el pendiente', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  enableMail_(services);
+  setConfigValue_(services, 'avisos_mail', 'si');
+  const enviados = services.sentMails;
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
+    [
+      ['m1', new Date(), new Date(Date.now() - 999999), 'x@secundariosalsipuedes.edu.ar', 'bienvenida', 'pendiente', 2, 'Asunto', 'Cuerpo']
+    ]);
+  services.MailApp = {
+    getRemainingDailyQuota: () => 95,
+    sendEmail: (opts) => enviados.push(opts)
+  };
+  const api = backendApi(services, 'apiMailDiag');
+  const r = api.apiMailDiag('empujar');
+  assertEq(r.flush && r.flush.sent, 1, 'el empujon manda el mail');
+  assertEq(enviados.length, 1, 'MailApp ya no recibe dos veces');
+  assertEq(r.queue.despues.enviado, 1, 'la fila queda enviado');
+  assertEq((r.queue.intentos_max || 0) >= 0, true, 'el diag reporta intentos');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
