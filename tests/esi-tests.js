@@ -4776,6 +4776,26 @@ t('r31: el modelo del dispositivo viene de userAgentData o del UA crudo (sin hue
   if (/pantallaRes_/.test(panelSrc)) throw new Error('la huella de pantalla sigue (el dueño la pidió fuera)');
 });
 
+t('r35: el admin ve por que el panel no reacciona mientras el server actualiza', () => {
+  // 1) La etiqueta de frescura muestra "Actualizando…" en lugar de quedarse congelada.
+  if (!/var label = 'Actualizado hace ' \+ secs \+ 's';\s*if \(aBusy\) label = 'Actualizando…';/.test(panelSrc)) {
+    throw new Error('la etiqueta del admin no muestra el estado de actualizacion');
+  }
+  // 2) Toque descartado durante busy = aviso, no silencio. Listener en captura
+  //    sobre el panel del admin, solo para botones.
+  if (!/\$\('a-screen-panel'\)\.addEventListener\('click', function \(ev\) \{\s*if \(!aBusy\) return;/.test(panelSrc)) {
+    throw new Error('sin listener de toque descartado en el panel admin');
+  }
+  if (!/el\.tagName === 'BUTTON' \|\| \(el\.closest && el\.closest\('button'\)\)/.test(panelSrc)) {
+    throw new Error('el aviso dispararia tambien sin un boton debajo');
+  }
+  // 3) Con limite: maximo un aviso cada 2 s.
+  if (!/now - aTapHintLast < 2000/.test(panelSrc)) throw new Error('sin limite de frecuencia en el aviso');
+  if (!/toast\('Un segundo: el panel está actualizando datos\.', 'ok'\)/.test(panelSrc)) {
+    throw new Error('sin el mensaje del aviso');
+  }
+});
+
 t('r34: toques durante la confirmacion quedan en cola y la charla elegida muestra el chip de espera', () => {
   // 1) El toque durante busy NO muere en silencio: queda en cola con fecha.
   if (!/function sOnTalk\(talk\) \{\s*if \(!talk\) return;\s*if \(sState\.busy\) \{/.test(panelSrc)) {
