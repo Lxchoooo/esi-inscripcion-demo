@@ -2519,7 +2519,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v65';
+    var APP_VERSION = 'v66';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -5728,19 +5728,28 @@
 
     // Arma la etiqueta legible: "Modelo · Android 14 · Chrome 130". El UA
     // reducido de Chrome no trae el modelo (manda 'K') por eso se pide via
-    // userAgentData.getHighEntropyValues (envia el doorway async con modelo
-    // real y version del sistema).
-    function aUADesc_(modelo, androidVer, plataforma, ua) {
-      if (!modelo && !androidVer && !plataforma && !ua) return '';
+    // userAgentData.getHighEntropyValues y, si el OEM no da el modelo, se
+    // rescata del UA crudo (varios navegadores lo siguen mandando) y como
+    // ultima instancia queda la resolucion fisica de pantalla, que SIEMPRE
+    // es visible.
+    function aUADesc_(modelo, androidVer, plataforma, ua, res) {
       var s = String(ua || '');
       var partes = [];
-      if (modelo) {
-        // 'K' es el marcador del UA reducido: NO es un modelo.
-        if (String(modelo).trim().toLowerCase() !== 'k') partes.push(String(modelo).trim());
-        else if (plataforma) partes.push(String(plataforma).trim());
-      } else if (plataforma) {
-        partes.push(String(plataforma).trim());
+      var modeloFinal = '';
+      // 'K' es el marcador del UA reducido: NO es un modelo.
+      var m = String(modelo || '').trim();
+      if (m && m.toLowerCase() !== 'k') modeloFinal = m;
+      if (!modeloFinal) {
+        // Rescate desde el UA clasico: "(Linux; Android 14; SM-A256F)".
+        var mm = s.match(/Android[^;)]*; ?([^;)]+)(?:;|\))/);
+        if (mm) {
+          var cand = mm[1].split(' Build')[0].trim();
+          if (cand && cand.length >= 3 && !/^(k)$/i.test(cand)) modeloFinal = cand;
+        }
       }
+      if (modeloFinal) partes.push(modeloFinal);
+      else if (plataforma) partes.push(String(plataforma).trim());
+      else if (res) partes.push(String(res).trim());
       var os = '';
       var pmaj = parseInt(androidVer, 10);
       if (pmaj > 0) os = 'Android ' + pmaj;
@@ -5760,19 +5769,38 @@
       else if (/Chrome\/(\d+)/.test(s)) { navegador = 'Chrome'; mv = RegExp.$1; }
       else if (/Safari\/(\d+)/.test(s)) { navegador = 'Safari'; mv = RegExp.$1; }
       if (navegador) partes.push(mv ? navegador + ' ' + mv : navegador);
+      else if (res && partes.indexOf(String(res).trim()) < 0) partes.push(String(res).trim());
       return partes.join(' · ');
+    }
+
+    // Resolucion fisica calzada: pixeles reales del panel (x dpr). Sirve de
+    // huella cuando ningun canal entrega el modelo del equipo.
+    function pantallaRes_() {
+      try {
+        var dpr = (window.devicePixelRatio && Number(window.devicePixelRatio) > 0) ? Number(window.devicePixelRatio) : 1;
+        return Math.round((screen.width || 0) * dpr) + 'x' + Math.round((screen.height || 0) * dpr);
+      } catch (e) { return ''; }
     }
 
     // Etiqueta completa del dispositivo (promesa): primero pide al navegador
     // el modelo real (Chrome da datos altos: modelo y version de Android),
-    // y si no hay nada parsea el UA crudo.
+    // si no lo da se rescata del UA crudo y como ultima huella la pantalla.
     function deviceLabelP_() {
       try {
         var uad = navigator.userAgentData;
         if (uad && typeof uad.getHighEntropyValues === 'function') {
-          return uad.getHighEntropyValues(['model', 'platformVersion']).then(function (v) {
-            return aUADesc_(v && v.model, v && v.platformVersion, '', String(navigator.userAgent || ''))
-              || deviceUA_();
+          return uad.getHighEntropyValues(['model', 'platformVersion', 'architecture', 'bitness', 'fullVersionList']).then(function (v) {
+            var marca = '';
+            try {
+              var fs = (v && v.fullVersionList) || [];
+              for (var i = 0; i < fs.length; i++) if (fs[i] && !/Not.A.Brand|Chromium/i.test(fs[i].brand || '')) { marca = (fs[i].brand || '') + ' ' + String(fs[i].version || '').split('.')[0]; break; }
+            } catch (e2) { }
+            var desc = aUADesc_(v && v.model, v && v.platformVersion, '', String(navigator.userAgent || ''), pantallaRes_());
+            if (!desc) return deviceUA_();
+            // fullVersionList manda mejor version que la del UA: si trajo marca
+            // conocida, la pisa (ej 'Microsoft Edge 156' en vez de 'Edge 156').
+            if (marca) desc = desc.replace(/(Chrome|Edge|Opera|Samsung Internet|Firefox) \d+/, marca);
+            return desc;
           }).catch(function () { return deviceUA_(); });
         }
       } catch (e) { }
