@@ -4857,6 +4857,15 @@
       return null;
     }
 
+    // "A confirmar" NO es dato: el seed de la hoja se lo pone a las charlas
+    // que todavia no tienen sala. La UI lo esconde hasta que haya un lugar
+    // real; cuando exista, aparece en el mismo slot de la linea.
+    function sRoomLabel_(lugar) {
+      var v = String(lugar || '').trim();
+      if (!v || /^a confirmar$/i.test(v)) return '';
+      return v;
+    }
+
     function sReduceMotion() {
       return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
@@ -5014,10 +5023,11 @@
       for (var i = 0; i < slots.length; i++) {
         var talk = mine[Number(slots[i].id)] ? sTalkById(mine[Number(slots[i].id)]) : null;
         if (!talk) continue;
+        var room = sRoomLabel_(talk.lugar);
         var dotColor = ['#2F6F4E', '#3B5B8A', '#8A5B3B'][i % 3];
         lines += '<p class="sheet-line"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + dotColor + ';margin-right:6px;vertical-align:middle"></span>'
           + '<span class="h">' + esc(slots[i].label) + '</span>'
-          + '<span>' + esc(talk.titulo) + ' <span class="sheet-meta">· ' + esc(talk.lugar) + '</span></span></p>';
+          + '<span>' + esc(talk.titulo) + (room ? ' <span class="sheet-meta">· ' + esc(room) + '</span>' : '<span class="sheet-meta"></span>') + '</span></p>';
       }
       if (!lines) lines = '<p class="hint-line">Todavía no elegiste charlas.</p>';
       el.innerHTML = lines;
@@ -5158,7 +5168,7 @@
           + '<span class="ms-n' + (talk ? '' : ' falta') + '">' + (i + 1) + '</span>'
           + '<span class="ms-t' + (talk ? '' : ' falta') + '">'
           + (talk ? esc(talk.titulo) : 'Falta elegir') + '</span>'
-          + '<span class="ms-meta">' + esc(talk ? talk.lugar : d.slots[i].label) + '</span>'
+          + '<span class="ms-meta">' + esc(talk ? sRoomLabel_(talk.lugar) : d.slots[i].label) + '</span>'
           + '</div>');
       }
       var listo = 0;
@@ -5201,14 +5211,14 @@
       btn.setAttribute('data-talk-id', talk.id);
       btn.setAttribute('data-slot-id', slot.id);
       btn.setAttribute('aria-pressed', chosen ? 'true' : 'false');
-      btn.setAttribute('aria-label', talk.titulo + ', ' + talk.lugar + ', ' + (waiting ? 'confirmando' : seats));
+      btn.setAttribute('aria-label', talk.titulo + ', ' + (sRoomLabel_(talk.lugar) || sSlotsLabel(talk.slot_id)) + ', ' + (waiting ? 'confirmando' : seats));
       var barClass = full ? 'is-full' : (low ? 'is-low' : '');
       btn.innerHTML = '<span class="talk-top">'
         + '<span class="t-title">' + esc(talk.titulo) + '</span>'
         + '<span class="talk-check" aria-hidden="true">'
         + '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true">'
         + '<path d="M3.2 8.6 6.2 11.6 12.8 4.6"/></svg></span></span>'
-        + '<span class="t-meta"><span class="talk-room">' + esc(talk.lugar) + '</span>'
+        + '<span class="t-meta"><span class="talk-room">' + esc(sRoomLabel_(talk.lugar)) + '</span>'
         + '<span class="talk-seats' + (low ? ' low' : '') + (full ? ' none' : '') + '">' + esc(seats) + '</span></span>'
         + '<span class="seatbar" aria-hidden="true"><span class="' + barClass + barIn_('s' + slot.id + ':' + talk.id) + '" style="width:' + pct + '%"></span></span>';
       if (chosen || full) {
@@ -5343,7 +5353,7 @@
       if (talk.restantes <= 0 && !mine[Number(talk.slot_id)]) return;
       var prevId = mine[Number(talk.slot_id)];
       var prev = prevId ? sTalkById(prevId) : null;
-      var body = '<p class="sheet-meta">' + esc(sSlotsLabel(talk.slot_id)) + ' · ' + esc(talk.lugar) + '</p>'
+      var body = '<p class="sheet-meta">' + esc(sSlotsLabel(talk.slot_id)) + (sRoomLabel_(talk.lugar) ? ' · ' + esc(sRoomLabel_(talk.lugar)) : '') + '</p>'
         + '<p class="sheet-talk">' + esc(talk.titulo) + '</p>'
         + '<p class="sheet-seats">' + (talk.restantes > 0
           ? talk.restantes + ' lugares'
