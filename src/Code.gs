@@ -58,7 +58,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v59';
+var BACKEND_VERSION = 'v60';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -525,11 +525,20 @@ function mailQuota_() {
 // estado y pregunta a MailApp si tiene cuota. Cero datos personales: solo
 // agregados. Si la cuota falla, el mensaje dice si es autorizacion y el
 // quejido sale a la vista en vez de quedarse dentro del flush.
-function apiMailDiag() {
+//
+// args[0] === 'empujar' fuerza una corrida del flush: misma funcion que el
+// trigger ya corre publico cada minuto, con el mismo lock. Sirve para no
+// depender del atraso propio del planificador de Google.
+function apiMailDiag(args) {
+  var opts = '';
+  if (typeof args === 'string') opts = args;
+  else if (args && args.length) opts = String(args[0]);
+  if (opts !== 'empujar') opts = '';
   var out = { ok: true, avisos_activo: null, queue: null, quota: null, trigger: null };
   try {
     var cfg = readConfig_();
     out.avisos_activo = convertBool_(cfg[CONFIG_MAIL_WELCOME]);
+    out.remitente_cfg = convertBool_(cfg.modo_prueba) ? String(cfg.mail_remitente || '').trim().toLowerCase() : '';
   } catch (eCfg) { out.cfgError = String(eCfg && eCfg.message || eCfg); }
   try {
     var q = readMailQueueRaw_();
@@ -538,16 +547,22 @@ function apiMailDiag() {
     } else {
       var stats = {};
       var vencidos = 0;
+      var intentosMax = 0;
       var ahora = Date.now();
       for (var i = 1; i < q.vals.length; i++) {
         var est = String(q.vals[i][q.map.estado]).trim().toLowerCase();
         stats[est || 'vacio'] = (stats[est || 'vacio'] || 0) + 1;
+        var it = Number(q.vals[i][q.map.intentos] || 0);
+        if (it > intentosMax) intentosMax = it;
         if (est === 'pendiente') {
           var due = q.vals[i][q.map.envio_at] instanceof Date ? q.vals[i][q.map.envio_at].getTime() : Number(q.vals[i][q.map.envio_at]);
           if (Number(due) <= ahora) vencidos++;
         }
       }
-      out.queue = { filas: Math.max(0, q.vals.length - 1), estados: stats, pendientes_vencidos: vencidos };
+      out.queue = {
+        filas: Math.max(0, q.vals.length - 1), estados: stats,
+        pendientes_vencidos: vencidos, intentos_max: intentosMax
+      };
     }
   } catch (eQ) { out.queueError = String(eQ && eQ.message || eQ); }
   try {
@@ -568,6 +583,23 @@ function apiMailDiag() {
       if (!out.trigger) out.trigger = false;
     }
   } catch (eT) { out.triggerError = String(eT && eT.message || eT); }
+  if (opts === 'empujar') {
+    try {
+      out.flush = flushMailQueue_(Date.now() + 5 * 60 * 1000);
+    } catch (eF) { out.flushError = String(eF && eF.message || eF); }
+    // Despues del empujon: estados nuevos.
+    try {
+      var q2 = readMailQueueRaw_();
+      var st2 = {};
+      if (q2.map) {
+        for (var j2 = 1; j2 < q2.vals.length; j2++) {
+          var e2 = String(q2.vals[j2][q2.map.estado]).trim().toLowerCase();
+          st2[e2 || 'vacio'] = (st2[e2 || 'vacio'] || 0) + 1;
+        }
+      }
+      out.queue.despues = st2;
+    } catch (eQ2) { }
+  }
   return out;
 }
 
