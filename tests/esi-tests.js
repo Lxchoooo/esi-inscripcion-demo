@@ -4797,6 +4797,38 @@ t('r31: el modelo del dispositivo viene de userAgentData o del UA crudo (sin hue
   if (/pantallaRes_/.test(panelSrc)) throw new Error('la huella de pantalla sigue (el dueño la pidió fuera)');
 });
 
+t('r36: login con validacion viva, foco automatico en datos y resumen "todo listo"', () => {
+  // 1) Marcador de validez por casilla.
+  if (!/function sMarkField_\(input, ok\) \{[\s\S]{0,240}classList\.toggle\('is-ok', !!ok\)/.test(panelSrc)) {
+    throw new Error('sin marcador de casilla valida');
+  }
+  // 2) Los listeners de escritura alimentan la validacion viva.
+  for (const id of ['input-mail', 'input-dni', 'input-nombre', 'input-apellido']) {
+    const re = new RegExp("\\$\\('" + id + "'\\)\\.addEventListener\\('input', sUpdateMarks_\\)");
+    if (!re.test(panelSrc)) {
+      throw new Error('sin listener de validacion viva en ' + id);
+    }
+  }
+  // 3) Al abrir la pantalla de datos: foco al primer casillero vacio.
+  if (!/function sOpenLoginExtra_\(\) \{\s*showScreen\(S_SCREENS, 's-screen-datos'\);[\s\S]{0,400}'input-nombre', 'input-apellido', 'select-anio'/.test(panelSrc)) {
+    throw new Error('sin foco automatico al primer casillero vacio de datos');
+  }
+  // 4) Resumen "Todo listo" + Continuar listo (verde).
+  if (!/id="datos-resumen"/.test(panelHtml)) throw new Error('sin chip de resumen en datos');
+  if (!/Todo listo: /.test(panelSrc)) throw new Error('sin resumen de datos completos');
+  if (!/go\.classList\.toggle\('is-ready', listo\)/.test(panelSrc)) throw new Error('Continuar no marca listo');
+  // 5) Salir limpia las marcas, no solo los valores.
+  if (!/f\.classList\.remove\('is-ok'\)/.test(panelSrc)) throw new Error('salir no limpia los checks verdes');
+  // 6) CSS: check verde dentro de la casilla, bullets y pulso del paso activo.
+  if (!/\.field\.is-ok input[\s\S]{0,120}background-image:\s*url\(%?["']?data:image\/svg\+xml/.test(panelCss())) {
+    throw new Error('sin check verde en la casilla valida');
+  }
+  if (!/\.login-bullets \{/.test(panelCss())) throw new Error('sin bullets en Ingresar');
+  if (!/i\.on \{[\s\S]{0,80}box-shadow: 0 0 0 3px var\(--accent-soft\)/.test(panelCss())) {
+    throw new Error('paso activo sin anillo');
+  }
+});
+
 t('r35: el admin ve por que el panel no reacciona mientras el server actualiza', () => {
   // 1) La etiqueta de frescura muestra "Actualizando…" en lugar de quedarse congelada.
   if (!/var label = 'Actualizado hace ' \+ secs \+ 's';\s*if \(aBusy\) label = 'Actualizando…';/.test(panelSrc)) {
