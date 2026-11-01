@@ -37,6 +37,11 @@
       --warn: #8A5A00;
       --warn-soft: #FBF3E2;
       --warn-line: #EBDDBD;
+      /* Los botones NO siguen las vars de tema: el verde del boton queda
+         solido en claro y oscuro para que el texto blanco tenga contraste AA
+         (en oscuro --accent/--accent-strong son palidos por diseño). */
+      --btn-bg: #14502D;
+      --btn-bg-hi: #1F6B3F;
       --nav-bg: rgba(250, 248, 245, .84);
       --scrim: rgba(31, 25, 17, .42);
       --shadow: 0 2px 4px rgba(31, 31, 31, .06), 0 12px 32px rgba(31, 31, 31, .08);
@@ -106,6 +111,8 @@
         --accent-fill: #356B3F;
         --accent-soft: #1F3324;
         --accent-line: #33543A;
+        --btn-bg: #247A47;
+        --btn-bg-hi: #268349;
         --primary-container: #26382A;
         --on-primary-container: #C6E8CC;
         --secondary-container: #262E3D;
@@ -145,6 +152,8 @@
         --accent-fill: #356B3F;
         --accent-soft: #1F3324;
         --accent-line: #33543A;
+        --btn-bg: #247A47;
+        --btn-bg-hi: #268349;
         --primary-container: #26382A;
         --on-primary-container: #C6E8CC;
         --secondary-container: #262E3D;
@@ -484,9 +493,9 @@
     .faq[open] > p { animation: fadeUp .24s var(--ease-emph) both; }
 
     .btn.accent {
-      background: var(--accent); color: #FAF8F5;
+      background: var(--btn-bg-hi); color: #FAF8F5;
     }
-    .btn.accent:hover { background: var(--accent-strong); }
+    .btn.accent:hover { background: var(--btn-bg); }
 
     /* panel admin */
     .stat { position: relative; overflow: hidden; transition: transform var(--dur-2) var(--ease-out); }
@@ -644,13 +653,14 @@
       font-family: inherit; font-size: 15px; font-weight: 700;
       min-height: 50px; padding: 13px 20px;
       border: 1px solid transparent; border-radius: var(--radius-sm);
-      /* Primario UNICO en todo el sitio: verde institucional plano. */
-      background: var(--accent-strong); color: #FAF8F5;
+      /* Primario UNICO en todo el sitio: verde institucional plano, solido
+         en claro y oscuro (contraste AA del texto claro). */
+      background: var(--btn-bg); color: #FAF8F5;
       text-decoration: none; cursor: pointer;
       box-shadow: 0 6px 18px rgba(20, 80, 45, .22);
       transition: transform var(--dur-1) var(--ease-out), opacity var(--dur-2) var(--ease-out);
     }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(20, 80, 45, .26); }
+    .btn:hover { background: var(--btn-bg-hi); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(20, 80, 45, .26); }
     .btn:active { transform: translateY(0) scale(.985); box-shadow: 0 3px 10px rgba(20, 80, 45, .2); }
     .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent); }
     .btn:disabled { opacity: .5; cursor: default; box-shadow: none; transform: none; }
@@ -668,7 +678,7 @@
     .btn.red { background: var(--danger); color: var(--paper); }
     .ico { width: 18px; height: 18px; flex: 0 0 auto; }
     .btn.small .ico { width: 16px; height: 16px; }
-    .btn.btn-confirm { background: var(--accent); color: #FAF8F5; font-size: 17px; min-height: 56px; padding: 16px 28px; box-shadow: 0 8px 24px rgba(20, 80, 45, .35); border-radius: 14px; }
+    .btn.btn-confirm { background: var(--btn-bg-hi); color: #FAF8F5; font-size: 17px; min-height: 56px; padding: 16px 28px; box-shadow: 0 8px 24px rgba(20, 80, 45, .35); border-radius: 14px; }
     .btn.btn-confirm:hover { background: var(--accent-fill); box-shadow: 0 12px 32px rgba(47, 111, 78, .45); }
     .done-hero { text-align: center; padding: 6px 4px 2px; }
     .done-check {
@@ -806,7 +816,7 @@
     }
     /* Continuar listo: el form completo valido activa el verde brillante. */
     #s-screen-datos .login-form .btn.full.is-ready {
-      background: var(--accent); color: #FAF8F5;
+      background: var(--btn-bg-hi); color: #FAF8F5;
       box-shadow: 0 10px 26px rgba(31, 107, 63, .32);
     }
     /* Resumen "Todo listo" del paso 3. */
@@ -1812,8 +1822,8 @@
     .esi-card p { margin: 0; line-height: 1.55; font-size: 14.5px; }
     .esi-card a { color: var(--brand-dark); font-weight: 700; }
     /* Inicio editorial y ajustes del formulario */
-    .btn.accent { background: var(--accent); color: #FAF8F5; }
-    .btn.accent:hover { background: var(--accent-strong); }
+    .btn.accent { background: var(--btn-bg-hi); color: #FAF8F5; }
+    .btn.accent:hover { background: var(--btn-bg); }
     .hero h2 { font-size: clamp(34px, 7vw, 44px); max-width: 16ch; }
     .hero-grid { display: grid; gap: 26px; align-items: start; }
     .hero-grid > * { min-width: 0; }
