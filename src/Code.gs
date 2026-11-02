@@ -3093,6 +3093,10 @@ function publicData_(ciclo, mine, signupsNow) {
       };
     });
   return {
+    // Marca de version del estado: el panel descarta una respuesta que salio
+    // antes que la que ya tiene (dos toques seguidos pueden volver cruzados y
+    // dejaban la vista con 2 de 3 charlas aunque el server tenia las 3).
+    rev: Date.now(),
     evento_abierto: isOpen_(cfg),
     event: eventInfo_(cfg),
     slots: slots.map(function (s) {

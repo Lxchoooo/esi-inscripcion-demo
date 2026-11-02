@@ -5229,7 +5229,7 @@
           sState.busy = false;
           if (resp && resp.ok) {
             sState.student = resp.student || sState.student;
-            sState.data = resp.data;
+            sAdoptData_(resp.data);
             if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
             if (resp.session) sSetSession_(resp.session);
             lsSet('esi_last_data', JSON.stringify({
@@ -5841,7 +5841,13 @@
         return;
       }
       var mine = (sState.data && sState.data.mine) || {};
-      if (talk.restantes <= 0 && !mine[Number(talk.slot_id)]) return;
+      if (talk.restantes <= 0 && !mine[Number(talk.slot_id)]) {
+        // Antes era un return mudo y el chico creia que la habia elegido:
+        // quedaba con 2 de 3. Ahora avisa y pide datos frescos de cupos.
+        toast('Esa charla ya está completa: elegí otra de esa franja.', 'err');
+        sRefreshQuiet_();
+        return;
+      }
       var prevId = mine[Number(talk.slot_id)];
       var prev = prevId ? sTalkById(prevId) : null;
       var body = '<p class="sheet-meta">' + esc(sSlotsLabel(talk.slot_id)) + (sRoomLabel_(talk.lugar) ? ' · ' + esc(sRoomLabel_(talk.lugar)) : '') + '</p>'
@@ -5858,6 +5864,18 @@
         confirm: prev && prev.id !== talk.id ? 'Cambiar' : 'Anotarme',
         onConfirm: function () { sRegister(talk.id); }
       });
+    }
+
+    // Adopta el estado que mando el server solo si no es mas viejo que el
+    // que ya tenemos: con dos confirmaciones seguidas las respuestas pueden
+    // volver cruzadas y una vieja pisaba la eleccion recien hecha (quedaba
+    // "2 de 3" aunque el server tenia las 3).
+    function sAdoptData_(d) {
+      if (!d) return false;
+      var cur = sState.data;
+      if (cur && cur.rev && d.rev && Number(d.rev) < Number(cur.rev)) return false;
+      sState.data = d;
+      return true;
     }
 
     function sOptimistic_(slotId, prevId, talkId) {
@@ -5990,7 +6008,7 @@
             return;
           }
           if (sNextConfirmIfAny()) return;
-          if (resp.data) sState.data = resp.data;
+          if (resp.data) { sAdoptData_(resp.data); }
           sApplyTestModeFrom_(resp);
           if (resp.student) sState.student = resp.student;
           if (resp.recordatorio != null) sState.recordatorio = !!resp.recordatorio;
@@ -6067,7 +6085,7 @@
             sState.nombre = resp.student.nombre;
             sState.apellido = resp.student.apellido || '';
             sState.curso = resp.student.curso;
-            sState.data = resp.data;
+            sAdoptData_(resp.data);
             sApplyTestModeFrom_(resp);
             sState.recordatorio = !!resp.recordatorio;
             sState.login = '';
