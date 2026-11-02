@@ -55,7 +55,7 @@ cardProbe.clientWidth = 360;
 const store = {
   esi_demo: '1',
   esi_demo_roster: JSON.stringify([
-    { email: 'ana@secundariosalsipuedes.edu.ar', nombre: 'Ana Gomez', curso: '2°B', apellido: 'Gomez', dni: '30111222' },
+    { email: 'ana2029@secundariosalsipuedes.edu.ar', nombre: 'Ana Gomez', curso: '2°B', apellido: 'Gomez', dni: '30111222' },
     { email: 'beto@secundariosalsipuedes.edu.ar', nombre: 'Beto Sanchez', curso: '5°Turismo' }
   ])
 };
@@ -121,7 +121,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-ui.sState.student = { nombre: 'Ana', curso: '2°B', email: 'ana@secundariosalsipuedes.edu.ar', ciclo: 'basico' };
+ui.sState.student = { nombre: 'Ana', curso: '2°B', email: 'ana2029@secundariosalsipuedes.edu.ar', ciclo: 'basico' };
 ui.sState.data = {
   evento_abierto: true,
   slots: [
@@ -280,12 +280,13 @@ function tick() {
   document.getElementById('input-apellido').value = 'Gomez';
   document.getElementById('select-anio').value = '2';
   document.getElementById('select-division').value = 'B';
-  document.getElementById('input-mail').value = 'ana@secundariosalsipuedes.edu.ar';
+  // patron real del colegio: el mail termina con el año de egreso (2026-2031)
+  document.getElementById('input-mail').value = 'ana2029@secundariosalsipuedes.edu.ar';
   document.getElementById('input-dni-datos').value = '30111222';
   ui.sLoginSubmit();
   await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'entra con mail');
-  assert(ui.sState.email === 'ana@secundariosalsipuedes.edu.ar', 'mail guardado');
+  assert(ui.sState.email === 'ana2029@secundariosalsipuedes.edu.ar', 'mail guardado');
   assert(ui.sState.apellido === 'Gomez', 'apellido guardado');
   document.getElementById('input-dni').value = '30.111.222';
   document.getElementById('input-apellido').value = 'gomez';
@@ -301,7 +302,7 @@ function tick() {
   assert(!token.includes('30111222'), 'el dni no se guarda');
   const resumed = await ui.demoCall('apiResumeSession', [token]);
   assert(resumed.ok, 'la sesion se reanuda');
-  assert(resumed.student.email === 'ana@secundariosalsipuedes.edu.ar', 'la sesion reanuda al mismo alumno');
+  assert(resumed.student.email === 'ana2029@secundariosalsipuedes.edu.ar', 'la sesion reanuda al mismo alumno');
   const mismatch = await ui.demoCall('apiGetData', ['beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', token]);
   assert(!mismatch.ok && mismatch.expired, 'el token no lee datos de otro alumno');
   ui.sSalir();
