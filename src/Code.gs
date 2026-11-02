@@ -2516,30 +2516,35 @@ function ensureColumn_(sh, header) {
   return col;
 }
 
+// Charlas definitivas 2/11/2026 (foto de la libreta, 9 tematicas). 8 por
+// ciclo (ITS sale CB y CO) + repeticiones para llenar 10 filas de basico
+// y 9 de orientado. Orden变化ado a proposito entre ciclos y franjas para
+// que las lecturas del panel no se vean clonadas.
 function seedTalks_() {
   // 43 lugares por charla (pedido del preceptor 2/11/2026): los aulas
   // cerradas del momento de armado eran 40.
   var cupo = 43;
+  var its = 'ITS: adolescentes expuestos, cuidado y prevención';
   return [
-    ['B1', 'Salud Mental: Ansiedad', 'basico', 1, 'A confirmar', cupo, true],
-    ['B2', 'Consumos Problemáticos: Alcohol', 'basico', 1, 'A confirmar', cupo, true],
-    ['B3', 'Deportes y Alimentación saludable', 'basico', 1, 'A confirmar', cupo, true],
+    ['B1', 'Consumo problemático: alcohol y vapeo', 'basico', 1, 'A confirmar', cupo, true],
+    ['B2', 'Salud mental: depresión', 'basico', 1, 'A confirmar', cupo, true],
+    ['B3', its, 'basico', 1, 'A confirmar', cupo, true],
     ['B4', 'Ciberbullying y grooming', 'basico', 1, 'A confirmar', cupo, true],
-    ['B5', 'Salud Mental: Autolesiones', 'basico', 2, 'A confirmar', cupo, true],
-    ['B6', 'Consumos Problemáticos: Cigarrillo/Vapeo', 'basico', 2, 'A confirmar', cupo, true],
-    ['B7', 'Masculinidades', 'basico', 2, 'A confirmar', cupo, true],
-    ['B8', 'Consumos Problemáticos: Juegos/Ludopatía', 'basico', 3, 'A confirmar', cupo, true],
-    ['B9', 'Relaciones sexuales, cuidado y prevención', 'basico', 3, 'A confirmar', cupo, true],
-    ['B10', 'Nueva ley penal juvenil / Delitos informáticos', 'basico', 3, 'A confirmar', cupo, true],
-    ['O1', 'Salud Mental: Ansiedad', 'orientado', 1, 'A confirmar', cupo, true],
-    ['O2', 'Consumos Problemáticos: Alcohol', 'orientado', 1, 'A confirmar', cupo, true],
-    ['O3', 'Deportes y Alimentación saludable', 'orientado', 1, 'A confirmar', cupo, true],
+    ['B5', 'Deportes y alimentación saludable', 'basico', 2, 'A confirmar', cupo, true],
+    ['B6', 'Salud mental: educación emocional', 'basico', 2, 'A confirmar', cupo, true],
+    ['B7', 'Consumo problemático: juegos en línea', 'basico', 2, 'A confirmar', cupo, true],
+    ['B8', its, 'basico', 3, 'A confirmar', cupo, true],
+    ['B9', 'Masculinidades', 'basico', 3, 'A confirmar', cupo, true],
+    ['B10', 'Consumo problemático: alcohol y vapeo', 'basico', 3, 'A confirmar', cupo, true],
+    ['O1', 'Salud mental: depresión', 'orientado', 1, 'A confirmar', cupo, true],
+    ['O2', 'Consumo problemático: alcohol y vapeo', 'orientado', 1, 'A confirmar', cupo, true],
+    ['O3', its, 'orientado', 1, 'A confirmar', cupo, true],
     ['O4', 'Ciberbullying y grooming', 'orientado', 1, 'A confirmar', cupo, true],
-    ['O5', 'Salud Mental: Autolesiones', 'orientado', 2, 'A confirmar', cupo, true],
-    ['O6', 'Consumos Problemáticos: Cigarrillo/Vapeo', 'orientado', 2, 'A confirmar', cupo, true],
-    ['O7', 'Masculinidades', 'orientado', 2, 'A confirmar', cupo, true],
-    ['O8', 'Consumos Problemáticos: Juegos/Ludopatía', 'orientado', 3, 'A confirmar', cupo, true],
-    ['O9', 'ITS: adolescentes expuestos, sífilis y otras infecciones', 'orientado', 3, 'A confirmar', cupo, true]
+    ['O5', 'Consumo problemático: juegos en línea', 'orientado', 2, 'A confirmar', cupo, true],
+    ['O6', 'Masculinidades', 'orientado', 2, 'A confirmar', cupo, true],
+    ['O7', 'Deportes y alimentación saludable', 'orientado', 2, 'A confirmar', cupo, true],
+    ['O8', its, 'orientado', 3, 'A confirmar', cupo, true],
+    ['O9', 'Salud mental: educación emocional', 'orientado', 3, 'A confirmar', cupo, true]
   ];
 }
 
