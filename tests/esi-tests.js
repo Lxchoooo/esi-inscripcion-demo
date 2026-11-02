@@ -2291,7 +2291,8 @@ t('apiAdminMailPreview prepares a reminder only for signed-up students', () => {
   assertEq(api.apiAdminMailPreview('').ok, false, 'preview needs a key');
   const p = api.apiAdminMailPreview('1111');
   assertEq(p.ok, true, 'preview ok');
-  assertEq(p.total, 3, 'three unique recipients');
+  assertEq(p.total, 2, 'solo los que les falta una franja');
+  assertEq(p.sample.nombre, 'Beto', 'primer faltante es beto (Díaz < Sosa)');
   if (!/4 de noviembre de 2026/.test(p.subject)) throw new Error('date missing from subject');
   if (!/Tus charlas:/.test(p.sample.body)) throw new Error('body missing schedule');
   if (!/Charla uno/.test(p.sample.body)) throw new Error('body missing chosen talk');
@@ -2303,6 +2304,8 @@ t('apiAdminMailPreview prepares a reminder only for signed-up students', () => {
 t('apiAdminSendReminders does not resend a subject already sent', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
   const subject = 'Recordatorio: Jornada ESI 2026 del 4 de noviembre de 2026';
   services.sheets.Mails.appendRow(['beto@secundariosalsipuedes.edu.ar', new Date(), subject]);
   const out = [];
@@ -2312,70 +2315,62 @@ t('apiAdminSendReminders does not resend a subject already sent', () => {
   };
   const api = backendApi(services, 'apiAdminMailPreview, apiAdminSendReminders');
   const preview = api.apiAdminMailPreview('1111');
-  assertEq(preview.pending, 2, 'already sent excluded');
+  assertEq(preview.pending, 1, 'solo queda carla (beto ya recibio)');
   const first = api.apiAdminSendReminders('1111', 0, 2);
-  assertEq(first.sent, 1, 'one new mail');
-  assertEq(first.skipped, 1, 'one skipped');
-  assertEq(first.done, false, 'third still pending');
-  const second = api.apiAdminSendReminders('1111', first.nextOffset, 20);
-  assertEq(second.sent, 1, 'last new mail');
-  assertEq(second.done, true, 'finished');
-  assertEq(out.length, 2, 'no duplicate send');
-  assertEq(out[0].to, 'ana@secundariosalsipuedes.edu.ar', 'skipped surname goes next');
+  assertEq(first.sent, 1, 'carla encolada');
+  assertEq(first.skipped, 1, 'beto skippeado');
+  assertEq(first.done, true, 'la lista de faltantes se cubre entera');
+  assertEq(out.length, 0, 'MailApp ya no manda recordatorios');
+  const rows = services.sheets.MailQueue.data.slice(1);
+  assertEq(rows.length, 1, 'una sola fila nueva en la cola');
+  assertEq(rows[0][3], 'carla@secundariosalsipuedes.edu.ar', 'destino carla');
+  assertEq(rows[0][4], 'recordatorio', 'tipo recordatorio');
+  assertEq(rows[0][5], 'pendiente', 'queda pendiente para el robot');
 });
 
-t('apiAdminSendReminders sends in batches and respects quota', () => {
+t('apiAdminSendReminders encola por tandas y ya no depende de la cuota MailApp', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
-  const out = [];
-  services.MailApp = {
-    getRemainingDailyQuota: () => 50,
-    sendEmail: (msg) => { out.push(msg); }
-  };
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  services.MailApp = { getRemainingDailyQuota: () => 0 };
   const api = backendApi(services, 'apiAdminSendReminders');
   assertEq(api.apiAdminSendReminders('', 0, 20).ok, false, 'send needs a key');
   assertEq(api.apiAdminSendReminders('2222', 0, 20).ok, false, 'guide cannot send');
   const first = api.apiAdminSendReminders('1111', 0, 2);
-  assertEq(first.ok, true, 'first batch ok');
-  assertEq(first.sent, 2, 'first batch size');
-  assertEq(first.done, false, 'more left');
-  assertEq(out.length, 2, 'two mails sent');
-  assertEq(out[0].to, 'beto@secundariosalsipuedes.edu.ar', 'surname order');
-  if (!/Hola Beto:/.test(out[0].body)) throw new Error('body not personalised');
-  const second = api.apiAdminSendReminders('1111', first.nextOffset, 20);
-  assertEq(second.sent, 1, 'last batch size');
-  assertEq(second.done, true, 'all sent');
-  assertEq(new Set(out.map((m) => m.to)).size, 3, 'no duplicate recipients');
-  services.MailApp.getRemainingDailyQuota = () => 0;
-  const none = api.apiAdminSendReminders('1111', 0, 20);
-  assertEq(none.ok, false, 'quota exhausted');
+  assertEq(first.ok, true, 'con cuota cero igual encola: la via es institucional');
+  assertEq(first.sent, 2, 'beto y carla encolados');
+  assertEq(first.done, true, 'la lista de faltantes es corta');
+  const rows = services.sheets.MailQueue.data.slice(1);
+  assertEq(rows.map((r) => r[3]).join(','), 'beto@secundariosalsipuedes.edu.ar,carla@secundariosalsipuedes.edu.ar', 'orden por apellido');
+  if (!/Hola Beto:/.test(rows[0][8])) throw new Error('body not personalised');
+  assertEq(new Set(rows.map((r) => r[3])).size, 2, 'no duplicate recipients');
 });
 
 t('apiAdminSendReminders dice que mails fallaron', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
-  services.MailApp = {
-    getRemainingDailyQuota: () => 50,
-    sendEmail: (msg) => { if (msg.to.indexOf('carla') === 0) throw new Error('rebotado'); }
-  };
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  services.sheets.MailQueue.appendRow = () => { throw new Error('sheet muerto'); };
+  services.MailApp = { getRemainingDailyQuota: () => 0 };
   const api = backendApi(services, 'apiAdminSendReminders');
   const r = api.apiAdminSendReminders('1111', 0, 20);
   assertEq(r.ok, true, 'sigue con el resto');
-  assertEq(r.sent, 2, 'dos enviados');
-  assertEq(r.failed, 1, 'uno fallo');
-  assertEq(r.failedEmails.length, 1, 'devuelve el mail que fallo');
-  assertEq(r.failedEmails[0], 'carla@secundariosalsipuedes.edu.ar', 'cual fallo');
+  assertEq(r.sent, 0, 'no encolo nada');
+  assertEq(r.failed, 2, 'los dos fallaron');
+  assertEq(r.failedEmails.length, 2, 'devuelve los mails que fallaron');
   assertEq(r.done, true, 'termino igual');
 });
 
-t('el recordatorio va a todos los inscriptos, tilden o no', () => {
+t('el recordatorio toca solo a los que les falta una charla', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
   services.sheets.Signups.data[6][10] = false; // Carla no tildo el checkbox
   const api = backendApi(services, 'apiAdminMailPreview');
   const p = api.apiAdminMailPreview('1111');
   assertEq(p.ok, true, 'preview ok');
-  assertEq(p.total, 3, 'incluye a quien no pidio el recordatorio');
+  assertEq(p.total, 2, 'beto y carla; ana ya eligio las tres');
 });
 
 t('apiAdminSendTestMail manda una sola prueba sin ensuciar Mails', () => {
@@ -3179,14 +3174,14 @@ t('Reminder opt-in is stored per mail and no longer filters recipients', () => {
   const got = api.apiGetData('', '', '', '', '', ticket);
   assertEq(got.recordatorio, false, 'existing opt-out returned');
   assertEq(api.apiResumeSession(got.session).recordatorio, false, 'resume returns opt-out');
-  assertEq(api.apiAdminMailPreview('1111').total, 3, 'reciben todos, tilden o no');
+  assertEq(api.apiAdminMailPreview('1111').total, 2, 'el filtro es por faltantes, no por el tilde');
   const on = api.apiSetReminder(got.session, true);
   assertEq(on.ok, true, 'set reminder ok');
   assertEq(on.updated, 3, 'all rows for the mail updated');
-  assertEq(api.apiAdminMailPreview('1111').total, 3, 'el opt-in no cambia el total');
+  assertEq(api.apiAdminMailPreview('1111').total, 2, 'el opt-in no cambia la lista');
   const off = api.apiSetReminder(got.session, false);
   assertEq(off.recordatorio, false, 'opt-out returned');
-  assertEq(api.apiAdminMailPreview('1111').total, 3, 'el opt-out tampoco');
+  assertEq(api.apiAdminMailPreview('1111').total, 2, 'el opt-out tampoco');
   assertEq(api.apiSetReminder('bad-token', true).ok, false, 'bad session rejected');
 });
 
@@ -3207,8 +3202,9 @@ t('apiRegister preserves an existing reminder preference', () => {
 t('Configurable sender is validated and used for reminders', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   reportSeed(services);
-  const out = [];
-  services.MailApp = { getRemainingDailyQuota: () => 50, sendEmail: (msg) => out.push(msg) };
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  services.MailApp = { getRemainingDailyQuota: () => 0 };
   const api = backendApi(services, 'apiAdminGetConfig, apiAdminSetConfig, apiAdminMailPreview, apiAdminSendReminders, apiAdminGetData');
   assertEq(api.apiAdminGetConfig('1111').mail_remitente, '', 'empty sender by default');
   assertEq(api.apiAdminSetConfig('1111', { mail_remitente: 'no-es-mail' }).ok, false, 'invalid sender rejected');
@@ -3219,9 +3215,7 @@ t('Configurable sender is validated and used for reminders', () => {
   assertEq(api.apiAdminGetData('1111').mail_remitente, sender, 'sender in admin data');
   assertEq(api.apiAdminMailPreview('1111').from, sender, 'sender in preview');
   const sent = api.apiAdminSendReminders('1111', 0, 20);
-  assertEq(sent.sent, 3, 'three sent');
-  assertEq(out[0].from, sender, 'from set');
-  assertEq(out[0].replyTo, sender, 'replyTo set');
+  assertEq(sent.sent, 2, 'faltantes encolados (beto y carla); el remitente lo define el robot');
 });
 
 t('Reminder bodies remove header-injection line breaks', () => {

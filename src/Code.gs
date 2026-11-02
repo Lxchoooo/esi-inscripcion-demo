@@ -481,6 +481,11 @@ function reminderRecipients_() {
         elegida: !!info
       });
     }
+    var faltaAlguna = false;
+    for (var m = 0; m < items.length; m++) {
+      if (!items[m].elegida) { faltaAlguna = true; break; }
+    }
+    if (!faltaAlguna) continue; // el que ya eligio las tres no necesita recordatorio
     out.push({
       email: r.email,
       nombre: givenName_(r.nombre, r.apellido),
@@ -1301,8 +1306,7 @@ function apiAdminSendReminders(cred, offset, limit) {
   if (!auth.ok) return { ok: false, message: auth.message };
   if (auth.role !== ROLE_ADMIN) return { ok: false, message: 'Tu clave no permite esta acción.' };
   if (mailQuota_() < 0) return { ok: false, message: 'El envío de mails no está disponible.' };
-  var quota = mailQuota_();
-  if (quota <= 0) return { ok: false, message: 'No queda cuota de mails por hoy.' };
+  var quota = mailQuota_(); // informativo: los recordatorios van por la cola (Gmail API), no por MailApp
   var lockKey = 'mail_send_lock';
   var lock = LockService.getScriptLock();
   try { lock.waitLock(2000); } catch (e) { return { ok: false, busy: true, message: BUSY_MESSAGE }; }
@@ -1337,15 +1341,10 @@ function apiAdminSendReminders(cred, offset, limit) {
       if (sentSet[key]) { skipped++; continue; }
       var delivered = false;
       try {
-        var mailOpts = {
-          to: rows[i].email,
-          subject: subject,
-          body: reminderBody_(rows[i], cfg),
-          name: EVENT_TITLE_
-        };
-        var sender = mailSender_(cfg);
-        if (sender) { mailOpts.from = sender; mailOpts.replyTo = sender; }
-        MailApp.sendEmail(mailOpts);
+        // La fila entra en MailQueue con estado pendiente: el robot de la cola
+        // (poller, Gmail API institucional) o el trigger la mandan. Si ya
+        // habia una del mismo destino pendiente, se re-escribe (upsert).
+        upsertPendingMail_(rows[i].email, 'recordatorio', subject, reminderBody_(rows[i], cfg));
         delivered = true;
       } catch (err) {
         failed++;
