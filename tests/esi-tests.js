@@ -1404,7 +1404,8 @@ t('v73: el rediseño admin está scopeado a body.admin y pisa con la familia', (
   // Todo el bloque nuevo vive bajo body.admin: el lado alumno no comparte
   // reglas con el panel de profes.
   const v73a = panelHtml.indexOf('/* ==== v73: rediseño del panel admin');
-  const v73 = panelHtml.slice(v73a, panelHtml.indexOf('</style>', v73a));
+  const v109a = panelHtml.indexOf('/* ==== v109: ficha del alumno');
+  const v73 = panelHtml.slice(v73a, v109a < 0 ? panelHtml.indexOf('</style>', v73a) : v109a);
   if (v73.length < 500) throw new Error('bloque v73 ausente');
   if (!/body\.admin \{ font-variant-numeric: tabular-nums; \}/.test(v73)) throw new Error('sin numeros tabulares del admin');
   // Ganancias clave del rediseño, con tokens reales de la familia.
@@ -1417,6 +1418,28 @@ t('v73: el rediseño admin está scopeado a body.admin y pisa con la familia', (
   const sinScope = lines.filter((l) => /^\s*[^@/\s][^{]*\{/.test(l)
     && !/body\.admin|a-screen-panel|a-tabbar|input-pin/.test(l));
   if (sinScope.length) throw new Error('reglas v73 sin scope admin: ' + sinScope[0].trim().slice(0, 60));
+});
+
+t('v109: ficha del alumno con DNI, curso limpio y copia por toque', () => {
+  // La ficha usaba el slice() del curso completo y sacaba "División o".
+  if (/Año ' \+ esc\(pc\.slice\(/.test(panelSrc)) throw new Error('la ficha sigue mangleando el curso');
+  if (!/"sheet-meta">Año ' \+ esc\(anio\) \+ ' · División ' \+ esc\(div\)/.test(panelSrc)) {
+    throw new Error('sin linea de año y división desde el parseo');
+  }
+  // DNI y mail salen como filas tipeables data-copiame.
+  if (!/data-copiame="' \+ esc\(String\(dni\)\.trim\(\)\) \+ '" data-copiamsg="DNI copiado\."/ .test(panelSrc)) {
+    throw new Error('sin DNI copiable en la ficha');
+  }
+  if (!/data-copiame="' \+ esc\(mail\) \+ '" data-copiamsg="Mail copiado\."/.test(panelSrc)) {
+    throw new Error('sin mail copiable en la ficha');
+  }
+  // La delegacion copia con su mensaje y corre ANTES que la de data-mail.
+  const deleg = panelSrc.match(/data-copiame'\);[\s\S]{0,120}/);
+  if (!deleg) throw new Error('sin delegacion de copia');
+  if (deleg[0].indexOf('aCopyText_') < 0) throw new Error('delegacion sin aCopyText_');
+  // El bloque de CSS propio existe.
+  if (!panelHtml.includes('v109: ficha del alumno (sheet)')) throw new Error('sin bloque v109');
+  if (!/\.ficha-copy \{[\s\S]{0,200}cursor: pointer/.test(panelHtml)) throw new Error('sin estilo de fila copiable');
 });
 
 t('borrado admin optimista: la lista se actualiza al toque y falla repone', () => {
@@ -3439,9 +3462,12 @@ t('r14: el CSS y el JS nuevos caben en el presupuesto', () => {
   let end = css.indexOf('/* ==== v73: rediseño del panel admin');
   const r14Bytes = Buffer.byteLength(css.slice(start, end < 0 ? undefined : end));
   if (r14Bytes > 4096) throw new Error('CSS nuevo r14 ' + r14Bytes + ' B');
-  if (end < 0) return;
-  const v73Bytes = Buffer.byteLength(css.slice(end));
+  const v109Start = css.indexOf('/* ==== v109: ficha del alumno');
+  const v73Bytes = Buffer.byteLength(css.slice(end, v109Start < 0 ? undefined : v109Start));
   if (v73Bytes > 8192) throw new Error('CSS nuevo v73 ' + v73Bytes + ' B');
+  if (v109Start < 0) return;
+  const v109Bytes = Buffer.byteLength(css.slice(v109Start));
+  if (v109Bytes > 2048) throw new Error('CSS nuevo v109 ' + v109Bytes + ' B');
   const units = [
     panelSrc.match(/function shakeField_\(el\) \{[\s\S]*?\n    \}/),
     panelSrc.match(/function isLite_\(\) \{[\s\S]*?\n    \}/),
