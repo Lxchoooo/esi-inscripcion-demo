@@ -27,6 +27,7 @@ function makeEl(id) {
     },
     children: [],
     attrs: {},
+    handlers: {},
     classList: {
       add(c) { if (!el.className.split(' ').includes(c)) el.className = (el.className + ' ' + c).trim(); },
       remove(c) { el.className = el.className.split(' ').filter((x) => x && x !== c).join(' '); },
@@ -36,7 +37,7 @@ function makeEl(id) {
     setAttribute(k, v) { el.attrs[k] = String(v); },
     getAttribute(k) { return el.attrs[k]; },
     appendChild(c) { el.children.push(c); return c; },
-    addEventListener() { },
+    addEventListener(type, fn) { (el.handlers[type] = el.handlers[type] || []).push(fn); },
     focus() { },
     scrollIntoView() { },
     querySelector() { return null; }
@@ -145,17 +146,58 @@ assert(slots.children.length === 3, 'tres horarios');
 const grid = slots.children[0].children[1];
 assert(grid.className === 'slot-grid stagger', 'grid de charlas');
 assert(grid.children.length === 3, 'tres charlas en horario 1');
-assert(grid.children[0].className.includes('selected'), 'primera elegida');
-assert(grid.children[1].className.includes('low'), 'segunda con ultimos lugares');
-assert(grid.children[2].className.includes('full'), 'tercera completa');
-assert(grid.children[2].disabled === true, 'completa deshabilitada');
-assert(grid.children[1].innerHTML.includes('de 40 lugares'), 'contador de lugares del cupo');
-assert(grid.children[1].innerHTML.includes('Pocos lugares'), 'chip pocos lugares');
-assert(grid.children[2].innerHTML.includes('Llena'), 'chip llena');
-assert(grid.children[0].innerHTML.includes('Elegida'), 'texto elegida');
-assert(grid.children[1].innerHTML.includes('is-low'), 'barra casi llena');
-assert(grid.children[2].innerHTML.includes('is-full'), 'barra completa');
+// El orden es aleatorio por sesion: se busca por data-talk-id, no por indice.
+function cardById(g, id) {
+  return g.children.filter((c) => c && c.getAttribute && c.getAttribute('data-talk-id') === id)[0];
+}
+const cB1 = cardById(grid, 'B1');
+const cB2 = cardById(grid, 'B2');
+const cB3 = cardById(grid, 'B3');
+assert(cB1 && cB2 && cB3, 'las tres charlas del horario estan');
+assert(cB1.className.includes('selected'), 'elegida');
+assert(cB2.className.includes('low'), 'con ultimos lugares');
+assert(cB3.className.includes('full'), 'completa');
+assert(cB3.disabled === true, 'completa deshabilitada');
+assert(cB2.innerHTML.includes('de 40 lugares'), 'contador de lugares del cupo');
+assert(cB2.innerHTML.includes('Pocos lugares'), 'chip pocos lugares');
+assert(cB3.innerHTML.includes('Llena'), 'chip llena');
+assert(cB1.innerHTML.includes('Elegida'), 'texto elegida');
+assert(cB2.innerHTML.includes('is-low'), 'barra casi llena');
+assert(cB3.innerHTML.includes('is-full'), 'barra completa');
 assert(document.getElementById('sel-count').textContent === '1 de 3 elegidas', 'contador');
+
+// El toque de una tarjeta tiene que quedar cableado y abrir el sheet: era el
+// "no funciona el click" que se veia en el celular.
+assert(cB2.handlers.click && cB2.handlers.click.length === 1, 'tarjeta con click cableado');
+cB2.handlers.click[0]();
+assert(document.getElementById('sheet-title').textContent === 'Cambiar charla', 'el click abre el sheet');
+assert(document.getElementById('sheet-body').innerHTML.includes('Alcohol'), 'el sheet es de la charla tocada');
+ui.closeSheet();
+document.getElementById('sheet-title').textContent = '';
+
+// Charla repetida: el toque no abre el sheet y muestra el cartel centrado.
+ui.sState.data.talks.push({ id: 'B1b', titulo: 'Ansiedad', slot_id: 2, lugar: 'Aula 8', cupo: 40, restantes: 10 });
+ui.sRender();
+const gridRep = document.getElementById('slots-container').children[1].children[1];
+const rep = cardById(gridRep, 'B1b');
+assert(rep && rep.handlers.click, 'tarjeta repetida cableada');
+rep.handlers.click[0]();
+assert(document.getElementById('dup-cartel').hidden === false, 'cartel de charla repetida visible');
+assert(document.getElementById('sheet-title').textContent === '', 'no abre sheet si la charla se repite');
+document.getElementById('dup-cartel').hidden = true;
+
+// Mail sin año de egreso: mensaje especifico, no el generico de dominio.
+const inputMail = document.getElementById('input-mail');
+const hintMail = document.getElementById('mail-hint');
+inputMail.value = 'alumna@secundariosalsipuedes.edu.ar';
+ui.sLookup();
+assert(hintMail.textContent.indexOf('año de egreso') >= 0, 'avisa que falta el año de egreso');
+inputMail.value = 'alumna';
+ui.sLookup();
+assert(hintMail.textContent.indexOf('completo') >= 0, 'avisa mail incompleto sin arroba');
+inputMail.value = 'alumna2029@hotmail.com';
+ui.sLookup();
+assert(hintMail.textContent.indexOf('Usá tu mail') >= 0, 'dominio ajeno: mensaje de dominio');
 // Franja con lugares disponibles: confirmar oculto hasta completar las tres
 // (diseño del dueño: el alta exige las tres franjas, sin confirmacion parcial).
 const cbtn = document.getElementById('btn-confirmar');
