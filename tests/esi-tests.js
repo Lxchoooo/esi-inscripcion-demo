@@ -914,6 +914,22 @@ t('r21: ensayo sin remitente NO se pierde: la fila va al mail del alumno', () =>
   assertEq(services.sentMails.length, 1, 'el ensayo recibe el mail');
 });
 
+t('reinscripcion tras borrado vuelve a mandar la bienvenida', () => {
+  const services = backendStub({ ADMIN_PIN: '482913', GUIDE_PIN: '731204' });
+  enableMail_(services);
+  setConfigValue_(services, 'avisos_mail', 'si');
+  const mail = 'alumna@secundariosalsipuedes.edu.ar';
+  registerThreeSlots_(services, mail);
+  backendApi(services, 'flushMailQueue_').flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 1, 'primera bienvenida sale');
+  const del = backendApi(services, 'apiAdminDeleteStudent').apiAdminDeleteStudent('482913', mail);
+  assertEq(del.ok, true, 'borrado ok');
+  assertEq(queueRows_(services).length, 0, 'borrado purga la cola del alumno');
+  registerThreeSlots_(services, mail);
+  backendApi(services, 'flushMailQueue_').flushMailQueue_(Date.now() + 130000);
+  assertEq(services.sentMails.length, 2, 'la reinscripcion dispara bienvenida nueva');
+});
+
 t('r21: el trigger de mails se auto-repara si alguien lo borro', () => {
   const created = [];
   const services = backendStub({});
@@ -1658,11 +1674,25 @@ t('El panel de profes se reconoce desde el servidor', () => {
 t('El botón de confirmar aparece recién cuando eligió todas las charlas', () => {
   if (!/id="sel-bar"/.test(panelHtml)) throw new Error('sel-bar has no id');
   if (!/Inscripción confirmada/.test(panelSrc)) throw new Error('no done state');
-  if (!/var canConfirm = !!d\.evento_abierto && done && !sState\.confirmed;/.test(panelSrc)) {
-    throw new Error('confirm button does not require all slots');
+  if (!/var canConfirm = !!d\.evento_abierto && !sState\.confirmed && \(done \|\| partial\);/.test(panelSrc)) {
+    throw new Error('confirm button does not gate on the right state');
   }
   if (!/confirmBtn\.style\.display = canConfirm \? '' : 'none'/.test(panelSrc)) {
     throw new Error('confirm button is not hidden');
+  }
+});
+
+t('Franja llena: el alumno puede confirmar sin la franja que no eligió', () => {
+  // Caso del que llega tarde: todas las aulas de una franja llenas no dejan
+  // al alumno sin inscribir nada. El botón aparece con al menos una charla
+  // y la confirmación con faltantes exige sheet de aviso previo, no la
+  // marca directa.
+  if (!/'Confirmar igual'/.test(panelSrc)) throw new Error('sheet de confirmacion parcial falta');
+  if (!/Confirmar sin ' \+ sMissingLabels_\(missing\)/.test(panelSrc)) throw new Error('etiqueta parcial falta');
+  if (!/function sConfirmGo_\(/.test(panelSrc)) throw new Error('la confirmacion final no esta extraida');
+  // Sin nada elegido sigue el empujon hacia la primera completada.
+  if (!/if \(sChosenCount_\(\) > 0\) \{[\s\S]{0,600}openSheet\(\{/.test(panelSrc)) {
+    throw new Error('el aviso parcial exige al menos una charla');
   }
 });
 
