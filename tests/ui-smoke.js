@@ -56,7 +56,7 @@ const store = {
   esi_demo: '1',
   esi_demo_roster: JSON.stringify([
     { email: 'ana2029@secundariosalsipuedes.edu.ar', nombre: 'Ana Gomez', curso: '2°B', apellido: 'Gomez', dni: '30111222' },
-    { email: 'beto@secundariosalsipuedes.edu.ar', nombre: 'Beto Sanchez', curso: '5°Turismo' }
+    { email: 'beto2029@secundariosalsipuedes.edu.ar', nombre: 'Beto Sanchez', curso: '5°Turismo' }
   ])
 };
 const document = {
@@ -303,8 +303,8 @@ function tick() {
   const resumed = await ui.demoCall('apiResumeSession', [token]);
   assert(resumed.ok, 'la sesion se reanuda');
   assert(resumed.student.email === 'ana2029@secundariosalsipuedes.edu.ar', 'la sesion reanuda al mismo alumno');
-  const mismatch = await ui.demoCall('apiGetData', ['beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', token]);
-  assert(!mismatch.ok && mismatch.expired, 'el token no lee datos de otro alumno');
+  const mismatch = await ui.demoCall('apiGetData', ['beto2029@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', token]);
+  assert(!mismatch.ok && mismatch.expired, 'el token no lee datos de otro alumno: ' + JSON.stringify(mismatch).slice(0,200));
   ui.sSalir();
   await tick();
   assert(!('esi_session' in store), 'salir borra el token');
@@ -621,9 +621,9 @@ function tick() {
   const dniReg = await ui.demoCall('apiRegister', ['', 'Ana Gomez', '2°B', 'B2', 'Gomez', dniData.session]);
   assert(dniReg.ok, 'inscripción con sesión de DNI');
 
-  const pre = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B']);
-  await ui.demoCall('apiRegister', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba', pre.session]);
-  const demoStudent = await ui.demoCall('apiGetData', ['recordatorio@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', pre.session, 'Prueba']);
+  const pre = await ui.demoCall('apiGetData', ['recordatorio2029@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B']);
+  await ui.demoCall('apiRegister', ['recordatorio2029@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', 'B1', 'Prueba', pre.session]);
+  const demoStudent = await ui.demoCall('apiGetData', ['recordatorio2029@secundariosalsipuedes.edu.ar', 'Recordatorio Prueba', '2°B', pre.session, 'Prueba']);
   assert(demoStudent.ok && demoStudent.recordatorio === false, 'demo reminder opt-out by default');
   await ui.demoCall('apiSetReminder', [pre.session, true]);
   ui.setCred('demo');
@@ -641,7 +641,7 @@ function tick() {
   const demoSent = await ui.demoCall('apiAdminSendReminders', ['demo', 0, 20]);
   assert(demoSent.ok && demoSent.done, 'demo reminders send');
 
-  const regEmail = 'nueva.registro@secundariosalsipuedes.edu.ar';
+  const regEmail = 'nueva.registro2029@secundariosalsipuedes.edu.ar';
   const regLogin = await ui.demoCall('apiGetData', [regEmail, 'Nueva Registro', '2°B']);
   assert(regLogin.ok && regLogin.session, 'sesion para registrar');
   store.esi_session = regLogin.session;
@@ -691,7 +691,7 @@ function tick() {
   await tick();
   await tick();
 
-  document.getElementById('roster-mail').value = 'nuevo.alumno@secundariosalsipuedes.edu.ar';
+  document.getElementById('roster-mail').value = 'nuevo.alumno2029@secundariosalsipuedes.edu.ar';
   document.getElementById('roster-apellido').value = 'Nuevo';
   document.getElementById('roster-nombre').value = 'Alumno';
   document.getElementById('roster-anio').value = '2';
@@ -704,12 +704,12 @@ function tick() {
   assert(/Agregado|agregado/.test(document.getElementById('roster-add-msg').textContent),
     'alta de alumno en la lista');
   const rosterNow = JSON.parse(store.esi_demo_roster || '[]');
-  assert(rosterNow.some((r) => r.email === 'nuevo.alumno@secundariosalsipuedes.edu.ar'),
+  assert(rosterNow.some((r) => r.email === 'nuevo.alumno2029@secundariosalsipuedes.edu.ar'),
     'alumno nuevo en la lista');
 
   // Mini resumen, estado por horario y filtro "solo con lugares".
   const st = ui.getState();
-  st.student = { nombre: 'Ana', curso: '2\u00b0B', email: 'ana@secundariosalsipuedes.edu.ar', ciclo: 'basico' };
+  st.student = { nombre: 'Ana', curso: '2\u00b0B', email: 'ana2029@secundariosalsipuedes.edu.ar', ciclo: 'basico' };
   st.data = {
     evento_abierto: true,
     slots: [{ id: 1, label: '10:30 a 11:20' }, { id: 2, label: '11:30 a 12:20' }, { id: 3, label: '12:30 a 13:30' }],
