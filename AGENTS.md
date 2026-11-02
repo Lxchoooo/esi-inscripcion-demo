@@ -283,3 +283,62 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
 5. Probar en una copia de la planilla: ticket de login, correcciones, modo
    ensayo, respaldo, cierre y borrado. Nunca probar el borrado sobre datos
    reales.
+## Ronda mails-finales (2/11/2026, pre-evento en vivo)
+
+- **Catálogo 10 por franja**: la lista de Eugenia (preceptora) manda: los 10
+  temas en CADA franja (10/10/10). La hoja Talks quedó reescrita EN VIVO
+  (30 filas: 10 por franja, todas `ciclo:'ambos'`, cupo 55, lugar A
+  confirmar): id conservados donde (tema, franja) ya existía (O2 alcohol
+  fr1, B3 ITS-CB fr1, O3 ITS-CO fr1, O4 ciber fr1, O5 juegos fr2, O7
+  deportes fr2, O6 mascu fr2, B6 salud fr2, B8 ITS-CB fr3, O8 ITS-CO fr3,
+  B9 mascu fr3, O9 salud fr3, B10 alcohol fr3) + N1..N17 nuevos
+  (Claves para habitar nuestro cuerpo y Violencia de género entran;
+  Depresión sale: B2/O1 los chicos con esa charla quedan faltantes y
+  los alcanza el recordatorio). El borrado de datos del usuario deja
+  headers; el seed de Talks ya quedó cargado de nuevo.
+- Backend acepta `ambos` (`cycleAllowsTalk` en EsiCore + apiRegister +
+  apiAdminAddStudent/CorrectStudent/MoveTalk + publicData_ + checkTalks_
+  "Básico N · Orientado M · Ambos K"); panel client-side idem
+  (planRegistration + demo filter + etiquetas "Ambos" + texto de ayuda).
+- **Recordatorios por cola**: apiAdminSendReminders YA NO manda por
+  MailApp: encola en MailQueue `estado:'pendiente'` vía
+  `upsertPendingMail_` (los manda el poller/Gmail API, sin tope de cuota);
+  filtro: SOLO alumnos con alguna franja sin charla (reminderRecipients_
+  engancha la lack de `elegida`). Tests de recordatorios reescritos al
+  contrato nuevo (330→331/0 con el r69 del confirm en cola).
+- **Confirm en cola (velocidad del doble tap)**: el confirm
+  de `sRegister` con request en vuelo NO muere en silencio: queda en
+  `sState.nextConfirm` (ventana 6 s) y se re-lanza apenas contesta el
+  anterior (`sNextConfirmIfAny`); expirado/catch lo limpian. Tests r69.
+- **From institucional esi@**: poller.mjs con `ESI_FROM`
+  (env var, ya en `~/repos/esi-mailer/start.sh`) hace `From:
+  esi@secundariosalsipuedes.edu.ar`; si Gmail la rechazara (SendAs sin
+  verificar) reintenta UNA vez con la casilla default y lo loguea. En
+  producción 19:00–19:12 no hubo rechazo: **esi@ verificado por omisión
+  de rechazo, pendiente confirmación visual en Enviados**.
+- **Bug TZ del poller corregido**: los seriales de Sheets son UTC puro;
+  toda la aritmética `TZ_OFFSET_H` salió de `serialToEpochMs`/
+  `epochToSerial` (los `envio_at` viejos quedaron +3 h pero son
+  'enviado', sin efecto). Poller reiniciado con el fix + `ESI_FROM`
+  (start.sh guardado para arranques futuros).
+- **Mails rebotando**: captura 15:31 muestra Mail Delivery Subsystem
+  para `moralessokoignacio2028@...`: casilla de ciclo básico que NO
+  existe en el Workspace (menores de 13 sin cuenta, families.google lo
+  corta). Propuesta al colegio: para los que reboten, el email del
+  alumno se reemplaza por el del tutor (apiAdminCorrectStudent); el
+  panel NO depende de mail (entra por DNI). En решстbrać no API de
+  lectura para enumerar rebotes: la detección sigue siendo visual
+  ("Enviados"/recepción en la casilla institucional).
+- **Deploy**: `clasp push` + **redeploy sobre el id de @134**
+  (`clasp redeploy AKfycbyP4KFD3...`) → la MISMA URL de los QR/shortlinks
+  sirve v136/@ (create con `clasp deploy` genera otra URL: evitar, los
+  links cortos ya apuntan a la vieja). Live verificado por curl: page
+  nueva + JSONP `?fn=apiMailDiag` → `ok:true`, 33/33 enviado,
+  `envio_via gmail_api`, trigger vivo. CI verde (41503188757,
+  41506023991, 41506094341).
+- **PENDIENTE preevento**: (1) cuando reabran: probar el flujo alumno
+  end-to-end (mail real con From esi@) y tocar "Recordatorios" del
+  panel admin (ahora encola; el poller manda con cuota del colegio);
+  (2) los alumnos con charla del catálogo viejo que desapareció
+  (Depresión) los va a mostrar el panel 'faltantes' con el recordatorio;
+  (3) el poller sigue corriendo con `start.sh` si se corta.

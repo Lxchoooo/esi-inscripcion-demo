@@ -5324,6 +5324,23 @@ t('estilo: tokens de espaciado y radio 16 en las pantallas de ingreso', () => {
   }
 });
 
+t('r69: el confirm durante una request no se pierde: se encola y se confirma al contestar', () => {
+  // 1) sRegister guarda el confirm en cola con fecha, no descarta el toque.
+  if (!/function sRegister\(talkId\) \{\s*if \(sState\.busy\) \{[\s\S]{0,180}sState\.nextConfirm = talkId;/s.test(panelSrc)) {
+    throw new Error('sRegister sigue tirando el confirm durante busy');
+  }
+  // 2) sNextConfirmIfAny procesa la cola SOLO cuando el server libero (ventana 6 s).
+  if (!/function sNextConfirmIfAny\(\) \{[\s\S]{0,480}sRegister\(nx\)/.test(panelSrc)) {
+    throw new Error('sin re-lanzador del confirm en cola');
+  }
+  if (!/Date\.now\(\) - \(sState\.nextConfirmAt \|\| 0\) > 6000/.test(panelSrc)) {
+    throw new Error('la cola de confirms no vence');
+  }
+  // 3) Expirado/error limpian la cola para no confirmar algo viejo de otro mail.
+  const reg = panelSrc.slice(panelSrc.indexOf('function sNextConfirmIfAny'), panelSrc.indexOf('function sRenderChange'));
+  if (!/sState\.nextConfirm = null/.test(reg)) throw new Error('sin limpieza de la cola de confirms');
+});
+
 t('r35: el admin ve por que el panel no reacciona mientras el server actualiza', () => {
   // 1) La etiqueta de frescura muestra "Actualizando…" en lugar de quedarse congelada.
   if (!/var label = 'Actualizado hace ' \+ secs \+ 's';\s*if \(aBusy\) label = 'Actualizando…';/.test(panelSrc)) {
