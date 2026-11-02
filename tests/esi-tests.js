@@ -5534,5 +5534,14 @@ t('r75: el banner superior gana en el panel y la cola reclamada cuenta como pend
   }
 });
 
+t('r76: la misma charla no se puede elegir dos veces y el cierre se ve grande', () => {
+  if (!/id="dup-cartel"/.test(panelHtml)) throw new Error('falta el cartel de charla repetida');
+  if (!/Ya seleccionaste esta charla en otro horario, selecciona otra/.test(panelHtml)) throw new Error('falta el mensaje del cartel');
+  if (!/function sCharlaRepetida_/.test(panelHtml)) throw new Error('falta el chequeo de repetidas');
+  if (!/var repetida = sCharlaRepetida_\(talk\);/.test(panelHtml)) throw new Error('sOnTalk no bloquea la repetida');
+  if (!/id="closed-banner"/.test(panelHtml)) throw new Error('falta el cartel de inscripcion cerrada');
+  if (!/cb\.hidden = !!d\.evento_abierto/.test(panelHtml)) throw new Error('sRender no muestra el cartel de cerrada');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;

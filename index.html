@@ -896,6 +896,40 @@
       z-index: 95;
     }
 
+    /* Inscripción cerrada: cartel grande y fijo arriba. Antes era solo la
+    linea chica del encabezado y no se veia. */
+    .closed-banner {
+      position: sticky; top: 0; z-index: 70;
+      margin: 0 0 14px; padding: 16px 18px;
+      background: #FCE9E5; color: #7A1F14;
+      border: 2px solid var(--danger); border-radius: 16px;
+      text-align: center; line-height: 1.35;
+      box-shadow: var(--shadow-lg);
+    }
+    .closed-banner b { display: block; font-size: 20px; margin-bottom: 4px; }
+    .closed-banner span { font-size: 14px; font-weight: 600; }
+    .closed-banner[hidden] { display: none; }
+
+    /* Charla repetida: cartel centrado, grande, que tapa la pantalla hasta
+    que el alumno lo lee. Un toast al pie no se ve. */
+    .dup-cartel {
+      position: fixed; inset: 0; z-index: 120;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(20, 18, 14, .45); padding: 22px;
+    }
+    .dup-cartel[hidden] { display: none; }
+    .dup-card {
+      width: min(92vw, 430px); background: #FFFDF8;
+      border-radius: 18px; padding: 24px 20px 20px;
+      text-align: center; box-shadow: var(--shadow-lg);
+    }
+    .dup-card p {
+      font-size: 21px; line-height: 1.3; font-weight: 800;
+      margin: 0 0 8px; color: var(--danger);
+    }
+    .dup-card .hint-line { margin: 0 0 16px; }
+    .dup-card .btn { width: 100%; }
+
     .toast {
       position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 90;
       transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
@@ -2524,6 +2558,10 @@
     </section>
 
     <section id="s-screen-panel" class="screen" tabindex="-1" aria-labelledby="panel-title">
+      <div id="closed-banner" class="closed-banner" role="alert" hidden>
+        <b>La inscripción está cerrada</b>
+        <span>Si te falta anotarte, avisale a tu preceptor o a un alumno de sexto año.</span>
+      </div>
       <div class="panel-head">
         <div>
           <div class="steps"><span>4 de 4</span><span class="steps-bar" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="done"></i><i class="on"></i></span></div>
@@ -3097,6 +3135,13 @@
   <div id="print-area"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="sheet-backdrop" class="sheet-backdrop"></div>
+  <div id="dup-cartel" class="dup-cartel" hidden role="alertdialog" aria-modal="true" aria-labelledby="dup-cartel-msg">
+    <div class="dup-card">
+      <p id="dup-cartel-msg">Ya seleccionaste esta charla en otro horario, selecciona otra</p>
+      <p class="hint-line" id="dup-cartel-hint"></p>
+      <button id="dup-cartel-ok" class="btn" type="button">Elegir otra</button>
+    </div>
+  </div>
   <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true">
     <div class="sheet-handle"></div>
     <h3 id="sheet-title"></h3>
@@ -5146,6 +5191,10 @@
     function sheetInit() {
       $('sheet-cancel').addEventListener('click', closeSheet);
       $('sheet-backdrop').addEventListener('click', closeSheet);
+      $('dup-cartel-ok').addEventListener('click', sCerrarCartelRepetida_);
+      $('dup-cartel').addEventListener('click', function (e) {
+        if (e && e.target === $('dup-cartel')) sCerrarCartelRepetida_();
+      });
       $('sheet-confirm').addEventListener('click', function () {
         var cb = sheetCb;
         closeSheet();
@@ -5289,6 +5338,47 @@
         if (talks[i].id === id) return talks[i];
       }
       return null;
+    }
+
+    // Las 10 charlas se repiten en las 3 franjas con distinto id: comparar
+    // por id no alcanza, hay que mirar el titulo normalizado.
+    function sTalkTitleKey_(t) {
+      return String((t && t.titulo) || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function sCharlaRepetida_(talk) {
+      var mine = (sState.data && sState.data.mine) || {};
+      var key = sTalkTitleKey_(talk);
+      if (!key) return null;
+      for (var slotId in mine) {
+        if (!mine.hasOwnProperty(slotId)) continue;
+        if (Number(slotId) === Number(talk.slot_id)) continue;
+        var t = sTalkById(mine[slotId]);
+        if (t && sTalkTitleKey_(t) === key) return t;
+      }
+      return null;
+    }
+
+    function sCartelRepetida_(otra) {
+      var el = $('dup-cartel');
+      if (!el) return;
+      var hint = $('dup-cartel-hint');
+      if (hint) {
+        hint.textContent = otra
+          ? 'Ya la tenés en ' + sSlotsLabel(otra.slot_id) + '.'
+          : '';
+      }
+      el.hidden = false;
+      try { $('dup-cartel-ok').focus(); } catch (e) { }
+    }
+
+    function sCerrarCartelRepetida_() {
+      var el = $('dup-cartel');
+      if (el) el.hidden = true;
     }
 
     // "A confirmar" NO es dato: el seed de la hoja se lo pone a las charlas
@@ -5492,6 +5582,8 @@
         + (d.evento_abierto ? 'Inscripción abierta' : 'Inscripción cerrada')
         + ' · ' + CICLO_LABELS[sState.student.ciclo];
       sub.className = d.evento_abierto ? '' : 'alert';
+      var cb = $('closed-banner');
+      if (cb) cb.hidden = !!d.evento_abierto;
 
       var st = sState.student;
       var slots = d.slots || [];
@@ -5852,6 +5944,13 @@
         return;
       }
       var mine = (sState.data && sState.data.mine) || {};
+      var repetida = sCharlaRepetida_(talk);
+      if (repetida) {
+        // La misma charla ya esta elegida en otra franja: se corta aca y se
+        // avisa con un cartel grande. Antes se podia anotar 3 veces lo mismo.
+        sCartelRepetida_(repetida);
+        return;
+      }
       if (talk.restantes <= 0 && !mine[Number(talk.slot_id)]) {
         // Antes era un return mudo y el chico creia que la habia elegido:
         // quedaba con 2 de 3. Ahora avisa y pide datos frescos de cupos.
