@@ -1005,6 +1005,7 @@ function watchdog() {
     }
   } catch (eTrigger) { }
   try { configureDriveBackupTrigger_(); } catch (eBackup) { }
+  try { ensurePreceptorPlanillaTrigger_(); } catch (ePl) { }
   // Ejectuar el flush como red de seguridad: se vio que el planificador de
   // Google puede dejar de ejecutar el trigger de cada minuto y el registro
   // del trigger miente ("existe" no es "corre"). Si el watchdog corre, la
@@ -1667,6 +1668,8 @@ var API_FN_MAP_ = {
   apiAdminDrill: apiAdminDrill,
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
+  apiDriveDiag: apiDriveDiag,
+  apiAdminPlanillaRun: apiAdminPlanillaRun,
   apiAdminCloseEvent: apiAdminCloseEvent,
   apiAdminErasePersonalData: apiAdminErasePersonalData,
   apiAdminBackupDrive: apiAdminBackupDrive,
@@ -1757,7 +1760,7 @@ function setup() {
   noteSetupRun_();
   configureBackupTrigger_();
   try { ensureMailQueueTrigger_(); } catch (eQ) { }
-  try { ensureWatchdogTrigger_(); } catch (eW) { }
+  try { ensurePreceptorPlanillaTrigger_(); } catch (eP) { }
   ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
   try { rebuildAlumnos_(); } catch (e) { }
@@ -1949,6 +1952,308 @@ function apiAdminBackupDrive(cred) {
   var onlyAdmin = requireAdmin_(auth);
   if (!onlyAdmin.ok) return onlyAdmin;
   return backupToDrive_();
+}
+
+/* ==== Planilla para preceptores: copia limpia de los datos ====
+Un doc aparte en Drive (carpeta ESI/Preceptores, un solo documento vivo que
+se reescribe), con tres hojas: Resumen, Inscriptos (una fila por reserva
+con DNI y mail) y Cupos por charla. Sin estadisticas de errores ni hojas
+del sistema: lo que necesita un preceptor se lee de un vistazo. Se completa
+sola con un trigger horario que salta si nada cambió (fingerprint) y se
+actualiza a demanda desde el panel. */
+var DRIVE_PRECEPTOR_SUB = 'Preceptores';
+var PRECEPTOR_PLANILLA_NAME = 'ESI Jornada 2026 - Preceptores';
+var PRECEPTOR_ID_PROP = 'PRECEPTOR_SS_ID';
+var PRECEPTOR_FP_PROP = 'PRECEPTOR_FP';
+var PRECEPTOR_AT_PROP = 'PRECEPTOR_AT';
+var PRECEPTOR_GREEN = '#1F6B3F';
+var PRECEPTOR_ZEBRA = '#F4F1EB';
+var PRECEPTOR_RED_BG = '#FBEDE9';
+
+function drivePreceptorFolder_() {
+  return driveFolderIn_(driveRootFolder_(), DRIVE_PRECEPTOR_SUB);
+}
+
+function preceptorRows_(signups, students, talks, slots) {
+  var dnis = {};
+  for (var i = 0; i < students.length; i++) {
+    if (students[i].dni) dnis[EsiCore.normalizeEmail(students[i].email)] = students[i].dni;
+  }
+  var talksById = {};
+  for (var t = 0; t < talks.length; t++) talksById[String(talks[t].id)] = talks[t];
+  var inscriptos = [];
+  var cuposMap = {};
+  var alumnos = {};
+  var presentes = 0;
+  for (var j = 0; j < signups.length; j++) {
+    var s = signups[j];
+    if (s.prueba) continue;
+    var key = EsiCore.normalizeEmail(s.email);
+    alumnos[key] = 1;
+    if (s.presente) presentes++;
+    var talk = talksById[String(s.talk_id)] || {};
+    inscriptos.push({
+      curso: String(s.curso || ''),
+      apellido: String(s.apellido || ''),
+      nombre: String(s.nombre || ''),
+      dni: String(dnis[key] || ''),
+      email: String(s.email || ''),
+      charla: String(talk.titulo || s.talk_id || ''),
+      slot: slotLabelFor_(slots, s.slot_id),
+      lugar: String(talk.lugar || ''),
+      presente: s.presente ? 'SI' : 'no'
+    });
+    var key = String(s.talk_id);
+    if (!cuposMap[key]) cuposMap[key] = 0;
+    cuposMap[key]++;
+  }
+  inscriptos.sort(function (a, b) {
+    return a.curso.localeCompare(b.curso, 'es', { numeric: true })
+      || a.apellido.localeCompare(b.apellido, 'es')
+      || a.nombre.localeCompare(b.nombre, 'es')
+      || a.charla.localeCompare(b.charla, 'es');
+  });
+  var cupos = [];
+  var agotados = 0;
+  for (var k = 0; k < talks.length; k++) {
+    var tl = talks[k];
+    if (tl.activa === false || tl.activa === 'no') continue;
+    var anot = cuposMap[String(tl.id)] || 0;
+    var cupo = Number(tl.cupo) || 0;
+    var libres = cupo - anot;
+    if (libres <= 0) agotados++;
+    cupos.push({
+      charla: String(tl.titulo || ''),
+      slot: slotLabelFor_(slots, tl.slot_id),
+      lugar: String(tl.lugar || ''),
+      ciclo: String(tl.ciclo || ''),
+      cupo: cupo,
+      anotados: anot,
+      libres: Math.max(0, libres)
+    });
+  }
+  cupos.sort(function (a, b) { return a.charla.localeCompare(b.charla, 'es'); });
+  var mailUnicos = 0;
+  for (var m in alumnos) if (Object.prototype.hasOwnProperty.call(alumnos, m)) mailUnicos++;
+  var resumen = [
+    ['Alumnos con reservas', mailUnicos],
+    ['Reservas', inscriptos.length],
+    ['Presentes', presentes],
+    ['Charlas con cupo completo', agotados]
+  ];
+  return { inscriptos: inscriptos, cupos: cupos, resumen: resumen };
+}
+
+function fillPreceptorSheet_(ss, name, head, rows, opts) {
+  opts = opts || {};
+  var sh = ss.getSheetByName(name) || ss.insertSheet(name);
+  sh.clearContents();
+  sh.setConditionalFormatRules([]);
+  var width = head.length;
+  sh.getRange(1, 1, 1, width).setValues([head]);
+  sh.getRange(1, 1, 1, width)
+    .setBackground(PRECEPTOR_GREEN)
+    .setFontColor('#FFFFFF')
+    .setFontWeight('bold')
+    .setVerticalAlignment('middle');
+  sh.setFrozenRows(1);
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, width).setValues(rows);
+    var zebra = [];
+    for (var r = 0; r < rows.length; r++) {
+      var line = [];
+      for (var c = 0; c < width; c++) line.push(r % 2 ? PRECEPTOR_ZEBRA : '#FFFFFF');
+      zebra.push(line);
+    }
+    sh.getRange(2, 1, rows.length, width).setBackgrounds(zebra);
+  }
+  if (opts.widths) {
+    for (var w2 = 0; w2 < opts.widths.length && w2 < width; w2++) {
+      sh.setColumnWidth(w2 + 1, Number(opts.widths[w2]) || 110);
+    }
+  }
+  if (opts.dniCol) {
+    var last = Math.max(2, rows.length + 1);
+    sh.getRange(2, opts.dniCol, last - 1, 1).setNumberFormat('@');
+  }
+  if (opts.redColumn) {
+    var colIdx = head.indexOf(opts.redColumn);
+    if (colIdx >= 0) {
+      var lastRow = Math.max(2, rows.length + 1);
+      var rule = SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberLessThanOrEqualTo(0)
+        .setBackground(PRECEPTOR_RED_BG)
+        .setRanges([sh.getRange(2, colIdx + 1, lastRow - 1, 1)])
+        .build();
+      sh.setConditionalFormatRules([rule]);
+    }
+  }
+}
+
+function preceptorFingerprint_(signups) {
+  var parts = [];
+  for (var i = 0; i < signups.length; i++) {
+    var s = signups[i];
+    parts.push(s.id + '|' + (s.presente ? '1' : '0') + '|' + s.talk_id + '|' + s.slot_id);
+  }
+  parts.sort();
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, parts.join(';'));
+  var hex = '';
+  for (var d = 0; d < digest.length; d++) hex += ('0' + (digest[d] & 255).toString(16)).slice(-2);
+  return hex;
+}
+
+function preceptorPlanillaRun_(force) {
+  if (typeof DriveApp === 'undefined' || typeof SpreadsheetApp === 'undefined') {
+    return { ok: false, message: 'Drive no disponible.' };
+  }
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var signups = readSignupsCached_();
+    var students = readStudentsCached_();
+    var talks = readTalksCached_();
+    var slots = readSlotsCached_();
+    var fp = preceptorFingerprint_(signups);
+    var prevId = props.getProperty(PRECEPTOR_ID_PROP);
+    if (!force && prevId && props.getProperty(PRECEPTOR_FP_PROP) === fp) {
+      try {
+        var hit = DriveApp.getFileById(prevId);
+        return {
+          ok: true, skipped: true, id: prevId,
+          url: 'https://docs.google.com/spreadsheets/d/' + prevId,
+          actualizado: props.getProperty(PRECEPTOR_AT_PROP) || ''
+        };
+      } catch (eHit) { /* el doc alguien lo borro: se rearma */ }
+    }
+    var data = preceptorRows_(signups, students, talks, slots);
+    var ss = null;
+    if (prevId) {
+      try { ss = SpreadsheetApp.openById(prevId); } catch (eOpen) { ss = null; }
+    }
+    if (!ss) {
+      ss = SpreadsheetApp.create(PRECEPTOR_PLANILLA_NAME);
+      try {
+        var folder = drivePreceptorFolder_();
+        DriveApp.getFileById(ss.getId()).moveTo(folder);
+      } catch (eMove) { }
+    }
+    var tz = (ss.getSpreadsheetTimeZone && ss.getSpreadsheetTimeZone()) || 'America/Argentina/Cordoba';
+    var stamp = Utilities.formatDate(new Date(), tz, 'dd/MM/yyyy HH:mm');
+    fillPreceptorSheet_(ss, 'Resumen', ['Indicador', 'Valor'], data.resumen, { widths: [230, 110] });
+    fillPreceptorSheet_(ss, 'Inscriptos',
+      ['Curso', 'Apellido', 'Nombre', 'DNI', 'Mail', 'Charla', 'Horario', 'Lugar', 'Presente'],
+      data.inscriptos.map(function (r) {
+        return [r.curso, r.apellido, r.nombre, r.dni, r.email, r.charla, r.slot, r.lugar, r.presente];
+      }),
+      { dniCol: 4, widths: [64, 130, 100, 96, 250, 240, 74, 96, 74] });
+    fillPreceptorSheet_(ss, 'Cupos por charla',
+      ['Charla', 'Horario', 'Lugar', 'Ciclo', 'Cupo', 'Anotados', 'Libres'],
+      data.cupos.map(function (r) {
+        return [r.charla, r.slot, r.lugar, r.ciclo, r.cupo, r.anotados, r.libres];
+      }),
+      { redColumn: 'Libres', widths: [240, 74, 96, 90, 64, 80, 64] });
+    var def = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
+    if (def && ss.getSheets().length > 3) ss.deleteSheet(def);
+    props.setProperty(PRECEPTOR_ID_PROP, ss.getId());
+    props.setProperty(PRECEPTOR_FP_PROP, fp);
+    props.setProperty(PRECEPTOR_AT_PROP, stamp);
+    logAction_('planilla_preceptores', '', String(data.inscriptos.length) + ' reservas');
+    return {
+      ok: true, id: ss.getId(),
+      url: 'https://docs.google.com/spreadsheets/d/' + ss.getId(),
+      reservas: data.inscriptos.length,
+      actualizado: stamp
+    };
+  } catch (e) {
+    return { ok: false, message: 'No se pudo armar la planilla del preceptor.' };
+  }
+}
+
+function apiAdminPlanillaRun(cred, force) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  var onlyAdmin = requireAdmin_(auth);
+  if (!onlyAdmin.ok) return onlyAdmin;
+  var forceBool = force === true || String(force) === 'true' || String(force) === '1';
+  return preceptorPlanillaRun_(forceBool);
+}
+
+function ensurePreceptorPlanillaTrigger_() {
+  if (typeof ScriptApp === 'undefined') return false;
+  try {
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'preceptorPlanillaRun_') return false;
+    }
+    ScriptApp.newTrigger('preceptorPlanillaRun_').timeBased().everyHours(1).create();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* Diagnostico publico y de solo lectura del Drive del proyecto: nombres de
+   carpeta y archivo del propio panel, nunca datos de alumnos. Sirve para
+   revisar la organizacion sin abrir el editor ni entrar con clave. */
+function apiDriveDiag(args) {
+  var out = { ok: true, carpeta: DRIVE_ROOT_FOLDER, subcarpetas: {} };
+  try {
+    var root = driveRootFolder_();
+    var subfolders = root.getFolders();
+    var seen = {};
+    while (subfolders.hasNext()) {
+      var f = subfolders.next();
+      out.subcarpetas[f.getName()] = { archivos: 0 };
+      seen[f.getName()] = f;
+    }
+    try {
+      var backs = seen[DRIVE_BACKUP_SUB] ? seen[DRIVE_BACKUP_SUB].getFiles() : null;
+      var listBacks = [];
+      if (backs) {
+        while (backs.hasNext()) {
+          var b = backs.next();
+          if (String(b.getName()).indexOf('ESI-2026-respaldo-') === 0) listBacks.push(b.getName());
+        }
+      }
+      listBacks.sort();
+      out.subcarpetas[DRIVE_BACKUP_SUB] = { archivos: listBacks.length, ultimos: listBacks.slice(-5) };
+    } catch (eB) {
+      out.subcarpetas[DRIVE_BACKUP_SUB] = { error: 'no se pudo leer' };
+    }
+    try {
+      var exF = seen[DRIVE_EXPORT_SUB] || null;
+      var exCount = 0;
+      var exNames = [];
+      if (exF) {
+        var ex = exF.getFiles();
+        while (ex.hasNext()) { var e1 = ex.next(); exCount++; exNames.push(e1.getName()); }
+      }
+      out.subcarpetas[DRIVE_EXPORT_SUB] = { archivos: exCount, nombres: exNames.slice(-3) };
+    } catch (eX) {
+      out.subcarpetas[DRIVE_EXPORT_SUB] = { error: 'no se pudo leer' };
+    }
+    var props = PropertiesService.getScriptProperties();
+    var pid = props.getProperty(PRECEPTOR_ID_PROP);
+    out.planilla = { nombre: PRECEPTOR_PLANILLA_NAME };
+    if (pid) {
+      try {
+        var pf = DriveApp.getFileById(pid);
+        out.planilla.existe = true;
+        out.planilla.url = 'https://docs.google.com/spreadsheets/d/' + pid;
+        out.planilla.actualizado = props.getProperty(PRECEPTOR_AT_PROP) || '';
+      } catch (ePf) {
+        out.planilla.existe = false;
+        out.planilla.nota = 'la planilla se rearma en la proxima corrida';
+      }
+    } else {
+      out.planilla.existe = false;
+    }
+  } catch (e) {
+    out.ok = true;
+    out.drive = 'indisponible';
+    out.mensaje = String(e && e.message || 'sin permiso de Drive');
+  }
+  return out;
 }
 
 function backupSignups_() {

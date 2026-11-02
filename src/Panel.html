@@ -2763,6 +2763,12 @@
       </div>
 
       <div id="pane-inscriptos" class="tabpanel admin-only" tabindex="-1" role="tabpanel" aria-labelledby="tab-inscriptos" hidden>
+        <div class="card">
+          <div class="view-head">
+            <span class="hint-line">Planilla aparte en Drive, ordenada y con color, para el equipo de preceptores.</span>
+            <button id="btn-planilla" class="btn secondary small" type="button">Abrir planilla de preceptores</button>
+          </div>
+        </div>
         <div class="card" id="a-cupos"></div>
         <div class="card">
           <div class="filters">
@@ -4919,6 +4925,10 @@
       if (fn === 'apiAdminErasePersonalData') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
         return Promise.resolve(demoAdminErasePersonalData(a[1]));
+      }
+      if (fn === 'apiAdminPlanillaRun') {
+        if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
+        return Promise.resolve({ ok: true, url: '', reservas: 0, actualizado: '', skipped: true, message: 'El simulacro corre sobre la planilla real, no en la demo.' });
       }
       if (fn === 'apiAdminMailPreview') {
         if (!demoIsAdmin_(a[0])) return Promise.resolve({ ok: false, message: DEMO_NO_PERM });
@@ -9519,6 +9529,36 @@
       });
     }
 
+    // Planilla de preceptores: pide al backend que arme o actualice el doc
+    // limpio en Drive y ofrece abrirlo. El abrir va como acción del banner
+    // porque el window.open directo después de una request suele bloquearlo
+    // el navegador.
+    var aPlanillaUrl_ = '';
+    function aPlanillaRun_() {
+      if (aBusy) return;
+      aBusy = true;
+      aBanner('Armando la planilla de preceptores, puede tardar varios segundos.', 'wip');
+      call('apiAdminPlanillaRun', [adminCred, 'true']).then(function (resp) {
+        aBusy = false;
+        if (!resp || !resp.ok) {
+          aBanner((resp && resp.message) || 'No se pudo armar la planilla.', 'err');
+          return;
+        }
+        aPlanillaUrl_ = String(resp.url || '');
+        if (aPlanillaUrl_) {
+          aBanner('Planilla lista: ' + Number(resp.reservas || 0) + ' reservas.', 'ok', 'Abrir', function () {
+            window.open(aPlanillaUrl_, '_blank');
+          });
+        } else {
+          aBanner('Planilla lista: ' + Number(resp.reservas || 0) + ' reservas.'
+            + (resp.message ? ' ' + resp.message : ''), 'ok');
+        }
+      }).catch(function () {
+        aBusy = false;
+        aBanner('No se pudo armar la planilla, probá otra vez.', 'err');
+      });
+    }
+
     function aEraseData_() {
       if (aBusy) return;
       openSheet({
@@ -9727,6 +9767,7 @@
       $('btn-test-del').addEventListener('click', aDeleteTestData_);
       $('btn-close-event').addEventListener('click', aCloseEvent_);
       $('btn-erase').addEventListener('click', aEraseData_);
+      $('btn-planilla').addEventListener('click', aPlanillaRun_);
       $('btn-guide').addEventListener('click', aPrintGuide_);
       $('corr-out').addEventListener('click', function (ev) {
         var btn = ev.target && ev.target.getAttribute ? ev.target : null;
