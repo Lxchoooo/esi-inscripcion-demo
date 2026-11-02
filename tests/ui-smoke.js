@@ -110,7 +110,7 @@ return {
   setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
   sState: sState, getState: function () { return sState; }, setA: function (v) { aData = v; },
-  sTalksForSlot_: sTalksForSlot_, sTalkRank_: sTalkRank_,
+  sTalksForSlot_: sTalksForSlot_, sTalkRank_: sTalkRank_, sSalirDobleToque_: sSalirDobleToque_,
   setTalk: function (v) { aTalkData = v; }, setTalkFilter: function (v) { aTalkFilter = v; aRenderTalk(); }, aSaveConfig: aSaveConfig,
   setPending: function (v) { aPendingData = v; },
   setRole: function (r) { aRole = r; },
@@ -796,6 +796,16 @@ function tick() {
   assert(document.getElementById('mini-summary').className.includes('is-collapsed'),
     'mini resumen colapsable');
   st.miniOpen = true;
+
+  // Salir desde la pantalla de "ya estás inscripto": chiquito al fondo y con
+  // doble toque, igual que el del panel.
+  ui.sSalirDobleToque_('btn-done-salir');
+  const doneSalir = document.getElementById('btn-done-salir');
+  assert(doneSalir.handlers.click && doneSalir.handlers.click.length === 1, 'salir del listo cableado');
+  doneSalir.handlers.click[0]();
+  assert(doneSalir.textContent.indexOf('Tocá de nuevo') >= 0, 'pide confirmacion antes de salir');
+  doneSalir.handlers.click[0]();
+  assert(document.body.getAttribute('data-screen') === 's-screen-mail', 'vuelve al ingreso');
 
   console.log('UI smoke: OK');
 })().catch((e) => {

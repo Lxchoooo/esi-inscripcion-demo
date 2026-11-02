@@ -4466,13 +4466,17 @@ t('r16: el alumno cierra sesion abajo del fondo, chico y con doble toque', () =>
   if (!/min-height: 44px[^}]*panel-exit|panel-exit button \{[\s\S]{0,200}min-height: 44px/.test(panelHtml)) {
     throw new Error('el boton chico pierde el area de toque de 44px');
   }
-  if (!/btn-alumno-salir[\s\S]{0,900}?is-armed[\s\S]{0,400}?sSalir\(\)/.test(panelSrc)) {
-    throw new Error('no hay doble toque antes de sSalir');
+  if (!/sSalirDobleToque_\('btn-alumno-salir'\)/.test(panelSrc)) {
+    throw new Error('el boton del panel no usa el doble toque');
   }
-  if (panelSrc.indexOf('exitArm = now + 4000') < 0) {
+  const iHelp = panelSrc.indexOf('function sSalirDobleToque_');
+  if (iHelp < 0) throw new Error('falta el helper del doble toque');
+  const helper = panelSrc.slice(iHelp, iHelp + 900);
+  if (!/is-armed[\s\S]{0,400}?sSalir\(\)/.test(helper)) throw new Error('no hay doble toque antes de sSalir');
+  if (panelSrc.indexOf('arm = now + 4000') < 0) {
     throw new Error('sin ventana de confirmacion');
   }
-  const aArm = panelSrc.indexOf('exitArm = now + 4000');
+  const aArm = panelSrc.indexOf('arm = now + 4000');
   const exit = panelSrc.slice(aArm, aArm + 200);
   if (!/Toc[a-úá]* de nuevo/.test(exit)) throw new Error('la confirmacion no pide un segundo toque');
 });
@@ -5569,6 +5573,13 @@ t('r78: orden aleatorio estable por franja y año de egreso avisado antes del do
   var iAnio = panelHtml.indexOf('Poné tu año de egreso al final del mail');
   var iDom = panelHtml.indexOf("mailDom !== '@secundariosalsipuedes.edu.ar'");
   if (!(iAnio > 0 && iDom > 0 && iAnio < iDom)) throw new Error('el año no se avisa antes que el dominio');
+});
+
+t('r79: la pantalla de listo tiene salir chiquito al fondo', () => {
+  if (!/id="btn-done-salir"/.test(panelHtml)) throw new Error('falta el boton de salir en la pantalla de listo');
+  if (!/sSalirDobleToque_\('btn-done-salir'\)/.test(panelHtml)) throw new Error('el boton de listo no esta cableado');
+  if (!/sSalirDobleToque_\('btn-alumno-salir'\)/.test(panelHtml)) throw new Error('el salir del panel no usa el helper');
+  if (!/function sSalirDobleToque_\(id\)/.test(panelHtml)) throw new Error('falta el helper del doble toque');
 });
 
 summary();
