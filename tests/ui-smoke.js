@@ -203,8 +203,8 @@ ui.sState.busy = true;
 ui.sConfirmar();
 assert(document.body.getAttribute('data-screen') === 's-screen-panel',
   'el confirm con busy no cambia de pantalla a medias');
-assert(document.getElementById('s-banner').textContent.indexOf('cola') >= 0,
-  'el confirm encolado avisa que quedo en cola');
+assert(document.getElementById('s-banner').textContent.indexOf('segundito') >= 0,
+  'el confirm encolado avisa con el mensajito de esperar');
 ui.sUnbusy_();
 assert(document.body.getAttribute('data-screen') === 's-screen-done',
   'confirm encolado llega a Listo sin segundo toque');
