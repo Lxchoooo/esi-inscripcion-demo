@@ -4574,8 +4574,13 @@
         if (String(signups[j].talk_id) !== String(talk.id)) continue;
         var rosterT = demoRoster();
         var apellidoT = '';
+        var dniT = '';
         for (var rt = 0; rt < rosterT.length; rt++) {
-          if (rosterT[rt].email === signups[j].email) { apellidoT = rosterT[rt].apellido || ''; break; }
+          if (rosterT[rt].email === signups[j].email) {
+            apellidoT = rosterT[rt].apellido || '';
+            dniT = rosterT[rt].dni || '';
+            break;
+          }
         }
         var row = {
           id: signups[j].id,
@@ -4584,7 +4589,8 @@
           nombreCompleto: signups[j].nombre,
           curso: signups[j].curso,
           slotLabel: demoSlotLabel_(signups[j].slot_id),
-          presente: !!signups[j].presente
+          presente: !!signups[j].presente,
+          dni: dniT
         };
         if (admin) row.email = signups[j].email;
         rows.push(row);

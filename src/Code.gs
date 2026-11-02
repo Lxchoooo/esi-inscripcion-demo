@@ -4498,8 +4498,10 @@ function apiAdminTalkRoster(cred, talkId) {
     if (!talk) return { ok: false, message: 'No encontramos esa charla.' };
     var roster = readStudentsCached_();
     var apellidos = {};
+    var dnis = {};
     for (var r = 0; r < roster.length; r++) {
       apellidos[roster[r].email] = roster[r].apellido || '';
+      dnis[roster[r].email] = roster[r].dni || '';
     }
     var signups = readSignupsCached_();
     var rows = [];
@@ -4512,7 +4514,8 @@ function apiAdminTalkRoster(cred, talkId) {
         nombreCompleto: signups[j].nombre,
         curso: signups[j].curso,
         slotLabel: slotLabelFor_(slots, signups[j].slot_id),
-        presente: !!signups[j].presente
+        presente: !!signups[j].presente,
+        dni: dnis[signups[j].emailKey] || ''
       };
       if (admin) row.email = signups[j].email;
       rows.push(row);

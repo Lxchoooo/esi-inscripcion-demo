@@ -1837,6 +1837,19 @@ t('Code.gs talk roster counts and sorts by surname', () => {
   assertEq(missing.ok, false, 'unknown talk');
 });
 
+t('Code.gs talk roster exposes the DNI for the ficha', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso', 'dni'], [
+    ['ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '6A', '45623456']
+  ]);
+  const api = backendApi(services, 'apiAdminTalkRoster');
+  const r = api.apiAdminTalkRoster('1111', 'B1');
+  assertEq(r.ok, true, 'roster ok');
+  const st = (r.students || []).filter((s) => s.email === 'ana@secundariosalsipuedes.edu.ar')[0];
+  if (!st) throw new Error('sin ana en el roster');
+  assertEq(st.dni, '45623456', 'dni in roster row');
+});
+
 t('Code.gs marks attendance under lock and counts it per talk', () => {
   const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
   const calls = [];
