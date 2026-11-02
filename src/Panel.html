@@ -3344,9 +3344,13 @@
         if (!e || e.length > 120) return false;
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
       }
+      // Igual que el server: la casilla termina con el año de egreso
+      // (2026 a 2031). Sin año, el mail rebota y no llega.
+      var MAIL_YEAR_RE_ = /(?:2026|2027|2028|2029|2030|2031)$/;
       function isInstitutionalEmail(email) {
         var e = normalizeEmail(email);
-        return isValidEmail(e) && e.slice(e.indexOf('@')) === '@secundariosalsipuedes.edu.ar';
+        if (!(isValidEmail(e) && e.slice(e.indexOf('@')) === '@secundariosalsipuedes.edu.ar')) return false;
+        return MAIL_YEAR_RE_.test(e.slice(0, e.indexOf('@')));
       }
       var NAME_RE_ = /^[A-Za-zÀ-ÖØ-öø-ÿ' \u2019-]+$/;
       var NAME_LETTER_RE_ = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
@@ -5184,7 +5188,7 @@
         return;
       }
       var egreso = 2026 + (6 - year);
-      out.textContent = 'Tu mail termina en ' + egreso + '.';
+      out.textContent = 'El mail de la escuela SIEMPRE termina con el año: apellidonombre' + egreso + '. El año va al final, sin puntos.';
     }
 
     // Edad del cache del device, para el cartel de "actualizado a ...".
@@ -6136,6 +6140,10 @@
       }
       if (!EsiClient.isInstitutionalEmail(email)) {
         sMailError_('Usá tu mail @secundariosalsipuedes.edu.ar.');
+        return;
+      }
+      if (!/(?:2026|2027|2028|2029|2030|2031)$/.test(email.split('@')[0])) {
+        sMailError_('Falta el año al final del mail (2026 a 2031). Ej: gomezperezmaria2029.');
         return;
       }
       sState.busy = true;

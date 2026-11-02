@@ -90,7 +90,7 @@ var STUDENT_ERRORS_ = {
   apellido: 'Escribí tu apellido con letras, espacios, apóstrofe o guion.',
   curso: 'Elegí año y división.',
   notInRoster: 'Ese mail no figura en la lista del curso: pedile a tu preceptor que te agregue.',
-  domain: 'Ese mail no es institucional: usá el que termina en @secundariosalsipuedes.edu.ar.'
+  domain: 'Ese mail no es institucional o le falta el año final (2026 a 2031). Termina en apellido + nombre + año y @secundariosalsipuedes.edu.ar.'
 };
 
 var EsiCore = (function () {
@@ -115,10 +115,15 @@ var EsiCore = (function () {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   }
 
+  // La casilla del colegio es apellido + nombre + año de egreso (2026 a 2031):
+  // si falta el año salta el permiso de gmail y el mail nunca llega (rebote
+  // 550 5.1.1). La validacion exige año al final ya en el login.
+  var MAIL_YEAR_RE_ = /(?:2026|2027|2028|2029|2030|2031)$/;
   function isInstitutionalEmail(email) {
     var e = normalizeEmail(email);
     if (!isValidEmail(e)) return false;
-    return e.slice(e.indexOf('@')) === INSTITUTIONAL_DOMAIN;
+    if (e.slice(e.indexOf('@')) !== INSTITUTIONAL_DOMAIN) return false;
+    return MAIL_YEAR_RE_.test(e.slice(0, e.indexOf('@')));
   }
   var NAME_RE_ = /^[A-Za-zÀ-ÖØ-öø-ÿ' \u2019-]+$/;
   var NAME_LETTER_RE_ = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
@@ -4728,7 +4733,7 @@ function apiAdminDrill(cred, n, talkId) {
     // cuele entre dos altas del simulacro con datos a mitad de relectura.
     var tanda = withScriptLock_(ADMIN_LOCK_MS * 10, function () {
       for (var k = 1; k <= total; k++) {
-        var email = marca + k + '@secundariosalsipuedes.edu.ar';
+        var email = marca + k + '2029@secundariosalsipuedes.edu.ar';
         var t0 = Date.now();
         var r = registerLocked_(email, 'Alumno Simulacro', '2°A', talk.id, 'Simulacro', '', '');
         ms.push(Date.now() - t0);
@@ -4787,7 +4792,7 @@ function drillCleanupTodos_() {
       var rows = [];
       for (var i = 0; i < signups.length; i++) {
         var s = signups[i];
-        if (s && /^simulacro\d{10,}-\d+@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
+        if (s && /^simulacro\d{10,}-\d+2029@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
           rows.push(findSignupRow_(s.id));
         }
       }
