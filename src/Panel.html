@@ -2261,7 +2261,8 @@
 
     /* ==== v110: ficha identidade (sheet) ====
        Cabecera con avatar de iniciales + meta del curso, y estado honesto
-       cuando el padrón no trae DNI (fila apagada, no es un error del panel). */
+       cuando el alumno no registro DNI (fila apagada, no es un error del
+       panel; el DNI se declara al inscribirse, no viene de una lista). */
     .ficha-head {
       display: flex; align-items: center; gap: 12px; margin: 0 0 6px;
     }
@@ -2456,6 +2457,12 @@
             <label for="input-apellido">Apellido</label>
             <input id="input-apellido" type="text" autocomplete="off" maxlength="60"
               autocapitalize="words" enterkeyhint="next" placeholder="Tu apellido">
+          </div>
+          <div class="field">
+            <label for="input-dni-datos">DNI</label>
+            <input id="input-dni-datos" type="text" inputmode="numeric" autocomplete="off" maxlength="8"
+              enterkeyhint="next" placeholder="Solo números">
+            <p class="hint-line">8 números, sin puntos. Queda registrado para la ficha del evento.</p>
           </div>
           <div class="field-row">
             <div class="field">
@@ -3179,6 +3186,10 @@
       // Sello de validez al entrar: lo que ya este escrito muestra su estado
       // sin esperar a que el usuario vuelva a tocar.
       sUpdateMarks_();
+      var dniIn = $('input-dni-datos');
+      if (dniIn && sState.dni && !String(dniIn.value || '').trim()) {
+        dniIn.value = sState.dni;
+      }
       // Foco al primer casillero vacio, arriba hacia abajo.
       var arranque = ['input-nombre', 'input-apellido', 'select-anio'];
       for (var i = 0; i < arranque.length; i++) {
@@ -3267,8 +3278,9 @@
       }
       var anio = $('select-anio') ? $('select-anio').value : '';
       var div = $('select-division') ? $('select-division').value : '';
+      var dni = $('input-dni-datos') ? $('input-dni-datos').value : '';
       var listo = !!(sValidName_(nombre ? nombre.value : '') && sValidName_(apellido ? apellido.value : '')
-        && anio && div);
+        && anio && div && sValidDni_(dni));
       var res = $('datos-resumen');
       if (res) {
         if (listo) {
@@ -3286,7 +3298,7 @@
     function sEmptyState_() {
       return {
         email: '', nombre: '', apellido: '', curso: '', login: '', recordatorio: false,
-        needsNombre: false, needsApellido: false, needsCurso: false,
+        needsNombre: false, needsApellido: false, needsCurso: false, dni: '',
       data: null, busy: false, lookup: null, showMissing: false, enterTalk: null,
       onlyAvailable: false, lastChosen: -1, miniOpen: true,
       queued: null, queuedAt: 0, wait: null,
@@ -4586,6 +4598,24 @@
         return String(a.email || '').localeCompare(String(b.email || ''));
       });
     }
+    // El DNI autodeclarado via apiRegister se firma en el roster local de la
+    // demo: la ficha y el atolondrado por DNI usan la misma fuente que el
+    // backend real (hoja Students).
+    function demoRememberDni_(email, dni) {
+      var d = EsiClient.normalizeEmail(email);
+      if (!d) return;
+      var roster = demoRoster();
+      for (var i = 0; i < roster.length; i++) {
+        if (EsiClient.normalizeEmail(roster[i].email) === d) {
+          roster[i].dni = dni;
+          demoWrite('esi_demo_roster', roster);
+          return;
+        }
+      }
+      roster.push({ email: d, apellido: '', nombre: '', nombreCompleto: '', curso: '', dni: dni });
+      demoWrite('esi_demo_roster', roster);
+    }
+
     function demoTalkRoster(talkId, role) {
       var admin = role === 'admin';
       var talk = null;
@@ -4811,6 +4841,9 @@
         }
         if (!regSess && !regTicket && demoHasSignups_(regEmail)) {
           return Promise.resolve({ ok: false, needsLogin: true, message: 'Ese mail ya tiene inscripciones. Entrá con tu DNI y apellido.' });
+        }
+        if (a[7] && /^\d{8}$/.test(EsiClient.normalizeDni(String(a[7])))) {
+          demoRememberDni_(regEmail, EsiClient.normalizeDni(String(a[7])));
         }
         return demoRegister(regEmail, a[1], a[2], a[3], a[4]).then(function (resp) {
           if (!resp || !resp.ok) return resp;
@@ -5458,8 +5491,10 @@
         confirmBtn.style.display = canConfirm ? '' : 'none';
         var lab = confirmBtn.querySelector('span');
         if (lab) {
+          // Etiqueta corta: la lista de horarios desbordaba la barra sticky
+          // (capturas 23:30, tapaba el contador de elegidas).
           lab.textContent = (partial && missing.length)
-            ? 'Confirmar sin ' + sMissingLabels_(missing)
+            ? 'Confirmar sin ' + (missing.length === 1 ? '1 franja' : missing.length + ' franjas')
             : 'Confirmar inscripción';
         }
       }
@@ -5843,7 +5878,7 @@
       sState.confirmed = false;
       sBanner('Confirmando tu elección…', 'ok');
       sRenderChange(slotId, prevId, talkId);
-      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_()])
+      call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_(), sState.login || '', sState.dni || ''])
         .then(function (resp) {
           sUnbusy_(resp.needsLogin || resp.expired);
           if (resp.needsLogin || resp.expired) {
@@ -6121,6 +6156,7 @@
           sState.email = '';
           sState.login = resp.login;
           sState.lookup = resp;
+          sState.dni = EsiClient.normalizeDni($('input-dni').value || '');
           sState.nombre = resp.nombreCompleto || resp.nombre || '';
           sState.apellido = resp.apellido || '';
           sState.greeting = resp.nombre || '';
@@ -6225,6 +6261,15 @@
         sFieldErr_($('select-anio'), 'Elegí año y división.');
         return;
       }
+      // El DNI es la identidad de la ficha: sin padron importado, lo que el
+      // alumno declara aca es lo unico que existe. 8 numeros, regla igual a
+      // la del login por DNI.
+      var dniDato = String(($('input-dni-datos') ? $('input-dni-datos').value : '') || '').trim();
+      if (!sValidDni_(dniDato)) {
+        sFieldErr_($('input-dni-datos'), '8 números, sin puntos.');
+        return;
+      }
+      sState.dni = EsiClient.normalizeDni(dniDato);
       var full = String(nombre || '').replace(/\s+/g, ' ').trim();
       var ap = String(apellido || '').replace(/\s+/g, ' ').trim();
       if (ap && EsiClient.normalizeText(full).slice(-EsiClient.normalizeText(ap).length) !== EsiClient.normalizeText(ap)) {
@@ -8182,10 +8227,11 @@
           + '<span class="mail-detail-label">DNI</span>'
           + '<code class="mail-detail-address">' + esc(dniLim) + '</code></div>';
       } else {
-        // Estado real del dato: el padrón no trae DNI para este alumno.
+        // Estado real del dato: el alumno no registro DNI (los DNI no se
+        // cargan por lista, se declaran al inscribirse).
         body += '<div class="ficha-copy is-missing">'
           + '<span class="mail-detail-label">DNI</span>'
-          + '<span class="ficha-nodni">Sin DNI en el padrón para este alumno.</span></div>';
+          + '<span class="ficha-nodni">Sin DNI registrado para este alumno.</span></div>';
       }
       var chars = String(charlasStr || '').split(';;').filter(function (x) { return x; });
       if (chars.length) {

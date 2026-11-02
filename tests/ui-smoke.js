@@ -250,6 +250,7 @@ function tick() {
   document.getElementById('select-anio').value = '2';
   document.getElementById('select-division').value = 'B';
   document.getElementById('input-mail').value = 'ana@secundariosalsipuedes.edu.ar';
+  document.getElementById('input-dni-datos').value = '30111222';
   ui.sLoginSubmit();
   await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'entra con mail');
