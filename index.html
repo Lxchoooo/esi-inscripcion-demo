@@ -3030,6 +3030,9 @@
           <span>Cambiar mis charlas</span>
         </button>
       </div>
+      <p class="panel-exit" style="margin-top:10px">
+        <button id="btn-done-salir" type="button">Cerrar sesión</button>
+      </p>
     </section>
 
     <section class="section landing" id="como" aria-labelledby="como-title">
@@ -6485,6 +6488,35 @@
       $('input-mail').focus();
     }
 
+    // Doble toque para salir: un toque suelto solo pide confirmacion, asi
+    // nadie cierra la sesion sin querer en el telefono prestado. Se usa en el
+    // fondo del panel y en la pantalla de "ya estas inscripto".
+    function sSalirDobleToque_(id) {
+      var b = $(id);
+      if (!b) return;
+      var arm = 0;
+      b.addEventListener('click', function () {
+        var now = Date.now();
+        if (now < arm) {
+          arm = 0;
+          b.classList.remove('is-armed');
+          b.textContent = 'Cerrar sesión';
+          sSalir();
+          return;
+        }
+        arm = now + 4000;
+        b.classList.add('is-armed');
+        b.textContent = '¿Cerrar la sesión en este teléfono? Tocá de nuevo';
+        setTimeout(function () {
+          if (Date.now() >= arm) {
+            arm = 0;
+            b.classList.remove('is-armed');
+            b.textContent = 'Cerrar sesión';
+          }
+        }, 4300);
+      });
+    }
+
     function sSalir() {
       sRevokeSession_();
       sClearStudentSession_();
@@ -6711,28 +6743,8 @@
       if ($('input-nombre')) $('input-nombre').addEventListener('input', sUpdateMarks_);
       if ($('input-apellido')) $('input-apellido').addEventListener('input', sUpdateMarks_);
       if ($('select-division')) $('select-division').addEventListener('change', sUpdateMarks_);
-      var exitArm = 0;
-      $('btn-alumno-salir').addEventListener('click', function () {
-        var b = $('btn-alumno-salir');
-        var now = Date.now();
-        if (now < exitArm) {
-          exitArm = 0;
-          b.classList.remove('is-armed');
-          b.textContent = 'Cerrar sesión';
-          sSalir();
-          return;
-        }
-        exitArm = now + 4000;
-        b.classList.add('is-armed');
-        b.textContent = '¿Cerrar la sesión en este teléfono? Tocá de nuevo';
-        setTimeout(function () {
-          if (Date.now() >= exitArm) {
-            exitArm = 0;
-            b.classList.remove('is-armed');
-            b.textContent = 'Cerrar sesión';
-          }
-        }, 4300);
-      });
+      sSalirDobleToque_('btn-alumno-salir');
+      sSalirDobleToque_('btn-done-salir');
       $('btn-hello-yes').addEventListener('click', sHelloYes);
       $('btn-hello-no').addEventListener('click', sHelloNo);
       $('select-anio').addEventListener('change', function () {
