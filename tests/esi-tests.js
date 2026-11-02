@@ -4615,6 +4615,11 @@ t('r16: cambiar charla despues de la bienvenida manda solo el cambio', () => {
   const bodyCambio = String(rows[1][8]);
   if (bodyCambio.indexOf('26.150') >= 0) throw new Error('el cambio no debe repetir el mail completo');
   if (bodyCambio.indexOf('Charla cuatro') < 0) throw new Error('sin la charla nueva');
+  // Las otras charlas al pie (pedido del dueño: capaz que no se acuerdan).
+  if (bodyCambio.indexOf('Tus otras charlas no cambiaron:') < 0) throw new Error('sin lista de otras charlas');
+  if (bodyCambio.indexOf('Charla dos') < 0 || bodyCambio.indexOf('Charla tres') < 0) {
+    throw new Error('faltan las otras charlas en el mail de cambio');
+  }
   if (bodyCambio.indexOf('B5') >= 0 && bodyCambio.indexOf('es id del sistema') >= 0) {
     throw new Error('no conviene exponer el id tecnico');
   }
