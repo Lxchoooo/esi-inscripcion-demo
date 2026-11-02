@@ -555,7 +555,7 @@ function apiMailDiag(args) {
   if (typeof args === 'string') opts = args;
   else if (args && args.length) opts = String(args[0]);
   if (opts !== 'empujar') opts = '';
-  var out = { ok: true, avisos_activo: null, queue: null, quota: null, trigger: null };
+  var out = { ok: true, avisos_activo: null, queue: null, quota: null, trigger: null, envio_via: gmailApiProps_() ? 'gmail_api' : 'mailapp' };
   try {
     var cfg = readConfig_();
     out.avisos_activo = convertBool_(cfg[CONFIG_MAIL_WELCOME]);
@@ -1063,13 +1063,111 @@ function flushMailQueue_(nowMs) {
   }
 }
 
+// Via Gmail API: si las tres claves gmail_api_refresh / gmail_api_client_id
+// / gmail_api_secret estan en Script Properties, los avisos salen con la
+// cuenta del colegio (cuota del Workspace, ~1500-2000 dest./dia) y no
+// consumen la cuota de MailApp del dueno del script (~100). Sin token,
+// todo queda via MailApp igual que antes. Las claves nunca van al repo;
+// el token es revocable desde la propia cuenta institucional.
+var GMAIL_API_REFRESH_PROP_ = 'gmail_api_refresh';
+var GMAIL_API_CLIENT_PROP_ = 'gmail_api_client_id';
+var GMAIL_API_SECRET_PROP_ = 'gmail_api_secret';
+var GMAIL_API_CACHE_S_ = 45 * 60; // access token vive 1 h; renovar con margen
+var gmaDeadUntil_ = 0; // si la via se rompe, pausa y MailApp como red de seguridad
+
+function gmailApiProps_() {
+  try {
+    if (typeof PropertiesService === 'undefined' || !PropertiesService) return null;
+    var props = PropertiesService.getScriptProperties();
+    var refresh = String(props.getProperty(GMAIL_API_REFRESH_PROP_) || '').trim();
+    var clientId = String(props.getProperty(GMAIL_API_CLIENT_PROP_) || '').trim();
+    var secret = String(props.getProperty(GMAIL_API_SECRET_PROP_) || '').trim();
+    if (!refresh || !clientId || !secret) return null;
+    return { refresh: refresh, clientId: clientId, secret: secret };
+  } catch (e) { return null; }
+}
+
+function gmailApiReady_() {
+  return !!gmailApiProps_() && typeof UrlFetchApp !== 'undefined' && !!UrlFetchApp;
+}
+
+function gmailApiAccessToken_(props) {
+  var cache = typeof CacheService !== 'undefined' && CacheService ? CacheService.getScriptCache() : null;
+  var cached = null;
+  try { cached = cache ? cache.get('gma_access') : null; } catch (eC) { }
+  if (cached) return String(cached);
+  var resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+    method: 'post',
+    payload: {
+      client_id: props.clientId,
+      client_secret: props.secret,
+      refresh_token: props.refresh,
+      grant_type: 'refresh_token'
+    },
+    muteHttpExceptions: true
+  });
+  var code = Number(resp.getResponseCode());
+  var body = {};
+  try { body = JSON.parse(resp.getContentText() || '{}'); } catch (eP) { }
+  if (code !== 200 || !body.access_token) {
+    throw new Error('token: ' + (body.error || 'http ' + code));
+  }
+  if (cache) {
+    try { cache.put('gma_access', String(body.access_token), GMAIL_API_CACHE_S_); } catch (ePut) { }
+  }
+  return String(body.access_token);
+}
+
+function gmailApiSend_(to, subject, bodyText) {
+  var props = gmailApiProps_();
+  if (!props || typeof UrlFetchApp === 'undefined' || !UrlFetchApp) return false;
+  if (Date.now() < gmaDeadUntil_) return false;
+  try {
+    var token = gmailApiAccessToken_(props);
+    var asunto = String(subject == null ? '' : subject);
+    var cuerpo = String(bodyText == null ? '' : bodyText);
+    // No va el From: Gmail pone el sendAs por defecto de la cuenta del
+    // token (la institucional). Poner un From a mano exige que el alias
+    // este verificado en esa casilla; el display name lo pone el colegio.
+    var asuntoB64 = Utilities.base64Encode(asunto, Utilities.Charset.UTF_8);
+    var mime = [
+      'To: ' + String(to),
+      'Subject: =?UTF-8?B?' + asuntoB64 + '?=',
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      cuerpo
+    ].join('\r\n');
+    var resp = UrlFetchApp.fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({ raw: Utilities.base64WebSafe(mime) }),
+      muteHttpExceptions: true
+    });
+    if (Number(resp.getResponseCode()) === 200) return true;
+    throw new Error('gmail api http ' + resp.getResponseCode());
+  } catch (e) {
+    // Auth rota o transitorio: pauso la via 10 min; el flush sigue con
+    // MailApp y el proximo refresh la revive si el token vuelve a andar.
+    gmaDeadUntil_ = Date.now() + 10 * 60000;
+    try { logAction_('gmail_api_fallo', '', String(e && e.message || e)); } catch (eLog) { }
+    return false;
+  }
+}
+
 function flushMailQueueLocked_(nowMs) {
   try { runPendingRebuilds_(); } catch (eRb) { }
   var now = nowMs == null ? Date.now() : Number(nowMs);
   var cfg;
   try { cfg = readConfig_(); } catch (e) { return { sent: 0 }; }
   if (!convertBool_(cfg[CONFIG_MAIL_WELCOME])) return { sent: 0 };
-  if (mailQuota_() <= 0) return { sent: 0 };
+  // El tope de MailApp solo corta la corrida si el envio va por MailApp.
+  // Con la via Gmail API configurada, la cuota del dueno del script no
+  // limita: la pone el Workspace de la institucional.
+  var viaGmail = gmailApiReady_();
+  if (!viaGmail && mailQuota_() <= 0) return { sent: 0 };
   var sent = 0;
   var q;
   try { q = readMailQueueRaw_(); } catch (e2) { return { sent: 0 }; }
@@ -1091,8 +1189,10 @@ function flushMailQueueLocked_(nowMs) {
       name: EVENT_TITLE_
     };
     if (sender) { opts.from = sender; opts.replyTo = sender; }
-    var data = false;
-    try { MailApp.sendEmail(opts); data = true; } catch (eMail) { data = false; }
+    var data = gmailApiReady_() ? gmailApiSend_(opts.to, opts.subject, opts.body) : false;
+    if (!data) {
+      try { MailApp.sendEmail(opts); data = true; } catch (eMail) { data = false; }
+    }
     if (data) {
       updates.push([i + 1, 'enviado', tries]);
       sent++;
