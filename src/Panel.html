@@ -3057,7 +3057,7 @@
       </details>
       <details class="faq reveal">
         <summary>¿Veo todas las charlas?</summary>
-        <p>Vas a ver las de tu ciclo: básico si estás en 1° a 3°, orientado si estás en 4° a 6°.</p>
+        <p>En cada horario vas a ver las 10 charlas de la jornada y elegís la tuya.;</p>
       </details>
       <details class="faq reveal">
         <summary>¿Puedo entrar desde el celular de otra persona?</summary>
@@ -3593,7 +3593,7 @@
         var talk = talksById[talkId];
         if (!talk) return { error: 'talkNotFound' };
         if (!talk.activa) return { error: 'talkInactive' };
-        if (talk.ciclo !== student.ciclo) return { error: 'talkWrongCycle' };
+        if (talk.ciclo !== student.ciclo && talk.ciclo !== 'ambos') return { error: 'talkWrongCycle' };
         var counts = {};
         var mine = [];
         for (var i = 0; i < signups.length; i++) {
@@ -3962,7 +3962,7 @@
         counts[signups[i].talk_id] = (counts[signups[i].talk_id] || 0) + 1;
       }
       var talks = DEMO_TALKS
-        .filter(function (t) { return t.ciclo === ciclo && t.activa; })
+        .filter(function (t) { return (t.ciclo === ciclo || t.ciclo === 'ambos') && t.activa; })
         .map(function (t) {
           return {
             id: t.id,
@@ -5907,8 +5907,28 @@
       sConfirmGo_();
     }
 
+    function sNextConfirmIfAny() {
+      // El segundo confirm no se desperdicia: se confirma apenas el server
+      // contesta el anterior (ventana de 6 s, despues es mas nuevo un tap).
+      if (sState.busy || !sState.nextConfirm) return false;
+      if (Date.now() - (sState.nextConfirmAt || 0) > 6000) {
+        sState.nextConfirm = null; sState.nextConfirmAt = 0;
+        return false;
+      }
+      var nx = sState.nextConfirm;
+      sState.nextConfirm = null; sState.nextConfirmAt = 0;
+      sRegister(nx);
+      return true;
+    }
+
     function sRegister(talkId) {
-      if (sState.busy) return;
+      if (sState.busy) {
+        // Hay una confirmacion en vuelo: el toque NO se pierde, queda en cola.
+        sState.nextConfirm = talkId;
+        sState.nextConfirmAt = Date.now();
+        sBanner('Confirmamos este cambio apenas termine el anterior…', 'ok');
+        return;
+      }
       var target = sTalkById(talkId);
       var slotId = target ? target.slot_id : null;
       var prevId = slotId && sState.data && sState.data.mine ? sState.data.mine[Number(slotId)] : null;
@@ -5925,6 +5945,7 @@
         .then(function (resp) {
           sUnbusy_(resp.needsLogin || resp.expired);
           if (resp.needsLogin || resp.expired) {
+            sState.nextConfirm = null; sState.nextConfirmAt = 0;
             sRestoreOptimistic_(snap);
             sState.session = null;
             sState.login = null;
@@ -5947,6 +5968,7 @@
             if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
             return;
           }
+          if (sNextConfirmIfAny()) return;
           if (resp.data) sState.data = resp.data;
           sApplyTestModeFrom_(resp);
           if (resp.student) sState.student = resp.student;
@@ -5961,9 +5983,11 @@
           } catch (eCache) { }
           sBanner('');
           sRender();
+          sNextConfirmIfAny();
         })
         .catch(function () {
           sUnbusy_();
+          sState.nextConfirm = null; sState.nextConfirmAt = 0;
           sRestoreOptimistic_(snap);
           // Sin confirmación del server no hay "listo" en pantalla.
           sState.confirmed = false;
@@ -7922,7 +7946,7 @@
         html += '<tr style="--i:' + (i > 10 ? 10 : i) + '">'
           + '<td data-label="Charla"><span class="rep-talk">' + esc(talk.titulo) + '</span>'
           + '<span class="rep-place">' + esc(talk.lugar || '') + '</span></td>'
-          + '<td data-label="Ciclo">' + esc(talk.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
+          + '<td data-label="Ciclo">' + esc(talk.ciclo === 'basico' ? 'Básico' : (talk.ciclo === 'ambos' ? 'Ambos' : 'Orientado')) + '</td>'
           + '<td data-label="Horario">' + esc(talk.slotLabel) + '</td>'
           + '<td data-label="Reservas">' + talk.anotados + '</td>'
           + '<td data-label="Presentes">' + talk.presentes + '</td>'
@@ -8037,7 +8061,7 @@
         for (i = 0; i < all.length; i++) {
           var row = all[i];
           tbody += '<tr><td>' + esc(row.titulo) + '<span class="print-place">' + esc(row.lugar || '') + '</span></td>'
-            + '<td>' + esc(row.ciclo === 'basico' ? 'Básico' : 'Orientado') + '</td>'
+            + '<td>' + esc(row.ciclo === 'basico' ? 'Básico' : (row.ciclo === 'ambos' ? 'Ambos' : 'Orientado')) + '</td>'
             + '<td>' + esc(row.slotLabel) + '</td>'
             + '<td>' + row.anotados + '</td><td>' + row.presentes + '</td>'
             + '<td>' + row.ausentes + '</td><td>' + row.cupo + '</td></tr>';

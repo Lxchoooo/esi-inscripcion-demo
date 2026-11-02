@@ -294,7 +294,8 @@ function talks() {
     B2: { id: 'B2', titulo: 'B', ciclo: 'basico', slot_id: 1, cupo: 2, activa: true },
     B5: { id: 'B5', titulo: 'E', ciclo: 'basico', slot_id: 2, cupo: 2, activa: true },
     B8: { id: 'B8', titulo: 'H', ciclo: 'basico', slot_id: 3, cupo: 1, activa: true },
-    O9: { id: 'O9', titulo: 'I', ciclo: 'orientado', slot_id: 3, cupo: 1, activa: true }
+    O9: { id: 'O9', titulo: 'I', ciclo: 'orientado', slot_id: 3, cupo: 1, activa: true },
+    T1: { id: 'T1', titulo: 'T', ciclo: 'ambos', slot_id: 1, cupo: 2, activa: true }
   };
 }
 
@@ -401,6 +402,25 @@ t('cannot take a full talk in a free slot', () => {
 t('cycle mismatch rejected', () => {
   const p = Core.planRegistration([], talks(), { emailKey: 'x@secundariosalsipuedes.edu.ar', ciclo: 'orientado' }, 'B1');
   assertEq(p.error, 'talkWrongCycle');
+});
+
+t('basico cannot pick a talk of the other cycle, in both directions', () => {
+  const orientado = { emailKey: 'x@secundariosalsipuedes.edu.ar', ciclo: 'orientado' };
+  const p = Core.planRegistration([], talks(), alumna, 'O9');
+  assertEq(p.error, 'talkWrongCycle');
+  const q = Core.planRegistration([], talks(), orientado, 'B1');
+  assertEq(q.error, 'talkWrongCycle');
+});
+
+t('ambos ciclo talk is open to both cycles', () => {
+  const basico = Core.planRegistration([], talks(), alumna, 'T1');
+  assertEq(basico.action, 'insert');
+  const orientado = Core.planRegistration([], talks(), { emailKey: 'x@secundariosalsipuedes.edu.ar', ciclo: 'orientado' }, 'T1');
+  assertEq(orientado.action, 'insert');
+  const sameTalkIsStillReal = Core.planRegistration(
+    [signup('u1', alumna.emailKey, 1, 'T1')], talks(), alumna, 'T1'
+  );
+  assertEq(sameTalkIsStillReal.action, 'none');
 });
 
 t('student with all three slots replaces, never exceeds three', () => {
@@ -3397,6 +3417,38 @@ t('Session identity wins over client course and cycle', () => {
   assertEq(wrong.ok, false, 'session cannot switch to the other cycle');
   if (!/otro ciclo|no es de tu ciclo/i.test(wrong.message || '')) {
     throw new Error('unexpected cycle message: ' + wrong.message);
+  }
+});
+
+t('charlas con ciclo ambos se ven y se eligen con ambos ciclos', () => {
+  const services = backendStub({}, { signups: [] });
+  services.sheets.Talks = fakeSheet('Talks', ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], [
+    ['B1', 'Charla basico', 'basico', 1, 'Aula 1', 40, 'si'],
+    ['O1', 'Charla orientado', 'orientado', 1, 'Aula 2', 40, 'si'],
+    ['A1', 'Charla ambos', 'ambos', 1, 'Aula 3', 40, 'si']
+  ]);
+  const api = backendApi(services, 'apiGetData, apiRegister');
+
+  const listB = api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B');
+  assertEq(listB.ok, true, 'listado basico ok');
+  const idsB = listB.data.talks.map((x) => x.id);
+  assertEq(idsB.includes('A1') && idsB.includes('B1'), true, 'basico ve ambos y basico: ' + idsB.join(','));
+  assertEq(idsB.includes('O1'), false, 'basico no ve orientado exclusivo');
+
+  const listO = api.apiGetData('beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo');
+  assertEq(listO.ok, true, 'listado orientado ok');
+  const idsO = listO.data.talks.map((x) => x.id);
+  assertEq(idsO.includes('A1') && idsO.includes('O1'), true, 'orientado ve ambos y orientado: ' + idsO.join(','));
+  assertEq(idsO.includes('B1'), false, 'orientado no ve basico exclusivo');
+
+  const altaBasico = api.apiRegister('ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'A1', '', listB.session);
+  assertEq(altaBasico.ok, true, 'basico se anota en ambos: ' + altaBasico.message);
+  const altaOrientado = api.apiRegister('beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'A1', '', listO.session);
+  assertEq(altaOrientado.ok, true, 'orientado se anota en ambos: ' + altaOrientado.message);
+  const refusada = api.apiRegister('beto@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'B1', '', listO.session);
+  assertEq(refusada.ok, false, 'orientado no entra a basico exclusiva');
+  if (!/no es de tu ciclo/i.test(refusada.message || '')) {
+    throw new Error('mensaje de ciclo inesperado: ' + refusada.message);
   }
 });
 
