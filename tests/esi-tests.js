@@ -5499,6 +5499,11 @@ t('r72: el rechazo del server no pinta "quedaste anotado" (orden de sRegister)',
     throw new Error('el rechazo no desmarca la confirmacion');
   }
   if (/sState\.busy = false;/.test(reg)) throw new Error('sRegister apaga busy a mano');
+  // El catch de red tambien revierte antes de cerrar el toque.
+  const cat = reg.slice(reg.indexOf('.catch(function ()'));
+  const rc = cat.indexOf('sRestoreOptimistic_(snap)');
+  const uc = cat.indexOf('sUnbusy_(');
+  if (rc < 0 || uc < 0 || rc > uc) throw new Error('el catch de red cierra el toque antes de revertir');
 });
 
 t('r73: no se confirma sin ninguna charla elegida y una franja sin charlas no es "llena"', () => {
