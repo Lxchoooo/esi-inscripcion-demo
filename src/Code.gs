@@ -90,7 +90,7 @@ var STUDENT_ERRORS_ = {
   apellido: 'Escribí tu apellido con letras, espacios, apóstrofe o guion.',
   curso: 'Elegí año y división.',
   notInRoster: 'Ese mail no figura en la lista del curso: pedile a tu preceptor que te agregue.',
-  domain: 'Ese mail no es institucional o le falta el año final (2026 a 2031). Termina en apellido + nombre + año y @secundariosalsipuedes.edu.ar.'
+  domain: 'Ese mail no es institucional (apellido + nombre + año 2026 a 2031, sin números) o no termina en @secundariosalsipuedes.edu.ar.'
 };
 
 var EsiCore = (function () {
@@ -117,13 +117,18 @@ var EsiCore = (function () {
 
   // La casilla del colegio es apellido + nombre + año de egreso (2026 a 2031):
   // si falta el año salta el permiso de gmail y el mail nunca llega (rebote
-  // 550 5.1.1). La validacion exige año al final ya en el login.
-  var MAIL_YEAR_RE_ = /(?:2026|2027|2028|2029|2030|2031)$/;
+  // 550 5.1.1). Ademas la casilla NO lleva numeros fuera del año (un chico
+  // ponia su DNI como mail: 50033468apellido, y eso no existe en el
+  // Workspace). La validacion exige año al final ya en el login.
+  var MAIL_LOCAL_RE_ = /^[a-z]+(?:\.[a-z]+)*(?:2026|2027|2028|2029|2030|2031)$/;
   function isInstitutionalEmail(email) {
     var e = normalizeEmail(email);
     if (!isValidEmail(e)) return false;
     if (e.slice(e.indexOf('@')) !== INSTITUTIONAL_DOMAIN) return false;
-    return MAIL_YEAR_RE_.test(e.slice(0, e.indexOf('@')));
+    return MAIL_LOCAL_RE_.test(e.slice(0, e.indexOf('@')));
+  }
+  function mailLocalOk_(local) {
+    return MAIL_LOCAL_RE_.test(local);
   }
   var NAME_RE_ = /^[A-Za-zÀ-ÖØ-öø-ÿ' \u2019-]+$/;
   var NAME_LETTER_RE_ = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
@@ -4724,7 +4729,10 @@ function apiAdminDrill(cred, n, talkId) {
       if (t.activa && (!talkId || String(t.id) === String(talkId))) { talk = t; break; }
     }
     if (!talk) return { ok: false, message: 'No hay una charla activa para el simulacro.' };
-    var marca = 'simulacro' + Date.now() + '-';
+    // Solo letras en la marca: la casilla del simulacro no puede llevar
+    // numeros fuera del año (misma regla que los alumnos).
+    var base36 = String(Date.now().toString(36)).replace(/\d/g, function (d) { return 'ghijklmnopqrst'.charAt(+d); });
+    var marca = 'simulacro' + base36;
     var ms = [];
     var okCount = 0;
     var fallas = {};
@@ -4733,7 +4741,8 @@ function apiAdminDrill(cred, n, talkId) {
     // cuele entre dos altas del simulacro con datos a mitad de relectura.
     var tanda = withScriptLock_(ADMIN_LOCK_MS * 10, function () {
       for (var k = 1; k <= total; k++) {
-        var email = marca + k + '2029@secundariosalsipuedes.edu.ar';
+        var sL = String(k).replace(/\d/g, function (d) { return 'ghijklmnopqrst'.charAt(+d); });
+        var email = marca + sL + '2029@secundariosalsipuedes.edu.ar';
         var t0 = Date.now();
         var r = registerLocked_(email, 'Alumno Simulacro', '2°A', talk.id, 'Simulacro', '', '');
         ms.push(Date.now() - t0);
@@ -4775,7 +4784,7 @@ function apiAdminDrill(cred, n, talkId) {
 function apiDrillCleanup(marca) {
   var m = String(marca || '');
   var todos = m === 'simulacro-todos';
-  if (!todos && !/^simulacro\d{10,}-$/.test(m)) return { ok: false, message: 'Marca inválida.' };
+  if (!todos && !/^simulacro[a-z]{5,}$/.test(m)) return { ok: false, message: 'Marca inválida.' };
   var borradas = todos ? drillCleanupTodos_() : drillCleanup_(m);
   invalidateDataCache_();
   scheduleRebuilds_();
@@ -4792,7 +4801,7 @@ function drillCleanupTodos_() {
       var rows = [];
       for (var i = 0; i < signups.length; i++) {
         var s = signups[i];
-        if (s && /^simulacro\d{10,}-\d+2029@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
+        if (s && /^simulacro[a-z]+2029@secundariosalsipuedes\.edu\.ar$/.test(String(s.email || ''))) {
           rows.push(findSignupRow_(s.id));
         }
       }

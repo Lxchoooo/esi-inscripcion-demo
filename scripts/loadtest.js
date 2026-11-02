@@ -173,7 +173,9 @@ function pausa() {
 }
 
 function mail(n) {
-  return 'carga' + String(n).padStart(3, '0') + '2029' + DOMINIO;
+  let s = '';
+  do { s = String.fromCharCode(97 + (n % 26)) + s; n = Math.floor(n / 26); } while (n > 0);
+  return 'carga' + s + '2029' + DOMINIO;
 }
 
 async function correrPool(items, limite, tarea) {
