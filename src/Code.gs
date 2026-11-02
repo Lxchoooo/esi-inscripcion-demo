@@ -1736,7 +1736,7 @@ function apiJsonp_(p) {
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
-function setup() {
+function setup(quiet) {
   var ss = SpreadsheetApp.getActive();
   ensureSheet_(ss, CONFIG_SHEET, ['clave', 'valor'], [
     ['evento_abierto', 'abierto']
@@ -1774,7 +1774,7 @@ function setup() {
   configureBackupTrigger_();
   try { ensureMailQueueTrigger_(); } catch (eQ) { }
   try { ensurePreceptorPlanillaTrigger_(); } catch (eP) { }
-  ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
+  if (!quiet) ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
   try { rebuildAlumnos_(); } catch (e) { }
 }
@@ -3220,8 +3220,43 @@ function migrateTalkCupo_() {
   } catch (e) { }
 }
 
+// Auto-setup: hoy el check "Version" del panel queda amarillo ("corre
+// setup() otra vez") hasta que alguien lo corra a mano. Si la hoja
+// recuerda una version de setup distinta a la del deploy, la proxima
+// lectura (alumno o admin) corre setup() SOLA: idempotente, silenciosa,
+// con tryLock (si otra escritura tiene el candado, sale y lo agarra el
+// proximo request) y con tope de 3 reintentos si algo falla, para no
+// atrasar cada lectura con un setup roto.
+function autoSetup_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (String(props.getProperty('LAST_SETUP_VERSION') || '') === BACKEND_VERSION) return;
+    if (Number(props.getProperty('AUTO_SETUP_FAILS') || 0) >= 3) return;
+    var lock = LockService.getScriptLock();
+    var tomado = false;
+    try { tomado = !!lock.tryLock(); } catch (eL) { }
+    if (!tomado) return;
+    try {
+      var p2 = PropertiesService.getScriptProperties();
+      if (String(p2.getProperty('LAST_SETUP_VERSION') || '') === BACKEND_VERSION) return;
+      setup(true);
+      try { logAction_('auto_setup', '', 'version=' + BACKEND_VERSION); } catch (eL2) { }
+      props.setProperty('AUTO_SETUP_FAILS', '0');
+    } finally {
+      try { lock.releaseLock(); } catch (eL3) { }
+    }
+  } catch (e) {
+    try {
+      var p3 = PropertiesService.getScriptProperties();
+      p3.setProperty('AUTO_SETUP_FAILS', String(Number(p3.getProperty('AUTO_SETUP_FAILS') || 0) + 1));
+      try { logAction_('auto_setup_fallo', '', String(e && e.message || e)); } catch (eL4) { }
+    } catch (eP) { }
+  }
+}
+
 function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
   migrateTalkCupo_();
+  autoSetup_();
   try {
     var current = sessionToken ? studentSession_(sessionToken) : null;
     if (sessionToken && !current) return studentSessionExpired_();
@@ -3913,6 +3948,7 @@ function apiAdminLogin(pin, ua) {
 
 function apiAdminGetData(cred) {
   migrateTalkCupo_();
+  autoSetup_();
   try {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
