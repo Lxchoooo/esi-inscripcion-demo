@@ -2013,6 +2013,22 @@ t('Code.gs talk roster counts and sorts by surname', () => {
   assertEq(missing.ok, false, 'unknown talk');
 });
 
+t('migracion cupo 43: las filas con cupo 40 pasan a 43 una sola vez', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiGetData');
+  api.apiGetData('ana@secundariosalsipuedes.edu.ar', 'Ana', '2°B');
+  const talks = services.sheets.Talks.data.slice(1);
+  const con40 = talks.filter((f) => Number(f[5]) === 40);
+  if (con40.length) throw new Error('quedaron filas con cupo 40: ' + JSON.stringify(con40));
+  const mal = talks.filter((f) => Number(f[5]) !== 43);
+  if (mal.length) throw new Error('filas con cupo distinto de 43: ' + JSON.stringify(mal));
+  // La barrida no se repite: el candado queda en Script properties.
+  const props = services.PropertiesService.getScriptProperties();
+  if (String(props.getProperty('migr_cupo43')) !== 'si') throw new Error('sin candado de migracion');
+  const seed43_OK = /var cupo = 43;/.test(read('Code.gs'));
+  if (!seed43_OK) throw new Error('la seed nueva sigue en 40');
+});
+
 t('Code.gs talk roster exposes the DNI for the ficha', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso', 'dni'], [
@@ -2885,10 +2901,12 @@ t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   assertEq(busy, 0, 'no lock failures in the simulation');
   const rows = services.sheets.Signups.data.slice(1);
   const seats = rows.filter((r) => r[7] === 'B1');
-  assertEq(seats.length, 40, 'cap respected');
+  // El cupo pasa a 43 (pedido del preceptor 2/11/2026); la migracion lo
+  // aplica tambien aca: la regla de negocio es la misma en vivo y en stub.
+  assertEq(seats.length, 43, 'cap respected');
   assertEq(ok + full, order.length, 'all attempts answered');
-  assertEq(ok, 50, '40 seats plus 10 already-registered answers');
-  assertEq(full, 10, 'ten attempts without a seat');
+  assertEq(ok, 53, '43 seats plus 10 already-registered answers');
+  assertEq(full, 7, 'seven attempts without a seat');
   const keys = seats.map((r) => r[2] + '|' + r[7]);
   assertEq(new Set(keys).size, keys.length, 'no duplicate rows');
 });

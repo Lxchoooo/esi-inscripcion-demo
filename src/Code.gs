@@ -2415,7 +2415,9 @@ function ensureColumn_(sh, header) {
 }
 
 function seedTalks_() {
-  var cupo = 40;
+  // 43 lugares por charla (pedido del preceptor 2/11/2026): los aulas
+  // cerradas del momento de armado eran 40.
+  var cupo = 43;
   return [
     ['B1', 'Salud Mental: Ansiedad', 'basico', 1, 'A confirmar', cupo, true],
     ['B2', 'Consumos Problemáticos: Alcohol', 'basico', 1, 'A confirmar', cupo, true],
@@ -3188,7 +3190,38 @@ function apiSetReminder(token, value) {
   });
 }
 
+// Migracion one-shot (2/11/2026, pedido del preceptor): las charlas se
+// llenan con 43 lugares, no con los 40 de la seed original. Solo toca las
+// filas con cupo === 40 (el valor viejo), no personaliza nada mas; la
+// propiedad evita repetir la barrida en cada request.
+function migrateTalkCupo_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (String(props.getProperty('migr_cupo43')) === 'si') return;
+    var sh = SpreadsheetApp.getActive().getSheetByName(TALKS_SHEET);
+    if (!sh) return;
+    var vals = sh.getDataRange().getValues();
+    if (vals.length < 2) { props.setProperty('migr_cupo43', 'si'); return; }
+    var cupoIdx = -1;
+    for (var i = 0; i < vals[0].length; i++) {
+      if (EsiCore.normalizeText(vals[0][i]) === 'cupo') { cupoIdx = i; } 
+    }
+    if (cupoIdx < 0) { props.setProperty('migr_cupo43', 'si'); return; }
+    var changed = 0;
+    for (var r = 1; r < vals.length; r++) {
+      if (Number(vals[r][cupoIdx]) === 40 && String(vals[r][cupoIdx]).trim() !== '') {
+        sh.getRange(r + 1, cupoIdx + 1).setValue(43);
+        changed++;
+      }
+    }
+    props.setProperty('migr_cupo43', 'si');
+    try { logAction_('cupo_43', '', 'filas=' + changed); } catch (eL) { }
+    invalidateDataCache_();
+  } catch (e) { }
+}
+
 function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
+  migrateTalkCupo_();
   try {
     var current = sessionToken ? studentSession_(sessionToken) : null;
     if (sessionToken && !current) return studentSessionExpired_();
@@ -3879,6 +3912,7 @@ function apiAdminLogin(pin, ua) {
 }
 
 function apiAdminGetData(cred) {
+  migrateTalkCupo_();
   try {
     var auth = adminAuth_(cred);
     if (!auth.ok) return { ok: false, message: auth.message };
