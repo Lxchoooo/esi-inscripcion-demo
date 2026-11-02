@@ -316,11 +316,15 @@ curl -fsSL "https://lxchoooo.github.io/esi-inscripcion-demo/?v=$(date +%s)" \
   verificar) reintenta UNA vez con la casilla default y lo loguea. En
   producción 19:00–19:12 no hubo rechazo: **esi@ verificado por omisión
   de rechazo, pendiente confirmación visual en Enviados**.
-- **Bug TZ del poller corregido**: los seriales de Sheets son UTC puro;
-  toda la aritmética `TZ_OFFSET_H` salió de `serialToEpochMs`/
-  `epochToSerial` (los `envio_at` viejos quedaron +3 h pero son
-  'enviado', sin efecto). Poller reiniciado con el fix + `ESI_FROM`
-  (start.sh guardado para arranques futuros).
+- **TZ del poller: convención confirmada por medición en vivo** (test
+  row con `apiMailDiag` de proyecto): los seriales que Apps Script
+  escribe en la hoja llevan el RELOJ LOCAL del TZ de la hoja (GMT-3),
+  no UTC puro. El código original del poller (`TZ_OFFSET_H = -3` en
+  `serialToEpochMs`/`epochToSerial`) era el correcto; un intento de
+  "fix" con seriales UTC puro lo hizo retroceder los relojes +3 h y
+  se REVERTIÓ. Las filas de recordatorio (encoladas 16:26 ART) se
+  enviaron 19:26-27 UTC (=16:26-27 ART) con From esi@ sin rechazo:
+  primera corrida real de recordatorios end-to-end por la cola.
 - **Mails rebotando**: captura 15:31 muestra Mail Delivery Subsystem
   para `moralessokoignacio2028@...`: casilla de ciclo básico que NO
   existe en el Workspace (menores de 13 sin cuenta, families.google lo
