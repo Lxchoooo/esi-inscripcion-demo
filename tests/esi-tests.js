@@ -1717,7 +1717,7 @@ t('El panel de profes se reconoce desde el servidor', () => {
 t('El botón de confirmar aparece recién cuando eligió todas las charlas', () => {
   if (!/id="sel-bar"/.test(panelHtml)) throw new Error('sel-bar has no id');
   if (!/Inscripción confirmada/.test(panelSrc)) throw new Error('no done state');
-  if (!/var canConfirm = !!d\.evento_abierto && !sState\.confirmed && \(done \|\| partial\);/.test(panelSrc)) {
+  if (!/var canConfirm = !!d\.evento_abierto && !sState\.confirmed && done;/.test(panelSrc)) {
     throw new Error('confirm button does not gate on the right state');
   }
   if (!/confirmBtn\.style\.display = canConfirm \? '' : 'none'/.test(panelSrc)) {
@@ -1725,19 +1725,23 @@ t('El botón de confirmar aparece recién cuando eligió todas las charlas', () 
   }
 });
 
-t('Franja llena: el alumno puede confirmar sin la franja que no eligió', () => {
-  // Caso del que llega tarde: todas las aulas de una franja llenas no dejan
-  // al alumno sin inscribir nada. El botón aparece con al menos una charla
-  // y la confirmación con faltantes exige sheet de aviso previo, no la
-  // marca directa.
-  if (!/'Confirmar igual'/.test(panelSrc)) throw new Error('sheet de confirmacion parcial falta');
-  if (!/Confirmar sin ' \+ \(missing\.length === 1 \? '1 franja' : missing\.length \+ ' franjas'\)/.test(panelSrc)) {
-    throw new Error('etiqueta parcial falta');
+t('Franja llena: cartelito en el horario y el alta con lo elegido', () => {
+  // Caso del que llega tarde: si TODAS las charlas de una franja estan
+  // llenas, la franja queda con cartelito y el confirm sale sin obligar a
+  // elegir ahi. NO hay confirmacion parcial con faltantes disponibles:
+  // esas franjas piden eleccion como siempre.
+  if (!/function sSlotEsLlena_/.test(panelSrc)) throw new Error('falta detector de franja llena');
+  if (!/slot-full-note/.test(panelHtml)) throw new Error('cartelito de franja llena falta');
+  if (/Confirmar sin /.test(panelSrc)) throw new Error('quedo la etiqueta parcial en el boton');
+  if (!/'Confirmar igual'/.test(panelSrc) === false) {
+    throw new Error('quedo la sheet de confirmacion parcial');
   }
-  if (!/function sConfirmGo_\(/.test(panelSrc)) throw new Error('la confirmacion final no esta extraida');
-  // Sin nada elegido sigue el empujon hacia la primera completada.
-  if (!/if \(sChosenCount_\(\) > 0\) \{[\s\S]{0,600}openSheet\(\{/.test(panelSrc)) {
-    throw new Error('el aviso parcial exige al menos una charla');
+  if (!/todaLlena\) \{[\s\S]{0,120}sConfirmGo_\(\)/.test(panelSrc)) {
+    throw new Error('el confirm con franjas llenas no confirma directo');
+  }
+  // La barra sticky no tapa mas el boton del sheet (captura 23:50).
+  if (!/body\.sheet-open \.sel-bar \{ display: none; \}/.test(panelHtml)) {
+    throw new Error('el sel-bar sigue tapando el sheet');
   }
 });
 

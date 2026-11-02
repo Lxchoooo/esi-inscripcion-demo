@@ -1724,6 +1724,7 @@
       .stat { padding: 10px; }
       .stat-num { font-size: 21px; }
       .slot-missing { width: 100%; margin-left: 0; }
+      .slot-full-note { width: 100%; margin-left: 0; }
       .brand-school { font-size: 9px; }
       .sel-hint { overflow-wrap: anywhere; }
       .login-note { font-size: 12px; }
@@ -2047,6 +2048,21 @@
     .mini-summary .ms-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
     .mini-summary .ms-t.falta { color: var(--muted); font-weight: 500; font-style: italic; }
     .mini-summary .ms-meta { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+    /* ==== v111: cartelito de franja llena + sheet por encima de la barra ====
+       Cuando TODAS las charlas de un horario quedaron sin lugares: nota
+       visible en la franja. No bloquea elegir las otras franjas ni el alta.
+       Presupuesto CSS propio ~2 KB (base r14 4KB, v110 2KB). */
+    .slot-full-note {
+      display: inline-flex; align-items: center; margin-left: auto;
+      padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800;
+      letter-spacing: .02em; text-transform: uppercase;
+      background: rgba(154, 62, 49, .12); color: var(--danger);
+      max-width: 100%;
+    }
+    /* El sel-bar tapaba la fila de acciones del sheet (Anotarme/Cancelar):
+       mientras hay sheet abierto, la barra sale del medio. */
+    body.sheet-open .sel-bar { display: none; }
+
     .slot-done {
       display: inline-flex; align-items: center; gap: 4px; margin-left: auto;
       padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800;
@@ -5390,6 +5406,19 @@
       });
     }
 
+    function sSlotEsLlena_(slotId) {
+      var talks = (sState.data && sState.data.talks) || [];
+      var hay = false;
+      for (var i = 0; i < talks.length; i++) {
+        if (Number(talks[i].slot_id) !== Number(slotId)) continue;
+        if (Number(talks[i].restantes) > 0) return false;
+        hay = true;
+      }
+      // Sin charlas para esa franja (caso raro) cuenta como llena: no
+      // hay nada por elegir.
+      return true;
+    }
+
     function sMissingSlots() {
       var d = sState.data || {};
       var slots = d.slots || [];
@@ -5475,28 +5504,23 @@
       }
       $('summary').innerHTML = '<div class="who">' + esc(st.nombre) + ' · ' + esc(st.curso) + '</div>'
         + '<div class="email">' + esc(st.email) + '</div>';
-      var done = slots.length > 0 && chosenCount >= slots.length && !missing.length;
+      var confirmBtn = $('btn-confirmar');
+      // El alta exige las tres franjas, salvo que las franjas pendientes
+      // esten completas: ahi el cartelito de la franja avisa que no hay
+      // lugares y el alumno confirma con lo que eligio (llego tarde).
+      var done = slots.length > 0 && slots.length && !missing.some(function (m) {
+        return m && !sSlotEsLlena_(m.id);
+      });
       var bar = $('sel-bar');
       if (bar) {
         bar.style.display = '';
         bar.className = 'sel-bar' + (done && !sState.confirmed ? ' is-ready' : '');
       }
-      var confirmBtn = $('btn-confirmar');
-      // Con las aulas de una franja llenas, el alumno que no eligió esa
-      // franja igual puede confirmar: el botón exigía las tres y lo dejaba
-      // sin inscribir nada (caso del que llega tarde, reportado hoy).
-      var partial = !done && chosenCount > 0 && missing.length < slots.length;
-      var canConfirm = !!d.evento_abierto && !sState.confirmed && (done || partial);
+      var canConfirm = !!d.evento_abierto && !sState.confirmed && done;
       if (confirmBtn) {
         confirmBtn.style.display = canConfirm ? '' : 'none';
         var lab = confirmBtn.querySelector('span');
-        if (lab) {
-          // Etiqueta corta: la lista de horarios desbordaba la barra sticky
-          // (capturas 23:30, tapaba el contador de elegidas).
-          lab.textContent = (partial && missing.length)
-            ? 'Confirmar sin ' + (missing.length === 1 ? '1 franja' : missing.length + ' franjas')
-            : 'Confirmar inscripción';
-        }
+        if (lab) lab.textContent = 'Confirmar inscripción';
       }
       var countEl = $('sel-count');
       if (countEl) {
@@ -5523,10 +5547,16 @@
         var h2 = document.createElement('h2');
         h2.className = 'slot-title';
         var slotChosen = mine[Number(slots[s].id)] ? sTalkById(mine[Number(slots[s].id)]) : null;
+        // Cartelito de franja llena: todas las charlas del horario sin
+        // lugares. No bloquea seguir con las otras franjas ni el alta.
+        var notaLlena = !slotChosen && sSlotEsLlena_(slots[s].id)
+          ? '<span class="slot-full-note">Sin lugares: no podés entrar a charla de esta franja</span>'
+          : '';
         h2.innerHTML = '<span class="time-pill">Horario ' + (s + 1) + '</span>'
           + '<span class="slot-time">· ' + esc(slots[s].label) + '</span>'
           + (isMissing ? '<span class="slot-missing">Falta elegir</span>' : '')
-          + (slotChosen ? '<span class="slot-done">Ya elegiste</span>' : '');
+          + (slotChosen ? '<span class="slot-done">Ya elegiste</span>' : '')
+          + notaLlena;
         section.appendChild(h2);
         var grid = document.createElement('div');
         grid.className = 'slot-grid stagger';
@@ -5710,23 +5740,6 @@
       el.hidden = false;
     }
 
-    function sChosenCount_() {
-      var mine = (sState.data && sState.data.mine) || {};
-      var n = 0;
-      for (var id in mine) {
-        if (Object.prototype.hasOwnProperty.call(mine, id) && sTalkById(mine[id])) n++;
-      }
-      return n;
-    }
-
-    function sMissingLabels_(missing) {
-      var out = [];
-      for (var i = 0; i < missing.length; i++) {
-        out.push(missing[i].label || ('franja ' + missing[i].index));
-      }
-      return out.join(', ');
-    }
-
     function sConfirmar() {
       if (sState.busy) return; // doble tap durante la request no marca listo
       var d = sState.data || { slots: [], mine: {} };
@@ -5734,19 +5747,15 @@
       if (!slots.length) return;
       var missing = sMissingSlots();
       if (missing.length) {
-        // Alumno que llega tarde: todas las aulas de una franja pueden estar
-        // llenas. Con al menos una charla elegida, avisa que esa franja
-        // queda libre y deja confirmar igual; sin nada elegido sigue el
-        // empujón hacia la primera franja completada.
-        if (sChosenCount_() > 0) {
-          var body = '<p>Quedás sin charla en: ' + esc(sMissingLabels_(missing)) + '.</p>'
-            + '<p class="sheet-warn">Las franjas que no elegiste quedan sin charla asignada. Si más tarde aparece un lugar, un docente puede anotarte desde el panel.</p>';
-          openSheet({
-            title: 'Confirmar con franja libre',
-            body: body,
-            confirm: 'Confirmar igual',
-            onConfirm: function () { sConfirmGo_(); }
-          });
+        // Franja completa llena (alumno que llega tarde): la franja ya viene
+        // con cartelito visual; el alta sale con lo elegido. Si algo queda
+        // disponible en esas franjas, empujón hacia la primera pendiente.
+        var todaLlena = true;
+        for (var i = 0; i < missing.length; i++) {
+          if (!sSlotEsLlena_(missing[i].id)) todaLlena = false;
+        }
+        if (todaLlena) {
+          sConfirmGo_();
           return;
         }
         sState.showMissing = true;
