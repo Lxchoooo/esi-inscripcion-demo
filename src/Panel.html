@@ -2238,6 +2238,26 @@
     @media (max-width: 719px) {
       body[data-screen="a-screen-panel"] .toast { bottom: calc(78px + env(safe-area-inset-bottom)); }
     }
+
+    /* ==== v109: ficha del alumno (sheet) ====
+       Datos en tarjetas tipeables: DNI y mail se copian con un toque
+       (delegacion data-copiame), la fila completa responde visualmente. */
+    .ficha-copy {
+      display: grid; gap: 4px; cursor: pointer; margin-top: 10px;
+      background: var(--surface-2); border: 1px solid var(--line);
+      border-radius: 12px; padding: 11px 12px 12px;
+    }
+    .ficha-copy .mail-detail-label { margin: 0; }
+    .ficha-copy .mail-detail-address {
+      border: 0; padding: 2px 0 0; margin: 0;
+      background: transparent; font-size: 15.5px;
+    }
+    .ficha-copy:active {
+      background: var(--accent-soft); border-color: var(--accent-line);
+    }
+    .ficha-copy:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .mail-detail .hint-line { margin-top: 12px; }
+    .mail-detail > .sheet-meta:first-of-type { margin: 4px 0 0; color: var(--ink); font-weight: 600; }
   </style>
   <script>
     (function () {
@@ -8049,13 +8069,24 @@
       var body = '<div class="mail-detail">'
         + '<p class="mail-detail-name">' + esc(who) + '</p>';
       if (curso) {
-        var pc = EsiClient.parseCurso(String(curso));
-        body += pc
-          ? '<p class="sheet-meta">' + esc(curso) + ' · Año ' + esc(pc.slice(0, pc.length - 1)) + ' · División ' + esc(pc.slice(pc.length - 1)) + '</p>'
-          : '<p class="sheet-meta">' + esc(curso) + '</p>';
+        var crudo = String(curso).trim();
+        var pc = EsiClient.parseCurso(crudo);
+        // Año y Division salen del valor PARSEADO: antes se le clavaba
+        // slice() al curso completo y salia "6ºTurism · División o".
+        if (pc) {
+          var cut = pc.indexOf('\u00B0');
+          var anio = cut >= 0 ? pc.slice(0, cut + 1) : '';
+          var div = cut >= 0 ? pc.slice(cut + 1) : '';
+          if (div) body += '<p class="sheet-meta">Año ' + esc(anio) + ' · División ' + esc(div) + '</p>';
+          else body += '<p class="sheet-meta">Año ' + esc(pc) + '</p>';
+        } else {
+          body += '<p class="sheet-meta">' + esc(crudo) + '</p>';
+        }
       }
       if (String(dni || '').trim()) {
-        body += '<p class="mail-detail-label">DNI</p><code class="mail-detail-address">' + esc(String(dni).trim()) + '</code>';
+        body += '<div class="ficha-copy" data-copiame="' + esc(String(dni).trim()) + '" data-copiamsg="DNI copiado." role="button" tabindex="0">'
+          + '<span class="mail-detail-label">DNI</span>'
+          + '<code class="mail-detail-address">' + esc(String(dni).trim()) + '</code></div>';
       }
       var chars = String(charlasStr || '').split(';;').filter(function (x) { return x; });
       if (chars.length) {
@@ -8067,9 +8098,10 @@
         }
         body += '</ul>';
       }
-      body += '<p class="mail-detail-label">Mail institucional</p>'
-        + '<code class="mail-detail-address">' + esc(mail) + '</code>'
-        + '<p class="hint-line">Tocá Copiar mail para usarlo en otro lado.</p></div>';
+      body += '<div class="ficha-copy" data-copiame="' + esc(mail) + '" data-copiamsg="Mail copiado." role="button" tabindex="0">'
+        + '<span class="mail-detail-label">Mail institucional</span>'
+        + '<code class="mail-detail-address">' + esc(mail) + '</code></div>'
+        + '<p class="hint-line">Tocá el DNI o el mail para copiarlos.</p></div>';
       openSheet({
         title: 'Ficha del alumno',
         body: body,
@@ -9712,6 +9744,11 @@
         var el = ev.target;
         while (el && el !== document) {
           if (el.getAttribute) {
+            var copyVal = el.getAttribute('data-copiame');
+            if (copyVal) {
+              aCopyText_(copyVal, el.getAttribute('data-copiamsg') || 'Copiado.');
+              return;
+            }
             var mail = el.getAttribute('data-mail');
             if (mail) {
               aShowMail_(mail, el.getAttribute('data-name') || '', el.getAttribute('data-curso') || '',
