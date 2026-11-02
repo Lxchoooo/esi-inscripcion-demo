@@ -5361,11 +5361,12 @@ t('r69: el confirm durante una request no se pierde: se encola y se confirma al 
   if (!/function sRegister\(talkId\) \{\s*if \(sState\.busy\) \{[\s\S]{0,180}sState\.nextConfirm = talkId;/s.test(panelSrc)) {
     throw new Error('sRegister sigue tirando el confirm durante busy');
   }
-  // 2) sNextConfirmIfAny procesa la cola SOLO cuando el server libero (ventana 6 s).
+  // 2) sNextConfirmIfAny procesa la cola SOLO cuando el server libero (ventana 20 s,
+  //    mas larga que la latencia real de Apps Script con lock).
   if (!/function sNextConfirmIfAny\(\) \{[\s\S]{0,480}sRegister\(nx\)/.test(panelSrc)) {
     throw new Error('sin re-lanzador del confirm en cola');
   }
-  if (!/Date\.now\(\) - \(sState\.nextConfirmAt \|\| 0\) > 6000/.test(panelSrc)) {
+  if (!/Date\.now\(\) - \(sState\.nextConfirmAt \|\| 0\) > 20000/.test(panelSrc)) {
     throw new Error('la cola de confirms no vence');
   }
   // 3) Expirado/error limpian la cola para no confirmar algo viejo de otro mail.
@@ -5401,8 +5402,8 @@ t('r34: toques durante la confirmacion quedan en cola y la charla elegida muestr
   if (!/sState\.queued = talk\.id;[\s\S]{0,80}sState\.queuedAt = Date\.now\(\);/.test(panelSrc)) {
     throw new Error('el toque en cola no queda marcado con timestamp');
   }
-  // 2) sUnbusy_ cierra el ciclo: saca busy + wait y procesa la cola fresca (<5 s).
-  if (!/function sUnbusy_\(dropQueued\) \{[\s\S]{0,200}Date\.now\(\) - \(sState\.queuedAt \|\| 0\)\) < 5000/.test(panelSrc)) {
+  // 2) sUnbusy_ cierra el ciclo: saca busy + wait y procesa la cola fresca (<20 s).
+  if (!/function sUnbusy_\(dropQueued\) \{[\s\S]{0,200}Date\.now\(\) - \(sState\.queuedAt \|\| 0\)\) < 20000/.test(panelSrc)) {
     throw new Error('sUnbusy_ no procesa la cola o la cola no vence');
   }
   // 3) Register y carga de datos abandonan busy SOLO via sUnbusy_.
@@ -5451,6 +5452,80 @@ t('r25: los mails salen sin esperas de mas: gracia de 45 s y watchdog cada 2 min
   if (wd < 0) throw new Error('sin watchdog');
   if (!/everyMinutes\(2\)/.test(codeSrc.slice(wd, wd + 700))) {
     throw new Error('el watchdog sigue cada 5 min');
+  }
+});
+
+
+t('r70: abrir el evento con "si" en Config (antes solo "abierto"/"true")', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'isOpen_');
+  for (const v of ['abierto', 'si', 'sí', 'true', '1', 'ABIERTO', ' Si ']) {
+    assertEq(api.isOpen_({ evento_abierto: v }), true, 'abre con ' + JSON.stringify(v));
+  }
+  for (const v of ['cerrado', '', null, undefined, 'no', '0', 'abierto manana']) {
+    assertEq(api.isOpen_({ evento_abierto: v }), false, 'cierra con ' + JSON.stringify(v));
+  }
+});
+
+t('r71: el admin ve y asigna charlas ciclo "ambos" (cupos, alta manual y mover)', () => {
+  // Con las 30 charlas en 'ambos', los filtros que comparaban contra
+  // 'basico'/'orientado' dejaban los selects vacios el dia del evento.
+  const patterns = [
+    /\(talk\.ciclo !== ciclos\[c\] && talk\.ciclo !== 'ambos'\)/,
+    /\(t\.ciclo !== ciclo && t\.ciclo !== 'ambos'\)/,
+    /\(talk\.ciclo !== s\.ciclo && talk\.ciclo !== 'ambos'\)/,
+  ];
+  for (const re of patterns) {
+    if (!re.test(panelSrc)) throw new Error('filtro del admin sin ambos: ' + re);
+  }
+  // El demo tiene que aceptar el mismo contrato que el server.
+  if (!/talk\.ciclo !== s\.ciclo && talk\.ciclo !== 'ambos'/.test(panelSrc)) {
+    throw new Error('el demo sigue rechazando ambos');
+  }
+});
+
+t('r72: el rechazo del server no pinta "quedaste anotado" (orden de sRegister)', () => {
+  const reg = panelSrc.slice(panelSrc.indexOf('function sRegister'), panelSrc.indexOf('function sRenderChange'));
+  if (/sUnbusy_\(resp\.needsLogin \|\| resp\.expired\);\s*if \(resp\.needsLogin/.test(reg)) {
+    throw new Error('sUnbusy_ sigue corriendo antes de procesar la respuesta');
+  }
+  const okIdx = reg.indexOf('if (!resp.ok)');
+  const restoreIdx = reg.indexOf('sRestoreOptimistic_(snap)', okIdx);
+  const unbusyIdx = reg.indexOf('sUnbusy_(false)', okIdx);
+  if (okIdx < 0 || restoreIdx < 0 || unbusyIdx < 0 || restoreIdx > unbusyIdx) {
+    throw new Error('el rechazo no revierte antes de cerrar el toque');
+  }
+  if (!/sState\.confirmed = false;/.test(reg.slice(okIdx, unbusyIdx + 40))) {
+    throw new Error('el rechazo no desmarca la confirmacion');
+  }
+  if (/sState\.busy = false;/.test(reg)) throw new Error('sRegister apaga busy a mano');
+});
+
+t('r73: no se confirma sin ninguna charla elegida y una franja sin charlas no es "llena"', () => {
+  if (!/var alguna = false;[\s\S]{0,220}if \(!alguna\) \{[\s\S]{0,140}Elegí al menos una charla/.test(panelSrc)) {
+    throw new Error('falta el guard de confirmar con 0 elegidas');
+  }
+  if (!/si contara como llena[\s\S]{0,200}return hay;/.test(panelSrc)) {
+    throw new Error('franja sin charlas sigue contando como llena');
+  }
+});
+
+t('r74: mail con tildes avisa "sin tildes" en vez de mandar al dominio', () => {
+  if (!/\[\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1\u00c1\u00c9\u00cd\u00d3\u00da\u00dc\u00d1\]/.test(panelSrc)) {
+    throw new Error('sin deteccion de tildes en el mail');
+  }
+  if (!/Escribí el mail sin tildes/.test(panelSrc)) throw new Error('sin mensaje de tildes');
+});
+
+t('r75: el banner superior gana en el panel y la cola reclamada cuenta como pendiente', () => {
+  if (!/body\[data-screen="s-screen-panel"\] #s-banner\.banner-top \{ bottom: auto; \}/.test(panelCss())) {
+    throw new Error('el banner-top no tiene override en el panel');
+  }
+  if (!/estRow !== 'pendiente' && estRow !== 'cola_termux'/.test(codeSrc)) {
+    throw new Error('upsertPendingMail_ no ve la fila reclamada');
+  }
+  if (!/est === 'pendiente' \|\| est === 'cola_termux'/.test(codeSrc)) {
+    throw new Error('mailHistoria_ no ve la fila reclamada');
   }
 });
 

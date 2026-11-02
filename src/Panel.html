@@ -888,6 +888,7 @@
     }
     /* Error del mail: arriba y centrado, porque con el teclado abierto el
     aviso del pie queda tapado y hay que minimizarlo para leerlo. */
+    body[data-screen="s-screen-panel"] #s-banner.banner-top { bottom: auto; }
     #s-banner.banner-top {
       bottom: auto; top: calc(10px + env(safe-area-inset-top));
       left: 50%; right: auto; transform: translateX(-50%);
@@ -4054,7 +4055,7 @@
       var signups = demoSignups();
       if (!talk) return Promise.resolve({ ok: false, message: 'No encontramos esa charla.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       if (!talk.activa) return Promise.resolve({ ok: false, message: 'Esa charla no está disponible.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
-      if (talk.ciclo !== s.ciclo) return Promise.resolve({ ok: false, message: 'Esa charla no es de tu ciclo.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
+      if (talk.ciclo !== s.ciclo && talk.ciclo !== 'ambos') return Promise.resolve({ ok: false, message: 'Esa charla no es de tu ciclo.', data: demoPublicData(s.ciclo, demoMine(s.email)) });
       var plan = EsiClient.planRegistration(signups, talksById, { emailKey: s.emailKey, ciclo: s.ciclo }, talkId);
       if (plan.error) {
         return Promise.resolve({
@@ -4200,7 +4201,7 @@
       for (var j = 0; j < ids.length; j++) {
         var talk = DEMO_TALKS.filter(function (x) { return x.id === String(ids[j]); })[0];
         if (!talk) return { ok: false, message: 'No encontramos una de las charlas.' };
-        if (talk.ciclo !== v.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
+        if (talk.ciclo !== v.ciclo && talk.ciclo !== 'ambos') return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
         if (bySlot[Number(talk.slot_id)]) return { ok: false, message: 'Ya tiene una charla en ese horario.' };
         if ((counts[talk.id] || 0) >= talk.cupo) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
         bySlot[Number(talk.slot_id)] = true;
@@ -5226,7 +5227,6 @@
       sState.busy = true;
       call('apiGetData', [email, sState.nombre, sState.curso, token, sState.apellido || '', loginToken])
         .then(function (resp) {
-          sState.busy = false;
           if (resp && resp.ok) {
             sState.student = resp.student || sState.student;
             sAdoptData_(resp.data);
@@ -5246,8 +5246,11 @@
               sRender();
             }
           }
+          // Cierra el ciclo del toque (drena la cola): antes apagaba busy a
+          // mano y el tap encolado moria en silencio.
+          sUnbusy_();
         })
-        .catch(function () { sState.busy = false; });
+        .catch(function () { sUnbusy_(true); });
     }
 
     function sBanner(text, type, actionLabel, actionFn) {
@@ -5438,9 +5441,10 @@
         if (Number(talks[i].restantes) > 0) return false;
         hay = true;
       }
-      // Sin charlas para esa franja (caso raro) cuenta como llena: no
-      // hay nada por elegir.
-      return true;
+      // Sin charlas para esa franja NO es "llena": si contara como llena,
+      // el alumno confirmaba con 0 elegidas y la pantalla decia "quedaste
+      // anotado" sin haber guardado nada.
+      return hay;
     }
 
     function sMissingSlots() {
@@ -5776,6 +5780,13 @@
       var d = sState.data || { slots: [], mine: {} };
       var slots = d.slots || [];
       if (!slots.length) return;
+      var mineNow = d.mine || {};
+      var alguna = false;
+      for (var z = 0; z < slots.length; z++) { if (mineNow[Number(slots[z].id)]) { alguna = true; break; } }
+      if (!alguna) {
+        sBanner('Elegí al menos una charla para confirmar tu inscripción.', 'err');
+        return;
+      }
       var missing = sMissingSlots();
       if (missing.length) {
         // Franja completa llena (alumno que llega tarde): la franja ya viene
@@ -5911,7 +5922,7 @@
       sState.busy = false;
       sState.wait = null;
       if (dropQueued) { sState.queued = null; sState.confirmQueued = null; return; }
-      var fresh = sState.queued && (Date.now() - (sState.queuedAt || 0)) < 5000;
+      var fresh = sState.queued && (Date.now() - (sState.queuedAt || 0)) < 20000;
       if (fresh) {
         var next = sState.queued;
         sState.queued = null;
@@ -5934,7 +5945,7 @@
     function sUnbusyConfirm_() {
       var when = sState.confirmQueued;
       sState.confirmQueued = null;
-      if (!when || (Date.now() - when) >= 5000) return;
+      if (!when || (Date.now() - when) >= 20000) return;
       var d = sState.data;
       if (!d || !d.evento_abierto || sState.confirmed) return;
       var slots = d.slots || [];
@@ -5950,7 +5961,7 @@
       // El segundo confirm no se desperdicia: se confirma apenas el server
       // contesta el anterior (ventana de 6 s, despues es mas nuevo un tap).
       if (sState.busy || !sState.nextConfirm) return false;
-      if (Date.now() - (sState.nextConfirmAt || 0) > 6000) {
+      if (Date.now() - (sState.nextConfirmAt || 0) > 20000) {
         sState.nextConfirm = null; sState.nextConfirmAt = 0;
         return false;
       }
@@ -5982,7 +5993,10 @@
       sRenderChange(slotId, prevId, talkId);
       call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_(), sState.login || '', sState.dni || ''])
         .then(function (resp) {
-          sUnbusy_(resp.needsLogin || resp.expired);
+          // La respuesta se procesa PRIMERO y recien despues se cierra el
+          // ciclo del toque. Antes sUnbusy_ corria con el estado optimista y
+          // podia pintar "Listo, quedaste anotado" antes de saber si el
+          // server acepto (escenario 2-de-3 con confirm en cola).
           if (resp.needsLogin || resp.expired) {
             sState.nextConfirm = null; sState.nextConfirmAt = 0;
             sRestoreOptimistic_(snap);
@@ -5994,6 +6008,7 @@
             sClearStudentSession_();
             toast(resp.message || 'Tu sesión venció: entrá de nuevo con tu mail institucional.', 'err');
             showScreen(S_SCREENS, 's-screen-login');
+            sUnbusy_(true);
             return;
           }
           if (!resp.ok) {
@@ -6004,10 +6019,12 @@
             sState.confirmed = false;
             sBanner('');
             toast(resp.message || 'No se pudo anotar.', 'err');
+            // El ciclo del toque se cierra DESPUES de revertir: asi el que
+            // esperaba en cola no pinta la pantalla de listo.
+            sUnbusy_(false);
             if (/cupo|llen|complet/i.test(String(resp.message || ''))) sRefreshQuiet_();
             return;
           }
-          if (sNextConfirmIfAny()) return;
           if (resp.data) { sAdoptData_(resp.data); }
           sApplyTestModeFrom_(resp);
           if (resp.student) sState.student = resp.student;
@@ -6022,6 +6039,10 @@
           } catch (eCache) { }
           sBanner('');
           sRender();
+          // Ahora si: se cierra el ciclo del toque (y drena la cola). La
+          // sesion/estado ya se guardaron, asi que el confirm en cola no
+          // pierde el token nuevo.
+          sUnbusy_(false);
           sNextConfirmIfAny();
         })
         .catch(function () {
@@ -6185,6 +6206,10 @@
         return;
       }
       var mailLoc = email.split('@')[0];
+      if (/[áéíóúüñÁÉÍÓÚÜÑ]/.test(mailLoc)) {
+        sMailError_('Escribí el mail sin tildes: á→a, é→e, í→i, ó→o, ú→u.');
+        return;
+      }
       var mailCola = mailLoc.replace(/(?:2026|2027|2028|2029|2030|2031)$/, '');
       if (/\d/.test(mailCola)) {
         sMailError_('El mail no lleva números: es apellido + nombre + año de egreso (ej: gomezperezmaria2029).');
@@ -8233,7 +8258,7 @@
           html += '<h4>' + esc(d.slots[s].label) + '</h4>';
           for (var t = 0; t < d.talks.length; t++) {
             var talk = d.talks[t];
-            if (talk.ciclo !== ciclos[c] || Number(talk.slot_id) !== Number(d.slots[s].id)) continue;
+            if ((talk.ciclo !== ciclos[c] && talk.ciclo !== 'ambos') || Number(talk.slot_id) !== Number(d.slots[s].id)) continue;
             var pct = talk.cupo > 0 ? Math.min(100, Math.round(talk.anotados * 100 / talk.cupo)) : 0;
             var full = talk.anotados >= talk.cupo;
             html += '<div class="talk-row">'
@@ -8270,7 +8295,7 @@
         if (ciclo) {
           for (var j = 0; j < talks.length; j++) {
             var t = talks[j];
-            if (!t.activa || t.ciclo !== ciclo || String(t.slot_id) !== slotId) continue;
+            if (!t.activa || (t.ciclo !== ciclo && t.ciclo !== 'ambos') || String(t.slot_id) !== slotId) continue;
             var libres = Math.max(0, Number(t.cupo || 0) - Number(t.anotados || 0));
             opts += '<option value="' + esc(String(t.id)) + '">'
               + esc(t.titulo) + ' (' + libres + (libres === 1 ? ' libre' : ' libres') + ')</option>';
@@ -9702,7 +9727,7 @@
       var opts = '';
       for (var t = 0; t < aData.talks.length; t++) {
         var talk = aData.talks[t];
-        if (!talk.activa || Number(talk.slot_id) !== Number(s.slot_id) || talk.ciclo !== s.ciclo) continue;
+        if (!talk.activa || Number(talk.slot_id) !== Number(s.slot_id) || (talk.ciclo !== s.ciclo && talk.ciclo !== 'ambos')) continue;
         var left = Number(talk.cupo) - Number(talk.anotados || 0);
         if (left <= 0 && String(talk.id) !== String(s.talk_id)) continue;
         opts += '<option value="' + esc(talk.id) + '">' + esc(talk.titulo + ' · ' + left + ' lugares') + '</option>';

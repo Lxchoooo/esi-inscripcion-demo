@@ -925,7 +925,10 @@ function mailHistoria_(email) {
   for (var i = 1; i < q.vals.length; i++) {
     if (String(q.vals[i][q.map.email]).trim().toLowerCase() !== dest) continue;
     var est = String(q.vals[i][q.map.estado] || '').trim().toLowerCase();
-    if (est === 'pendiente') out.pendiente = true;
+    // 'cola_termux' es una fila reclamada por el poller: sigue pendiente de
+    // envio. Si no se cuenta, un cambio de charla o un recordatorio encola
+    // una SEGUNDA fila y el alumno recibe el mail dos veces.
+    if (est === 'pendiente' || est === 'cola_termux') out.pendiente = true;
     else if (est === 'enviado') out.enviado = true;
   }
   return out;
@@ -945,7 +948,8 @@ function upsertPendingMail_(email, tipo, subject, body) {
     for (var i = 1; i < q.vals.length; i++) {
       var row = q.vals[i];
       if (String(row[q.map.email]).trim().toLowerCase() !== String(email).trim().toLowerCase()) continue;
-      if (String(row[q.map.estado]) !== 'pendiente') continue;
+      var estRow = String(row[q.map.estado] || '').trim().toLowerCase();
+      if (estRow !== 'pendiente' && estRow !== 'cola_termux') continue;
       q.sh.getRange(i + 1, q.map.tipo + 1).setValue(tipo);
       q.sh.getRange(i + 1, q.map.asunto + 1).setValue(subject);
       q.sh.getRange(i + 1, q.map.cuerpo + 1).setValue(body);
@@ -2649,7 +2653,9 @@ function eventDayEndMs_(cfg) {
 
 function isOpen_(cfg) {
   var v = String(cfg.evento_abierto == null ? '' : cfg.evento_abierto).trim().toLowerCase();
-  return v === 'abierto' || v === 'true';
+  // 'si' es la forma que usan las demas banderas de Config (modo_prueba=si).
+  // Si el equipo abre el evento escribiendo 'si' a mano, antes quedaba cerrado.
+  return v === 'abierto' || v === 'true' || v === 'si' || v === 'sí' || v === '1';
 }
 
 function slotTime_(v, display) {
