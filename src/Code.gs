@@ -153,6 +153,15 @@ var EsiCore = (function () {
     return null;
   }
 
+  // Una charla con ciclo 'ambos' sirve para basico y orientado igual.
+  function cycleAllowsTalk(talkCiclo, studentCiclo) {
+    var t = String(talkCiclo == null ? '' : talkCiclo).trim().toLowerCase();
+    var s = String(studentCiclo == null ? '' : studentCiclo).trim().toLowerCase();
+    if (t === 'ambos') return true;
+    if (!t || !s) return false;
+    return t === s;
+  }
+
   function validateStudentInput(email, nombre, curso, apellido) {
     var e = normalizeEmail(email);
     if (!isValidEmail(e)) return { ok: false, error: 'email' };
@@ -381,7 +390,7 @@ var EsiCore = (function () {
     var talk = talksById[talkId];
     if (!talk) return { error: 'talkNotFound' };
     if (!talk.activa) return { error: 'talkInactive' };
-    if (talk.ciclo !== student.ciclo) return { error: 'talkWrongCycle' };
+    if (!cycleAllowsTalk(talk.ciclo, student.ciclo)) return { error: 'talkWrongCycle' };
 
     var counts = {};
     var mine = [];
@@ -421,6 +430,7 @@ var EsiCore = (function () {
     isValidDni: isValidDni,
     looksLikeFormula_: looksLikeFormula_,
     cicloFromCurso: cicloFromCurso,
+    cycleAllowsTalk: cycleAllowsTalk,
     validateStudentInput: validateStudentInput,
     planRegistration: planRegistration,
     cursoFromParts: cursoFromParts,
@@ -1578,30 +1588,37 @@ function checkTalks_(talks, slots) {
   var active = [];
   for (var i = 0; i < (talks || []).length; i++) if (talks[i] && talks[i].activa) active.push(talks[i]);
   if (!active.length) return checkItem_('charlas', 'Charlas por franja', 'rojo', 'No hay ninguna charla activa.');
-  var ciclos = [];
-  var seen = {};
-  for (var j = 0; j < active.length; j++) {
-    var c = String(active[j].ciclo || '');
-    if (!c || seen[c]) continue;
-    seen[c] = true;
-    ciclos.push(c);
-  }
   var lista = slots && slots.length ? slots : [];
-  var faltan = [];
-  for (var k = 0; k < ciclos.length; k++) {
-    for (var f = 0; f < lista.length; f++) {
-      var hay = false;
-      for (var m = 0; m < active.length; m++) {
-        if (active[m].ciclo === ciclos[k] && Number(active[m].slot_id) === Number(lista[f].id)) { hay = true; break; }
-      }
-      if (!hay) faltan.push((ciclos[k] === 'basico' ? 'Básico' : ciclos[k] === 'orientado' ? 'Orientado' : ciclos[k]) + ' en la ' + lista[f].nombre);
+  var exclusivo = { basico: 0, orientado: 0 };
+  var ambos = 0;
+  var cubre = { basico: [], orientado: [] };
+  for (var j = 0; j < active.length; j++) {
+    var c = String(active[j].ciclo || '').trim().toLowerCase();
+    if (c === 'ambos') {
+      ambos++;
+      cubre.basico.push(active[j]);
+      cubre.orientado.push(active[j]);
+      continue;
+    }
+    if (c === 'basico' || c === 'orientado') {
+      exclusivo[c]++;
+      cubre[c].push(active[j]);
     }
   }
-  var resumen = ciclos.map(function (c) {
-    var n = 0;
-    for (var q = 0; q < active.length; q++) if (active[q].ciclo === c) n++;
-    return (c === 'basico' ? 'Básico' : c === 'orientado' ? 'Orientado' : c) + ' ' + n;
-  }).join(' · ');
+  var nombres = { basico: 'Básico', orientado: 'Orientado' };
+  var faltan = [];
+  ['basico', 'orientado'].forEach(function (key) {
+    for (var f = 0; f < lista.length; f++) {
+      var hay = false;
+      for (var m = 0; m < cubre[key].length; m++) {
+        if (Number(cubre[key][m].slot_id) === Number(lista[f].id)) { hay = true; break; }
+      }
+      if (!hay) faltan.push(nombres[key] + ' en la ' + lista[f].nombre);
+    }
+  });
+  var resumen = ['Básico ' + exclusivo.basico, 'Orientado ' + exclusivo.orientado];
+  if (ambos > 0) resumen.push('Ambos ' + ambos);
+  resumen = resumen.join(' · ');
   if (faltan.length) {
     return checkItem_('charlas', 'Charlas por franja', 'amarillo', 'Falta una charla de ' + faltan.join(', ') + '.');
   }
@@ -2519,31 +2536,46 @@ function ensureColumn_(sh, header) {
 // ciclo (ITS sale CB y CO) + repeticiones para llenar 10 filas de basico
 // y 9 de orientado. Orden变化ado a proposito entre ciclos y franjas para
 // que las lecturas del panel no se vean clonadas.
+// Cada franja lleva 10 charlas con ciclo 'ambos' (pedido de la preceptora
+// 2/11/2026): basico y orientado eligen de la MISMA lista, incluidas las dos
+// versiones de ITS, 'ITS Ciclo Básico' y 'ITS Ciclo Orientado'.
 function seedTalks_() {
   // 43 lugares por charla (pedido del preceptor 2/11/2026): los aulas
   // cerradas del momento de armado eran 40.
   var cupo = 43;
-  var its = 'ITS: adolescentes expuestos, cuidado y prevención';
+  var itsCb = 'ITS Ciclo Básico';
+  var itsCo = 'ITS Ciclo Orientado';
   return [
-    ['B1', 'Consumo problemático: alcohol y vapeo', 'basico', 1, 'A confirmar', cupo, true],
-    ['B2', 'Salud mental: depresión', 'basico', 1, 'A confirmar', cupo, true],
-    ['B3', its, 'basico', 1, 'A confirmar', cupo, true],
-    ['B4', 'Ciberbullying y grooming', 'basico', 1, 'A confirmar', cupo, true],
-    ['B5', 'Deportes y alimentación saludable', 'basico', 2, 'A confirmar', cupo, true],
-    ['B6', 'Salud mental: educación emocional', 'basico', 2, 'A confirmar', cupo, true],
-    ['B7', 'Consumo problemático: juegos en línea', 'basico', 2, 'A confirmar', cupo, true],
-    ['B8', its, 'basico', 3, 'A confirmar', cupo, true],
-    ['B9', 'Masculinidades', 'basico', 3, 'A confirmar', cupo, true],
-    ['B10', 'Consumo problemático: alcohol y vapeo', 'basico', 3, 'A confirmar', cupo, true],
-    ['O1', 'Salud mental: depresión', 'orientado', 1, 'A confirmar', cupo, true],
-    ['O2', 'Consumo problemático: alcohol y vapeo', 'orientado', 1, 'A confirmar', cupo, true],
-    ['O3', its, 'orientado', 1, 'A confirmar', cupo, true],
-    ['O4', 'Ciberbullying y grooming', 'orientado', 1, 'A confirmar', cupo, true],
-    ['O5', 'Consumo problemático: juegos en línea', 'orientado', 2, 'A confirmar', cupo, true],
-    ['O6', 'Masculinidades', 'orientado', 2, 'A confirmar', cupo, true],
-    ['O7', 'Deportes y alimentación saludable', 'orientado', 2, 'A confirmar', cupo, true],
-    ['O8', its, 'orientado', 3, 'A confirmar', cupo, true],
-    ['O9', 'Salud mental: educación emocional', 'orientado', 3, 'A confirmar', cupo, true]
+    ['T01', itsCb, 'ambos', 1, 'A confirmar', cupo, true],
+    ['T02', itsCo, 'ambos', 1, 'A confirmar', cupo, true],
+    ['T03', 'Consumo problemático: alcohol y vapeo', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T04', 'Salud mental: depresión', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T05', 'Ciberbullying y grooming', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T06', 'Salud mental: educación emocional', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T07', 'Consumo problemático: juegos en línea', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T08', 'Deportes y alimentación saludable', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T09', 'Masculinidades', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T10', 'Consumo problemático: alcohol y vapeo', 'ambos', 1, 'A confirmar', cupo, true],
+    ['T11', itsCb, 'ambos', 2, 'A confirmar', cupo, true],
+    ['T12', itsCo, 'ambos', 2, 'A confirmar', cupo, true],
+    ['T13', 'Consumo problemático: alcohol y vapeo', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T14', 'Salud mental: depresión', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T15', 'Ciberbullying y grooming', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T16', 'Salud mental: educación emocional', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T17', 'Consumo problemático: juegos en línea', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T18', 'Deportes y alimentación saludable', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T19', 'Masculinidades', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T20', 'Consumo problemático: alcohol y vapeo', 'ambos', 2, 'A confirmar', cupo, true],
+    ['T21', itsCb, 'ambos', 3, 'A confirmar', cupo, true],
+    ['T22', itsCo, 'ambos', 3, 'A confirmar', cupo, true],
+    ['T23', 'Consumo problemático: alcohol y vapeo', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T24', 'Salud mental: depresión', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T25', 'Ciberbullying y grooming', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T26', 'Salud mental: educación emocional', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T27', 'Consumo problemático: juegos en línea', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T28', 'Deportes y alimentación saludable', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T29', 'Masculinidades', 'ambos', 3, 'A confirmar', cupo, true],
+    ['T30', 'Consumo problemático: alcohol y vapeo', 'ambos', 3, 'A confirmar', cupo, true]
   ];
 }
 
@@ -3038,7 +3070,7 @@ function publicData_(ciclo, mine, signupsNow) {
   var counts = cupoCounts_(signupsNow || readSignupsCached_(), cfg);
   var talks = readTalksCached_()
     .filter(function (t) {
-      return t.ciclo === ciclo && t.activa;
+      return t.activa && EsiCore.cycleAllowsTalk(t.ciclo, ciclo);
     })
     .map(function (t) {
       return {
@@ -3726,7 +3758,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     if (!talk.activa) {
       return { ok: false, message: ERROR_MESSAGES_.talkInactive, data: publicData_(s.ciclo, mine, signups) };
     }
-    if (talk.ciclo !== s.ciclo) {
+    if (!EsiCore.cycleAllowsTalk(talk.ciclo, s.ciclo)) {
       return { ok: false, message: ERROR_MESSAGES_.talkWrongCycle, data: publicData_(s.ciclo, mine, signups) };
     }
 
@@ -4408,7 +4440,7 @@ function apiAdminAddStudent(cred, data) {
         var talk = talkById[String(ids[j])];
         if (!talk) return { ok: false, message: 'No encontramos una de las charlas.' };
         if (!talk.activa) return { ok: false, message: 'Esa charla no está disponible.' };
-        if (talk.ciclo !== v.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
+        if (!EsiCore.cycleAllowsTalk(talk.ciclo, v.ciclo)) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
         if (bySlot[Number(talk.slot_id)]) return { ok: false, message: 'Ya tiene una charla en ese horario.' };
         if (mine[String(talk.id)]) return { ok: false, message: 'Ya está anotado en esa charla.' };
         if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
@@ -4458,7 +4490,7 @@ function apiAdminCorrectStudent(cred, email, data) {
       for (var t = 0; t < talks.length; t++) talkById[String(talks[t].id)] = talks[t];
       for (var i = 0; i < rows.length; i++) {
         var talk = talkById[String(rows[i].signup.talk_id)];
-        if (talk && talk.ciclo !== v.ciclo) {
+        if (talk && !EsiCore.cycleAllowsTalk(talk.ciclo, v.ciclo)) {
           return { ok: false, message: 'Ese cambio de ciclo no coincide con las charlas anotadas.' };
         }
       }
@@ -4508,7 +4540,7 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       if (!talk) return { ok: false, message: 'No encontramos esa charla.' };
       if (!talk.activa) return { ok: false, message: 'Esa charla no está disponible.' };
       if (Number(talk.slot_id) !== Number(current.slot_id)) return { ok: false, message: 'Solo se puede mover dentro del mismo horario.' };
-      if (talk.ciclo !== current.ciclo) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
+      if (!EsiCore.cycleAllowsTalk(talk.ciclo, current.ciclo)) return { ok: false, message: 'Esa charla no es del ciclo del alumno.' };
       if (String(talk.id) === String(current.talk_id)) return { ok: true, changed: false };
       var counts = cupoCounts_(signups, readConfig_());
       if ((counts[talk.id] || 0) >= Number(talk.cupo)) return { ok: false, message: 'Sin lugares en ' + talk.titulo + ': elegí otra charla de esa franja.' };
