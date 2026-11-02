@@ -1254,7 +1254,7 @@ t('Access screen follows the 4/8/12/16/24 spacing scale', () => {
     'placeholder="gomezperezmaria2029"', '@secundariosalsipuedes.edu.ar</span>',
     'placeholder="Solo números"',
     '<h2 class="intro" id="login-title">Ingresar</h2>',
-    'Con tu mail y tu DNI. Si es tu primera vez, te pedimos tus datos una sola vez.',
+    'Con tu mail institucional. Si es tu primera vez, después te pedimos nombre, apellido, curso y DNI una sola vez.',
     '.login-fields { display: grid; gap: var(--space-4); }',
     '.field { display: grid; gap: 8px; }',
     'margin: 0 0 20px', '.seg-btn.active { color: #FFFFFF; background: #0E7A2F; }']) {
@@ -4472,8 +4472,28 @@ t('demo: la sesion sobrevive a cerrar y volver a abrir el navegador', () => {
 
 t('r15: el login no ofrece el DNI como alternativa', () => {
   if (/login-or/.test(panelHtml)) throw new Error('sigue el separador "o" arriba del DNI');
-  if (!/id="login-form-title">Ingresá con tu mail y tu DNI</.test(panelHtml)) throw new Error('el titulo del login sigue diciendo o');
-  if (!/Vas a necesitar tu mail institucional y tu DNI\./.test(panelHtml)) throw new Error('la pantalla previa sigue diciendo o');
+  if (!/id="login-form-title">Ingresá con tu mail institucional</.test(panelHtml)) throw new Error('el titulo del login sigue prometiendo mail y DNI');
+  if (!/Vas a necesitar tu mail institucional\. Si no lo recordás, podés entrar con tu DNI\./.test(panelHtml)) throw new Error('la pantalla previa no explica la via del DNI');
+});
+
+t('v78: el DNI es la via alternativa y se pide una sola vez', () => {
+  const login = panelHtml.match(/<section id="s-screen-login"[\s\S]*?<\/section>/);
+  if (!login) throw new Error('no hay pantalla de login');
+  if (!/id="login-dni-wrap"[^>]*hidden/.test(login[0])) {
+    throw new Error('el campo DNI no arranca oculto en el paso 2');
+  }
+  if (!/id="btn-login-alt"[\s\S]*?¿No te acordás tu mail\? Entrar con tu DNI/.test(login[0])) {
+    throw new Error('falta el alternador del ingreso por DNI');
+  }
+  if (!/function sDniMode_\(\)[\s\S]*?return !w \|\| !w\.hidden;/.test(panelSrc)) {
+    throw new Error('sLoginSubmit no discrimina la via elegida');
+  }
+  if (!/var dni = sDniMode_\(\) \? EsiClient\.normalizeDni\(\$\('input-dni'\)\.value\) : ''/.test(panelSrc)) {
+    throw new Error('sLoginSubmit lee el DNI aunque este en modo mail');
+  }
+  if (!/id="login-dni-wrap"[\s\S]*?id="input-dni-datos"/.test(panelHtml)) {
+    throw new Error('la pantalla de datos ya no pide el DNI');
+  }
 });
 
 t('r15: los campos de los filtros no se salen de la tarjeta', () => {
