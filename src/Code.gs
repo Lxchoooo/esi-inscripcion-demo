@@ -268,7 +268,8 @@ var EsiCore = (function () {
         else if (/^(nombre|nombres)$/.test(h)) map.nombre = i;
         else if (/^(nombre completo|nombre y apellido|apellido y nombre|alumno|alumna)$/.test(h)) map.completo = i;
         else if (/^(curso|division|a\u00F1o|ano)$/.test(h)) map.curso = i;
-        else if (/^(dni|documento|doc)$/.test(h)) map.dni = i;
+        else if (/^(dni|documento|doc|nro doc|nro documento|num doc|numero de documento|numero documento|documento numero|numero dni)$/.test(h)
+          || h.indexOf('dni') >= 0 || h.indexOf('documento') >= 0) map.dni = i;
       }
       if (map.email == null) return null;
       if (map.apellido == null && map.nombre == null && map.completo == null) return null;
@@ -2347,7 +2348,8 @@ function studentsHeader_(head) {
     else if (/^(nombre|nombres)$/.test(h)) map.nombre = i;
     else if (/^(nombre completo|nombre y apellido|apellido y nombre|alumno|alumna)$/.test(h)) map.completo = i;
     else if (/^(curso|division|a\u00F1o|ano)$/.test(h)) map.curso = i;
-    else if (/^(dni|documento|doc)$/.test(h)) map.dni = i;
+    else if (/^(dni|documento|doc|nro doc|nro documento|num doc|numero de documento|numero documento|documento numero|numero dni)$/.test(h)
+      || h.indexOf('dni') >= 0 || h.indexOf('documento') >= 0) map.dni = i;
   }
   if (map.email == null) return null;
   if (map.apellido == null && map.nombre == null && map.completo == null) return null;

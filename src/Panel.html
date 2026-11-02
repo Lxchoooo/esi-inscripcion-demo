@@ -2258,6 +2258,25 @@
     .ficha-copy:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
     .mail-detail .hint-line { margin-top: 12px; }
     .mail-detail > .sheet-meta:first-of-type { margin: 4px 0 0; color: var(--ink); font-weight: 600; }
+
+    /* ==== v110: ficha identidade (sheet) ====
+       Cabecera con avatar de iniciales + meta del curso, y estado honesto
+       cuando el padrón no trae DNI (fila apagada, no es un error del panel). */
+    .ficha-head {
+      display: flex; align-items: center; gap: 12px; margin: 0 0 6px;
+    }
+    .ficha-ava {
+      flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+      width: 46px; height: 46px; border-radius: 50%;
+      background: var(--primary-container); color: var(--on-primary-container);
+      font-weight: 800; font-size: 17px; letter-spacing: .02em;
+    }
+    .ficha-tit { display: grid; gap: 2px; min-width: 0; }
+    .ficha-tit .mail-detail-name { font-size: 18px; }
+    .ficha-meta { color: var(--muted); font-size: 13px; font-weight: 600; }
+    .ficha-copy.is-missing { cursor: default; border-style: dashed; }
+    .ficha-copy.is-missing:active { background: var(--surface-2); border-color: var(--line); }
+    .ficha-nodni { color: var(--muted); font-size: 13.5px; padding-top: 2px; }
   </style>
   <script>
     (function () {
@@ -8068,12 +8087,16 @@
       }
     }
 
+    function aFichaIni_(who) {
+      var parts = String(who).replace(/\s+/g, ' ').trim().split(' ');
+      return String((parts[0] || '?').charAt(0) + (parts[1] || '').charAt(0)).toUpperCase() || 'A';
+    }
+
     function aShowMail_(email, name, curso, dni, charlasStr) {
       var mail = String(email || '').trim();
       if (!mail) return;
       var who = String(name || '').replace(/\s+/g, ' ').trim() || 'Alumno';
-      var body = '<div class="mail-detail">'
-        + '<p class="mail-detail-name">' + esc(who) + '</p>';
+      var metaHtml = '';
       if (curso) {
         var crudo = String(curso).trim();
         var pc = EsiClient.parseCurso(crudo);
@@ -8083,16 +8106,28 @@
           var cut = pc.indexOf('\u00B0');
           var anio = cut >= 0 ? pc.slice(0, cut + 1) : '';
           var div = cut >= 0 ? pc.slice(cut + 1) : '';
-          if (div) body += '<p class="sheet-meta">Año ' + esc(anio) + ' · División ' + esc(div) + '</p>';
-          else body += '<p class="sheet-meta">Año ' + esc(pc) + '</p>';
+          metaHtml = div ? 'Año ' + esc(anio) + ' · División ' + esc(div) : 'Año ' + esc(pc);
         } else {
-          body += '<p class="sheet-meta">' + esc(crudo) + '</p>';
+          metaHtml = esc(crudo);
         }
       }
-      if (String(dni || '').trim()) {
-        body += '<div class="ficha-copy" data-copiame="' + esc(String(dni).trim()) + '" data-copiamsg="DNI copiado." role="button" tabindex="0">'
+      var body = '<div class="mail-detail">'
+        + '<div class="ficha-head">'
+        + '<span class="ficha-ava" aria-hidden="true">' + esc(aFichaIni_(who)) + '</span>'
+        + '<span class="ficha-tit">'
+        + '<span class="mail-detail-name">' + esc(who) + '</span>'
+        + (metaHtml ? '<span class="ficha-meta">' + metaHtml + '</span>' : '')
+        + '</span></div>';
+      var dniLim = String(dni || '').trim();
+      if (dniLim) {
+        body += '<div class="ficha-copy" data-copiame="' + esc(dniLim) + '" data-copiamsg="DNI copiado." role="button" tabindex="0">'
           + '<span class="mail-detail-label">DNI</span>'
-          + '<code class="mail-detail-address">' + esc(String(dni).trim()) + '</code></div>';
+          + '<code class="mail-detail-address">' + esc(dniLim) + '</code></div>';
+      } else {
+        // Estado real del dato: el padrón no trae DNI para este alumno.
+        body += '<div class="ficha-copy is-missing">'
+          + '<span class="mail-detail-label">DNI</span>'
+          + '<span class="ficha-nodni">Sin DNI en el padrón para este alumno.</span></div>';
       }
       var chars = String(charlasStr || '').split(';;').filter(function (x) { return x; });
       if (chars.length) {
