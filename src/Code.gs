@@ -534,6 +534,12 @@ function mailLine_(value) {
     .trim();
 }
 
+// "A confirmar" es el relleno del seed, no un lugar real: no va en los mails.
+function mailLugar_(value) {
+  var v = mailLine_(value);
+  return /^a confirmar$/i.test(v) ? '' : v;
+}
+
 function reminderBody_(r, cfg) {
   var lines = [
     'Hola ' + mailLine_(r.nombre) + ':',
@@ -546,7 +552,8 @@ function reminderBody_(r, cfg) {
     var it = r.items[i];
     var when = mailLine_(it.slot) + ' (' + mailLine_(it.inicio) + ' a ' + mailLine_(it.fin) + ')';
     if (it.elegida) {
-      lines.push('- ' + when + ': ' + mailLine_(it.titulo) + (it.lugar ? ' (' + mailLine_(it.lugar) + ')' : ''));
+      var lug = mailLugar_(it.lugar);
+      lines.push('- ' + when + ': ' + mailLine_(it.titulo) + (lug ? ' (' + lug + ')' : ''));
     } else {
       lines.push('- ' + when + ': todavía no elegiste.');
     }
@@ -755,7 +762,8 @@ function mailCharlasList_(items) {
     var it = items[i];
     var when = mailLine_(it.inicio) + ' a ' + mailLine_(it.fin);
     if (it.elegida) {
-      lines.push('- Horario ' + when + ': ' + mailLine_(it.titulo) + (it.lugar ? ' (' + mailLine_(it.lugar) + ')' : ''));
+      var lug = mailLugar_(it.lugar);
+      lines.push('- Horario ' + when + ': ' + mailLine_(it.titulo) + (lug ? ' (' + lug + ')' : ''));
     } else {
       lines.push('- Horario ' + when + ': todavía no elegiste.');
     }
@@ -790,7 +798,7 @@ function changeBody_(name, horario, talk, otras) {
     '',
     'Te confirmamos el cambio que hiciste en tu inscripción.',
     'En el horario de ' + mailLine_(horario) + ' ahora vas a ir a "' +
-      mailLine_(talk.titulo) + '"' + (talk.lugar ? ' (' + mailLine_(talk.lugar) + ')' : '') + '.',
+      mailLine_(talk.titulo) + '"' + (mailLugar_(talk.lugar) ? ' (' + mailLugar_(talk.lugar) + ')' : '') + '.',
     ''
   ];
   if (otras && otras.length) {
@@ -1226,8 +1234,13 @@ function flushMailQueueLocked_(nowMs) {
       name: EVENT_TITLE_
     };
     if (sender) { opts.from = sender; opts.replyTo = sender; }
-    var data = gmailApiReady_() ? gmailApiSend_(opts.to, opts.subject, opts.body) : false;
+    var viaGmail = gmailApiReady_();
+    var data = viaGmail ? gmailApiSend_(opts.to, opts.subject, opts.body) : false;
     if (!data) {
+      // Con la via institucional configurada NO se cae a MailApp: MailApp
+      // manda desde la cuenta personal del dueno del script. La fila queda
+      // pendiente para el poller de Termux y se corta el lote.
+      if (viaGmail) break;
       try { MailApp.sendEmail(opts); data = true; } catch (eMail) { data = false; }
     }
     if (data) {
@@ -2566,36 +2579,36 @@ function seedTalks_() {
   var itsCb = 'ITS Ciclo Básico';
   var itsCo = 'ITS Ciclo Orientado';
   return [
-    ['T01', itsCb, 'ambos', 1, 'A confirmar', cupo, true],
-    ['T02', itsCo, 'ambos', 1, 'A confirmar', cupo, true],
-    ['T03', 'Consumo problemático: alcohol y vapeo', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T04', 'Salud mental: depresión', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T05', 'Ciberbullying y grooming', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T06', 'Salud mental: educación emocional', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T07', 'Consumo problemático: juegos en línea', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T08', 'Deportes y alimentación saludable', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T09', 'Masculinidades', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T10', 'Consumo problemático: alcohol y vapeo', 'ambos', 1, 'A confirmar', cupo, true],
-    ['T11', itsCb, 'ambos', 2, 'A confirmar', cupo, true],
-    ['T12', itsCo, 'ambos', 2, 'A confirmar', cupo, true],
-    ['T13', 'Consumo problemático: alcohol y vapeo', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T14', 'Salud mental: depresión', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T15', 'Ciberbullying y grooming', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T16', 'Salud mental: educación emocional', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T17', 'Consumo problemático: juegos en línea', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T18', 'Deportes y alimentación saludable', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T19', 'Masculinidades', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T20', 'Consumo problemático: alcohol y vapeo', 'ambos', 2, 'A confirmar', cupo, true],
-    ['T21', itsCb, 'ambos', 3, 'A confirmar', cupo, true],
-    ['T22', itsCo, 'ambos', 3, 'A confirmar', cupo, true],
-    ['T23', 'Consumo problemático: alcohol y vapeo', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T24', 'Salud mental: depresión', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T25', 'Ciberbullying y grooming', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T26', 'Salud mental: educación emocional', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T27', 'Consumo problemático: juegos en línea', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T28', 'Deportes y alimentación saludable', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T29', 'Masculinidades', 'ambos', 3, 'A confirmar', cupo, true],
-    ['T30', 'Consumo problemático: alcohol y vapeo', 'ambos', 3, 'A confirmar', cupo, true]
+    ['T01', itsCb, 'ambos', 1, '', cupo, true],
+    ['T02', itsCo, 'ambos', 1, '', cupo, true],
+    ['T03', 'Consumo problemático: alcohol y vapeo', 'ambos', 1, '', cupo, true],
+    ['T04', 'Salud mental: depresión', 'ambos', 1, '', cupo, true],
+    ['T05', 'Ciberbullying y grooming', 'ambos', 1, '', cupo, true],
+    ['T06', 'Salud mental: educación emocional', 'ambos', 1, '', cupo, true],
+    ['T07', 'Consumo problemático: juegos en línea', 'ambos', 1, '', cupo, true],
+    ['T08', 'Deportes y alimentación saludable', 'ambos', 1, '', cupo, true],
+    ['T09', 'Masculinidades', 'ambos', 1, '', cupo, true],
+    ['T10', 'Consumo problemático: alcohol y vapeo', 'ambos', 1, '', cupo, true],
+    ['T11', itsCb, 'ambos', 2, '', cupo, true],
+    ['T12', itsCo, 'ambos', 2, '', cupo, true],
+    ['T13', 'Consumo problemático: alcohol y vapeo', 'ambos', 2, '', cupo, true],
+    ['T14', 'Salud mental: depresión', 'ambos', 2, '', cupo, true],
+    ['T15', 'Ciberbullying y grooming', 'ambos', 2, '', cupo, true],
+    ['T16', 'Salud mental: educación emocional', 'ambos', 2, '', cupo, true],
+    ['T17', 'Consumo problemático: juegos en línea', 'ambos', 2, '', cupo, true],
+    ['T18', 'Deportes y alimentación saludable', 'ambos', 2, '', cupo, true],
+    ['T19', 'Masculinidades', 'ambos', 2, '', cupo, true],
+    ['T20', 'Consumo problemático: alcohol y vapeo', 'ambos', 2, '', cupo, true],
+    ['T21', itsCb, 'ambos', 3, '', cupo, true],
+    ['T22', itsCo, 'ambos', 3, '', cupo, true],
+    ['T23', 'Consumo problemático: alcohol y vapeo', 'ambos', 3, '', cupo, true],
+    ['T24', 'Salud mental: depresión', 'ambos', 3, '', cupo, true],
+    ['T25', 'Ciberbullying y grooming', 'ambos', 3, '', cupo, true],
+    ['T26', 'Salud mental: educación emocional', 'ambos', 3, '', cupo, true],
+    ['T27', 'Consumo problemático: juegos en línea', 'ambos', 3, '', cupo, true],
+    ['T28', 'Deportes y alimentación saludable', 'ambos', 3, '', cupo, true],
+    ['T29', 'Masculinidades', 'ambos', 3, '', cupo, true],
+    ['T30', 'Consumo problemático: alcohol y vapeo', 'ambos', 3, '', cupo, true]
   ];
 }
 
