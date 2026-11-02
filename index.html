@@ -886,6 +886,14 @@
       bottom: calc(12px + env(safe-area-inset-bottom));
       z-index: 80; margin: 0; box-shadow: var(--shadow-lg);
     }
+    /* Error del mail: arriba y centrado, porque con el teclado abierto el
+    aviso del pie queda tapado y hay que minimizarlo para leerlo. */
+    #s-banner.banner-top {
+      bottom: auto; top: calc(10px + env(safe-area-inset-top));
+      left: 50%; right: auto; transform: translateX(-50%);
+      width: min(92vw, 430px); text-align: center;
+      z-index: 95;
+    }
 
     .toast {
       position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 90;
@@ -3280,6 +3288,14 @@
         // La UI compone el dominio en sLoginSubmit: el ✓ muestra el mismo
         // veredicto que tendra el server con el valor final.
         sMarkField_(mail, sValidMail_(mlv.indexOf('@') >= 0 ? mlv : mlv + '@secundariosalsipuedes.edu.ar'));
+        // Si el mail ya quedo bien, se va el cartel de error del mail.
+        var okMail = sValidMail_(mlv.indexOf('@') >= 0 ? mlv : mlv + '@secundariosalsipuedes.edu.ar');
+        var bn = $('s-banner');
+        if (okMail && bn && bn.classList.contains('banner-top')) {
+          sBanner('', 'ok');
+          if ($('mail-hint')) $('mail-hint').hidden = true;
+          mail.setAttribute('aria-invalid', 'false');
+        }
       }
       var dni = $('input-dni');
       if (dni) sMarkField_(dni, sValidDni_(dni.value));
@@ -6125,6 +6141,10 @@
 
     function sMailError_(msg) {
       sBanner(msg, 'err');
+      // El banner vive al pie y el teclado del celular lo tapa: el error del
+      // mail se muestra arriba, centrado y por encima de todo.
+      var bb = $('s-banner');
+      if (bb) bb.classList.add('banner-top');
       shakeField_($('input-mail'));
       $('mail-hint').textContent = msg;
       $('mail-hint').hidden = false;
@@ -6139,18 +6159,25 @@
         sMailError_('Escribí tu mail institucional.');
         return;
       }
-      if (!EsiClient.isInstitutionalEmail(email)) {
+      // Primero el dominio solo: asi el que se olvido el año recibe el
+      // mensaje del año y no el generico de "usa tu mail del colegio".
+      var mailDom = email.slice(email.indexOf('@'));
+      if (mailDom !== '@secundariosalsipuedes.edu.ar') {
         sMailError_('Usá tu mail @secundariosalsipuedes.edu.ar.');
         return;
       }
       var mailLoc = email.split('@')[0];
       var mailCola = mailLoc.replace(/(?:2026|2027|2028|2029|2030|2031)$/, '');
       if (/\d/.test(mailCola)) {
-        sMailError_('El mail no lleva números: es apellido + nombre + año (ej: gomezperezmaria2029).');
+        sMailError_('El mail no lleva números: es apellido + nombre + año de egreso (ej: gomezperezmaria2029).');
         return;
       }
       if (!/(?:2026|2027|2028|2029|2030|2031)$/.test(mailLoc)) {
-        sMailError_('Falta el año al final del mail (2026 a 2031). Ej: gomezperezmaria2029.');
+        sMailError_('Falta poner el año de egreso al final del mail (2026 a 2031). Ej: gomezperezmaria2029.');
+        return;
+      }
+      if (!EsiClient.isInstitutionalEmail(email)) {
+        sMailError_('Usá tu mail @secundariosalsipuedes.edu.ar.');
         return;
       }
       sState.busy = true;
