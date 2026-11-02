@@ -5543,5 +5543,21 @@ t('r76: la misma charla no se puede elegir dos veces y el cierre se ve grande', 
   if (!/cb\.hidden = !!d\.evento_abierto/.test(panelHtml)) throw new Error('sRender no muestra el cartel de cerrada');
 });
 
+t('r77: apiMailDiag lista los triggers agendados (flush y watchdog)', () => {
+  const services = backendStub({});
+  services.ScriptApp = {
+    getProjectTriggers: () => [
+      { getHandlerFunction: () => 'flushMailQueue_' },
+      { getHandlerFunction: () => 'watchdog' }
+    ]
+  };
+  const api = backendApi(services, 'apiMailDiag');
+  const r = api.apiMailDiag();
+  assertEq(r.trigger, true, 'flush detectado');
+  assertEq((r.triggers || []).join(','), 'flushMailQueue_,watchdog', 'lista de triggers');
+  const vacio = backendApi(backendStub({}), 'apiMailDiag').apiMailDiag();
+  assertEq(vacio.trigger, false, 'sin triggers lo dice');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;
