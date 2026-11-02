@@ -624,8 +624,14 @@ function apiMailDiag(args) {
   try {
     if (typeof ScriptApp !== 'undefined' && ScriptApp) {
       var trs = ScriptApp.getProjectTriggers();
+      // Lista de handlers: es lo unico que deja ver desde afuera si el
+      // watchdog y el respaldo siguen agendados (la API de Apps Script no
+      // expone triggers). Solo nombres genericos, nada de datos.
+      out.triggers = [];
       for (var t = 0; t < trs.length; t++) {
-        if (trs[t].getHandlerFunction() === 'flushMailQueue_') { out.trigger = true; break; }
+        var fnT = String(trs[t].getHandlerFunction() || '');
+        if (fnT) out.triggers.push(fnT);
+        if (fnT === 'flushMailQueue_') out.trigger = true;
       }
       if (!out.trigger) out.trigger = false;
     }
