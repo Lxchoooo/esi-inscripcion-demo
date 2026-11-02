@@ -6906,10 +6906,13 @@
 
     function aStartAutoRefresh() {
       if (aTimer) return;
+      // Cada 10 s (pedido del dueño 2/11/2026): los inscritos y la ficha de
+      // charla se actualizan solos, sin volver arriba al refresh. Solo con
+      // la pestaña a la vista: nada de consumo en celular guardado.
       aTimer = window.setInterval(function () {
         if (document.visibilityState !== 'visible') return;
         aRefreshView();
-      }, 30000);
+      }, 10000);
       aTicker = window.setInterval(aUpdateAges, 1000);
       if (!aVisBound) {
         aVisBound = true;
