@@ -4110,7 +4110,7 @@ t('v79: auto-setup respeta el tope de 3 reintentos y la ocupacion del lock', () 
 });
 
 t('v80: gmail api manda el aviso con el token del colegio', () => {
-  const props = { gmail_api_refresh: '1//refresh', gmail_api_client_id: 'cid', gmail_api_secret: 'sec' };
+  const props = { gmail_api_refresh: '1//refresh' };
   const services = backendStub(props);
   services.Utilities = Object.assign({}, services.Utilities, {
     base64Encode: (v) => 'b64:' + String(v),
@@ -4121,18 +4121,18 @@ t('v80: gmail api manda el aviso con el token del colegio', () => {
   services.UrlFetchApp = {
     fetch: (url, req) => {
       calls.push({ url: url, req: req });
-      if (String(url).indexOf('oauth2.googleapis.com') >= 0) {
-        return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ access_token: 'acc1' }) };
+      if (String(url).indexOf('oauthplayground/refreshAccessToken') >= 0) {
+        return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ success: true, access_token: 'acc1' }) };
       }
       return { getResponseCode: () => 200, getContentText: () => '{"id":"m1"}' };
     }
   };
   const api = backendApi(services, 'gmailApiSend_,gmailApiReady_');
-  assertEq(api.gmailApiReady_(), true, 'via lista con las 3 claves');
+  assertEq(api.gmailApiReady_(), true, 'via lista con la propiedad del token');
   assertEq(api.gmailApiSend_('ana@secundariosalsipuedes.edu.ar', 'Bienvenida ESI', 'hola'), true, 'send ok');
-  if (!calls.some((c) => String(c.url).indexOf('oauth2.googleapis.com/token') >= 0)) {
-    throw new Error('no pide access token al refresh');
-  }
+  const refreshCall = calls.filter((c) => String(c.url).indexOf('oauthplayground/refreshAccessToken') >= 0)[0];
+  if (!refreshCall) throw new Error('no usa el proxy del playground');
+  if (String(refreshCall.req.payload).indexOf('1//refresh') < 0) throw new Error('no envia el refresh_token al proxy');
   const sendCall = calls.filter((c) => String(c.url).indexOf('users/me/messages/send') >= 0)[0];
   if (!sendCall) throw new Error('no llama a gmail/v1/users/me/messages/send');
   const bearer = JSON.stringify(sendCall.req.headers);
@@ -4144,7 +4144,7 @@ t('v80: gmail api manda el aviso con el token del colegio', () => {
 });
 
 t('v80: si la via gmail se cae, gmailApiSend_ devuelve false y queda en pausa', () => {
-  const props = { gmail_api_refresh: '1//r', gmail_api_client_id: 'c', gmail_api_secret: 's' };
+  const props = { gmail_api_refresh: '1//r' };
   const services = backendStub(props);
   services.Utilities = Object.assign({}, services.Utilities, {
     base64Encode: () => 'b64',
@@ -4163,7 +4163,7 @@ t('v80: si la via gmail se cae, gmailApiSend_ devuelve false y queda en pausa', 
 t('v80: apiMailDiag nombra la via de envio', () => {
   const sin = backendApi(backendStub({}), 'apiMailDiag');
   assertEq(sin.apiMailDiag().envio_via, 'mailapp', 'sin token va por mailapp');
-  const con = backendApi(backendStub({ gmail_api_refresh: 'r', gmail_api_client_id: 'c', gmail_api_secret: 's' }), 'apiMailDiag');
+  const con = backendApi(backendStub({ gmail_api_refresh: 'r' }), 'apiMailDiag');
   assertEq(con.apiMailDiag().envio_via, 'gmail_api', 'con token via gmail_api');
 });
 
