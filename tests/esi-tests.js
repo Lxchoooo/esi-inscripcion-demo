@@ -1423,11 +1423,11 @@ t('v73: el rediseño admin está scopeado a body.admin y pisa con la familia', (
 t('v109: ficha del alumno con DNI, curso limpio y copia por toque', () => {
   // La ficha usaba el slice() del curso completo y sacaba "División o".
   if (/Año ' \+ esc\(pc\.slice\(/.test(panelSrc)) throw new Error('la ficha sigue mangleando el curso');
-  if (!/"sheet-meta">Año ' \+ esc\(anio\) \+ ' · División ' \+ esc\(div\)/.test(panelSrc)) {
+  if (!/"?Año ' \+ esc\(anio\) \+ ' · División ' \+ esc\(div\)"?/.test(panelSrc)) {
     throw new Error('sin linea de año y división desde el parseo');
   }
   // DNI y mail salen como filas tipeables data-copiame.
-  if (!/data-copiame="' \+ esc\(String\(dni\)\.trim\(\)\) \+ '" data-copiamsg="DNI copiado\."/ .test(panelSrc)) {
+  if (!/data-copiame="' \+ esc\(dniLim\) \+ '" data-copiamsg="DNI copiado\."/ .test(panelSrc)) {
     throw new Error('sin DNI copiable en la ficha');
   }
   if (!/data-copiame="' \+ esc\(mail\) \+ '" data-copiamsg="Mail copiado\."/.test(panelSrc)) {
@@ -1440,6 +1440,30 @@ t('v109: ficha del alumno con DNI, curso limpio y copia por toque', () => {
   // El bloque de CSS propio existe.
   if (!panelHtml.includes('v109: ficha del alumno (sheet)')) throw new Error('sin bloque v109');
   if (!/\.ficha-copy \{[\s\S]{0,200}cursor: pointer/.test(panelHtml)) throw new Error('sin estilo de fila copiable');
+});
+
+t('v110: ficha con avatar, meta de curso y estado de DNI del padrón', () => {
+  // Cabecera de identidad: avatar de iniciales + nombre + meta.
+  if (!/class="ficha-head"/.test(panelSrc) || !/function aFichaIni_/.test(panelSrc)) {
+    throw new Error('sin cabecera de ficha con avatar');
+  }
+  // Cuando el padrón no trae DNI la ficha lo dice, no esconde el hueco.
+  if (!/Sin DNI en el padrón para este alumno\./.test(panelSrc)) throw new Error('sin aviso de falta de DNI');
+  if (!/ficha-copy is-missing/.test(panelSrc)) throw new Error('sin fila apagada sin DNI');
+  // La fila apagada NO es copiable (sin data-copiame en la variante missing).
+  const missy = panelSrc.match(/is-missing"[\s\S]{0,200}ficha-nodni/);
+  if (missy && missy[0].indexOf('data-copiame') >= 0) throw new Error('la fila sin DNI se pasa por copiable');
+});
+
+t('Code.gs readStudents_ acepta el header de DNI con variantes del padrón', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso', 'numero de documento'], [
+    ['ana@secundariosalsipuedes.edu.ar', 'Ana Gomez', '6A', '45623456']
+  ]);
+  const api = backendApi(services, 'readStudents_');
+  const st = api.readStudents_().filter((s) => s.email === 'ana@secundariosalsipuedes.edu.ar')[0];
+  if (!st) throw new Error('sin ana');
+  assertEq(st.dni, '45623456', 'dni from numero de documento header');
 });
 
 t('borrado admin optimista: la lista se actualiza al toque y falla repone', () => {
@@ -3479,8 +3503,12 @@ t('r14: el CSS y el JS nuevos caben en el presupuesto', () => {
   const v73Bytes = Buffer.byteLength(css.slice(end, v109Start < 0 ? undefined : v109Start));
   if (v73Bytes > 8192) throw new Error('CSS nuevo v73 ' + v73Bytes + ' B');
   if (v109Start < 0) return;
-  const v109Bytes = Buffer.byteLength(css.slice(v109Start));
+  const v110Start = css.indexOf('/* ==== v110: ficha identidade');
+  const v109Bytes = Buffer.byteLength(css.slice(v109Start, v110Start < 0 ? undefined : v110Start));
   if (v109Bytes > 2048) throw new Error('CSS nuevo v109 ' + v109Bytes + ' B');
+  if (v110Start < 0) return;
+  const v110Bytes = Buffer.byteLength(css.slice(v110Start));
+  if (v110Bytes > 2048) throw new Error('CSS nuevo v110 ' + v110Bytes + ' B');
   const units = [
     panelSrc.match(/function shakeField_\(el\) \{[\s\S]*?\n    \}/),
     panelSrc.match(/function isLite_\(\) \{[\s\S]*?\n    \}/),
