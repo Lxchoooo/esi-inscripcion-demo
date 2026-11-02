@@ -156,13 +156,13 @@ assert(grid.children[0].innerHTML.includes('Elegida'), 'texto elegida');
 assert(grid.children[1].innerHTML.includes('is-low'), 'barra casi llena');
 assert(grid.children[2].innerHTML.includes('is-full'), 'barra completa');
 assert(document.getElementById('sel-count').textContent === '1 de 3 elegidas', 'contador');
+// Franja con lugares disponibles: confirmar oculto hasta completar las tres
+// (diseño del dueño: el alta exige las tres franjas, sin confirmacion parcial).
 const cbtn = document.getElementById('btn-confirmar');
-assert(cbtn.style.display === '', 'confirmar parcial visible');
-assert(document.getElementById('summary').innerHTML.includes('Ana'), 'resumen identidad');
+assert(cbtn.style.display === 'none', 'confirmar oculto con franjas disponibles');
 ui.sConfirmar();
-assert(document.getElementById('sheet-title').textContent === 'Confirmar con franja libre', 'sheet de aviso parcial');
-assert(document.getElementById('sheet-confirm').textContent === 'Confirmar igual', 'accion confirmar igual');
-ui.closeSheet();
+assert(document.getElementById('sheet-title').textContent === '', 'sin sheet en el empujón');
+assert(document.getElementById('summary').innerHTML.includes('Ana'), 'resumen identidad');
 
 const talk = { id: 'B5', titulo: 'Autolesiones', slot_id: 2, lugar: 'Aula 7', cupo: 40, restantes: 12 };
 ui.sOnTalk(talk);
@@ -177,6 +177,21 @@ ui.sConfirmar();
 assert(document.body.getAttribute('data-screen') === 's-screen-done', 'va a pantalla final');
 assert(document.getElementById('done-list').innerHTML.includes('Autolesiones'), 'resumen charlas');
 assert(document.getElementById('sel-hint').hidden === true, 'sin aviso al completar');
+
+// Franja 3 llena con 2 elegidas: confirm visible, cartelito en la franja y
+// alta sin sheet extra (diseño del dueño para el que llega tarde).
+ui.closeSheet(); // el sheet de elegir quedó abierto desde el pick anterior
+ui.sState.confirmed = false;
+ui.sState.data.mine = { 1: 'B1', 2: 'B5' };
+ui.sState.data.talks[4].restantes = 0;
+ui.sRender();
+const cbtnFull = document.getElementById('btn-confirmar');
+assert(cbtnFull.style.display === '', 'confirmar con franja llena y 2 elegidas');
+ui.sConfirmar();
+// El titulo queda del sheet anterior (cerrado no lo limpia): lo que importa
+// es que no haya sheet visible durante el alta con franja llena.
+assert(String(document.getElementById('sheet').className).indexOf('show') < 0,
+  'alta de franja llena sin sheet visible');
 
 ui.setA({
   total: 2,
