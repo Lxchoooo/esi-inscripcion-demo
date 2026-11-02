@@ -1400,6 +1400,25 @@ t('gate: la clave no se sale del card', () => {
   }
 });
 
+t('v73: el rediseño admin está scopeado a body.admin y pisa con la familia', () => {
+  // Todo el bloque nuevo vive bajo body.admin: el lado alumno no comparte
+  // reglas con el panel de profes.
+  const v73a = panelHtml.indexOf('/* ==== v73: rediseño del panel admin');
+  const v73 = panelHtml.slice(v73a, panelHtml.indexOf('</style>', v73a));
+  if (v73.length < 500) throw new Error('bloque v73 ausente');
+  if (!/body\.admin \{ font-variant-numeric: tabular-nums; \}/.test(v73)) throw new Error('sin numeros tabulares del admin');
+  // Ganancias clave del rediseño, con tokens reales de la familia.
+  if (!/body\.admin #input-pin \{[\s\S]*?min-height: 62px; font-size: 22px;/.test(v73)) throw new Error('pin sin estatura');
+  if (!/body\.admin \.a-tabbar button\[aria-pressed="true"\] \{[\s\S]*?background: var\(--primary-container\)/.test(v73)) throw new Error('tabbar sin estado activo relleno');
+  if (!/body\.admin \.status-pill\.open \{[\s\S]*?background: var\(--btn-bg-hi\)/.test(v73)) throw new Error('pill de evento abierto sin relleno');
+  if (!/body\.admin #ev-lista \{ display: grid; grid-template-columns: 1fr 1fr;/.test(v73)) throw new Error('lista de evento sin dos columnas');
+  // El bloque no toca el lado alumno: ninguna regla del v73 sin body.admin o panel de profes.
+  const lines = v73.split('\n').filter((l) => l.trim() && !l.trim().startsWith('/*') && !l.trim().startsWith('*') && l.trim() !== '*/');
+  const sinScope = lines.filter((l) => /^\s*[^@/\s][^{]*\{/.test(l)
+    && !/body\.admin|a-screen-panel|a-tabbar|input-pin/.test(l));
+  if (sinScope.length) throw new Error('reglas v73 sin scope admin: ' + sinScope[0].trim().slice(0, 60));
+});
+
 t('borrado admin optimista: la lista se actualiza al toque y falla repone', () => {
   // Confirmar un borrado no roba el slot global: el docente puede seguir
   // borrando mientras el server termina.
@@ -3414,9 +3433,15 @@ t('r14: el CSS y el JS nuevos caben en el presupuesto', () => {
   const css = panelCss();
   const start = css.indexOf('/* ==== r14 P1: base de movimiento ==== */');
   if (start < 0) throw new Error('sin bloque r14');
-  const cssBytes = Buffer.byteLength(css.slice(start));
-  if (cssBytes > 4096) throw new Error('CSS nuevo ' + cssBytes + ' B');
-
+  // Dos presupuestos separados: el bloque propio de r14 conserva su tope
+  // original, y el rediseño admin v73 (pedido del dueno) tiene el suyo a
+  // 8 KB. Ninguno de los dos puede crecer sin que este test ladre.
+  let end = css.indexOf('/* ==== v73: rediseño del panel admin');
+  const r14Bytes = Buffer.byteLength(css.slice(start, end < 0 ? undefined : end));
+  if (r14Bytes > 4096) throw new Error('CSS nuevo r14 ' + r14Bytes + ' B');
+  if (end < 0) return;
+  const v73Bytes = Buffer.byteLength(css.slice(end));
+  if (v73Bytes > 8192) throw new Error('CSS nuevo v73 ' + v73Bytes + ' B');
   const units = [
     panelSrc.match(/function shakeField_\(el\) \{[\s\S]*?\n    \}/),
     panelSrc.match(/function isLite_\(\) \{[\s\S]*?\n    \}/),
