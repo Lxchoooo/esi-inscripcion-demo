@@ -1087,7 +1087,7 @@ t('Panel carries the ISS identity and an accessible green palette', () => {
   for (const needle of ['brand-logo', 'Instituto Secundario Salsipuedes (ISS)',
     'ISS · Jornada ESI 2026', '<title>ISS · Jornada ESI 2026</title>',
     'aria-label="Inicio, Instituto Secundario Salsipuedes"',
-    'src="https://lxchoooo.github.io/esi-inscripcion-demo/assets/logo.png"',
+    'src="data:image/png;base64,',  // logo inlineado: Pages muró con el repo privado
     '<span class="brand-school">Instituto Secundario Salsipuedes</span>']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
   }
