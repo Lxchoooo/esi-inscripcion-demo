@@ -5746,7 +5746,7 @@
         // la ultima charla sigue viajando: el toque no se pierde, queda en
         // cola y entra solo cuando la request termina (igual que sOnTalk).
         sState.confirmQueued = Date.now();
-        sBanner('Tu confirmación quedó en cola…', 'ok');
+        sBanner('Esperá un segundito…', 'ok');
         return;
       }
       var d = sState.data || { slots: [], mine: {} };
@@ -5813,7 +5813,7 @@
         // pierde. Queda en cola y se abre solo cuando termina la request.
         sState.queued = talk.id;
         sState.queuedAt = Date.now();
-        sBanner('Tu toque quedó en cola.', 'ok');
+        sBanner('Esperá un segundito…', 'ok');
         return;
       }
       var mine = (sState.data && sState.data.mine) || {};
