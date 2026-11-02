@@ -2385,10 +2385,10 @@
     <section id="s-screen-mail" class="screen card" tabindex="-1" aria-labelledby="login-title">
       <div class="steps"><span>1 de 4</span><span class="steps-bar" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span></div>
       <h2 class="intro" id="login-title">Ingresar</h2>
-      <p class="hint">Vas a necesitar tu mail institucional. Si no lo recordás, podés entrar con tu DNI.</p>
+      <p class="hint">Vas a necesitar tu mail institucional. Si no lo recordás, preguntale a un preceptor antes de tocar Ingresar.</p>
       <button id="btn-login-start" class="btn full" type="button">Ingresar</button>
       <ul class="login-bullets">
-        <li>Entrás con tu mail institucional (o DNI con apellido).</li>
+        <li>Entrás con tu mail institucional.</li>
         <li>Elegís una charla por horario.</li>
         <li>Te lleva menos de 2 minutos.</li>
       </ul>
@@ -2427,7 +2427,6 @@
           </div>
           <button id="btn-login" class="btn full" type="submit">Ingresar</button>
           <p class="hint-line" id="mail-hint" role="status" aria-live="polite" hidden>Revisá el mail institucional.</p>
-          <button id="btn-login-alt" class="btn ghost link" type="button"><span id="btn-login-alt-t">¿No te acordás tu mail? Entrar con tu DNI</span></button>
         </div>
       </form>
       <!-- Ayuda del mail: sheet de fondo (antes era un details plegable). -->
@@ -3172,11 +3171,9 @@
       for (var i = 0; i < ids.length; i++) {
         if ($(ids[i])) $(ids[i]).value = '';
       }
-      // Vuelve a quedar la via del mail: el DNI es la excepcion, no el default.
+      // Vuelve a quedar la via del mail, el unico ingreso visible.
       if ($('login-mail-wrap')) $('login-mail-wrap').hidden = false;
       if ($('login-dni-wrap')) $('login-dni-wrap').hidden = true;
-      var t = $('btn-login-alt-t');
-      if (t) t.textContent = '¿No te acordás tu mail? Entrar con tu DNI';
       if ($('select-anio')) $('select-anio').value = '';
       if ($('select-division')) $('select-division').innerHTML = '<option value="">Elegí...</option>';
       if ($('mail-hint')) $('mail-hint').hidden = true;
@@ -6324,9 +6321,10 @@
       sEnterPanel(full, curso, ap);
     }
 
-    // El DNI es la via de entrada alternativa: solo cuenta cuando el alumno
-    // la eligio con el alternador. Si el DOM simulado no trae el contenedor,
-    // queda habilitada (misma conducta de antes).
+    // El ingreso visible es solo el mail; el campo DNI del login queda
+    // oculto y sin via de UI (el DNI obligatorio se pide en la pantalla de
+    // datos). sDniMode_ conserva el gate para funciones internas y el
+    // smoke: si el contenedor no existe, queda habilitada como antes.
     function sDniMode_() {
       var w = $('login-dni-wrap');
       return !w || !w.hidden;
@@ -6358,21 +6356,6 @@
         sBanner('Escribí tu mail institucional.', 'err');
         try { $('input-mail').focus(); } catch (e) { }
       }
-    }
-
-    // Alternador del paso 2: muestra una sola via por vez. El DNI estaba
-    // siempre visible y, para quien entra por mail, se volvia a pedir en
-    // la pantalla de datos; ahora se pide una sola vez.
-    function sLoginAltToggle_() {
-      var dniWrap = $('login-dni-wrap'), mailWrap = $('login-mail-wrap');
-      if (!dniWrap || !mailWrap) return;
-      var aDni = dniWrap.hidden;
-      dniWrap.hidden = !aDni;
-      mailWrap.hidden = aDni;
-      var t = $('btn-login-alt-t');
-      if (t) t.textContent = aDni ? 'Preferís entrar con tu mail institucional' : '¿No te acordás tu mail? Entrar con tu DNI';
-      if ($('mail-hint')) $('mail-hint').hidden = true;
-      focusField_(aDni ? $('input-dni') : $('input-mail'));
     }
 
     // Sheet de ayuda del mail: solo UI. Abre/cierra el panel de fondo; los
@@ -6423,7 +6406,6 @@
         ev.preventDefault();
         sLoginSubmit();
       });
-      $('btn-login-alt').addEventListener('click', sLoginAltToggle_);
       // La pantalla de datos ("Contanos quién sos") reusa la misma lógica:
       // por mail no pide la respuesta del server (valida local y entra); por
       // DNI vuelve a golpear el server con el apellido ya cargado. Los
