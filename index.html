@@ -5449,8 +5449,20 @@
         bar.className = 'sel-bar' + (done && !sState.confirmed ? ' is-ready' : '');
       }
       var confirmBtn = $('btn-confirmar');
-      var canConfirm = !!d.evento_abierto && done && !sState.confirmed;
-      if (confirmBtn) confirmBtn.style.display = canConfirm ? '' : 'none';
+      // Con las aulas de una franja llenas, el alumno que no eligió esa
+      // franja igual puede confirmar: el botón exigía las tres y lo dejaba
+      // sin inscribir nada (caso del que llega tarde, reportado hoy).
+      var partial = !done && chosenCount > 0 && missing.length < slots.length;
+      var canConfirm = !!d.evento_abierto && !sState.confirmed && (done || partial);
+      if (confirmBtn) {
+        confirmBtn.style.display = canConfirm ? '' : 'none';
+        var lab = confirmBtn.querySelector('span');
+        if (lab) {
+          lab.textContent = (partial && missing.length)
+            ? 'Confirmar sin ' + sMissingLabels_(missing)
+            : 'Confirmar inscripción';
+        }
+      }
       var countEl = $('sel-count');
       if (countEl) {
         countEl.textContent = done
@@ -5663,6 +5675,23 @@
       el.hidden = false;
     }
 
+    function sChosenCount_() {
+      var mine = (sState.data && sState.data.mine) || {};
+      var n = 0;
+      for (var id in mine) {
+        if (Object.prototype.hasOwnProperty.call(mine, id) && sTalkById(mine[id])) n++;
+      }
+      return n;
+    }
+
+    function sMissingLabels_(missing) {
+      var out = [];
+      for (var i = 0; i < missing.length; i++) {
+        out.push(missing[i].label || ('franja ' + missing[i].index));
+      }
+      return out.join(', ');
+    }
+
     function sConfirmar() {
       if (sState.busy) return; // doble tap durante la request no marca listo
       var d = sState.data || { slots: [], mine: {} };
@@ -5670,6 +5699,21 @@
       if (!slots.length) return;
       var missing = sMissingSlots();
       if (missing.length) {
+        // Alumno que llega tarde: todas las aulas de una franja pueden estar
+        // llenas. Con al menos una charla elegida, avisa que esa franja
+        // queda libre y deja confirmar igual; sin nada elegido sigue el
+        // empujón hacia la primera franja completada.
+        if (sChosenCount_() > 0) {
+          var body = '<p>Quedás sin charla en: ' + esc(sMissingLabels_(missing)) + '.</p>'
+            + '<p class="sheet-warn">Las franjas que no elegiste quedan sin charla asignada. Si más tarde aparece un lugar, un docente puede anotarte desde el panel.</p>';
+          openSheet({
+            title: 'Confirmar con franja libre',
+            body: body,
+            confirm: 'Confirmar igual',
+            onConfirm: function () { sConfirmGo_(); }
+          });
+          return;
+        }
         sState.showMissing = true;
         sRender();
         var target = null;
@@ -5690,6 +5734,10 @@
         }
         return;
       }
+      sConfirmGo_();
+    }
+
+    function sConfirmGo_() {
       sState.showMissing = false;
       sState.confirmed = true;
       haptic_([12, 40, 18]);
