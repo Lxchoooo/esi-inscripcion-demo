@@ -1743,6 +1743,14 @@ t('Franja llena: cartelito en el horario y el alta con lo elegido', () => {
   if (!/body\.sheet-open \.sel-bar \{ display: none; \}/.test(panelHtml)) {
     throw new Error('el sel-bar sigue tapando el sheet');
   }
+  // El toque en confirmar mientras viaja la request no muere en silencio
+  // (reporte del dueño: habia que tocar dos veces para llegar a Listo).
+  if (!/sState\.confirmQueued = Date\.now\(\)/.test(panelSrc)) {
+    throw new Error('el confirm encolado no guarda el toque');
+  }
+  if (!/function sUnbusyConfirm_\(\)/.test(panelSrc)) {
+    throw new Error('falta procesar la confirmacion encolada');
+  }
 });
 
 t('Los iconos del panel siguen el color del tema', () => {
@@ -5018,9 +5026,10 @@ t('r29: el parser de la demo es igual al backend (CSV quote-aware)', () => {
 
 t('r29: needles de la ronda de bugfinds del panel', () => {
   // H1: sConfirmar no marca listo durante una request; y el rechazo/catch
-  // de sRegister despierta el estado "listo".
+  // de sRegister despierta el estado "listo". La guardia encola el toque
+  // (ronda franja-llena v2): sale solo al desbloquear, no muere en silencio.
   const sc = panelSrc.indexOf('function sConfirmar');
-  if (!/if \(sState\.busy\) return;/.test(panelSrc.slice(sc, sc + 200))) throw new Error('sConfirmar sin guard de busy');
+  if (!/if \(sState\.busy\) \{/.test(panelSrc.slice(sc, sc + 200))) throw new Error('sConfirmar sin guard de busy');
   const rk = panelSrc.indexOf('El server rechazo');
   if (!/confirmed = false/.test(panelSrc.slice(rk, rk + 320))) throw new Error('el rechazo no revierte el "Listo"');
   const cc = panelSrc.indexOf('Sin conexión: no pude confirmar');

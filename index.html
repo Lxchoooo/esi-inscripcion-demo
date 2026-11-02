@@ -5741,7 +5741,14 @@
     }
 
     function sConfirmar() {
-      if (sState.busy) return; // doble tap durante la request no marca listo
+      if (sState.busy) {
+        // La barra se ve lista por la pintada optimista, pero la request de
+        // la ultima charla sigue viajando: el toque no se pierde, queda en
+        // cola y entra solo cuando la request termina (igual que sOnTalk).
+        sState.confirmQueued = Date.now();
+        sBanner('Tu confirmación quedó en cola…', 'ok');
+        return;
+      }
       var d = sState.data || { slots: [], mine: {} };
       var slots = d.slots || [];
       if (!slots.length) return;
@@ -5861,16 +5868,40 @@
     function sUnbusy_(dropQueued) {
       sState.busy = false;
       sState.wait = null;
-      if (dropQueued) { sState.queued = null; return; }
+      if (dropQueued) { sState.queued = null; sState.confirmQueued = null; return; }
       var fresh = sState.queued && (Date.now() - (sState.queuedAt || 0)) < 5000;
-      if (!fresh) { sState.queued = null; return; }
-      var next = sState.queued;
-      sState.queued = null;
-      var t = sTalkById(next);
-      if (t) {
-        sBanner('');
-        sOnTalk(t);
+      if (fresh) {
+        var next = sState.queued;
+        sState.queued = null;
+        var t = sTalkById(next);
+        if (t) {
+          sBanner('');
+          sOnTalk(t);
+          // La confirmacion en cola espera a que termine esta request.
+          return;
+        }
+      } else {
+        sState.queued = null;
       }
+      sUnbusyConfirm_();
+    }
+
+    // Confirmation encolada (tocado mientras volaba la request): entra solo
+    // si el alta en este momento es valida (todo elegido o franjas llenas).
+    // Si el server rechazo y quedo algo pendiente, se descarta en silencio.
+    function sUnbusyConfirm_() {
+      var when = sState.confirmQueued;
+      sState.confirmQueued = null;
+      if (!when || (Date.now() - when) >= 5000) return;
+      var d = sState.data;
+      if (!d || !d.evento_abierto || sState.confirmed) return;
+      var slots = d.slots || [];
+      if (!slots.length) return;
+      var missing = sMissingSlots();
+      for (var i = 0; i < missing.length; i++) {
+        if (!sSlotEsLlena_(missing[i].id)) return;
+      }
+      sConfirmGo_();
     }
 
     function sRegister(talkId) {

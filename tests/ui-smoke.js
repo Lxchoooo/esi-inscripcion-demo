@@ -103,7 +103,7 @@ return {
   sSessionToken_: sSessionToken_, sClearStudentSession_: sClearStudentSession_,
   aRenderTalk: aRenderTalk, aRenderPending: aRenderPending, aApplyRole: aApplyRole,
   aSyncTableCards_: aSyncTableCards_,
-  aShowMail_: aShowMail_, aCopyText_: aCopyText_, closeSheet: closeSheet,
+  aShowMail_: aShowMail_, aCopyText_: aCopyText_, closeSheet: closeSheet, sUnbusy_: sUnbusy_,
   aOnPresent: aOnPresent, aRepSetType: aRepSetType, aBuildPrint: aBuildPrint,
   retryTransient_: retryTransient_,
   setReports: function (v) { aReports = v; },
@@ -192,6 +192,22 @@ ui.sConfirmar();
 // es que no haya sheet visible durante el alta con franja llena.
 assert(String(document.getElementById('sheet').className).indexOf('show') < 0,
   'alta de franja llena sin sheet visible');
+
+ui.sConfirmar();
+// La request de la ultima charla puede seguir voliendo cuando el alumno
+// toca confirmar (reporte del dueño): el toque queda en cola y sale solo.
+document.body.setAttribute('data-screen', 's-screen-panel');
+ui.sState.confirmed = false;
+ui.sState.data.mine = { 1: 'B1', 2: 'B5' };
+ui.sState.busy = true;
+ui.sConfirmar();
+assert(document.body.getAttribute('data-screen') === 's-screen-panel',
+  'el confirm con busy no cambia de pantalla a medias');
+assert(document.getElementById('s-banner').textContent.indexOf('cola') >= 0,
+  'el confirm encolado avisa que quedo en cola');
+ui.sUnbusy_();
+assert(document.body.getAttribute('data-screen') === 's-screen-done',
+  'confirm encolado llega a Listo sin segundo toque');
 
 ui.setA({
   total: 2,
