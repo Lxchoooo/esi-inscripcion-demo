@@ -736,36 +736,42 @@ function welcomeBody_(name, items, cfg) {
   var lines = [
     'Hola ' + mailLine_(name) + ':',
     '',
-    'Gracias por inscribirte a la ' + EVENT_TITLE_ + ' del ' + eventDateLabel_(cfg) +
-      '. Acá vas a encontrarte con charlas sobre la Educación Sexual Integral (ESI).',
+    'Quedaste anotado en la ' + EVENT_TITLE_ + ' del ' + eventDateLabel_(cfg) + '.',
+    'Es un espacio para hablar con lenguaje sereno y cuidado sobre el cuerpo, la salud, los afectos, el género y los derechos.',
     '',
-    'La ESI es la Ley 26.150, del año 2006: todos los alumnos tienen derecho a recibirla en la escuela, pública y privada.',
-    'No es una materia: es un espacio para hablar con lenguaje sereno y cuidado sobre el cuerpo, la salud, los afectos, el género y los derechos, mirándolos en lo biológico, lo psicológico, lo social, lo afectivo y lo ético.',
-    '',
-    'Línea 102: niñez y adolescencia. Línea 144: violencia de género. 0800-222-3444: salud sexual, gratuita y confidencial. También podés hablar con un docente o preceptor de confianza.',
+    'La ESI es la Ley 26.150, del año 2006: todas y todos los alumnos tienen derecho a recibirla en la escuela, pública y privada. No es una materia.',
     '',
     'Tus charlas:'
   ];
   lines = lines.concat(mailCharlasList_(items));
   lines.push('');
-  lines.push('Llegá 10 minutos antes de cada charla. Si cambiás una, te avisamos por mail con la charla nueva.');
+  lines.push('Llegá 10 minutos antes de cada charla. Si cambiás alguna te avisamos por este mail con la charla nueva.');
+  lines.push('');
+  lines.push('Si querés hablar con alguien: Línea 102 (niñez y adolescencia), Línea 144 (violencia de género) o 0800-222-3444 (salud sexual, gratuita y confidencial). También podés acercarte a un docente o preceptor de confianza.');
   lines.push('');
   lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
   return lines.join('\n');
 }
 
-function changeBody_(name, horario, talk) {
+function changeBody_(name, horario, talk, otras) {
   var lines = [
     'Hola ' + mailLine_(name) + ':',
     '',
-    'Te confirmamos el cambio que hiciste en tu inscripción: en el horario de ' +
-      mailLine_(horario) + ' ahora estás en "' + mailLine_(talk.titulo) + '"' +
-      (talk.lugar ? ' (' + mailLine_(talk.lugar) + ')' : '') + '.',
-    '',
-    'El resto de tus charlas sigue igual.',
-    '',
-    'Equipo ESI · Instituto Secundario Salsipuedes'
+    'Te confirmamos el cambio que hiciste en tu inscripción.',
+    'En el horario de ' + mailLine_(horario) + ' ahora vas a ir a "' +
+      mailLine_(talk.titulo) + '"' + (talk.lugar ? ' (' + mailLine_(talk.lugar) + ')' : '') + '.',
+    ''
   ];
+  if (otras && otras.length) {
+    lines.push('Tus otras charlas no cambiaron:');
+    lines = lines.concat(mailCharlasList_(otras));
+  } else {
+    lines.push('No tenés otras charlas anotadas.');
+  }
+  lines.push('');
+  lines.push('Si cambiás otra charla te avisamos de nuevo por este medio.');
+  lines.push('');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
   return lines.join('\n');
 }
 
@@ -871,7 +877,14 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
   // antes.
   if (!wasPending && doneBefore && action === 'change' && talk) {
     var horario = slotLabelFor_(slots, talk.slot_id);
-    upsertPendingMail_(dest, 'cambio', mailChangeSubject_(cfg), changeBody_(name, horario, talk));
+    // Las otras charlas al pie del mail de cambio: el alumno no se acuerda
+    // que eligio en cada horario (pedido del dueño 2/11/2026).
+    var otras = [];
+    for (var k = 0; k < slots.length; k++) {
+      if (Number(slots[k].id) === Number(talk.slot_id)) continue;
+      if (items[k] && items[k].elegida) otras.push(items[k]);
+    }
+    upsertPendingMail_(dest, 'cambio', mailChangeSubject_(cfg), changeBody_(name, horario, talk, otras));
   }
   try { ensureMailQueueTrigger_(); } catch (eTrigger) { }
 }
