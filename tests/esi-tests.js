@@ -1430,7 +1430,7 @@ function loginTicketFor(services, email, nombre, curso, apellido) {
 function backendApi(services, names) {
   const src = names.split(',').map((n) => n.trim());
   const body = src.map((n) => n + ': ' + n).join(',');
-  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp', 'Session', 'ScriptApp',
+  return new Function('PropertiesService', 'LockService', 'CacheService', 'SpreadsheetApp', 'Utilities', 'MailApp', 'Session', 'ScriptApp', 'UrlFetchApp',
     codeSrc + '\nreturn {' + body + '};')(
     services.PropertiesService, services.LockService, services.CacheService,
     services.SpreadsheetApp, services.Utilities, services.MailApp,
@@ -1438,7 +1438,8 @@ function backendApi(services, names) {
     services.ScriptApp || {
       getProjectTriggers: () => [],
       newTrigger: () => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => { } }), hourlyTrigger: () => ({ atHour: () => ({ nearHour: () => ({ create: () => { } }) }) }) }) })
-    });
+    },
+    services.UrlFetchApp === undefined ? undefined : services.UrlFetchApp);
 }
 
 t('Landing opens with the event poster and a primary call to action', () => {
@@ -4106,6 +4107,64 @@ t('v79: auto-setup respeta el tope de 3 reintentos y la ocupacion del lock', () 
   const api = backendApi(services, 'autoSetup_');
   api.autoSetup_();
   assertEq(props.LAST_SETUP_VERSION, 'v65', 'con el tope cumplido no toca la hoja');
+});
+
+t('v80: gmail api manda el aviso con el token del colegio', () => {
+  const props = { gmail_api_refresh: '1//refresh', gmail_api_client_id: 'cid', gmail_api_secret: 'sec' };
+  const services = backendStub(props);
+  services.Utilities = Object.assign({}, services.Utilities, {
+    base64Encode: (v) => 'b64:' + String(v),
+    base64WebSafe: (v) => 'ws:' + String(v),
+    Charset: { UTF_8: 'utf8' }
+  });
+  const calls = [];
+  services.UrlFetchApp = {
+    fetch: (url, req) => {
+      calls.push({ url: url, req: req });
+      if (String(url).indexOf('oauth2.googleapis.com') >= 0) {
+        return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ access_token: 'acc1' }) };
+      }
+      return { getResponseCode: () => 200, getContentText: () => '{"id":"m1"}' };
+    }
+  };
+  const api = backendApi(services, 'gmailApiSend_,gmailApiReady_');
+  assertEq(api.gmailApiReady_(), true, 'via lista con las 3 claves');
+  assertEq(api.gmailApiSend_('ana@secundariosalsipuedes.edu.ar', 'Bienvenida ESI', 'hola'), true, 'send ok');
+  if (!calls.some((c) => String(c.url).indexOf('oauth2.googleapis.com/token') >= 0)) {
+    throw new Error('no pide access token al refresh');
+  }
+  const sendCall = calls.filter((c) => String(c.url).indexOf('users/me/messages/send') >= 0)[0];
+  if (!sendCall) throw new Error('no llama a gmail/v1/users/me/messages/send');
+  const bearer = JSON.stringify(sendCall.req.headers);
+  if (bearer.indexOf('acc1') < 0) throw new Error('bearer no viene del refresh');
+  if (!/=?UTF-8\?B\?b64:Bienvenida ESI\?=/.test(bearer + JSON.stringify(sendCall.req.payload))) {
+    throw new Error('el asunto no sale codificado');
+  }
+  assertEq(props.gmail_api_refresh, '1//refresh', 'el token no se toca al mandar');
+});
+
+t('v80: si la via gmail se cae, gmailApiSend_ devuelve false y queda en pausa', () => {
+  const props = { gmail_api_refresh: '1//r', gmail_api_client_id: 'c', gmail_api_secret: 's' };
+  const services = backendStub(props);
+  services.Utilities = Object.assign({}, services.Utilities, {
+    base64Encode: () => 'b64',
+    base64WebSafe: () => 'ws',
+    Charset: { UTF_8: 'u' }
+  });
+  services.MailApp = { getRemainingDailyQuota: () => 95, sendEmail: () => { } };
+  services.UrlFetchApp = {
+    fetch: () => ({ getResponseCode: () => 500, getContentText: () => '{"error":"server_error"}' })
+  };
+  const api = backendApi(services, 'gmailApiSend_,gmailApiReady_');
+  assertEq(api.gmailApiSend_('x@secundariosalsipuedes.edu.ar', 'S', 'B'), false, 'fallo devuelto como false');
+  assertEq(api.gmailApiSend_('x2@secundariosalsipuedes.edu.ar', 'S', 'B'), false, 'en pausa no reintenta');
+});
+
+t('v80: apiMailDiag nombra la via de envio', () => {
+  const sin = backendApi(backendStub({}), 'apiMailDiag');
+  assertEq(sin.apiMailDiag().envio_via, 'mailapp', 'sin token va por mailapp');
+  const con = backendApi(backendStub({ gmail_api_refresh: 'r', gmail_api_client_id: 'c', gmail_api_secret: 's' }), 'apiMailDiag');
+  assertEq(con.apiMailDiag().envio_via, 'gmail_api', 'con token via gmail_api');
 });
 
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
