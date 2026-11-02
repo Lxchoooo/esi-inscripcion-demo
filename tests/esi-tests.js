@@ -173,6 +173,71 @@ t('backupToDrive_ copies once per day and prunes old files', () => {
   }
 });
 
+t('preceptorRows_ arma las filas limpias ordenadas por curso y apellido', () => {
+  const api = backendApi(backendStub({}), 'preceptorRows_');
+  const signups = [
+    { id: '1', email: 'GomezPerezMaria2029@secundariosalsipuedes.edu.ar', nombre: 'Maria', apellido: 'Gomez Perez', curso: '6ºTurismo', slot_id: 2, talk_id: 't2', presente: false },
+    { id: '2', email: 'AlumnaDiaz2029@secundariosalsipuedes.edu.ar', nombre: 'Alumna', apellido: 'Díaz', curso: '2ºB', slot_id: 1, talk_id: 't1', presente: true },
+    { id: '3', email: 'lrojas2029@secundariosalsipuedes.edu.ar', nombre: 'Laura', apellido: 'Rojas', curso: '2ºB', slot_id: 1, talk_id: 't1', presente: true, prueba: true }
+  ];
+  const students = [
+    { email: 'alumnadiaz2029@secundariosalsipuedes.edu.ar', dni: '40123456' }
+  ];
+  const talks = [
+    { id: 't1', titulo: 'Charla A', ciclo: 'basico', slot_id: 1, lugar: 'Aula 1', cupo: 40, activa: true },
+    { id: 't2', titulo: 'Charla B', ciclo: 'orientado', slot_id: 2, lugar: 'Aula 2', cupo: 2, activa: true },
+    { id: 't3', titulo: 'Charla apagada', ciclo: 'basico', slot_id: 3, lugar: 'Aula 3', cupo: 40, activa: false }
+  ];
+  const slots = [
+    { id: 1, inicio: '10:30', fin: '11:20' },
+    { id: 2, inicio: '11:30', fin: '12:20' }
+  ];
+  const d = api.preceptorRows_(signups, students, talks, slots);
+  assertEq(d.inscriptos.length, 2, 'prueba fuera, reservas reales dentro');
+  assertEq(d.inscriptos[0].apellido, 'Díaz', '2ºB antes que 6ºTurismo');
+  assertEq(d.inscriptos[0].dni, '40123456', 'DNI matchea por mail normalizado');
+  assertEq(d.inscriptos[0].presente, 'SI', 'presente legible');
+  assertEq(d.inscriptos[1].dni, '', 'sin DNI queda vacio, no inventado');
+  assertEq(d.inscriptos[1].slot, '11:30 a 12:20', 'franja legible');
+  assertEq(d.cupos.length, 2, 'charlas apagadas fuera');
+  const cupos = {};
+  d.cupos.forEach((c) => { cupos[c.charla] = c; });
+  assertEq(cupos['Charla B'].anotados, 1, 'anotados cuenta reservas reales');
+  assertEq(cupos['Charla B'].libres, 1, 'libres es cupo menos anotados');
+  assertEq(d.resumen[0][1], 2, 'alumnos unicos sin prueba');
+  assertEq(d.resumen[1][1], 2, 'reservas sin prueba');
+  assertEq(d.resumen[2][1], 1, 'presentes sin filas de prueba');
+});
+
+t('apiAdminPlanillaRun exige credencial y apiDriveDiag es publico de solo lectura', () => {
+  const api = backendApi(backendStub({}), 'apiAdminPlanillaRun,apiDriveDiag');
+  assertEq(api.apiAdminPlanillaRun('555555').ok, false, 'clave incorrecta rechazada');
+  assertEq(api.apiAdminPlanillaRun().ok, false, 'sin clave rechazada');
+  const diag = api.apiDriveDiag();
+  assertEq(diag.ok, true, 'diag nunca explota');
+  if (!(diag.drive === 'indisponible' || diag.carpeta === 'ESI')) {
+    throw new Error('diag no sabe decir donde mira');
+  }
+  if (diag.drive !== 'indisponible') {
+    assertEq(diag.planilla.nombre, 'ESI Jornada 2026 - Preceptores', 'diag anuncia la planilla');
+  }
+});
+
+t('Panel abre la planilla de preceptores desde Inscriptos', () => {
+  for (const needle of ['id="btn-planilla"', 'aPlanillaRun_', "call('apiAdminPlanillaRun', [adminCred, 'true'])"]) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/\$\('btn-planilla'\)\.addEventListener\('click', aPlanillaRun_\)/.test(panelSrc)) {
+    throw new Error('btn-planilla no wireado');
+  }
+  if (!panelSrc.includes("fn === 'apiAdminPlanillaRun'")) throw new Error('demo sin planilla');
+  // El abrir del doc va como accion del banner: un window.open tras una
+  // request suele quedar bloqueado.
+  if (!/aBanner\('Planilla lista[^;]{0,600}'Abrir'/.test(panelSrc.replaceAll('\n', ' '))) {
+    throw new Error('la apertura de la planilla no va por el banner');
+  }
+});
+
 summary();
 }
 
