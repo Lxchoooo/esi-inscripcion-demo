@@ -6046,11 +6046,14 @@
           sNextConfirmIfAny();
         })
         .catch(function () {
-          sUnbusy_();
+          // Primero se revierte el estado optimista y recien despues se cierra
+          // el toque: si no, el confirm en cola pintaba "Listo" con una charla
+          // que el server nunca recibio.
           sState.nextConfirm = null; sState.nextConfirmAt = 0;
           sRestoreOptimistic_(snap);
           // Sin confirmación del server no hay "listo" en pantalla.
           sState.confirmed = false;
+          sUnbusy_(false);
           toast('Sin conexión: no pude confirmar. Probá de nuevo.', 'err');
         });
     }
