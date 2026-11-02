@@ -3458,7 +3458,7 @@ function apiStudentLogout(token) {
   }
 }
 
-function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, loginToken) {
+function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, loginToken, dni) {
   // Filtro barato antes de la cola: una charla que no existe no hace falta
   // esperar el lock ni leer la planilla entera para rechazarla.
   try {
@@ -3470,7 +3470,7 @@ function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, login
     if (!existe) return { ok: false, message: ERROR_MESSAGES_.talkNotFound };
   } catch (e0) { }
   var resp = withScriptLock_(REGISTER_LOCK_MS, function () {
-    return registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken);
+    return registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken, dni);
   });
   // Las sesiones se rotan recien aca, con el lock ya suelto: asi los que
   // estan en la cola no esperan a que se escriba la hoja de sesiones.
@@ -3489,7 +3489,7 @@ function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, login
   return resp;
 }
 
-function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken) {
+function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, loginToken, dni) {
   try {
     var current = sessionToken ? studentSession_(sessionToken) : null;
     if (sessionToken && !current) return studentSessionExpired_();
@@ -3653,6 +3653,15 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     // derivadas): queda marcada y la corro el trigger, que unicamente hace
     // un trabajo para el grupo de cambios.
     scheduleRebuilds_();
+    try {
+      var dniLog = upsertStudentsDni_(s, dni);
+      if (dniLog === 'nuevo' || dniLog === 'actualizado') {
+        logAction_('dni_alumno', s.emailKey, dniLog);
+        // El roster y la ficha leen Students cacheado: sin esto la ficha
+        // puede quedar sin DNI hasta vencer el TTL.
+        invalidateSignupsCache_();
+      }
+    } catch (eDni) { }
     return {
       ok: true,
       message: message,
@@ -4404,6 +4413,40 @@ function purgeMailQueueForEmail_(email) {
   }
   for (var u = rows.length - 1; u >= 0; u--) q.sh.deleteRow(rows[u]);
   return rows.length;
+}
+
+// El DNI es autodeclarado: el alumno lo teclea la primera vez y queda en
+// Students, la unica fuente cuando no se importa padron (decision del
+// dueño, 2/11/2026). Upsert por mail; la fila nueva lleva nombre, apellido
+// y curso para que la ficha y el login por DNI trabajen igual que con un
+// padron importado. Devuelve un código chico para el Log.
+function upsertStudentsDni_(s, dni) {
+  var norm = EsiCore.normalizeDni(String(dni || ''));
+  if (!EsiCore.isValidDni(norm)) return 'no';
+  var sh = sheet_(STUDENTS_SHEET);
+  if (!sh) return 'sin hoja';
+  ensureColumn_(sh, 'dni');
+  var vals = sh.getDataRange().getValues();
+  var map = studentsHeader_(vals[0] || []);
+  var emailIdx = map ? map.email : 0;
+  var dniIdx = sh.getLastColumn() - 1; // dni queda ultima columna por ensureColumn_
+  for (var i = 1; i < vals.length; i++) {
+    if (EsiCore.normalizeEmail(vals[i][emailIdx]) !== s.email) continue;
+    if (EsiCore.normalizeDni(String(vals[i][dniIdx] || '')) === norm) return 'igual';
+    sh.getRange(i + 1, dniIdx + 1).setValue(norm);
+    return 'actualizado';
+  }
+  var span = Math.max(sh.getLastColumn(), dniIdx + 1);
+  var row = [];
+  for (var c = 0; c < span; c++) row.push('');
+  row[emailIdx] = s.email;
+  if (map && map.nombre != null) row[map.nombre] = s.nombre || '';
+  if (map && map.completo != null) row[map.completo] = String((s.nombre || '') + ' ' + (s.apellido || '')).trim();
+  if (map && map.apellido != null) row[map.apellido] = s.apellido || '';
+  if (map && map.curso != null) row[map.curso] = s.curso || '';
+  row[dniIdx] = norm;
+  sh.appendRow(row);
+  return 'nuevo';
 }
 
 function apiAdminDeleteStudent(cred, email) {

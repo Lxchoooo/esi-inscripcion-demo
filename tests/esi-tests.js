@@ -930,6 +930,49 @@ t('reinscripcion tras borrado vuelve a mandar la bienvenida', () => {
   assertEq(services.sentMails.length, 2, 'la reinscripcion dispara bienvenida nueva');
 });
 
+t('el DNI autodeclarado del registro queda en Students y la ficha lo trae', () => {
+  // Sin padron importado, el DNI que el alumno declara es la unica fuente
+  // (decision del dueño). Entro con mail, elijo una charla y mande DNI.
+  const services = backendStub({ ADMIN_PIN: '482913', GUIDE_PIN: '731204' });
+  addStubTalk_(services);
+  const api = backendApi(services, 'apiRegister,apiAdminTalkRoster');
+  const mail = 'alumna@secundariosalsipuedes.edu.ar';
+  let sess = '';
+  const r1 = api.apiRegister(mail, 'Alumna Diaz', '2°B', 'B1', 'Diaz', sess, '');
+  if (r1.session) sess = r1.session;
+  assertEq(r1.ok, true, 'primer alta sin dni: ' + r1.message);
+  const r2 = api.apiRegister(mail, 'Alumna Diaz', '2°B', 'B2', 'Diaz', sess, '', '40123456');
+  if (r2.session) sess = r2.session;
+  assertEq(r2.ok, true, 'alta con dni: ' + r2.message);
+  const filas = services.sheets.Students.data;
+  const filaAlumna = filas.find((f) => String(f[0]).indexOf('alumna@') >= 0);
+  if (!filaAlumna) throw new Error('el registro no dejo fila en Students');
+  assertEq(String(filaAlumna[filaAlumna.length - 1]), '40123456', 'DNI en la ultima columna');
+  const roster = api.apiAdminTalkRoster('482913', 'B2');
+  assertEq(roster.ok, true, 'roster ok: ' + roster.message);
+  const rowAlumna = (roster.students || []).find((x) => x.email === mail);
+  if (!rowAlumna) throw new Error('roster sin el alumno');
+  assertEq(rowAlumna.dni, '40123456', 'la ficha ve el DNI autopdeclarado');
+  // Un DNI invalido no rompe el alta: queda sin dni, nunca bloquea.
+  const r3 = api.apiRegister(mail, 'Alumna Diaz', '2°B', 'B3', 'Diaz', sess, '', '123');
+  assertEq(r3.ok, true, 'dni invalido no bloquea el alta: ' + r3.message);
+});
+
+t('Panel pide DNI en la primera inscripcion y lo manda con cada charla', () => {
+  for (const needle of ['id="input-dni-datos"', 'input-dni-datos', "sState.dni = EsiClient.normalizeDni(dniDato)"]) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!panelSrc.includes("call('apiRegister', [sState.email, sState.nombre, sState.curso, talkId, sState.apellido, sSessionToken_(), sState.login || '', sState.dni || ''])")) {
+    throw new Error('apiRegister no lleva el DNI');
+  }
+  // El resumen Todo listo tambien exige el DNI valido.
+  if (!/anio && div && sValidDni_\(dni\)/.test(panelSrc)) throw new Error('resumen sin DNI');
+  // Ingreso por DNI: el dni tipeado queda en el estado para la ficha.
+  if (!/sState\.dni = EsiClient\.normalizeDni\(\$\('input-dni'\)\.value/.test(panelSrc)) {
+    throw new Error('el ingreso por DNI no guarda el dni');
+  }
+});
+
 t('r21: el trigger de mails se auto-repara si alguien lo borro', () => {
   const created = [];
   const services = backendStub({});
@@ -1523,13 +1566,13 @@ t('v109: ficha del alumno con DNI, curso limpio y copia por toque', () => {
   if (!/\.ficha-copy \{[\s\S]{0,200}cursor: pointer/.test(panelHtml)) throw new Error('sin estilo de fila copiable');
 });
 
-t('v110: ficha con avatar, meta de curso y estado de DNI del padrón', () => {
+t('v110: ficha con avatar, meta de curso y estado del DNI registrado', () => {
   // Cabecera de identidad: avatar de iniciales + nombre + meta.
   if (!/class="ficha-head"/.test(panelSrc) || !/function aFichaIni_/.test(panelSrc)) {
     throw new Error('sin cabecera de ficha con avatar');
   }
-  // Cuando el padrón no trae DNI la ficha lo dice, no esconde el hueco.
-  if (!/Sin DNI en el padrón para este alumno\./.test(panelSrc)) throw new Error('sin aviso de falta de DNI');
+  // Cuando el alumno no registro DNI la ficha lo dice, no esconde el hueco.
+  if (!/Sin DNI registrado para este alumno\./.test(panelSrc)) throw new Error('sin aviso de falta de DNI');
   if (!/ficha-copy is-missing/.test(panelSrc)) throw new Error('sin fila apagada sin DNI');
   // La fila apagada NO es copiable (sin data-copiame en la variante missing).
   const missy = panelSrc.match(/is-missing"[\s\S]{0,200}ficha-nodni/);
@@ -1688,7 +1731,9 @@ t('Franja llena: el alumno puede confirmar sin la franja que no eligió', () => 
   // y la confirmación con faltantes exige sheet de aviso previo, no la
   // marca directa.
   if (!/'Confirmar igual'/.test(panelSrc)) throw new Error('sheet de confirmacion parcial falta');
-  if (!/Confirmar sin ' \+ sMissingLabels_\(missing\)/.test(panelSrc)) throw new Error('etiqueta parcial falta');
+  if (!/Confirmar sin ' \+ \(missing\.length === 1 \? '1 franja' : missing\.length \+ ' franjas'\)/.test(panelSrc)) {
+    throw new Error('etiqueta parcial falta');
+  }
   if (!/function sConfirmGo_\(/.test(panelSrc)) throw new Error('la confirmacion final no esta extraida');
   // Sin nada elegido sigue el empujon hacia la primera completada.
   if (!/if \(sChosenCount_\(\) > 0\) \{[\s\S]{0,600}openSheet\(\{/.test(panelSrc)) {
@@ -2721,8 +2766,8 @@ t('Registering the same student and talk twice keeps one row', () => {
 });
 
 t('Panel sends the session when registering a second slot', () => {
-  if (!/call\('apiRegister', \[sState\.email, sState\.nombre, sState\.curso, talkId, sState\.apellido, sSessionToken_\(\)\]\)/.test(panelSrc)) {
-    throw new Error('apiRegister call drops the session token');
+  if (!/call\('apiRegister', \[sState\.email, sState\.nombre, sState\.curso, talkId, sState\.apellido, sSessionToken_\(\), sState\.login \|\| '', sState\.dni \|\| ''\]\)/.test(panelSrc)) {
+    throw new Error('apiRegister call drops the session token or dni');
   }
   if (!/if \(resp\.session\) sSetSession_\(resp\.session\)/.test(panelSrc)) {
     throw new Error('panel ignores the session returned by apiRegister');
