@@ -110,6 +110,7 @@ return {
   setReports: function (v) { aReports = v; },
   setCred: function (v) { adminCred = v; },
   sState: sState, getState: function () { return sState; }, setA: function (v) { aData = v; },
+  sTalksForSlot_: sTalksForSlot_, sTalkRank_: sTalkRank_,
   setTalk: function (v) { aTalkData = v; }, setTalkFilter: function (v) { aTalkFilter = v; aRenderTalk(); }, aSaveConfig: aSaveConfig,
   setPending: function (v) { aPendingData = v; },
   setRole: function (r) { aRole = r; },
@@ -165,6 +166,12 @@ assert(cB1.innerHTML.includes('Elegida'), 'texto elegida');
 assert(cB2.innerHTML.includes('is-low'), 'barra casi llena');
 assert(cB3.innerHTML.includes('is-full'), 'barra completa');
 assert(document.getElementById('sel-count').textContent === '1 de 3 elegidas', 'contador');
+
+// El orden barajado tiene que ser estable entre pintadas y no perder charlas.
+const ordenA = ui.sTalksForSlot_(ui.sState.data.talks, 1).map((x) => x.id).join(',');
+const ordenB = ui.sTalksForSlot_(ui.sState.data.talks, 1).map((x) => x.id).join(',');
+assert(ordenA === ordenB, 'el orden no cambia entre pintadas');
+assert(ordenA.split(',').sort().join(',') === 'B1,B2,B3', 'no se pierde ni se duplica ninguna charla');
 
 // El toque de una tarjeta tiene que quedar cableado y abrir el sheet: era el
 // "no funciona el click" que se veia en el celular.
