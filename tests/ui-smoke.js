@@ -205,6 +205,10 @@ assert(hintMail.textContent.indexOf('completo') >= 0, 'avisa mail incompleto sin
 inputMail.value = 'alumna2029@hotmail.com';
 ui.sLookup();
 assert(hintMail.textContent.indexOf('Usá tu mail') >= 0, 'dominio ajeno: mensaje de dominio');
+inputMail.value = 'alumna@secundariosalsipuedes.ec';
+ui.sLookup();
+assert(hintMail.textContent.indexOf('año de egreso') >= 0
+  && hintMail.textContent.indexOf('secundariosalsipuedes.edu.ar') >= 0, 'año y dominio mal: avisa los dos');
 // Franja con lugares disponibles: confirmar oculto hasta completar las tres
 // (diseño del dueño: el alta exige las tres franjas, sin confirmacion parcial).
 const cbtn = document.getElementById('btn-confirmar');
