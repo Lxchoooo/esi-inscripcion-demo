@@ -5160,6 +5160,32 @@ t('r28: needles de la ronda de bugfinds (rebuild con rastro, lock en drill, impo
   if (!/logAction_\('merge_duplicates'[\s\S]{0,300}scheduleRebuilds_\(\)/.test(codeSrc)) throw new Error('merge_duplicates no agenda rebuild');
 });
 
+t('r40: el estado publico trae rev y el panel descarta respuestas viejas', () => {
+  // Dos confirmaciones seguidas pueden volver cruzadas: sin rev, la respuesta
+  // vieja pisaba la eleccion nueva y el resumen quedaba en 2 de 3.
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Talks = fakeSheet('Talks', ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'], [
+    ['B1', 'Charla uno', 'ambos', 1, 'Aula 1', 40, 'si'],
+    ['B2', 'Charla dos', 'ambos', 2, 'Aula 2', 40, 'si'],
+    ['B3', 'Charla tres', 'ambos', 3, 'Aula 3', 40, 'si']
+  ]);
+  const api = backendApi(services, 'apiRegister');
+  const r1 = api.apiRegister('letras2029@secundariosalsipuedes.edu.ar', 'Alumno', '2°A', 'B1');
+  assertEq(r1.ok, true, 'alta 1');
+  assertEq(typeof r1.data.rev, 'number', 'rev numerico');
+  const r2 = api.apiRegister('letras2029@secundariosalsipuedes.edu.ar', 'Alumno', '2°A', 'B2', '', r1.session);
+  if (!r2.ok) throw new Error('alta 2 fallo: ' + JSON.stringify(r2).slice(0,300));
+  if (!(r2.data.rev >= r1.data.rev)) throw new Error('rev no avanza');
+  assertEq(Object.keys(r2.data.mine).length, 2, 'dos franjas en mine');
+  if (panelSrc.indexOf('function sAdoptData_') < 0) throw new Error('falta sAdoptData_');
+  if (!/sAdoptData_\(resp\.data\)/.test(panelSrc)) throw new Error('el panel no usa sAdoptData_');
+});
+
+t('r40: tocar una charla completa avisa en vez de quedarse mudo', () => {
+  if (panelSrc.indexOf('Esa charla ya está completa') < 0) throw new Error('no avisa la charla completa');
+  if (!/toast\('Esa charla ya está completa/.test(panelSrc)) throw new Error('el aviso no es un toast');
+});
+
 t('r25: el watchdog empuja la cola de mails si el trigger de cada minuto no corre', () => {
   const services = backendStub({});
   enableMail_(services);
