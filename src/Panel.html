@@ -6339,7 +6339,11 @@
         return;
       }
       if (!/(?:2026|2027|2028|2029|2030|2031)$/.test(mailLoc)) {
-        sMailError_('Poné tu año de egreso al final del mail (2026 a 2031). Ej: gomezperezmaria2029@secundariosalsipuedes.edu.ar');
+        // Si ademas el dominio esta mal (captura 2/11: ".ec" en vez de
+        // ".edu.ar"), se avisan las dos cosas de una vez y no en dos vueltas.
+        sMailError_(mailDom === '@secundariosalsipuedes.edu.ar'
+          ? 'Poné tu año de egreso al final del mail (2026 a 2031). Ej: gomezperezmaria2029@secundariosalsipuedes.edu.ar'
+          : 'Poné tu año de egreso (2026 a 2031) y revisá el final: el mail tiene que terminar en @secundariosalsipuedes.edu.ar');
         return;
       }
       if (mailDom !== '@secundariosalsipuedes.edu.ar') {
