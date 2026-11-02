@@ -248,6 +248,12 @@ process.once('exit', function () {
   }
 });
 
+function letras_(i) {
+  let s = '';
+  do { s = String.fromCharCode(97 + (i % 26)) + s; i = Math.floor(i / 26); } while (i > 0);
+  return s;
+}
+
 function assertEq(a, b, msg) {
   if (a !== b) throw new Error((msg || '') + ' got ' + JSON.stringify(a) + ' expected ' + JSON.stringify(b));
 }
@@ -673,8 +679,8 @@ t('Panel demo backend: register, full, keep previous, admin, close/open, delete'
   const seed = [];
   for (let i = 0; i < 40; i++) {
     seed.push({
-      id: 's' + i, ts: 0, email: 'f2029' + i + '@secundariosalsipuedes.edu.ar', nombre: 'Fulano ' + i,
-      curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'B2', emailKey: 'f2029' + i + '@secundariosalsipuedes.edu.ar'
+      id: 's' + i, ts: 0, email: 'f' + letras_(i) + '2029@secundariosalsipuedes.edu.ar', nombre: 'Fulano ' + i,
+      curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'B2', emailKey: 'f' + letras_(i) + '2029@secundariosalsipuedes.edu.ar'
     });
   }
 
@@ -744,12 +750,12 @@ t('Panel demo backend: roster import does not restrict mail access', () => {
   };
   const api = new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
 
-  return api.call('apiAdminImportRoster', ['demo', 'ana12029@secundariosalsipuedes.edu.ar; Ana Ruiz; 2b\nbea22029@secundariosalsipuedes.edu.ar', 'reemplazar']).then((r1) => {
+  return api.call('apiAdminImportRoster', ['demo', 'anaa2029@secundariosalsipuedes.edu.ar; Ana Ruiz; 2b\nbea22029@secundariosalsipuedes.edu.ar', 'reemplazar']).then((r1) => {
     assertEq(r1.ok, true, 'import ok');
     assertEq(r1.total, 2, 'total roster');
     assertEq(r1.nuevos, 2, 'nuevos');
     assertEq(r1.modo, 'reemplazar', 'modo');
-    return api.call('apiLookup', ['bea22029@secundariosalsipuedes.edu.ar']);
+    return api.call('apiLookup', ['beab2029@secundariosalsipuedes.edu.ar']);
   }).then((r2) => {
     assertEq(r2.ok, true, 'roster mail lookup');
     assertEq(r2.rosterLoaded, true, 'rosterLoaded');
@@ -1961,7 +1967,7 @@ t('cuarenta altas seguidas respetan el cupo y contestan busy o lleno, nunca dos 
   const api = backendApi(services, 'apiRegister');
   const respuestas = [];
   for (let i = 1; i <= 40; i++) {
-    respuestas.push(api.apiRegister('alumno' + i + '2029@secundariosalsipuedes.edu.ar', 'Alumno Prueba', '2°A', 'B1'));
+    respuestas.push(api.apiRegister('alumno' + letras_(i) + '2029@secundariosalsipuedes.edu.ar', 'Alumno Prueba', '2°A', 'B1'));
   }
   const muestra = respuestas[0];
   if (!muestra || (!muestra.ok && !muestra.busy)) throw new Error('respuesta rara: ' + JSON.stringify(muestra));
@@ -2881,7 +2887,7 @@ t('A login ticket cannot be replayed through apiRegister', () => {
 t('Concurrent registrations never exceed the cap or duplicate rows', () => {
   const students = [];
   for (let i = 0; i < 50; i++) {
-    students.push(['s' + i + '2029@secundariosalsipuedes.edu.ar', 'Alumno', '2°B']);
+    students.push(['s' + letras_(i) + '2029@secundariosalsipuedes.edu.ar', 'Alumno', '2°B']);
   }
   const services = backendStub({}, { students: students, signups: [] });
   const api = backendApi(services, 'apiGetData, apiRegister');
@@ -4310,8 +4316,8 @@ t('r15: loadtest sin rutas ni claves hardcodeadas', () => {
 });
 
 t('r15: loadtest usa mails ficticios y clasifica busy', () => {
-  assertEq(loadtest.mail(1), 'carga0012029@secundariosalsipuedes.edu.ar', 'mail 1');
-  assertEq(loadtest.mail(50), 'carga0502029@secundariosalsipuedes.edu.ar', 'mail 50');
+  assertEq(loadtest.mail(1), 'cargab2029@secundariosalsipuedes.edu.ar', 'mail 1');
+  assertEq(loadtest.mail(50), 'cargaby2029@secundariosalsipuedes.edu.ar', 'mail 50');
   assertEq(loadtest.clasificar({ busy: true }), 'busy', 'busy');
   assertEq(loadtest.clasificar({ ok: false, message: 'El servidor está ocupado' }), 'busy', 'mensaje ocupado');
   assertEq(loadtest.clasificar({ ok: true }), 'ok', 'ok');
