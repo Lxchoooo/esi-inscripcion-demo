@@ -1063,15 +1063,18 @@ function flushMailQueue_(nowMs) {
   }
 }
 
-// Via Gmail API: si las tres claves gmail_api_refresh / gmail_api_client_id
-// / gmail_api_secret estan en Script Properties, los avisos salen con la
-// cuenta del colegio (cuota del Workspace, ~1500-2000 dest./dia) y no
-// consumen la cuota de MailApp del dueno del script (~100). Sin token,
-// todo queda via MailApp igual que antes. Las claves nunca van al repo;
-// el token es revocable desde la propia cuenta institucional.
+// Via Gmail API con proxy del Playground: el refresh_token institucional
+// (generado en developers.google.com/oauthplayground con la cuenta del
+// colegio, scope gmail.send) se guarda en la propiedad gmail_api_refresh
+// del script. El secret del client del Playground NO es publico: pero el
+// propio backend del Playground (developers.google.com/oauthplayground/
+// refreshAccessToken) refresca el access token a pedido sin secret, y esa
+// es la via que usa el envio. Un solo propiedad, nada de consola GCP.
+// Si la via se rompe (token vencido/revocado o endpoint caido), la fila
+// cae a MailApp como red de seguridad. Sin esta propiedad, todo queda
+// via MailApp igual que antes. La clave nunca va al repo; el token es
+// revocable desde la propia cuenta institucional.
 var GMAIL_API_REFRESH_PROP_ = 'gmail_api_refresh';
-var GMAIL_API_CLIENT_PROP_ = 'gmail_api_client_id';
-var GMAIL_API_SECRET_PROP_ = 'gmail_api_secret';
 var GMAIL_API_CACHE_S_ = 45 * 60; // access token vive 1 h; renovar con margen
 var gmaDeadUntil_ = 0; // si la via se rompe, pausa y MailApp como red de seguridad
 
@@ -1080,10 +1083,8 @@ function gmailApiProps_() {
     if (typeof PropertiesService === 'undefined' || !PropertiesService) return null;
     var props = PropertiesService.getScriptProperties();
     var refresh = String(props.getProperty(GMAIL_API_REFRESH_PROP_) || '').trim();
-    var clientId = String(props.getProperty(GMAIL_API_CLIENT_PROP_) || '').trim();
-    var secret = String(props.getProperty(GMAIL_API_SECRET_PROP_) || '').trim();
-    if (!refresh || !clientId || !secret) return null;
-    return { refresh: refresh, clientId: clientId, secret: secret };
+    if (!refresh) return null;
+    return { refresh: refresh };
   } catch (e) { return null; }
 }
 
@@ -1096,21 +1097,22 @@ function gmailApiAccessToken_(props) {
   var cached = null;
   try { cached = cache ? cache.get('gma_access') : null; } catch (eC) { }
   if (cached) return String(cached);
-  var resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+  // Proxy del Playground: refresca con el client internos de Google. Sin
+  // body client_id/secret: el backend del propio playground los pone.
+  var resp = UrlFetchApp.fetch('https://developers.google.com/oauthplayground/refreshAccessToken', {
     method: 'post',
-    payload: {
-      client_id: props.clientId,
-      client_secret: props.secret,
-      refresh_token: props.refresh,
-      grant_type: 'refresh_token'
-    },
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      token_uri: 'https://oauth2.googleapis.com/token',
+      refresh_token: props.refresh
+    }),
     muteHttpExceptions: true
   });
   var code = Number(resp.getResponseCode());
   var body = {};
   try { body = JSON.parse(resp.getContentText() || '{}'); } catch (eP) { }
-  if (code !== 200 || !body.access_token) {
-    throw new Error('token: ' + (body.error || 'http ' + code));
+  if (code !== 200 || !body.success || !body.access_token) {
+    throw new Error('token: ' + (body.error || body.message || 'http ' + code));
   }
   if (cache) {
     try { cache.put('gma_access', String(body.access_token), GMAIL_API_CACHE_S_); } catch (ePut) { }
