@@ -4212,6 +4212,43 @@ t('v80: si la via gmail se cae, gmailApiSend_ devuelve false y queda en pausa', 
   assertEq(api.gmailApiSend_('x22029@secundariosalsipuedes.edu.ar', 'S', 'B'), false, 'en pausa no reintenta');
 });
 
+t('v81: la bienvenida no muestra "A confirmar" como lugar', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'welcomeBody_');
+  const items = [
+    { slot: '1ra', inicio: '10:30', fin: '11:20', titulo: 'Charla uno', lugar: 'A confirmar', elegida: true },
+    { slot: '2da', inicio: '11:30', fin: '12:20', titulo: 'Charla dos', lugar: 'Aula 4', elegida: true }
+  ];
+  const body = api.welcomeBody_('Ana Gomez', items, {});
+  if (body.indexOf('A confirmar') >= 0) throw new Error('el mail muestra A confirmar');
+  if (body.indexOf('(Aula 4)') < 0) throw new Error('el mail no muestra el lugar real');
+});
+
+t('v81: con gmail api configurada, si falla no cae a MailApp', () => {
+  const services = backendStub({ gmail_api_refresh: '1//r' });
+  enableMail_(services);
+  services.Utilities = Object.assign({}, services.Utilities, {
+    base64Encode: () => 'b64', base64WebSafe: () => 'ws', Charset: { UTF_8: 'u' }
+  });
+  services.UrlFetchApp = {
+    fetch: (url) => {
+      if (String(url).indexOf('oauthplayground/refreshAccessToken') >= 0) {
+        return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ success: true, access_token: 'acc1' }) };
+      }
+      return { getResponseCode: () => 500, getContentText: () => '{"error":"server_error"}' };
+    }
+  };
+  setConfigValue_(services, 'avisos_mail', 'si');
+  registerThreeSlots_(services, 'juana2029@secundariosalsipuedes.edu.ar');
+  const api = backendApi(services, 'flushMailQueue_');
+  const out = api.flushMailQueue_(Date.now() + 130000);
+  assertEq(out.sent, 0, 'no manda por la via rota');
+  assertEq(services.sentMails.length, 0, 'no cae a MailApp');
+  const rows = queueRows_(services);
+  assertEq(rows[0][5], 'pendiente', 'la fila queda pendiente para el poller');
+  assertEq(Number(rows[0][6]), 0, 'no gasta reintentos');
+});
+
 t('v80: apiMailDiag nombra la via de envio', () => {
   const sin = backendApi(backendStub({}), 'apiMailDiag');
   assertEq(sin.apiMailDiag().envio_via, 'mailapp', 'sin token va por mailapp');
