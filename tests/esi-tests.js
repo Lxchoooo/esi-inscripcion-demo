@@ -1836,7 +1836,7 @@ t('Code.gs keeps two keys in Script Properties', () => {
   if (!/function ensureGuidePin_/.test(codeSrc)) throw new Error('ensureGuidePin_ missing');
   if (!/ROLE_ADMIN\s*=\s*'admin'/.test(codeSrc)) throw new Error('admin role missing');
   if (!/ROLE_GUIDE\s*=\s*'guide'/.test(codeSrc)) throw new Error('guide role missing');
-  if (!/setup\(\)[\s\S]{0,2000}ensureGuidePin_\(\)/.test(codeSrc)) throw new Error('setup does not create guide pin');
+  if (!/function setup\(quiet\)[\s\S]{0,2000}ensureGuidePin_\(\)/.test(codeSrc)) throw new Error('setup does not create guide pin');
   if (/\[.'admin_pin',/.test(codeSrc) || /\[.'guide_pin',/.test(codeSrc)) throw new Error('pin seeded in sheet');
 });
 
@@ -4088,6 +4088,26 @@ t('auditoria: el bloqueo por DNI no se renueva solo', () => {
   assertEq(primero.ts, segundo.ts, 'el reloj arranca en el primer fallo');
   assertEq(segundo.count, 2, 'cuenta los dos intentos');
 });
+t('v79: auto-setup corre setup() solo cuando el registro de la hoja es de otra version', () => {
+  const props = { LAST_SETUP_VERSION: 'v65', LAST_SETUP_AT: '2026-10-31T11:00:00.000Z' };
+  const services = backendStub(props);
+  const api = backendApi(services, 'autoSetup_,logAction_');
+  api.autoSetup_();
+  assertEq(props.LAST_SETUP_VERSION, 'v72', 'auto-setup marca la version del deploy');
+  if (!props.LAST_SETUP_AT) throw new Error('auto-setup no registro la fecha del setup');
+  const antes = props.LAST_SETUP_AT;
+  api.autoSetup_();
+  assertEq(props.LAST_SETUP_AT, antes, 'la segunda llamada no vuelve a correr setup');
+});
+
+t('v79: auto-setup respeta el tope de 3 reintentos y la ocupacion del lock', () => {
+  const props = { LAST_SETUP_VERSION: 'v65', AUTO_SETUP_FAILS: '3' };
+  const services = backendStub(props);
+  const api = backendApi(services, 'autoSetup_');
+  api.autoSetup_();
+  assertEq(props.LAST_SETUP_VERSION, 'v65', 'con el tope cumplido no toca la hoja');
+});
+
 t('r15: EXPECTED_COLUMNS_ coincide con las hojas de setup()', () => {
   const map = checkApi().EXPECTED_COLUMNS_;
   Object.keys(map).forEach((name) => {
