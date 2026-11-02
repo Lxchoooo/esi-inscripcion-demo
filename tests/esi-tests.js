@@ -5559,5 +5559,17 @@ t('r77: apiMailDiag lista los triggers agendados (flush y watchdog)', () => {
   assertEq(vacio.trigger, false, 'sin triggers lo dice');
 });
 
+t('r78: orden aleatorio estable por franja y año de egreso avisado antes del dominio', () => {
+  if (!/function sTalksForSlot_\(talks, slotId\)/.test(panelHtml)) throw new Error('falta sTalksForSlot_');
+  if (!/sTalksForSlot_\(d\.talks, slots\[s\]\.id\)/.test(panelHtml)) throw new Error('sRender no usa el orden por franja');
+  if (!/sState\.talkRank\[k\] = Math\.random\(\)/.test(panelHtml)) throw new Error('el ranking no se sortea una vez por charla');
+  if (!/btn\.addEventListener\('click', function \(\) \{ sOnTalk\(talk\); \}\)/.test(panelHtml)) {
+    throw new Error('la tarjeta no cablea el toque');
+  }
+  var iAnio = panelHtml.indexOf('Poné tu año de egreso al final del mail');
+  var iDom = panelHtml.indexOf("mailDom !== '@secundariosalsipuedes.edu.ar'");
+  if (!(iAnio > 0 && iDom > 0 && iAnio < iDom)) throw new Error('el año no se avisa antes que el dominio');
+});
+
 summary();
 process.exitCode = fail ? 1 : 0;

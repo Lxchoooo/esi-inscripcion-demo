@@ -5682,13 +5682,13 @@
         grid.className = 'slot-grid stagger';
         var qTalk = ($('input-buscar-talk') ? $('input-buscar-talk').value : '').toLowerCase();
         var shown = 0;
-        for (var t = 0; t < d.talks.length; t++) {
-          if (Number(d.talks[t].slot_id) !== Number(slots[s].id)) continue;
-          var tMine = mine[Number(slots[s].id)] === d.talks[t].id;
-          if (qTalk && String(d.talks[t].titulo || '').toLowerCase().indexOf(qTalk) < 0
-            && String(d.talks[t].lugar || '').toLowerCase().indexOf(qTalk) < 0) continue;
-          if (sState.onlyAvailable && !tMine && (d.talks[t].restantes == null ? 0 : d.talks[t].restantes) <= 0) continue;
-          var card = sBuildTalk(d.talks[t], slots[s]);
+        var delSlot = sTalksForSlot_(d.talks, slots[s].id);
+        for (var t = 0; t < delSlot.length; t++) {
+          var tMine = mine[Number(slots[s].id)] === delSlot[t].id;
+          if (qTalk && String(delSlot[t].titulo || '').toLowerCase().indexOf(qTalk) < 0
+            && String(delSlot[t].lugar || '').toLowerCase().indexOf(qTalk) < 0) continue;
+          if (sState.onlyAvailable && !tMine && (delSlot[t].restantes == null ? 0 : delSlot[t].restantes) <= 0) continue;
+          var card = sBuildTalk(delSlot[t], slots[s]);
           card.style.setProperty('--i', String(shown));
           shown++;
           grid.appendChild(card);
@@ -5749,6 +5749,26 @@
         + '</button>'
         + '<div class="ms-rows">' + out.join('') + '</div>';
       box.hidden = false;
+    }
+
+    // Orden aleatorio por franja, estable durante la sesion. El ranking se
+    // sortea una vez por charla: si se barajara en cada pintada, las
+    // tarjetas saltarian de lugar mientras el alumno elige y el toque
+    // podria caer en otra charla.
+    function sTalkRank_(id) {
+      if (!sState.talkRank) sState.talkRank = {};
+      var k = String(id);
+      if (sState.talkRank[k] == null) sState.talkRank[k] = Math.random();
+      return sState.talkRank[k];
+    }
+
+    function sTalksForSlot_(talks, slotId) {
+      var out = [];
+      for (var i = 0; i < talks.length; i++) {
+        if (Number(talks[i].slot_id) === Number(slotId)) out.push(talks[i]);
+      }
+      out.sort(function (a, b) { return sTalkRank_(a.id) - sTalkRank_(b.id); });
+      return out;
     }
 
     function sBuildTalk(talk, slot) {
@@ -6300,13 +6320,14 @@
         sMailError_('Escribí tu mail institucional.');
         return;
       }
-      // Primero el dominio solo: asi el que se olvido el año recibe el
-      // mensaje del año y no el generico de "usa tu mail del colegio".
-      var mailDom = email.slice(email.indexOf('@'));
-      if (mailDom !== '@secundariosalsipuedes.edu.ar') {
-        sMailError_('Usá tu mail @secundariosalsipuedes.edu.ar.');
+      // El año se revisa ANTES que el dominio: es el error mas comun y la
+      // alumna que se lo olvido recibia el generico "usa tu mail", que no
+      // le decia que hacer (captura 2/11). El dominio queda al final.
+      if (email.indexOf('@') < 0) {
+        sMailError_('Escribí tu mail completo, con @secundariosalsipuedes.edu.ar.');
         return;
       }
+      var mailDom = email.slice(email.indexOf('@'));
       var mailLoc = email.split('@')[0];
       if (/[áéíóúüñÁÉÍÓÚÜÑ]/.test(mailLoc)) {
         sMailError_('Escribí el mail sin tildes: á→a, é→e, í→i, ó→o, ú→u.');
@@ -6318,7 +6339,11 @@
         return;
       }
       if (!/(?:2026|2027|2028|2029|2030|2031)$/.test(mailLoc)) {
-        sMailError_('Falta poner el año de egreso al final del mail (2026 a 2031). Ej: gomezperezmaria2029.');
+        sMailError_('Poné tu año de egreso al final del mail (2026 a 2031). Ej: gomezperezmaria2029@secundariosalsipuedes.edu.ar');
+        return;
+      }
+      if (mailDom !== '@secundariosalsipuedes.edu.ar') {
+        sMailError_('Usá tu mail @secundariosalsipuedes.edu.ar.');
         return;
       }
       if (!EsiClient.isInstitutionalEmail(email)) {
