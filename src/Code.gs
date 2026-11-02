@@ -4388,6 +4388,24 @@ function apiAdminMergeDuplicates(cred, keepEmail, dropEmail) {
   });
 }
 
+// El borrado de un alumno resetea su ciclo de avisos: si se vuelve a
+// inscribir, es un alumno nuevo para la cola. Sin esto la fila vieja de
+// MailQueue con estado 'enviado' deja el historial en enviado y la
+// bienvenida de la reinscripcion nunca sale (reportado el 1/11/2026).
+// Devuelve cuantas filas saco para dejar rastro en el Log.
+function purgeMailQueueForEmail_(email) {
+  var q;
+  try { q = readMailQueueRaw_(); } catch (e) { return 0; }
+  if (!q || !q.map || !q.map.email) return 0;
+  var dest = EsiCore.normalizeEmail(email);
+  var rows = [];
+  for (var i = 1; i < q.vals.length; i++) {
+    if (EsiCore.normalizeEmail(q.vals[i][q.map.email]) === dest) rows.push(i + 1);
+  }
+  for (var u = rows.length - 1; u >= 0; u--) q.sh.deleteRow(rows[u]);
+  return rows.length;
+}
+
 function apiAdminDeleteStudent(cred, email) {
   var auth = adminAuth_(cred);
   var perm = requireAdmin_(auth);
@@ -4402,7 +4420,8 @@ function apiAdminDeleteStudent(cred, email) {
       rows.sort(function (a, b) { return b.row - a.row; });
       for (var i = 0; i < rows.length; i++) sh.deleteRow(rows[i].row);
       revokeSessionsForEmail_(norm);
-      logAction_('delete_student', rows[0].signup.id, 'rows=' + rows.length);
+      var purgados = purgeMailQueueForEmail_(norm);
+      logAction_('delete_student', rows[0].signup.id, 'rows=' + rows.length + ' mailq=' + purgados);
       invalidateDataCache_();
       return { ok: true, deleted: rows.length };
     } catch (err) {
