@@ -4186,6 +4186,16 @@ function logAccess_(ok, role, ua) {
     var cuando = Utilities.formatDate(new Date(), 'America/Argentina/Cordoba', 'd/M/yyyy HH:mm');
     try { sh.getRange(2, 1, ACCESS_MAX_ROWS, 1).setNumberFormat('@'); } catch (eFmt) { }
     sh.appendRow([cuando, ok ? 'entro' : 'fallo', String(role || ''), cleanLogText_(ua, 140)]);
+    // La fila recien agregada puede caer fuera de A2:A251 cuando la hoja ya
+    // esta llena. Ahi Sheets la interpreta como fecha con la TZ de la hoja
+    // (UTC) y el panel la muestra 3 h menos. Se reescribe como texto en la
+    // fila exacta, antes de podar.
+    var nuevaFila = sh.getLastRow();
+    try {
+      var celdaFecha = sh.getRange(nuevaFila, 1);
+      celdaFecha.setNumberFormat('@');
+      celdaFecha.setValue(cuando);
+    } catch (eCelda) { }
     var last = sh.getLastRow();
     if (last > ACCESS_MAX_ROWS + 1) sh.deleteRows(2, last - 1 - ACCESS_MAX_ROWS);
   } catch (e) { }
@@ -4202,12 +4212,24 @@ function apiAdminAccessLog(cred) {
     for (var i = vals.length - 1; i >= 1 && rows.length < 40; i--) {
       // Filas nuevas: ya vienen como string en hora argentina (logAccess_
       // formatea al escribir; la re-lectura de un Date por la hoja corria la
-      // hora ~8h). Filas viejas: Date => formato fijo Buenos_Aires.
+      // hora ~8h). Filas viejas/parseadas: Date => TZ de la hoja.
       var raw = vals[i][0];
+      var fecha;
+      if (raw instanceof Date) {
+        // Filas viejas o celdas que Sheets alcanzo a parsear: el serial se
+        // leyo con la TZ de la hoja. Formatear con Buenos_Aires restaba 3 h
+        // cuando la hoja estaba en UTC. Se usa la TZ de la hoja para
+        // recuperar la hora escrita; si no se puede, cae a Argentina.
+        var tzAcceso = 'America/Argentina/Cordoba';
+        try {
+          tzAcceso = SpreadsheetApp.getActive().getSpreadsheetTimeZone() || tzAcceso;
+        } catch (eTz) { }
+        fecha = Utilities.formatDate(raw, tzAcceso, 'd/M/yyyy HH:mm');
+      } else {
+        fecha = String(raw || '');
+      }
       rows.push({
-        fecha: (raw instanceof Date)
-          ? Utilities.formatDate(raw, 'America/Argentina/Buenos_Aires', 'd/M/yyyy HH:mm')
-          : String(raw || ''),
+        fecha: fecha,
         resultado: String(vals[i][1] || ''),
         rol: String(vals[i][2] || ''),
         dispositivo: String(vals[i][3] || '')

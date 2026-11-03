@@ -5360,14 +5360,16 @@ t('r30: la fecha del acceso sale en hora argentina (formato server)', () => {
 t('r30: el registro de accesos muestra modelo, version y hora argentina', () => {
   // Formatada al ESCRIBIR (la re-lectura de un Date corria la hora ~8h).
   const lw = codeSrc.indexOf('function logAccess_');
-  const lwBody = codeSrc.slice(lw, lw + 900);
+  const lwBody = codeSrc.slice(lw, lw + 1800);
   if (!/Utilities\.formatDate\(new Date\(\), 'America\/Argentina\/Cordoba'/.test(lwBody)) throw new Error('la hora no se graba formateada en Argentina');
   if (/appendRow\(\[new Date\(\)/.test(lwBody)) throw new Error('la fila de acceso sigue guardando Date crudo');
   if (!/setNumberFormat\('@'\)/.test(lwBody)) throw new Error('la columna fecha se parsea en fecha por la hoja auto (TZ de la hoja desplaza la hora)');
-  // Lectura: string pasa tal cual; Date viejo se formatea en Buenos_Aires.
+  if (!/getRange\(nuevaFila, 1\)[\s\S]*?setValue\(cuando\)/.test(lwBody)) throw new Error('la fila nueva fuera de A2:A251 no se reescribe como texto');
+  // Lectura: string pasa tal cual; Date viejo/parseado usa la TZ de la hoja.
   const al = codeSrc.indexOf('function apiAdminAccessLog');
-  const ab = codeSrc.slice(al, al + 900);
-  if (!/Utilities\.formatDate\(raw, 'America\/Argentina\/Buenos_Aires'/.test(ab)) throw new Error('las filas viejas sin formato argentino');
+  const ab = codeSrc.slice(al, al + 1400);
+  if (!/getSpreadsheetTimeZone\(\)/.test(ab)) throw new Error('las filas viejas no usan la TZ de la hoja');
+  if (!/Utilities\.formatDate\(raw, tzAcceso/.test(ab)) throw new Error('las filas viejas sin formato de hora');
   if (/toISOString\(\)/.test(ab)) throw new Error('la fecha del acceso sigue en UTC');
   if (!/function deviceLabelP_/.test(panelSrc)) throw new Error('sin etiqueta async del dispositivo');
   if (!/getHighEntropyValues\(/.test(panelSrc)) throw new Error('sin datos altos del navegador (modelo real)');
