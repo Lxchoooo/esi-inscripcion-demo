@@ -3135,8 +3135,10 @@ t('apiAdminDropOvercupo sin aviso solo borra y valida la entrada', () => {
 });
 
 t('Panel: Arreglar datos tiene Cambiar charlas y Fuera de cupo', () => {
-  for (const needle of ['id="btn-corr-talks"', 'id="btn-corr-over"', 'function aCorrTalks_',
-    'function aCorrTalksPick_', 'function aCorrOvercupo_', 'function aCorrOvercupoApply_']) {
+  for (const needle of ['id="btn-corr-talks"', 'id="btn-corr-over"', 'id="btn-corr-duptalks"',
+    'function aCorrTalks_', 'function aCorrTalksPick_', 'function aCorrOvercupo_',
+    'function aCorrOvercupoApply_', 'function aCorrDupTalks_', 'function aDupTalkRows_',
+    'function aDupTitleKey_']) {
     if (panelHtml.indexOf(needle) < 0) throw new Error('missing ' + needle);
   }
   if (!/aCorrOvercupoApply_[\s\S]{0,3000}apiAdminDropOvercupo/.test(panelSrc)) {
@@ -3144,6 +3146,21 @@ t('Panel: Arreglar datos tiene Cambiar charlas y Fuera de cupo', () => {
   }
   if (!/aCorrTalksSave_[\s\S]{0,3200}apiAdminMoveTalk/.test(panelSrc)) {
     throw new Error('cambiar charlas no llama a apiAdminMoveTalk');
+  }
+});
+
+t('r41: Charlas duplicadas lista los alumnos y abre la correccion', () => {
+  if (!/aDupTalkRows_[\s\S]{0,1800}Object\.keys\(slots\)\.length < 2/.test(panelSrc)) {
+    throw new Error('aDupTalkRows_ no exige dos horarios distintos');
+  }
+  if (!/aCorrDupTalks_[\s\S]{0,2600}data-talk-pick/.test(panelSrc)) {
+    throw new Error('la lista de duplicadas no abre la correccion');
+  }
+  if (!/aDupTalksMode_ \? 'Volver a duplicadas'/.test(panelSrc)) {
+    throw new Error('la correccion no vuelve a duplicadas');
+  }
+  if (!/if \(aDupTalksMode_\) aCorrDupTalks_\(\); else aCorrTalks_\(\);/.test(panelSrc)) {
+    throw new Error('el boton volver no respeta el modo duplicadas');
   }
 });
 
