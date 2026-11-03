@@ -771,6 +771,38 @@ t('Panel demo backend: roster import does not restrict mail access', () => {
   });
 });
 
+t('Panel demo backend: el mail del padron entra con ticket', () => {
+  const store = {};
+  const ls = {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v); },
+    removeItem: (k) => { delete store[k]; }
+  };
+  const win = { location: { search: '' }, localStorage: ls };
+  const doc = {
+    addEventListener: function () { },
+    body: { appendChild: function () { }, classList: { add: function () { } } }
+  };
+  const api = new Function('window', 'document', panelSrc + '\nreturn { call: demoCall };')(win, doc);
+
+  return api.call('apiAdminImportRoster', ['demo', 'ruiz2029@secundariosalsipuedes.edu.ar; Ruiz; Ana; 2b', 'reemplazar']).then((r1) => {
+    assertEq(r1.ok, true, 'import ok');
+    return api.call('apiLookup', ['ruiz2029@secundariosalsipuedes.edu.ar']);
+  }).then((r2) => {
+    assertEq(r2.ok, true, 'lookup ok');
+    assertEq(r2.nombreCompleto, 'Ana Ruiz', 'nombre completo del padron');
+    assertEq(r2.curso, '2°B', 'curso del padron');
+    assertEq(r2.needsNombre, false, 'no pide nombre');
+    assertEq(r2.needsApellido, false, 'no pide apellido');
+    assertEq(r2.needsCurso, false, 'no pide curso');
+    if (!/^l_demo_/.test(r2.login)) throw new Error('sin ticket demo');
+    return api.call('apiGetData', ['ruiz2029@secundariosalsipuedes.edu.ar', '', '', '', '', r2.login]);
+  }).then((r3) => {
+    assertEq(r3.ok, true, 'entra con el ticket: ' + r3.message);
+    if (!r3.session) throw new Error('sin sesion demo');
+  });
+});
+
 
 t('Code.gs keeps the admin key in Script Properties and rate limits failures', () => {
   const props = { ADMIN_PIN: '9876' };
@@ -1974,20 +2006,67 @@ t('Code.gs counts unique students separately from reservations', () => {
 t('Code.gs lookup accepts an institutional mail without a roster', () => {
   const services = backendStub({});
   services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], []);
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
   const api = backendApi(services, 'apiLookup');
   const r = api.apiLookup('ana2029@secundariosalsipuedes.edu.ar');
   assertEq(r.ok, true, 'lookup ok');
   assertEq(r.nombre, '', 'lookup never invents a name');
   assertEq(r.curso, '', 'lookup never invents a course');
+  assertEq(r.login, '', 'sin datos no hay ticket');
   assertEq(r.needsNombre, true, 'name needed');
   assertEq(r.needsApellido, true, 'surname needed');
   assertEq(r.needsCurso, true, 'course needed');
   assertEq(r.rosterLoaded, false, 'roster state exposed');
   const out = api.apiLookup('nadie2029@secundariosalsipuedes.edu.ar');
   assertEq(out.ok, true, 'any institutional mail can enter');
+  assertEq(out.login, '', 'unknown mail has no ticket');
   const bad = api.apiLookup('nadie@gmail.com');
   assertEq(bad.ok, false, 'external mail rejected');
   if (JSON.stringify([r, out]).indexOf('@') >= 0) throw new Error('lookup leaks a mail');
+});
+
+t('Code.gs lookup devuelve datos y ticket para volver a entrar por mail', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiLookup, apiGetData');
+  const r = api.apiLookup('ana2029@secundariosalsipuedes.edu.ar');
+  assertEq(r.ok, true, 'lookup ok');
+  assertEq(r.nombre, 'Ana Gomez', 'devuelve el nombre del padron');
+  assertEq(r.curso, '2°B', 'devuelve el curso del padron');
+  if (!/^l_/.test(r.login)) throw new Error('sin ticket de login');
+  const g = api.apiGetData('ana2029@secundariosalsipuedes.edu.ar', r.nombreCompleto, r.curso, '', r.apellido, r.login);
+  assertEq(g.ok, true, 'entra con el ticket: ' + g.message);
+  if (!g.session) throw new Error('sin sesion');
+  assertEq(g.data.mine[1], 'B1', 've su inscripcion');
+});
+
+t('Code.gs lookup tambien encuentra a quien solo tiene filas de inscripcion', () => {
+  const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], []);
+  services.sheets.Signups = fakeSheet('Signups',
+    ['id', 'ts', 'email', 'nombre', 'apellido', 'curso', 'ciclo', 'slot_id', 'talk_id'],
+    [['s9', new Date(), 'zoe2029@secundariosalsipuedes.edu.ar', 'Zoe Paz', 'Paz', '2°A', 'basico', 1, 'B1']]);
+  const api = backendApi(services, 'apiLookup, apiGetData');
+  const r = api.apiLookup('zoe2029@secundariosalsipuedes.edu.ar');
+  assertEq(r.ok, true, 'lookup ok');
+  assertEq(r.nombreCompleto, 'Zoe Paz', 'nombre de la inscripcion');
+  assertEq(r.apellido, 'Paz', 'apellido de la inscripcion');
+  assertEq(r.curso, '2°A', 'curso de la inscripcion');
+  assertEq(r.needsNombre, false, 'no pide nombre');
+  assertEq(r.needsApellido, false, 'no pide apellido');
+  assertEq(r.needsCurso, false, 'no pide curso');
+  if (!/^l_/.test(r.login)) throw new Error('sin ticket de login');
+  const g = api.apiGetData('zoe2029@secundariosalsipuedes.edu.ar', '', '', '', '', r.login);
+  assertEq(g.ok, true, 'entra con el ticket: ' + g.message);
+  assertEq(g.data.mine[1], 'B1', 've su inscripcion');
+});
+
+t('Panel: el mail del alumno guarda el ticket para volver a entrar', () => {
+  if (!/sState\.login = resp\.login \|\| ''/.test(panelSrc)) {
+    throw new Error('sLoginSubmit no guarda el ticket del lookup');
+  }
+  if (!/if \(resp\.nombre\) \{\s*sShowHello\(\)/.test(panelSrc)) {
+    throw new Error('el lookup con nombre no pasa por el saludo');
+  }
 });
 
 t('Code.gs both keys read the same views', () => {

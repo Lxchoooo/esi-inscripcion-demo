@@ -3337,27 +3337,21 @@ function buildStudent_(email, nombre, curso, apellido) {
   return { ok: true, student: v };
 }
 
+// El mail alcanza para volver a entrar (pedido del 3/11): si la alumna ya se
+// inscribio o esta en el padron, el lookup devuelve sus datos y un ticket de
+// login, asi el panel le muestra "Hola, X. ¿Sos vos?" y la deja pasar. Antes
+// pedia nombre/apellido siempre y despues rebotaba con "Ese mail ya tiene
+// inscripciones", justo cuando mas gente vuelve a cambiar sus charlas.
 function apiLookup(email) {
   try {
     var norm = EsiCore.normalizeEmail(email);
-    if (!EsiCore.isInstitutionalEmail(norm)) {
-      return {
-        ok: false,
-        message: STUDENT_ERRORS_.email,
-        rosterLoaded: rosterLoaded_(),
-        needsNombre: true,
-        needsApellido: true,
-        needsCurso: true,
-        apellido: '',
-        nombreCompleto: '',
-        nombre: '',
-        curso: ''
-      };
-    }
-    return {
+    var roster = readStudentsCached_();
+    var out = {
       ok: true,
       message: '',
-      rosterLoaded: rosterLoaded_(),
+      email: '',
+      login: '',
+      rosterLoaded: roster.length > 0,
       needsNombre: true,
       needsApellido: true,
       needsCurso: true,
@@ -3366,6 +3360,50 @@ function apiLookup(email) {
       nombre: '',
       curso: ''
     };
+    if (!EsiCore.isInstitutionalEmail(norm)) {
+      out.ok = false;
+      out.message = STUDENT_ERRORS_.email;
+      return out;
+    }
+    var entry = findStudent_(roster, norm);
+    if (!entry) {
+      var signups = readSignups_();
+      var best = null;
+      var bestTs = -1;
+      for (var i = 0; i < signups.length; i++) {
+        if (signups[i].emailKey !== norm) continue;
+        var ts = signups[i].ts ? new Date(signups[i].ts).getTime() : 0;
+        if (!best || ts >= bestTs) {
+          best = signups[i];
+          bestTs = ts;
+        }
+      }
+      if (best) {
+        entry = {
+          email: norm,
+          nombre: best.nombre || '',
+          apellido: best.apellido || '',
+          curso: best.curso || ''
+        };
+      }
+    }
+    if (!entry) return out;
+    var nombreCompleto = entry.nombreCompleto || entry.nombre || '';
+    var pc = EsiCore.parseCurso(entry.curso);
+    out.login = issueLoginTicket_({
+      email: norm,
+      nombre: nombreCompleto,
+      apellido: entry.apellido || '',
+      curso: pc || ''
+    });
+    out.needsNombre = !nombreCompleto;
+    out.needsApellido = !entry.apellido;
+    out.needsCurso = !pc;
+    out.apellido = entry.apellido || '';
+    out.nombreCompleto = nombreCompleto;
+    out.nombre = entry.nombre || '';
+    out.curso = pc || '';
+    return out;
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }

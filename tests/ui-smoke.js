@@ -338,6 +338,10 @@ function tick() {
   document.getElementById('input-dni-datos').value = '30111222';
   ui.sLoginSubmit();
   await tick();
+  assert(document.body.getAttribute('data-screen') === 's-screen-hello', 'pide confirmacion por mail');
+  assert(document.getElementById('hello-text').textContent === 'Hola, Ana. ¿Sos de 2°B?', 'saludo por mail');
+  ui.sHelloYes();
+  await tick();
   assert(document.body.getAttribute('data-screen') === 's-screen-panel', 'entra con mail');
   assert(ui.sState.email === 'ana2029@secundariosalsipuedes.edu.ar', 'mail guardado');
   assert(ui.sState.apellido === 'Gomez', 'apellido guardado');

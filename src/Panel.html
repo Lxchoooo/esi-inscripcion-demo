@@ -4463,15 +4463,53 @@
       var email = EsiClient.normalizeEmail(emailRaw);
       var roster = demoRoster();
       var out = {
-        ok: false, message: '', rosterLoaded: roster.length > 0,
+        ok: true, message: '', email: '', login: '', rosterLoaded: roster.length > 0,
         needsNombre: true, needsApellido: true, needsCurso: true,
         nombre: '', nombreCompleto: '', apellido: '', curso: ''
       };
       if (!EsiClient.isInstitutionalEmail(email)) {
+        out.ok = false;
         out.message = STUDENT_MSG.email;
         return out;
       }
-      out.ok = true;
+      var entry = null;
+      for (var i = 0; i < roster.length; i++) {
+        if (EsiClient.normalizeEmail(roster[i].email) === email) { entry = roster[i]; break; }
+      }
+      if (!entry) {
+        var signups = demoSignups();
+        var best = null;
+        var bestTs = -1;
+        for (var j = 0; j < signups.length; j++) {
+          if (EsiClient.normalizeEmail(signups[j].email) !== email) continue;
+          var ts = Number(signups[j].ts) || 0;
+          if (!best || ts >= bestTs) { best = signups[j]; bestTs = ts; }
+        }
+        if (best) {
+          entry = {
+            email: email,
+            nombre: best.nombre || '',
+            apellido: best.apellido || '',
+            curso: best.curso || ''
+          };
+        }
+      }
+      if (!entry) return out;
+      var nombreCompleto = entry.nombreCompleto || entry.nombre || '';
+      var pc = EsiClient.parseCurso(entry.curso);
+      out.login = demoIssueLoginTicket_({
+        email: email,
+        nombre: nombreCompleto,
+        apellido: entry.apellido || '',
+        curso: pc || ''
+      });
+      out.needsNombre = !nombreCompleto;
+      out.needsApellido = !entry.apellido;
+      out.needsCurso = !pc;
+      out.apellido = entry.apellido || '';
+      out.nombreCompleto = nombreCompleto;
+      out.nombre = entry.nombre || '';
+      out.curso = pc || '';
       return out;
     }
     function demoLookupDni(dniRaw, apellidoRaw) {
@@ -6465,7 +6503,7 @@
           }
           sBanner('');
           sState.email = email;
-          sState.login = '';
+          sState.login = resp.login || '';
           sState.lookup = resp;
           sState.nombre = resp.nombreCompleto || resp.nombre || '';
           sState.apellido = resp.apellido || '';
