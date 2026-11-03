@@ -3002,6 +3002,73 @@ t('A lock timeout returns the busy message and writes nothing', () => {
 });
 
 
+t('apiAdminDropOvercupo saca solo el sobrante y avisa a los alumnos', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' }, {
+    signups: [
+      ['x1', new Date(), 'ana2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1', true],
+      ['x2', new Date(), 'beto2029@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '2°B', 'basico', 1, 'B1', true],
+      ['x3', new Date(), 'carla2029@secundariosalsipuedes.edu.ar', 'Carla Diaz', '2°B', 'basico', 1, 'B1', true]
+    ]
+  });
+  services.sheets.Talks.data[1][5] = 1; // B1 con cupo 1: x2 y x3 son el sobrante
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  const api = backendApi(services, 'apiAdminDropOvercupo');
+  // El que entro dentro del cupo no se puede sacar por esta via.
+  const dentro = api.apiAdminDropOvercupo('1111', ['x1'], true);
+  assertEq(dentro.ok, false, 'el primero no es sobrante');
+  assertEq(services.sheets.Signups.data.length, 4, 'no borro nada');
+  assertEq(services.sheets.MailQueue.data.length, 1, 'no encolo mail');
+  // Mezcla: borra solo x2 y x3, avisa a los dos y saltea x1.
+  const r = api.apiAdminDropOvercupo('1111', ['x1', 'x2', 'x3'], true);
+  assertEq(r.ok, true, 'ok');
+  assertEq(r.deleted, 2, 'borro los 2 sobrantes');
+  assertEq(r.skipped, 1, 'salteo el que estaba dentro del cupo');
+  assertEq(r.mails, 2, 'encolo 2 avisos');
+  assertEq(services.sheets.Signups.data.length, 2, 'quedo solo x1');
+  assertEq(services.sheets.Signups.data[1][0], 'x1', 'quedo el primero de la fila');
+  const mails = services.sheets.MailQueue.data;
+  assertEq(mails.length, 3, 'header + 2 mails');
+  assertEq(mails[1][4], 'sobrecupo', 'tipo sobrecupo');
+  if (String(mails[1][8]).indexOf('más anotados') < 0) throw new Error('cuerpo sin motivo');
+  if (String(mails[1][8]).indexOf('/exec') < 0) throw new Error('cuerpo sin link al panel');
+});
+
+t('apiAdminDropOvercupo sin aviso solo borra y valida la entrada', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' }, {
+    signups: [
+      ['y1', new Date(), 'ana2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1', true],
+      ['y2', new Date(), 'beto2029@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '2°B', 'basico', 1, 'B1', true]
+    ]
+  });
+  services.sheets.Talks.data[1][5] = 1;
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  const api = backendApi(services, 'apiAdminDropOvercupo');
+  const vacio = api.apiAdminDropOvercupo('1111', [], true);
+  assertEq(vacio.ok, false, 'lista vacia rechazada');
+  const r = api.apiAdminDropOvercupo('1111', ['y2'], false);
+  assertEq(r.ok, true, 'ok');
+  assertEq(r.deleted, 1, 'borro 1');
+  assertEq(r.mails, 0, 'sin aviso no encola');
+  assertEq(services.sheets.MailQueue.data.length, 1, 'cola vacia');
+  assertEq(services.sheets.Signups.data.length, 2, 'quedo y1');
+});
+
+t('Panel: Arreglar datos tiene Cambiar charlas y Fuera de cupo', () => {
+  for (const needle of ['id="btn-corr-talks"', 'id="btn-corr-over"', 'function aCorrTalks_',
+    'function aCorrTalksPick_', 'function aCorrOvercupo_', 'function aCorrOvercupoApply_']) {
+    if (panelHtml.indexOf(needle) < 0) throw new Error('missing ' + needle);
+  }
+  if (!/aCorrOvercupoApply_[\s\S]{0,3000}apiAdminDropOvercupo/.test(panelSrc)) {
+    throw new Error('la baja no llama a apiAdminDropOvercupo');
+  }
+  if (!/aCorrTalksSave_[\s\S]{0,1600}apiAdminMoveTalk/.test(panelSrc)) {
+    throw new Error('cambiar charlas no llama a apiAdminMoveTalk');
+  }
+});
+
+
 function dniRosterStub() {
   const services = backendStub({});
   services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso', 'dni'], [

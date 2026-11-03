@@ -42,6 +42,10 @@ var DRIVE_ROOT_FOLDER = 'ESI';
 var DRIVE_BACKUP_SUB = 'Respaldos';
 var DRIVE_EXPORT_SUB = 'Exportaciones';
 var DRIVE_BACKUP_FOLDER = 'ESI 2026 Respaldos'; // carpeta vieja, se adopta si existe
+// Link publico del panel: va en los mails de sobrecupo. No se usa
+// ScriptApp.getService().getUrl() porque desde el deploy de prueba devuelve
+// la URL de prueba (los alumnos no pueden entrar).
+var PANEL_LINK = 'https://script.google.com/macros/s/AKfycbwkl-bCNFqUYzjjezaSzpgaC2U0fxe0B1JznKTLODG7VI4ZlVLAb06R1zvZ332kslEVkQ/exec';
 var DRIVE_BACKUP_KEEP = 14;
 // 2026-11-04 23:59:59 -03. Sessions can live 24 h past the event.
 var EVENT_DEFAULT_DATE_ = '2026-11-04';
@@ -1936,6 +1940,7 @@ var API_FN_MAP_ = {
   apiAdminGetData: apiAdminGetData,
   apiAdminSetOpen: apiAdminSetOpen,
   apiAdminDeleteSignup: apiAdminDeleteSignup,
+  apiAdminDropOvercupo: apiAdminDropOvercupo,
   apiAdminImportRoster: apiAdminImportRoster,
   apiAdminTalkRoster: apiAdminTalkRoster,
   apiAdminPending: apiAdminPending,
@@ -4528,6 +4533,157 @@ function apiAdminDeleteSignup(cred, signupId) {
   if (resp && resp.ok) {
     scheduleRebuilds_();
   }
+  return resp;
+}
+
+function overcupoBody_(name, talk, slot, otras) {
+  var horario = slot
+    ? ((slot.nombre ? slot.nombre + ' · ' : '') + slot.inicio + ' a ' + slot.fin)
+    : '';
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Te escribimos desde la organización de la ' + EVENT_TITLE_ + '.',
+    '',
+    'Por un problema técnico en la inscripción, la charla "' + mailLine_(talk.titulo) + '"' +
+      (horario ? ' del horario ' + mailLine_(horario) : '') +
+      ' quedó con más anotados de los que entran en el aula. Para que todos puedan participar, te dimos de baja de esa charla.',
+    '',
+    'Elegí otra charla de la misma franja. En el panel vas a ver disponibles solo las que todavía tienen lugar:',
+    PANEL_LINK,
+    ''
+  ];
+  if (otras && otras.length) {
+    lines.push('Tus otras charlas no cambian:');
+    lines = lines.concat(mailCharlasList_(otras));
+    lines.push('');
+  }
+  lines.push('Si no podés entrar, no te deja guardar o no sabés cuál elegir, respondé este mail y te ayudamos.');
+  lines.push('');
+  lines.push('Perdón por el inconveniente y gracias por la paciencia.');
+  lines.push('');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
+  return lines.join('\n');
+}
+
+function apiAdminDropOvercupo(cred, signupIds, notify) {
+  var auth = adminAuth_(cred);
+  var perm = requireAdmin_(auth);
+  if (!perm.ok) return { ok: false, message: perm.message };
+  if (!signupIds || typeof signupIds.length !== 'number' || !signupIds.length) {
+    return { ok: false, message: 'Elegí al menos un alumno.' };
+  }
+  if (signupIds.length > 60) return { ok: false, message: 'Máximo 60 bajas por vez.' };
+  var resp = withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var sh = sheet_(SIGNUPS_SHEET);
+      var vals = sh.getDataRange().getValues();
+      if (!vals.length) return { ok: false, message: 'No hay inscripciones.' };
+      var map = signupsHeaderMap_(vals[0]);
+      if (map.id < 0 || map.talk_id < 0) return { ok: false, message: 'Falta la columna id o talk_id.' };
+      var talks = readTalks_();
+      var slots = readSlots_();
+      var talkById = {};
+      for (var t = 0; t < talks.length; t++) talkById[String(talks[t].id)] = talks[t];
+      var slotById = {};
+      for (var sl = 0; sl < slots.length; sl++) slotById[Number(slots[sl].id)] = slots[sl];
+      // Orden de la hoja = orden de anotación: el sobrante real es lo que
+      // queda después del cupo.
+      var byTalk = {};
+      var rowById = {};
+      var infoById = {};
+      for (var i = 1; i < vals.length; i++) {
+        var id = String(vals[i][map.id]);
+        if (!id) continue;
+        var tk = String(vals[i][map.talk_id]);
+        if (!byTalk[tk]) byTalk[tk] = [];
+        byTalk[tk].push(id);
+        rowById[id] = i + 1;
+        infoById[id] = {
+          email: String(vals[i][map.email] || ''),
+          nombre: map.nombre >= 0 ? String(vals[i][map.nombre] || '') : '',
+          apellido: map.apellido >= 0 ? String(vals[i][map.apellido] || '') : '',
+          talk_id: tk,
+          slot_id: map.slot_id >= 0 ? Number(vals[i][map.slot_id]) : 0
+        };
+      }
+      var allowed = {};
+      for (var k in byTalk) {
+        if (!Object.prototype.hasOwnProperty.call(byTalk, k)) continue;
+        var tk2 = talkById[k];
+        var cupo = tk2 ? Number(tk2.cupo) || 0 : 0;
+        var rows = byTalk[k];
+        if (rows.length <= cupo) continue;
+        for (var e = cupo; e < rows.length; e++) allowed[rows[e]] = true;
+      }
+      var targets = [];
+      var skipped = 0;
+      for (var q = 0; q < signupIds.length; q++) {
+        var sid = String(signupIds[q]);
+        if (!allowed[sid] || !rowById[sid]) { skipped++; continue; }
+        targets.push({ id: sid, row: rowById[sid] });
+      }
+      if (!targets.length) {
+        return { ok: false, message: 'Ninguno de esos alumnos está fuera de cupo.' };
+      }
+      var cfg = readConfig_();
+      var mails = 0;
+      var vistos = {};
+      var targetIds = {};
+      for (var ti = 0; ti < targets.length; ti++) targetIds[String(targets[ti].id)] = true;
+      var signupsAll = [];
+      try { signupsAll = readSignups_(); } catch (eAll) { }
+      for (var m = 0; m < targets.length; m++) {
+        var tg = targets[m];
+        if (notify !== false) {
+          var info = infoById[tg.id] || {};
+          var talkM = talkById[String(info.talk_id)] || {};
+          var slotM = slotById[Number(info.slot_id)] || null;
+          var dest = queueDestination_(info.email, cfg);
+          if (!dest) dest = String(info.email || '').trim().toLowerCase();
+          if (dest && !vistos[dest]) {
+            vistos[dest] = true;
+            var otras = [];
+            try {
+              // Las otras charlas del alumno (las que no se tocan).
+              var bySlot = {};
+              for (var sa = 0; sa < signupsAll.length; sa++) {
+                var sn = signupsAll[sa];
+                if (sn.emailKey !== EsiCore.normalizeEmail(info.email)) continue;
+                if (targetIds[String(sn.id)]) continue;
+                bySlot[Number(sn.slot_id)] = sn.talk_id;
+              }
+              otras = itemsForEmail_(bySlot, slots, talkById);
+            } catch (eOtras) { }
+            var nomM = String(info.nombre || '').trim();
+            var apeM = String(info.apellido || '').trim();
+            var name = nomM;
+            if (apeM) {
+              var normNM = EsiCore.normalizeText(nomM);
+              var normAM = EsiCore.normalizeText(apeM);
+              if (normNM.slice(-normAM.length) !== normAM) name = nomM + ' ' + apeM;
+            }
+            upsertPendingMail_(dest, 'sobrecupo',
+              'Cambiá una charla - ' + EVENT_TITLE_,
+              overcupoBody_(name, talkM, slotM, otras));
+            mails++;
+          }
+        }
+      }
+      // Borrar de abajo hacia arriba para no correr los índices.
+      targets.sort(function (a, b) { return b.row - a.row; });
+      for (var d = 0; d < targets.length; d++) {
+        sh.deleteRow(targets[d].row);
+      }
+      try { logAction_('drop_overcupo', '', 'bajas=' + targets.length + ' mails=' + mails); } catch (eLog) { }
+      invalidateDataCache_();
+      try { ensureMailQueueTrigger_(); } catch (eT) { }
+      return { ok: true, deleted: targets.length, mails: mails, skipped: skipped };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
+  if (resp && resp.ok) scheduleRebuilds_();
   return resp;
 }
 

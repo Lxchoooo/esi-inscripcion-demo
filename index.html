@@ -1849,6 +1849,16 @@
     .corr-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
     .corr-form input, .corr-form select { min-height: 44px; }
     .corr-form .hint-line { margin: 0; }
+    .over-group { border: 1px solid var(--line-strong); border-radius: 14px; padding: 12px; margin: 0 0 12px; background: var(--card, transparent); }
+    .over-head { margin: 0 0 8px; }
+    .over-head .hint-line { display: block; margin-top: 2px; }
+    .over-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+    .over-list label { display: flex; gap: 10px; align-items: center; min-height: 44px; font-weight: 600; }
+    .over-list input[type="checkbox"] { width: 22px; height: 22px; flex: 0 0 auto; }
+    .over-list .over-who { display: grid; gap: 1px; min-width: 0; }
+    .over-list .over-who .hint-line { margin: 0; font-weight: 400; }
+    .check-line { display: flex; gap: 10px; align-items: center; min-height: 44px; font-weight: 700; }
+    .check-line input[type="checkbox"] { width: 22px; height: 22px; }
     .corr-dup { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; margin: 10px 0; }
     .corr-dup h4 { margin: 0 0 6px; font-size: 14px; }
     .corr-dup ul, .corr-dup ol { margin: 0 0 10px; padding-left: 20px; font-size: 13px; }
@@ -2901,6 +2911,8 @@
           <div class="toolbar">
             <button id="btn-corr-dup" class="btn secondary small" type="button">Buscar duplicados</button>
             <button id="btn-corr-edit" class="btn secondary small" type="button">Corregir alumno</button>
+            <button id="btn-corr-talks" class="btn secondary small" type="button">Cambiar charlas</button>
+            <button id="btn-corr-over" class="btn secondary small" type="button">Fuera de cupo</button>
             <button id="btn-corr-del" class="btn red small" type="button">Borrar alumno</button>
           </div>
           <div id="corr-msg" class="banner" role="status" aria-live="polite"></div>
@@ -10057,6 +10069,275 @@
       });
     }
 
+    // --- Cambiar charlas y sacar el sobrecupo ---------------------------
+    // Las dos acciones viven en "Arreglar datos" porque son correcciones
+    // manuales, pero antes estaban enterradas en el menu de cada alumno.
+    function aSlotLabel_(slotId) {
+      var d = aData;
+      if (!d || !d.slots) return '';
+      for (var i = 0; i < d.slots.length; i++) {
+        if (Number(d.slots[i].id) === Number(slotId)) return d.slots[i].label || '';
+      }
+      return '';
+    }
+
+    function aStudentIndex_() {
+      var d = aData;
+      var by = {};
+      var order = [];
+      if (!d || !d.signups) return { by: by, order: order };
+      for (var i = 0; i < d.signups.length; i++) {
+        var s = d.signups[i];
+        var k = EsiClient.normalizeEmail(s.email);
+        if (!k) continue;
+        if (!by[k]) {
+          by[k] = {
+            key: k, email: s.email, nombre: s.nombre, apellido: s.apellido,
+            curso: s.curso, ciclo: s.ciclo, signups: []
+          };
+          order.push(k);
+        }
+        by[k].signups.push(s);
+      }
+      order.sort(function (a, b) {
+        return (by[a].apellido + ' ' + by[a].nombre).localeCompare(by[b].apellido + ' ' + by[b].nombre, 'es');
+      });
+      return { by: by, order: order };
+    }
+
+    var aTalksPickKey = null;
+
+    function aCorrTalks_() {
+      if (!aData || aBusy) return;
+      aTalksPickKey = null;
+      aCorrMsg_('', 'ok');
+      $('corr-out').innerHTML = '<div class="corr-form"><label for="corr-talks-q">Buscar alumno'
+        + '<input id="corr-talks-q" type="search" autocomplete="off" placeholder="Apellido, nombre o mail"></label></div>'
+        + '<p class="hint-line">Elegí el alumno para ver sus tres horarios y cambiar la charla que esté mal.</p>'
+        + '<div id="corr-talks-list"></div>';
+      aCorrTalksList_('');
+      $('corr-talks-q').addEventListener('input', function () { aCorrTalksList_(this.value); });
+    }
+
+    function aCorrTalksList_(q) {
+      var idx = aStudentIndex_();
+      var box = $('corr-talks-list');
+      if (!box) return;
+      var needle = EsiClient.normalizeText(q || '');
+      var html = '';
+      var shown = 0;
+      for (var i = 0; i < idx.order.length && shown < 12; i++) {
+        var st = idx.by[idx.order[i]];
+        var hay = EsiClient.normalizeText(st.apellido + ' ' + st.nombre + ' ' + st.email + ' ' + st.curso);
+        if (needle && hay.indexOf(needle) < 0) continue;
+        shown++;
+        html += '<button class="btn secondary small" type="button" data-talk-pick="' + esc(st.key) + '">'
+          + esc((st.apellido ? st.apellido + ', ' : '') + st.nombre) + ' · ' + esc(st.curso || '')
+          + '</button> ';
+      }
+      if (!shown) {
+        html = '<p class="hint-line">' + (q ? 'Ningún alumno coincide con esa búsqueda.' : 'No hay inscriptos para editar.') + '</p>';
+      } else if (idx.order.length > shown) {
+        html += '<p class="hint-line">Hay más alumnos: afiná la búsqueda con el apellido.</p>';
+      }
+      box.innerHTML = html;
+    }
+
+    function aTalkAllowedFor_(talk, ciclo) {
+      var t = String(talk.ciclo == null ? '' : talk.ciclo).trim().toLowerCase();
+      var s = String(ciclo == null ? '' : ciclo).trim().toLowerCase();
+      if (t === 'ambos') return true;
+      if (!s) return true; // sin ciclo cargado mostramos todo; valida el servidor
+      return t === s;
+    }
+
+    function aCorrTalksPick_(key) {
+      var idx = aStudentIndex_();
+      var st = idx.by[key];
+      if (!st) return;
+      aTalksPickKey = key;
+      aCorrMsg_('', 'ok');
+      var html = '<p><b>' + esc((st.apellido ? st.apellido + ', ' : '') + st.nombre) + '</b>'
+        + ' <span class="hint-line">' + esc(st.curso || '') + ' · ' + esc(st.email) + '</span></p>';
+      html += '<div class="corr-form">';
+      var sels = 0;
+      for (var i = 0; i < aData.slots.length; i++) {
+        var slot = aData.slots[i];
+        var cur = null;
+        for (var j = 0; j < st.signups.length; j++) {
+          if (Number(st.signups[j].slot_id) === Number(slot.id)) { cur = st.signups[j]; break; }
+        }
+        if (!cur) {
+          html += '<div><b>' + esc(slot.label) + '</b><p class="hint-line">Sin charla en este horario.</p></div>';
+          continue;
+        }
+        sels++;
+        var opts = '<option value="' + esc(cur.talk_id) + '" selected>'
+          + esc(cur.talkTitulo) + ' · actual</option>';
+        for (var t = 0; t < aData.talks.length; t++) {
+          var tk = aData.talks[t];
+          if (!tk.activa || Number(tk.slot_id) !== Number(slot.id)) continue;
+          if (String(tk.id) === String(cur.talk_id)) continue;
+          if (!aTalkAllowedFor_(tk, st.ciclo)) continue;
+          var left = Number(tk.cupo) - Number(tk.anotados || 0);
+          opts += '<option value="' + esc(tk.id) + '"' + (left <= 0 ? ' disabled' : '') + '>'
+            + esc(tk.titulo) + ' · ' + (left > 0 ? left + ' lugares' : 'sin lugares') + '</option>';
+        }
+        html += '<label for="talk-pick-' + esc(slot.id) + '">' + esc(slot.label)
+          + '<select id="talk-pick-' + esc(slot.id) + '" data-talk-signup="' + esc(cur.id)
+          + '" data-talk-original="' + esc(cur.talk_id) + '">' + opts + '</select></label>';
+      }
+      html += '</div>';
+      html += '<div class="toolbar">'
+        + '<button id="btn-talks-save" class="btn small" type="button">Guardar cambios</button>'
+        + '<button id="btn-talks-back" class="btn secondary small" type="button">Buscar otro alumno</button>'
+        + '</div>';
+      if (!sels) html += '<p class="hint-line">Ese alumno no tiene charlas asignadas.</p>';
+      $('corr-out').innerHTML = html;
+    }
+
+    function aCorrTalksSave_() {
+      if (!aData || aBusy) return;
+      var sels = document.querySelectorAll('#corr-out [data-talk-signup]');
+      var todo = [];
+      for (var i = 0; i < sels.length; i++) {
+        var orig = String(sels[i].getAttribute('data-talk-original') || '');
+        if (String(sels[i].value) === orig) continue;
+        todo.push({ signupId: sels[i].getAttribute('data-talk-signup'), talkId: sels[i].value });
+      }
+      if (!todo.length) { aCorrMsg_('No cambiaste ninguna charla.', 'err'); return; }
+      aBusy = true;
+      var done = 0;
+      var errores = [];
+      function next() {
+        if (done >= todo.length) {
+          aBusy = false;
+          if (errores.length) {
+            aCorrMsg_('Cambios guardados: ' + (todo.length - errores.length) + '. ' + errores.join(' '), 'err');
+          } else {
+            aCorrMsg_('Charlas actualizadas: ' + todo.length + '.', 'ok');
+          }
+          if (aTalksPickKey) aCorrTalksPick_(aTalksPickKey);
+          aLoad(true);
+          return;
+        }
+        var it = todo[done++];
+        call('apiAdminMoveTalk', [adminCred, it.signupId, it.talkId]).then(function (resp) {
+          if (!resp || !resp.ok) {
+            errores.push((resp && resp.message) || 'No se pudo cambiar una charla.');
+          } else {
+            for (var z = 0; z < aData.signups.length; z++) {
+              if (String(aData.signups[z].id) !== String(it.signupId)) continue;
+              aData.signups[z].talk_id = it.talkId;
+              if (resp.talk && resp.talk.titulo) aData.signups[z].talkTitulo = resp.talk.titulo;
+              break;
+            }
+          }
+          next();
+        }).catch(function () { errores.push('Sin conexión.'); next(); });
+      }
+      next();
+    }
+
+    function aOvercupoGroups_() {
+      var d = aData;
+      var out = [];
+      if (!d || !d.talks || !d.signups) return out;
+      for (var t = 0; t < d.talks.length; t++) {
+        var talk = d.talks[t];
+        var cupo = Number(talk.cupo) || 0;
+        var rows = [];
+        for (var i = 0; i < d.signups.length; i++) {
+          if (String(d.signups[i].talk_id) === String(talk.id)) rows.push(d.signups[i]);
+        }
+        if (rows.length <= cupo) continue;
+        out.push({ talk: talk, cupo: cupo, anotados: rows.length, extra: rows.slice(cupo) });
+      }
+      return out;
+    }
+
+    function aOvercupoCount_() {
+      var btn = $('btn-over-apply');
+      if (!btn) return;
+      var n = document.querySelectorAll('#corr-out [data-over-id]:checked').length;
+      btn.textContent = n ? 'Dar de baja y avisar (' + n + ')' : 'Dar de baja y avisar';
+      btn.disabled = !n;
+    }
+
+    function aCorrOvercupo_() {
+      if (!aData || aBusy) return;
+      aCorrMsg_('', 'ok');
+      var groups = aOvercupoGroups_();
+      if (!groups.length) {
+        $('corr-out').innerHTML = '<p class="hint-line">Ninguna charla está por encima del cupo. No hay nada que sacar.</p>';
+        return;
+      }
+      var html = '';
+      for (var gi = 0; gi < groups.length; gi++) {
+        var g = groups[gi];
+        html += '<div class="over-group">'
+          + '<p class="over-head"><b>' + esc(g.talk.titulo) + '</b>'
+          + '<span class="hint-line">' + esc(aSlotLabel_(g.talk.slot_id)) + ' · '
+          + g.anotados + ' anotados / cupo ' + g.cupo + ' · sobran ' + g.extra.length + '</span></p>'
+          + '<button class="btn secondary small" type="button" data-over-all="' + gi + '">'
+          + 'Marcar los ' + g.extra.length + ' que sobran</button>'
+          + '<ul class="over-list">';
+        for (var ei = 0; ei < g.extra.length; ei++) {
+          var s = g.extra[ei];
+          html += '<li><label><input type="checkbox" data-over-id="' + esc(s.id) + '" data-over-group="' + gi + '">'
+            + '<span class="over-who">' + esc((s.apellido ? s.apellido + ', ' : '') + s.nombre)
+            + '<span class="hint-line">' + esc(s.curso || '') + ' · ' + esc(s.email || '')
+            + (s.cuando ? ' · ' + esc(s.cuando) : '') + '</span></span></label></li>';
+        }
+        html += '</ul></div>';
+      }
+      html += '<button id="btn-over-apply" class="btn red small" type="button" disabled>Dar de baja y avisar</button>';
+      $('corr-out').innerHTML = html;
+      aOvercupoCount_();
+    }
+
+    function aCorrOvercupoApply_() {
+      if (!aData || aBusy) return;
+      var boxes = document.querySelectorAll('#corr-out [data-over-id]:checked');
+      var ids = [];
+      for (var i = 0; i < boxes.length; i++) ids.push(boxes[i].getAttribute('data-over-id'));
+      if (!ids.length) { aCorrMsg_('Marcá al menos un alumno.', 'err'); return; }
+      openSheet({
+        title: 'Dar de baja del sobrecupo',
+        body: '<p>Se borran <b>' + ids.length + '</b> inscripciones y se les avisa por mail para que elijan otra charla de la misma franja.</p>'
+          + '<label class="check-line"><input id="over-notify" type="checkbox" checked> Avisar por mail</label>'
+          + '<p class="sheet-warn">No se puede deshacer. Las otras charlas de cada alumno no cambian.</p>',
+        confirm: 'Dar de baja',
+        danger: true,
+        onConfirm: function () {
+          var notify = $('over-notify') ? $('over-notify').checked : true;
+          aBusy = true;
+          call('apiAdminDropOvercupo', [adminCred, ids, notify]).then(function (resp) {
+            aBusy = false;
+            if (!resp || !resp.ok) {
+              aCorrMsg_((resp && resp.message) || 'No se pudo dar de baja.', 'err');
+              return;
+            }
+            // Refresca la vista local con las bajas ya aplicadas.
+            var fuera = {};
+            for (var i2 = 0; i2 < ids.length; i2++) fuera[String(ids[i2])] = true;
+            var quedan = [];
+            for (var j2 = 0; j2 < aData.signups.length; j2++) {
+              if (fuera[String(aData.signups[j2].id)]) continue;
+              quedan.push(aData.signups[j2]);
+            }
+            aData.signups = quedan;
+            var txt = 'Bajas: ' + resp.deleted + '.';
+            if (resp.mails) txt += ' Mails encolados: ' + resp.mails + '.';
+            if (resp.skipped) txt += ' Sin tocar (ya no estaban fuera de cupo): ' + resp.skipped + '.';
+            aCorrMsg_(txt, 'ok');
+            aCorrOvercupo_();
+            aLoad(true);
+          }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
+        }
+      });
+    }
+
     window.aOnMoveTalk = function (signupId) {
       if (!aData || aBusy) return;
       var s = null;
@@ -10375,6 +10656,8 @@
       $('btn-evento-refresh').addEventListener('click', aLoadEventCheck_);
       $('btn-corr-dup').addEventListener('click', aCorrDuplicates_);
       $('btn-corr-edit').addEventListener('click', aCorrEdit_);
+      $('btn-corr-talks').addEventListener('click', aCorrTalks_);
+      $('btn-corr-over').addEventListener('click', aCorrOvercupo_);
       $('btn-corr-del').addEventListener('click', aCorrDelete_);
       $('btn-test-del').addEventListener('click', aDeleteTestData_);
       $('btn-close-event').addEventListener('click', aCloseEvent_);
@@ -10386,6 +10669,23 @@
         var keep = btn ? btn.getAttribute('data-keep') : '';
         var drop = btn ? btn.getAttribute('data-drop') : '';
         if (keep && drop) aMergeDuplicates_(keep, drop);
+        var pick = btn ? btn.getAttribute('data-talk-pick') : '';
+        if (pick) aCorrTalksPick_(pick);
+        if (btn && btn.id === 'btn-talks-save') aCorrTalksSave_();
+        if (btn && btn.id === 'btn-talks-back') aCorrTalks_();
+        var all = btn ? btn.getAttribute('data-over-all') : null;
+        if (all !== null && all !== '') {
+          var boxes = document.querySelectorAll('#corr-out [data-over-group="' + all + '"]');
+          var todos = true;
+          for (var b = 0; b < boxes.length; b++) if (!boxes[b].checked) todos = false;
+          for (var c = 0; c < boxes.length; c++) boxes[c].checked = !todos;
+          aOvercupoCount_();
+        }
+        if (btn && btn.id === 'btn-over-apply') aCorrOvercupoApply_();
+      });
+      $('corr-out').addEventListener('change', function (ev) {
+        var t = ev.target;
+        if (t && t.getAttribute && t.getAttribute('data-over-id')) aOvercupoCount_();
       });
       $('select-charla').addEventListener('change', function () {
         aTalkId = this.value;
