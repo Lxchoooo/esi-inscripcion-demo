@@ -1006,17 +1006,34 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
 // vez por alumno; el historial es lo que decide si un cambio va solo.
 function mailHistoria_(email) {
   var out = { pendiente: false, enviado: false };
-  var q = readMailQueueRaw_();
-  if (!q.map || !q.map.email) return out;
   var dest = String(email || '').trim().toLowerCase();
-  for (var i = 1; i < q.vals.length; i++) {
-    if (String(q.vals[i][q.map.email]).trim().toLowerCase() !== dest) continue;
-    var est = String(q.vals[i][q.map.estado] || '').trim().toLowerCase();
-    // 'cola_termux' es una fila reclamada por el poller: sigue pendiente de
-    // envio. Si no se cuenta, un cambio de charla o un recordatorio encola
-    // una SEGUNDA fila y el alumno recibe el mail dos veces.
-    if (est === 'pendiente' || est === 'cola_termux') out.pendiente = true;
-    else if (est === 'enviado') out.enviado = true;
+  if (!dest) return out;
+  var q = readMailQueueRaw_();
+  if (q.map && q.map.email >= 0) {
+    for (var i = 1; i < q.vals.length; i++) {
+      if (String(q.vals[i][q.map.email]).trim().toLowerCase() !== dest) continue;
+      var est = String(q.vals[i][q.map.estado] || '').trim().toLowerCase();
+      // 'cola_termux' es una fila reclamada por el poller: sigue pendiente de
+      // envio. Si no se cuenta, un cambio de charla o un recordatorio encola
+      // una SEGUNDA fila y el alumno recibe el mail dos veces.
+      if (est === 'pendiente' || est === 'cola_termux') out.pendiente = true;
+      else if (est === 'enviado') out.enviado = true;
+    }
+  }
+  // La cola se limpia cada tanto y hay alumnos que ya recibieron la
+  // bienvenida antes de que existiera MailQueue. Si no miramos Mails, un
+  // cambio de charla les manda la bienvenida completa otra vez.
+  if (!out.enviado) {
+    try {
+      var sh = sheet_(SENT_MAILS_SHEET);
+      if (sh) {
+        var vals = sh.getDataRange().getValues();
+        for (var j = 1; j < vals.length; j++) {
+          if (String(vals[j][0]).trim().toLowerCase() !== dest) continue;
+          if (/^tu inscripci/i.test(String(vals[j][2] || ''))) { out.enviado = true; break; }
+        }
+      }
+    } catch (e) { }
   }
   return out;
 }
@@ -4811,6 +4828,23 @@ function purgeMailQueueForEmail_(email) {
   return rows.length;
 }
 
+// Borrar un alumno tiene que borrar tambien su historial de mails: si se
+// reinscribe, la bienvenida vuelve a salir. Sin esto, Mails lo daba por
+// avisado para siempre.
+function purgeSentMailsForEmail_(email) {
+  var sh;
+  try { sh = sheet_(SENT_MAILS_SHEET); } catch (e) { return 0; }
+  if (!sh) return 0;
+  var dest = EsiCore.normalizeEmail(email);
+  var vals = sh.getDataRange().getValues();
+  var rows = [];
+  for (var i = 1; i < vals.length; i++) {
+    if (EsiCore.normalizeEmail(vals[i][0]) === dest) rows.push(i + 1);
+  }
+  for (var u = rows.length - 1; u >= 0; u--) sh.deleteRow(rows[u]);
+  return rows.length;
+}
+
 // El DNI es autodeclarado: el alumno lo teclea la primera vez y queda en
 // Students, la unica fuente cuando no se importa padron (decision del
 // dueño, 2/11/2026). Upsert por mail; la fila nueva lleva nombre, apellido
@@ -4860,7 +4894,8 @@ function apiAdminDeleteStudent(cred, email) {
       for (var i = 0; i < rows.length; i++) sh.deleteRow(rows[i].row);
       revokeSessionsForEmail_(norm);
       var purgados = purgeMailQueueForEmail_(norm);
-      logAction_('delete_student', rows[0].signup.id, 'rows=' + rows.length + ' mailq=' + purgados);
+      var purgadosMails = purgeSentMailsForEmail_(norm);
+      logAction_('delete_student', rows[0].signup.id, 'rows=' + rows.length + ' mailq=' + purgados + ' mails=' + purgadosMails);
       invalidateDataCache_();
       return { ok: true, deleted: rows.length };
     } catch (err) {

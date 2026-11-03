@@ -5213,6 +5213,21 @@ t('r28: mailHistoria_ separa pendiente y enviado por destinatario', () => {
   if (h2.enviado || h2.pendiente) throw new Error('el historial mezcla destinatarios');
 });
 
+t('r41: mailHistoria_ ve la bienvenida en Mails aunque la cola se haya limpiado', () => {
+  const services = backendStub({});
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  services.sheets.Mails = fakeSheet('Mails', ['email', 'fecha', 'asunto'], [
+    ['a2029@secundariosalsipuedes.edu.ar', new Date(), 'Tu inscripción a la Jornada ESI 2026 del 4 de noviembre de 2026']
+  ]);
+  const api = backendApi(services, 'mailHistoria_');
+  const h = api.mailHistoria_('a2029@secundariosalsipuedes.edu.ar');
+  assertEq(h.enviado, true, 'la bienvenida vieja cuenta como enviada');
+  assertEq(h.pendiente, false, 'no queda pendiente');
+  const h2 = api.mailHistoria_('otro2029@secundariosalsipuedes.edu.ar');
+  assertEq(h2.enviado, false, 'no mezcla destinatarios');
+});
+
 t('r28: needles de la ronda de bugfinds (rebuild con rastro, lock en drill, import a 5 col, historial de mail)', () => {
   if (!/var REBUILD_FAILS = 'rebuild_fail_count';/.test(codeSrc)) throw new Error('sin contador de reintentos de rebuild');
   if (!/logAction_\('rebuild_error'/.test(codeSrc)) throw new Error('el rebuild fallido no deja rastro en el Log');
