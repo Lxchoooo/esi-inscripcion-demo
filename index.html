@@ -1444,6 +1444,20 @@
     }
     .panel-exit button.is-armed { color: var(--danger); }
     .panel-exit button:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+    /* En "¡Ya estás inscripto!" el cierre queda fijo al pie de la pantalla,
+       chiquito, para no tener que bajar toda la tarjeta. */
+    #s-screen-done.active { padding-bottom: 64px; }
+    #s-screen-done.active .panel-exit {
+      position: fixed; left: 50%; bottom: max(10px, env(safe-area-inset-bottom));
+      transform: translateX(-50%); z-index: 90; margin: 0;
+      padding: 3px 8px; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .10);
+    }
+    #s-screen-done.active .panel-exit button {
+      min-height: 32px; padding: 4px 10px; font-size: 12px;
+      text-decoration: none; color: var(--muted);
+    }
     .sel-bar {
       display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 85;
       padding: 11px 20px max(11px, env(safe-area-inset-bottom));
