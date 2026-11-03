@@ -899,6 +899,29 @@ function changeBody_(name, horario, talk, otras) {
   return lines.join('\n');
 }
 
+// Aviso para los cambios que hace el panel (no el alumno): explica que la
+// organización movió la charla y muestra el estado completo de la inscripción.
+function adminChangeBody_(name, horario, talk, items) {
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Te escribimos desde la organización de la ' + EVENT_TITLE_ + '.',
+    '',
+    'Cambiamos tu charla del horario de ' + mailLine_(horario) + ' a "' +
+      mailLine_(talk.titulo) + '"' + (mailLugar_(talk.lugar) ? ' (' + mailLugar_(talk.lugar) + ')' : '') + '.',
+    '',
+    'Así queda tu inscripción:'
+  ];
+  lines = lines.concat(mailCharlasList_(items));
+  lines.push('');
+  lines.push('Si tenés algún problema con el cambio, respondé este mail y lo revisamos.');
+  lines.push('');
+  lines.push(PANEL_LINK);
+  lines.push('');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
+  return lines.join('\n');
+}
+
 // Reporte y Alumnos son hojas derivadas: en vez de recalcularlas dentro de
 // cada alta o borrado (frena al admin), el borrado solo deja la marca y la
 // corrida del trigger las ejecuta en un minuto, una sola vez.
@@ -1048,6 +1071,23 @@ function mailHistoria_(email) {
     } catch (e) { }
   }
   return out;
+}
+
+// Tipo de la fila pendiente para ese mail ('' si no hay): sirve para no pisar
+// una bienvenida que todavia no salio con un aviso de cambio.
+function pendingMailType_(email) {
+  var dest = String(email || '').trim().toLowerCase();
+  if (!dest) return '';
+  try {
+    var q = readMailQueueRaw_();
+    if (!q.map || q.map.email < 0 || q.map.tipo < 0) return '';
+    for (var i = 1; i < q.vals.length; i++) {
+      if (String(q.vals[i][q.map.email]).trim().toLowerCase() !== dest) continue;
+      var est = String(q.vals[i][q.map.estado] || '').trim().toLowerCase();
+      if (est === 'pendiente' || est === 'cola_termux') return String(q.vals[i][q.map.tipo] || '');
+    }
+  } catch (e) { }
+  return '';
 }
 
 // Si hay una fila pendiente del mismo destinatario la re-escribe (tipo, asunto
@@ -4975,11 +5015,11 @@ function apiAdminCorrectStudent(cred, email, data) {
   });
 }
 
-function apiAdminMoveTalk(cred, signupId, talkId) {
+function apiAdminMoveTalk(cred, signupId, talkId, flush) {
   var auth = adminAuth_(cred);
   var perm = requireAdmin_(auth);
   if (!perm.ok) return { ok: false, message: perm.message };
-  return withScriptLock_(ADMIN_LOCK_MS, function () {
+  var resp = withScriptLock_(ADMIN_LOCK_MS, function () {
     try {
       var row = findSignupRow_(signupId);
       if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
@@ -5014,11 +5054,60 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       // cambiar charla no cambia longitud ni conteos: sin marca quedan las
       // hojas derivadas viejas (Reporte/Alumnos mostrarian la charla pasada).
       scheduleRebuilds_();
-      return { ok: true, changed: true, talk: { id: talk.id, titulo: talk.titulo } };
+      // Aviso al alumno: el cambio hecho desde el panel tambien le llega por
+      // mail con el estado completo (pedido del 3/11). Se encola siempre; el
+      // flush se hace al final del lote para no mandar un mail por cada
+      // horario cambiado. Las filas de ensayo no mandan nada.
+      var mail = { queued: false, sent: 0 };
+      if (!current.prueba) {
+        try {
+          var cfgMail = readConfig_();
+          if (convertBool_(cfgMail[CONFIG_MAIL_WELCOME])) {
+            var slotsMail = readSlots_();
+            var talkById = {};
+            for (var tm = 0; tm < talks.length; tm++) talkById[String(talks[tm].id)] = talks[tm];
+            var bySlot = mineMap_(signups, current.emailKey);
+            bySlot[Number(talk.slot_id)] = String(talk.id);
+            var items = itemsForEmail_(bySlot, slotsMail, talkById);
+            var dest = queueDestination_(current.email, cfgMail);
+            if (!dest) dest = String(current.email || '').trim().toLowerCase();
+            if (dest) {
+              var nomM = String(current.nombre || '').trim();
+              var apeM = String(current.apellido || '').trim();
+              var nameM = nomM;
+              if (apeM) {
+                var normNM = EsiCore.normalizeText(nomM);
+                var normAM = EsiCore.normalizeText(apeM);
+                if (normNM.slice(-normAM.length) !== normAM) nameM = nomM + ' ' + apeM;
+              }
+              var horario = slotLabelFor_(slotsMail, talk.slot_id);
+              if (pendingMailType_(dest) === 'bienvenida') {
+                // Todavia no le salio la bienvenida: se re-escribe con el
+                // estado nuevo en vez de mandar dos mails.
+                upsertPendingMail_(dest, 'bienvenida', mailWelcomeSubject_(cfgMail), welcomeBody_(nameM, items, cfgMail));
+              } else {
+                upsertPendingMail_(dest, 'cambio_admin',
+                  'Actualizamos tu inscripción - ' + EVENT_TITLE_,
+                  adminChangeBody_(nameM, horario, talk, items));
+              }
+              mail.queued = true;
+              try { ensureMailQueueTrigger_(); } catch (eT) { }
+            }
+          }
+        } catch (eMail) { }
+      }
+      return { ok: true, changed: true, talk: { id: talk.id, titulo: talk.titulo }, mail: mail };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
   });
+  if (resp && resp.ok && resp.changed && resp.mail && resp.mail.queued && flush !== false) {
+    try {
+      var flushed = flushMailQueue_(Date.now() + MAIL_QUEUE_GRACE_MS);
+      if (flushed) resp.mail.sent = Number(flushed.sent) || 0;
+    } catch (eFlush) { }
+  }
+  return resp;
 }
 
 function apiAdminMergeDuplicates(cred, keepEmail, dropEmail) {

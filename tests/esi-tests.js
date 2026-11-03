@@ -5240,6 +5240,46 @@ t('r25: las filas de ensayo no bloquean el cupo del alta ni del move en el event
   assertEq(res.ok, true, 'el ensayo no bloquea el move: ' + (res.message || ''));
 });
 
+t('r39: mover una charla desde el panel encola y manda el aviso del estado nuevo', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Config.data.push(['avisos_mail', 'si']);
+  services.sheets.Talks.data.push(['B3', 'Charla cuatro', 'basico', 1, 'Aula 4', 40, 'si']);
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  const sent = [];
+  services.MailApp = {
+    sendEmail: (opts) => { sent.push(opts); },
+    getRemainingDailyQuota: () => 100
+  };
+  const api = backendApi(services, 'apiAdminLogin, apiAdminMoveTalk, readMailQueueRaw_');
+  const token = api.apiAdminLogin('1111').token;
+  const res = api.apiAdminMoveTalk(token, 's1', 'B3');
+  assertEq(res.ok, true, 'move ok: ' + res.message);
+  assertEq(res.changed, true, 'changed');
+  assertEq(res.mail && res.mail.queued, true, 'aviso encolado');
+  assertEq(res.mail && res.mail.sent, 1, 'aviso enviado');
+  const q = api.readMailQueueRaw_();
+  const rows = [];
+  for (let i = 1; i < q.vals.length; i++) {
+    const row = {};
+    for (const k in q.map) if (q.map[k] >= 0) row[k] = q.vals[i][q.map[k]];
+    rows.push(row);
+  }
+  const mail = rows.filter((r) => r.email === 'ana2029@secundariosalsipuedes.edu.ar')[0];
+  if (!mail) throw new Error('no se encoló el aviso');
+  assertEq(mail.tipo, 'cambio_admin', 'tipo de aviso');
+  if (!/Charla cuatro/.test(mail.cuerpo)) throw new Error('el aviso no menciona la charla nueva');
+  if (!/Así queda tu inscripción/.test(mail.cuerpo)) throw new Error('el aviso no muestra el estado');
+  if (!sent.length) throw new Error('el aviso no se envió');
+  if (!/Charla cuatro/.test(sent[0].body)) throw new Error('el mail enviado no tiene la charla nueva');
+});
+
+t('r39: el panel manda el flush del aviso solo en el ultimo cambio del lote', () => {
+  if (!/apiAdminMoveTalk', \[adminCred, it\.signupId, it\.talkId, done >= todo\.length\]/.test(panelSrc)) {
+    throw new Error('aCorrTalksSave_ no pasa el flush del ultimo cambio');
+  }
+});
+
 t('r25: el flush de mails no corre dos veces en paralelo', () => {
   const services = backendStub({});
   services.LockService = {

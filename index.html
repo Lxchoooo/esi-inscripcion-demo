@@ -10260,7 +10260,9 @@
           return;
         }
         var it = todo[done++];
-        call('apiAdminMoveTalk', [adminCred, it.signupId, it.talkId]).then(function (resp) {
+        // El flush del aviso va solo en el ultimo cambio del lote: los
+        // anteriores solo re-escriben la fila pendiente con el estado final.
+        call('apiAdminMoveTalk', [adminCred, it.signupId, it.talkId, done >= todo.length]).then(function (resp) {
           if (!resp || !resp.ok) {
             errores.push((resp && resp.message) || 'No se pudo cambiar una charla.');
           } else {
