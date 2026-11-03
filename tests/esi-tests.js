@@ -1063,6 +1063,12 @@ t('el panel ordena por primeros y últimos inscriptos', () => {
   if (!/filter-orden'\)\.addEventListener\('change', aRenderTable\)/.test(panelSrc)) {
     throw new Error('el orden no re-renderiza la tabla');
   }
+  for (const needle of ['id="filter-rango"', 'Primeros 30', 'Últimos 30', 'Primeros 100', 'Últimos 100']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/filter-rango'\)\.addEventListener\('change', aRenderTable\)/.test(panelSrc)) {
+    throw new Error('el rango no re-renderiza la tabla');
+  }
 });
 
 t('r21: el trigger de mails se auto-repara si alguien lo borro', () => {
@@ -3375,6 +3381,24 @@ t('Code.gs expires student sessions at seven days or after the event', () => {
   const expired = api.apiResumeSession(issued.session);
   assertEq(expired.ok, false, 'expired token rejected');
   if (expired.student || expired.data) throw new Error('expired token leaked data');
+});
+
+t('studentSession_ valida desde cache y el logout invalida la clave', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiGetData, apiResumeSession, apiStudentLogout');
+  const mkTicket = () => loginTicketFor(services, 'ana2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', '');
+  const first = api.apiGetData('', '', '', '', '', mkTicket());
+  assertEq(api.apiResumeSession(first.session).ok, true, 'sesion valida');
+  assertEq(services.cache.size > 0, true, 'la sesion quedo en cache');
+  // Logout: encuentra la fila, la marca y borra la clave del cache.
+  assertEq(api.apiStudentLogout(first.session).ok, true, 'logout');
+  assertEq(api.apiResumeSession(first.session).ok, false, 'logout invalida el cache');
+  // Una sesion nueva se valida una vez y despues sale del cache: con la hoja
+  // vacia (como si la lectura costara) sigue respondiendo.
+  const second = api.apiGetData('', '', '', '', '', mkTicket());
+  assertEq(api.apiResumeSession(second.session).ok, true, 'segunda sesion');
+  services.sheets.Sessions.data.length = 1;
+  assertEq(api.apiResumeSession(second.session).ok, true, 'cache evita releer Sessions');
 });
 
 t('Lookup answers have the same shape for any mail', () => {
@@ -5881,13 +5905,15 @@ t('r35: el admin ve por que el panel no reacciona mientras el server actualiza',
   }
 });
 
-t('r34: toques durante la confirmacion quedan en cola y la charla elegida muestra el chip de espera', () => {
-  // 1) El toque durante busy NO muere en silencio: queda en cola con fecha.
-  if (!/function sOnTalk\(talk\) \{\s*if \(!talk\) return;\s*if \(sState\.busy\) \{/.test(panelSrc)) {
-    throw new Error('sOnTalk no ataja el toque durante la confirmacion');
+t('r34: durante la confirmacion la hoja se abre y el toque no se pierde', () => {
+  // 1) La hoja de elegir se abre igual mientras el server confirma: el
+  // confirm queda en cola en sRegister y no se pierde. Antes el toque moria
+  // con "Espera un segundito" y la pantalla parecia trabada 10 s.
+  if (/function sOnTalk\(talk\) \{\s*if \(!talk\) return;\s*if \(sState\.busy\) \{/.test(panelSrc)) {
+    throw new Error('sOnTalk bloquea el toque durante la confirmacion');
   }
-  if (!/sState\.queued = talk\.id;[\s\S]{0,80}sState\.queuedAt = Date\.now\(\);/.test(panelSrc)) {
-    throw new Error('el toque en cola no queda marcado con timestamp');
+  if (!/function sRegister\(talkId\) \{\s*if \(sState\.busy\) \{[\s\S]{0,200}sState\.nextConfirm = talkId;/.test(panelSrc)) {
+    throw new Error('sRegister no encola el confirm durante la confirmacion');
   }
   // 2) sUnbusy_ cierra el ciclo: saca busy + wait y procesa la cola fresca (<20 s).
   if (!/function sUnbusy_\(dropQueued\) \{[\s\S]{0,200}Date\.now\(\) - \(sState\.queuedAt \|\| 0\)\) < 20000/.test(panelSrc)) {

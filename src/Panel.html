@@ -2900,6 +2900,15 @@
               <option value="primeros">Primeros en inscribirse</option>
               <option value="ultimos">Últimos en inscribirse</option>
             </select>
+            <select id="filter-rango" aria-label="Mostrar un rango de inscriptos">
+              <option value="">Mostrar: todos</option>
+              <option value="primeros:30">Primeros 30</option>
+              <option value="ultimos:30">Últimos 30</option>
+              <option value="primeros:50">Primeros 50</option>
+              <option value="ultimos:50">Últimos 50</option>
+              <option value="primeros:100">Primeros 100</option>
+              <option value="ultimos:100">Últimos 100</option>
+            </select>
           </div>
           <div class="view-head">
             <span class="view-count" id="a-table-count">0 reservas</span>
@@ -6087,14 +6096,10 @@
 
     function sOnTalk(talk) {
       if (!talk) return;
-      if (sState.busy) {
-        // El server esta confirmando la eleccion anterior: el toque NO se
-        // pierde. Queda en cola y se abre solo cuando termina la request.
-        sState.queued = talk.id;
-        sState.queuedAt = Date.now();
-        sBanner('Esperá un segundito…', 'ok');
-        return;
-      }
+      // Aunque el server este confirmando la eleccion anterior, la hoja se
+      // abre igual: el confirm se encola en sRegister y no se pierde. Antes
+      // el toque moria con "Espera un segundito" y la pantalla parecia
+      // trabada hasta que volvia la request (10 s con la cola llena).
       var mine = (sState.data && sState.data.mine) || {};
       var repetida = sCharlaRepetida_(talk);
       if (repetida) {
@@ -9131,7 +9136,20 @@
       var fDiv = $('filter-division') ? $('filter-division').value : '';
       var fCharla = $('filter-charla') ? $('filter-charla').value : '';
       var orden = $('filter-orden') ? $('filter-orden').value : '';
-      var fechaHead = orden === 'ultimos' ? 'Última' : 'Fecha';
+      // Rango "primeros/últimos N": además de ordenar, recorta la tabla para
+      // imprimir o revisar un bloque sin scrollear cientos de filas.
+      var rangoEl = $('filter-rango');
+      var rango = rangoEl ? String(rangoEl.value || '') : '';
+      var rangoDir = '';
+      var rangoN = 0;
+      if (rango) {
+        var rp = rango.split(':');
+        rangoDir = rp[0] === 'ultimos' ? 'ultimos' : 'primeros';
+        rangoN = Math.max(0, parseInt(rp[1], 10) || 0);
+      }
+      // El rango manda el orden: no tiene sentido "orden últimos" + "primeros 30".
+      var ordenEf = rangoN ? rangoDir : orden;
+      var fechaHead = ordenEf === 'ultimos' ? 'Última' : 'Fecha';
       var rows = '<div class="table-wrap"><table><thead><tr>'
         + '<th>' + fechaHead + '</th><th>Alumno</th><th>Curso</th><th colspan="2">Charlas</th><th></th>'
         + '</tr></thead><tbody>';
@@ -9149,23 +9167,24 @@
       }
       // Primeros/últimos por alta: el orden se arma con la primera o la
       // última reserva del alumno, no con la fila que quedó primera en la hoja.
-      if (orden) {
+      if (ordenEf) {
         groupOrder.sort(function (a, b) {
           var ga = groups[a];
           var gb = groups[b];
-          var ta = orden === 'ultimos' ? aGroupLastTs_(ga) : aGroupFirstTs_(ga);
-          var tb = orden === 'ultimos' ? aGroupLastTs_(gb) : aGroupFirstTs_(gb);
-          if (ta !== tb) return orden === 'ultimos' ? tb - ta : ta - tb;
+          var ta = ordenEf === 'ultimos' ? aGroupLastTs_(ga) : aGroupFirstTs_(ga);
+          var tb = ordenEf === 'ultimos' ? aGroupLastTs_(gb) : aGroupFirstTs_(gb);
+          if (ta !== tb) return ordenEf === 'ultimos' ? tb - ta : ta - tb;
           return 0;
         });
       }
       var shown = 0;
+      var matched = 0;
       for (var gi = 0; gi < groupOrder.length; gi++) {
         var g = groups[groupOrder[gi]];
         var s0 = g.student;
         // Con "últimos" la columna muestra la última reserva, que es la que
         // se usa para ordenar; con "primeros" o el orden por alta, la primera.
-        var fechaS = orden === 'ultimos' ? aGroupLastSignup_(g) : s0;
+        var fechaS = ordenEf === 'ultimos' ? aGroupLastSignup_(g) : s0;
         // Filtros: el alumno se muestra si al menos una de sus reservas cumple.
         var match = false;
         var filteredSignups = [];
@@ -9183,6 +9202,8 @@
           match = true;
         }
         if (!match) continue;
+        matched++;
+        if (rangoN && matched > rangoN) continue;
         shown++;
         // Ordenar charlas por horario.
         var talks = g.signups.slice().sort(function (a, b) {
@@ -10873,6 +10894,7 @@
       $('filter-division').addEventListener('change', aRenderTable);
       $('filter-charla').addEventListener('change', aRenderTable);
       if ($('filter-orden')) $('filter-orden').addEventListener('change', aRenderTable);
+      if ($('filter-rango')) $('filter-rango').addEventListener('change', aRenderTable);
       if ($('admin-tabs')) $('admin-tabs').addEventListener('keydown', aOnTabKey_);
       if ($('btn-menu')) $('btn-menu').addEventListener('click', function () {
         aMenuSet_(!aMenuOpen, aMenuOpen);

@@ -72,6 +72,11 @@ var BACKEND_VERSION = 'v72';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
+// Charlas, horarios, config y padron cambian solo por una accion del panel,
+// que invalida el cache a mano: no hay motivo para releerlos cada 45 s. Con
+// TTL corto, el primer toque despues de una pausa pagaba 4-5 lecturas de hoja
+// (el login del panel y la carga del alumno).
+var DATA_CACHE_TTL_LONG = 600;
 // CacheService tiene un tope de 100 KB por clave y las inscripciones ya pasan
 // los 300 KB: el put fallaba en silencio y cada lectura volvia a la planilla.
 // Se guarda en trozos de 90 KB y se rearma al leer.
@@ -3228,16 +3233,36 @@ function putSignupsCache_(signups) {
   } catch (e) { }
 }
 
+// El padron tambien se guarda en trozos: con ~700 alumnos el JSON puede pasar
+// el tope de 100 KB de una clave y el put fallaba en silencio (misma trampa
+// que tenian las inscripciones). Sin cache, cada login del panel releia la hoja.
 function readStudentsCached_() {
+  var memo = memoGet_('students');
+  if (memo) return memo;
   try {
-    var hit = CacheService.getScriptCache().get('students_v1');
-    if (hit) return JSON.parse(hit);
+    var cache = CacheService.getScriptCache();
+    var n = Number(cache.get('students_chunks') || 0);
+    if (n > 0) {
+      var parts = [];
+      for (var i = 0; i < n; i++) {
+        var part = cache.get('students_c' + i);
+        if (part == null) { parts = null; break; }
+        parts.push(part);
+      }
+      if (parts) return memoSet_('students', JSON.parse(parts.join('')));
+    }
   } catch (e) { }
   var students = readStudents_();
   try {
-    CacheService.getScriptCache().put('students_v1', JSON.stringify(students), DATA_CACHE_TTL);
-  } catch (e) { }
-  return students;
+    var c2 = CacheService.getScriptCache();
+    var json = JSON.stringify(students);
+    var chunks = Math.ceil(json.length / SIGNUPS_CACHE_CHUNK_) || 1;
+    for (var j = 0; j < chunks; j++) {
+      c2.put('students_c' + j, json.slice(j * SIGNUPS_CACHE_CHUNK_, (j + 1) * SIGNUPS_CACHE_CHUNK_), DATA_CACHE_TTL_LONG);
+    }
+    c2.put('students_chunks', String(chunks), DATA_CACHE_TTL_LONG);
+  } catch (e2) { }
+  return memoSet_('students', students);
 }
 
 function readTalksCached_() {
@@ -3249,7 +3274,7 @@ function readTalksCached_() {
   } catch (e) { }
   var talks = readTalks_();
   try {
-    CacheService.getScriptCache().put('talks_v1', JSON.stringify(talks), DATA_CACHE_TTL);
+    CacheService.getScriptCache().put('talks_v1', JSON.stringify(talks), DATA_CACHE_TTL_LONG);
   } catch (e) { }
   return memoSet_('talks', talks);
 }
@@ -3267,7 +3292,7 @@ function readSlotsCached_() {
   } catch (e) { }
   var slots = readSlots_();
   try {
-    CacheService.getScriptCache().put('slots_v1', JSON.stringify(slots), DATA_CACHE_TTL);
+    CacheService.getScriptCache().put('slots_v1', JSON.stringify(slots), DATA_CACHE_TTL_LONG);
   } catch (e) { }
   return memoSet_('slots', slots);
 }
@@ -3279,16 +3304,16 @@ function readConfigCached_() {
   } catch (e) { }
   var cfg = readConfig_();
   try {
-    CacheService.getScriptCache().put('config_v1', JSON.stringify(cfg), DATA_CACHE_TTL);
+    CacheService.getScriptCache().put('config_v1', JSON.stringify(cfg), DATA_CACHE_TTL_LONG);
   } catch (e) { }
   return cfg;
 }
 
 function invalidateDataCache_() {
   invalidateSignupsCache_();
+  invalidateStudentsCache_();
   try {
     var cache = CacheService.getScriptCache();
-    cache.remove('students_v1');
     cache.remove('talks_v1');
     cache.remove('slots_v1');
     cache.remove('config_v1');
@@ -3312,7 +3337,14 @@ function invalidateSignupsCache_() {
 }
 
 function invalidateStudentsCache_() {
-  try { CacheService.getScriptCache().remove('students_v1'); } catch (e) { }
+  try {
+    var cache = CacheService.getScriptCache();
+    var n = Number(cache.get('students_chunks') || 0);
+    for (var i = 0; i < n + 5; i++) cache.remove('students_c' + i);
+    cache.remove('students_chunks');
+    cache.remove('students_v1');
+  } catch (e) { }
+  try { delete MEMO_READS_.students; } catch (e2) { }
 }
 
 function withScriptLock_(timeoutMs, fn) {
@@ -3516,7 +3548,7 @@ function apiLookup(email) {
     }
     var entry = findStudent_(roster, norm);
     if (!entry) {
-      var signups = readSignups_();
+      var signups = readSignupsCached_();
       var best = null;
       var bestTs = -1;
       for (var i = 0; i < signups.length; i++) {
@@ -4001,15 +4033,44 @@ function readSessions_() {
   return rows;
 }
 
+// La validacion de sesion leia la hoja entera de Sessions en cada request del
+// alumno (y esa hoja crece todo el dia). Se guarda la fila por hash: un toque
+// normal ya no toca la planilla. Las revocaciones borran la clave, y el TTL
+// acota cualquier cambio hecho a mano en la hoja.
+var SESSION_CACHE_S_ = 600;
+function sessionCacheKey_(hash) { return 'sess_v1_' + String(hash); }
+function dropSessionCache_(hash) {
+  try { CacheService.getScriptCache().remove(sessionCacheKey_(hash)); } catch (e) { }
+}
+function cacheSessionRow_(row) {
+  if (!row || !row.hash) return;
+  try {
+    CacheService.getScriptCache().put(sessionCacheKey_(row.hash), JSON.stringify(row), SESSION_CACHE_S_);
+  } catch (e) { }
+}
+
 function studentSession_(token) {
   var raw = String(token == null ? '' : token).trim();
   if (raw.indexOf(STUDENT_TOKEN_PREFIX) !== 0 || raw.length < 8) return null;
   var hash = studentTokenHash_(raw);
-  var rows = readSessions_();
   var now = Date.now();
+  try {
+    var hit = CacheService.getScriptCache().get(sessionCacheKey_(hash));
+    if (hit) {
+      var cached = JSON.parse(hit);
+      if (cached && !cached.revoked && Number(cached.expires) > now) return cached;
+      dropSessionCache_(hash);
+      return null;
+    }
+  } catch (eHit) { }
+  var rows = readSessions_();
   for (var i = 0; i < rows.length; i++) {
     if (rows[i].hash !== hash) continue;
-    if (rows[i].revoked || rows[i].expires <= now) return null;
+    if (rows[i].revoked || rows[i].expires <= now) {
+      dropSessionCache_(hash);
+      return null;
+    }
+    cacheSessionRow_(rows[i]);
     return rows[i];
   }
   return null;
@@ -4052,6 +4113,7 @@ function revokeStudentSession_(token) {
     for (var i = 0; i < rows.length; i++) {
       if (rows[i].hash !== hash) continue;
       sessionsSheet_().getRange(rows[i].row, rows[i].revokedCol).setValue(true);
+      dropSessionCache_(hash);
       return true;
     }
     return false;
@@ -4072,6 +4134,7 @@ function revokeSessionsForEmail_(email, keepHash) {
       if (keepHash && rows[i].hash === keepHash) continue;
       if (!sh) sh = sessionsSheet_();
       sh.getRange(rows[i].row, rows[i].revokedCol).setValue(true);
+      dropSessionCache_(rows[i].hash);
       count++;
     }
     return count;
@@ -4180,7 +4243,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     }
     var s = bs.student;
 
-    var cfg = readConfig_();
+    var cfg = readConfigCached_();
     var abierto = isOpen_(cfg);
     var slots = readSlotsCached_();
     var talks = readTalksCached_();
@@ -5360,6 +5423,17 @@ function purgeSentMailsForEmail_(email) {
 function upsertStudentsDni_(s, dni) {
   var norm = EsiCore.normalizeDni(String(dni || ''));
   if (!EsiCore.isValidDni(norm)) return 'no';
+  // Camino rapido: si el padron ya tiene ese DNI para el mail, no hace falta
+  // releer la hoja entera en cada alta. Es el caso normal de los alumnos que
+  // vienen del padron; sin esto, el alta pagaba una lectura de ~700 filas.
+  try {
+    var known = readStudentsCached_();
+    for (var k = 0; k < known.length; k++) {
+      if (known[k].email !== s.email) continue;
+      if (EsiCore.normalizeDni(String(known[k].dni || '')) === norm) return 'igual';
+      break;
+    }
+  } catch (eFast) { }
   var sh = sheet_(STUDENTS_SHEET);
   if (!sh) return 'sin hoja';
   ensureColumn_(sh, 'dni');

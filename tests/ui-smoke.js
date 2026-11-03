@@ -322,6 +322,19 @@ var htmlPri = document.getElementById('a-table').innerHTML;
 assert(htmlPri.indexOf('Ana') < htmlPri.indexOf('Beto'), 'primeros inscriptos primero');
 document.getElementById('filter-orden').value = '';
 
+document.getElementById('filter-rango').value = 'primeros:1';
+ui.aRenderTable();
+var htmlR1 = document.getElementById('a-table').innerHTML;
+assert(htmlR1.includes('Ana') && !htmlR1.includes('Beto'), 'rango primeros 1');
+assert(document.getElementById('filter-orden').value !== 'ultimos', 'rango no pisa el select');
+document.getElementById('filter-rango').value = 'ultimos:1';
+ui.aRenderTable();
+var htmlR2 = document.getElementById('a-table').innerHTML;
+assert(htmlR2.includes('Beto') && !htmlR2.includes('Ana'), 'rango ultimos 1');
+assert(document.getElementById('a-table-count').textContent === '1 de 2 alumnos', 'contador con rango');
+document.getElementById('filter-rango').value = '';
+ui.aRenderTable();
+
 ui.setA({
   total: 0, porCiclo: { basico: 0, orientado: 0 }, evento_abierto: false,
   rosterLoaded: true, rosterCount: 4, slots: [], talks: [], signups: []
