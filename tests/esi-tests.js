@@ -1053,6 +1053,18 @@ t('Panel pide DNI en la primera inscripcion y lo manda con cada charla', () => {
   }
 });
 
+t('el panel ordena por primeros y últimos inscriptos', () => {
+  for (const needle of ['id="filter-orden"', 'Primeros en inscribirse', 'Últimos en inscribirse']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  for (const needle of ['aGroupFirstTs_', 'aGroupLastTs_', 'aSignupTs_']) {
+    if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!/filter-orden'\)\.addEventListener\('change', aRenderTable\)/.test(panelSrc)) {
+    throw new Error('el orden no re-renderiza la tabla');
+  }
+});
+
 t('r21: el trigger de mails se auto-repara si alguien lo borro', () => {
   const created = [];
   const services = backendStub({});
@@ -2898,7 +2910,9 @@ t('Cached reads are invalidated by writes', () => {
   assertEq(reg.ok, true, 'register ok');
   r = api.apiGetData('cami2029@secundariosalsipuedes.edu.ar', 'Cami Perez', '2°B', session);
   assertEq(r.data.mine[1], 'B1', 'write invalidates the signups cache');
-  if (!services.cache.has('signups_v2')) throw new Error('cache not repopulated');
+  if (!services.cache.has('signups_chunks') && !services.cache.has('signups_c0')) {
+    throw new Error('cache not repopulated');
+  }
   if (!services.cache.has('talks_v1') || !services.cache.has('slots_v1')) {
     throw new Error('talks or slots not cached');
   }
@@ -3765,7 +3779,7 @@ t('la hoja Alumnos ordena por ciclo, curso y apellido', () => {
   assertEq(rows[1][5], '10:30 a 11:20', 'horario de la charla');
 });
 
-t('el panel mantiene al dia las hojas Alumnos y Reporte', () => {
+t('setup deja al dia las hojas Alumnos y Reporte', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   services.sheets.Signups = fakeSheet('Signups',
     ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente'],
@@ -4280,28 +4294,36 @@ t('auditoria: las filas de ensayo no gastan cupo real', () => {
   assertEq(api.cupoCounts_([], null).B1, undefined, 'lista vacia');
 });
 
-t('las hojas derivadas se rehacen solo si cambio algo y no en el alta', () => {
+t('el trigger rehace las hojas derivadas y el alta no', () => {
   if (codeSrc.indexOf('function derivedFingerprint_') < 0) throw new Error('falta la huella');
   const alta = codeSrc.slice(codeSrc.indexOf('function apiRegister'), codeSrc.indexOf('function registerLocked_'));
   if (alta.indexOf('maybeRebuildReport_') >= 0) throw new Error('apiRegister sigue rehaciendo hojas');
 
   const services = backendStub({ ADMIN_PIN: '1111' });
-  const api = backendApi(services, 'setup, apiAdminGetData, apiRegister');
+  const api = backendApi(services, 'setup, apiAdminGetData, apiRegister, runPendingRebuilds_');
   api.setup();
   const reporte = services.sheets.Reporte;
   if (!reporte) throw new Error('falta Reporte');
-  // Primera lectura: guarda la huella (y rehace una vez).
-  api.apiAdminGetData('1111');
-  // Marca que solo se pierde si la hoja se reescribe.
+  // El panel ya no rehace las hojas al leer: se marca y la lectura no la toca.
   reporte.data[0][0] = 'MARCA';
   api.apiAdminGetData('1111');
-  assertEq(reporte.data[0][0], 'MARCA', 'sin cambios no reescribe');
-  // Un alta real fuerza la reescritura (y el alta en si no la hace).
+  assertEq(reporte.data[0][0], 'MARCA', 'el panel no reescribe');
+  // Un alta real deja la marca; el trigger (watchdog) es el que rehace.
   const inscripcion = api.apiRegister('nuevo2029@secundariosalsipuedes.edu.ar', 'Nuevo Alumno', '4°Turismo', 'O1');
   assertEq(inscripcion.ok, true, 'alta ok: ' + inscripcion.message);
   assertEq(reporte.data[0][0], 'MARCA', 'el alta no rehace la hoja');
-  api.apiAdminGetData('1111');
-  assertEq(reporte.data[0][0], 'ID', 'con un alta nueva si reescribe');
+  api.runPendingRebuilds_();
+  assertEq(reporte.data[0][0], 'ID', 'el trigger rehace la hoja');
+});
+
+t('el alta hace mail, DNI y rebuild fuera del lock', () => {
+  const locked = codeSrc.slice(codeSrc.indexOf('function registerLocked_'), codeSrc.indexOf('function findSignupRow_'));
+  for (const needle of ['scheduleStudentMail_(', 'upsertStudentsDni_(', 'scheduleRebuilds_(', 'ensureMailQueueTrigger_(']) {
+    if (locked.indexOf(needle) >= 0) throw new Error('registerLocked_ todavia hace ' + needle);
+  }
+  const alta = codeSrc.slice(codeSrc.indexOf('function apiRegister'), codeSrc.indexOf('function registerLocked_'));
+  if (alta.indexOf('resp._after') < 0) throw new Error('apiRegister no procesa el _after');
+  if (alta.indexOf('scheduleStudentMail_') < 0) throw new Error('apiRegister no manda el mail fuera del lock');
 });
 
 t('auditoria: el respaldo aguanta filas de distinto ancho', () => {
@@ -5252,8 +5274,7 @@ t('r25: la inscripcion del alumno deja la marca de rebuild de las hojas derivada
   const services = backendStub({});
   registerThreeSlots_(services, 'vero2029@secundariosalsipuedes.edu.ar');
   assertEq(String(services.props.rebuild_derived_pending || ''), 'si', 'marca pendiente tras registrar');
-  // La apertura del panel la consume ya, junto a la marca: no hay que esperar
-  // la corrida del trigger para que Reporte y Alumnos reflejen el cambio.
+  // El trigger (watchdog) la consume: el panel ya no rehace las hojas al leer.
   services.ScriptApp = {
     getProjectTriggers: () => [{ getHandlerFunction: () => 'flushMailQueue_' }],
     newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => null }) }) })

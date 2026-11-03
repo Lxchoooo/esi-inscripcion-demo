@@ -309,6 +309,19 @@ ui.aRenderTable();
 assert(document.getElementById('a-table').innerHTML.includes('Beto'), 'busqueda');
 assert(!document.getElementById('a-table').innerHTML.includes('Ana'), 'busqueda excluye');
 
+document.getElementById('filter-charla').value = '';
+document.getElementById('input-buscar').value = '';
+document.getElementById('filter-orden').value = 'ultimos';
+ui.aRenderTable();
+var htmlUlt = document.getElementById('a-table').innerHTML;
+assert(htmlUlt.indexOf('Beto') < htmlUlt.indexOf('Ana'), 'ultimos inscriptos primero');
+assert(htmlUlt.includes('Última'), 'encabezado de ultima fecha');
+document.getElementById('filter-orden').value = 'primeros';
+ui.aRenderTable();
+var htmlPri = document.getElementById('a-table').innerHTML;
+assert(htmlPri.indexOf('Ana') < htmlPri.indexOf('Beto'), 'primeros inscriptos primero');
+document.getElementById('filter-orden').value = '';
+
 ui.setA({
   total: 0, porCiclo: { basico: 0, orientado: 0 }, evento_abierto: false,
   rosterLoaded: true, rosterCount: 4, slots: [], talks: [], signups: []

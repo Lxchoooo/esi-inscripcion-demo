@@ -72,6 +72,10 @@ var BACKEND_VERSION = 'v72';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
+// CacheService tiene un tope de 100 KB por clave y las inscripciones ya pasan
+// los 300 KB: el put fallaba en silencio y cada lectura volvia a la planilla.
+// Se guarda en trozos de 90 KB y se rearma al leer.
+var SIGNUPS_CACHE_CHUNK_ = 90000;
 var BUSY_MESSAGE = 'Hay mucha gente anotándose: esperá unos segundos y volvé a tocar.';
 // La cola del registro: cada alta tiene el lock ~2 s, asi que una fila de 15
 // chicos tarda ~30 s. 40 s de espera evita que el que esta ultimo reciba
@@ -979,22 +983,33 @@ function adminAddBody_(name, addedItems, items) {
 // corrida del trigger las ejecuta en un minuto, una sola vez.
 function scheduleRebuilds_() {
   try {
+    // Solo la marca: el trigger de la cola y el watchdog ya existen y
+    // enumerar triggers en cada alta costaba ~150 ms de lock.
     PropertiesService.getScriptProperties().setProperty(REBUILD_FLAG, 'si');
-    ensureMailQueueTrigger_();
   } catch (e) { }
 }
 
 function runPendingRebuilds_() {
   var props = PropertiesService.getScriptProperties();
   if (String(props.getProperty(REBUILD_FLAG)) !== 'si') return false;
-  // Encadenar los dos rebuilds con el lock evita leer mientras nadie esta
-  // anotandose; si el lock esta ocupado devuelve busy sin limpiar la marca.
-  var ran = withScriptLock_(ADMIN_LOCK_MS, function () {
+  // El rebuild de las hojas derivadas es cosmetico: no puede bloquear a los
+  // alumnos que estan anotandose. Usa el lock de usuario (el mismo que el
+  // envio de mails), no el lock global del registro. Si esta ocupado, la
+  // marca queda para la proxima corrida del watchdog.
+  var lock = null;
+  try { lock = LockService.getUserLock ? LockService.getUserLock() : LockService.getScriptLock(); } catch (eL0) { }
+  var tomado = false;
+  try { if (lock) tomado = !!lock.tryLock(5); } catch (eL) { }
+  if (!tomado) return false;
+  var ran = null;
+  try {
     var errores = [];
     try { rebuildReport_(); } catch (ee) { errores.push('reporte: ' + (ee && ee.message ? ee.message : ee)); }
     try { rebuildAlumnos_(); } catch (ee2) { errores.push('alumnos: ' + (ee2 && ee2.message ? ee2.message : ee2)); }
-    return { ok: errores.length === 0, errores: errores };
-  });
+    ran = { ok: errores.length === 0, errores: errores };
+  } finally {
+    try { if (lock) lock.releaseLock(); } catch (eRel) { }
+  }
   if (ran && ran.ok) {
     try { props.setProperty(REBUILD_FLAG, 'no'); props.setProperty(REBUILD_FAILS, '0'); } catch (e3) { }
     return true;
@@ -1078,7 +1093,6 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
     }
     upsertPendingMail_(dest, 'cambio', mailChangeSubject_(cfg), changeBody_(name, horario, talk, otras));
   }
-  try { ensureMailQueueTrigger_(); } catch (eTrigger) { }
 }
 
 // Que hay en la cola para un destinatario: pendiente (una fila esperando
@@ -1272,6 +1286,18 @@ function ensureWatchdogTrigger_() {
     // de cada minuto queda a merced del planificador de Google, que se lo
     // salta). Cadencia corta para que el bienvenida no tarde mas de ~2 min.
     ScriptApp.newTrigger('watchdog').timeBased().everyMinutes(2).create();
+  } catch (e) { }
+}
+
+// Auto-reparacion del watchdog sin pagar la enumeracion de triggers en cada
+// login: como mucho una revision cada 6 horas.
+function maybeEnsureWatchdogTrigger_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var last = Number(props.getProperty('WATCHDOG_CHECK_AT') || 0);
+    if (last && Date.now() - last < 6 * 3600 * 1000) return;
+    props.setProperty('WATCHDOG_CHECK_AT', String(Date.now()));
+    ensureWatchdogTrigger_();
   } catch (e) { }
 }
 
@@ -2146,6 +2172,7 @@ function setup(quiet) {
   configureBackupTrigger_();
   try { ensureMailQueueTrigger_(); } catch (eQ) { }
   try { ensurePreceptorPlanillaTrigger_(); } catch (eP) { }
+  try { ensureWatchdogTrigger_(); } catch (eW) { }
   if (!quiet) ss.toast('Listo. Las claves están en Script Properties (ADMIN_PIN y GUIDE_PIN).');
   rebuildReport_();
   try { rebuildAlumnos_(); } catch (e) { }
@@ -3160,14 +3187,45 @@ function findStudent_(students, email) {
 
 function readSignupsCached_() {
   try {
-    var hit = CacheService.getScriptCache().get('signups_v2');
-    if (hit) return JSON.parse(hit);
+    var cache = CacheService.getScriptCache();
+    var n = Number(cache.get('signups_chunks') || 0);
+    if (n > 0) {
+      var parts = [];
+      for (var i = 0; i < n; i++) {
+        var part = cache.get('signups_c' + i);
+        if (part == null) { parts = null; break; }
+        parts.push(part);
+      }
+      if (parts) {
+        var list = JSON.parse(parts.join(''));
+        // JSON convierte las fechas a texto: el resto del backend espera Date
+        // en ts (signupStamp_, sessionDateMs_, orden por fecha).
+        for (var k = 0; k < list.length; k++) {
+          if (list[k] && typeof list[k].ts === 'string') list[k].ts = new Date(list[k].ts);
+        }
+        return list;
+      }
+    }
   } catch (e) { }
   var signups = readSignups_();
-  try {
-    CacheService.getScriptCache().put('signups_v2', JSON.stringify(signups), DATA_CACHE_TTL);
-  } catch (e) { }
+  putSignupsCache_(signups);
   return signups;
+}
+
+// Deja el cache listo para la proxima lectura. Se llama tambien desde el alta,
+// con la lista que ya tiene la fila nueva, para no releer la planilla entera
+// mientras el lock esta tomado.
+function putSignupsCache_(signups) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var json = JSON.stringify(signups || []);
+    var n = Math.ceil(json.length / SIGNUPS_CACHE_CHUNK_) || 1;
+    for (var i = 0; i < n; i++) {
+      cache.put('signups_c' + i, json.slice(i * SIGNUPS_CACHE_CHUNK_, (i + 1) * SIGNUPS_CACHE_CHUNK_), DATA_CACHE_TTL);
+    }
+    cache.put('signups_chunks', String(n), DATA_CACHE_TTL);
+    for (var j = n; j < n + 5; j++) cache.remove('signups_c' + j);
+  } catch (e) { }
 }
 
 function readStudentsCached_() {
@@ -3227,11 +3285,9 @@ function readConfigCached_() {
 }
 
 function invalidateDataCache_() {
-  MEMO_READS_ = {};
+  invalidateSignupsCache_();
   try {
     var cache = CacheService.getScriptCache();
-    cache.remove('signups_v1');
-    cache.remove('signups_v2');
     cache.remove('students_v1');
     cache.remove('talks_v1');
     cache.remove('slots_v1');
@@ -3241,14 +3297,22 @@ function invalidateDataCache_() {
 
 // Al anotarse alguien solo cambian las inscripciones: charlas, horarios y
 // config siguen igual y borrarlos obligaria a releer la planilla de nuevo.
+// La lista de Students (nombres, cursos, DNI) no cambia por una inscripcion:
+// se invalida aparte, solo cuando se toca esa hoja.
 function invalidateSignupsCache_() {
   MEMO_READS_ = {};
   try {
     var cache = CacheService.getScriptCache();
+    var n = Number(cache.get('signups_chunks') || 0);
+    for (var i = 0; i < n + 5; i++) cache.remove('signups_c' + i);
+    cache.remove('signups_chunks');
     cache.remove('signups_v1');
     cache.remove('signups_v2');
-    cache.remove('students_v1');
   } catch (e) { }
+}
+
+function invalidateStudentsCache_() {
+  try { CacheService.getScriptCache().remove('students_v1'); } catch (e) { }
 }
 
 function withScriptLock_(timeoutMs, fn) {
@@ -4071,6 +4135,25 @@ function apiRegister(email, nombre, curso, talkId, apellido, sessionToken, login
   } else if (resp) {
     delete resp._rotar;
   }
+  // Lo que no toca Signups se hace aca, con el lock suelto: el mail de
+  // bienvenida, el DNI en Students y la marca de rebuild de las hojas
+  // derivadas. Antes todo esto se pagaba dentro del lock y ponia en cola a
+  // los alumnos que estaban eligiendo.
+  if (resp && resp._after) {
+    var after = resp._after;
+    delete resp._after;
+    try {
+      scheduleStudentMail_(after.prev, after.post, after.student, after.talk, after.slots, after.talksById, after.cfg, after.action);
+    } catch (eMail) { }
+    try {
+      var dniLog = upsertStudentsDni_(after.student, after.dni);
+      if (dniLog === 'nuevo' || dniLog === 'actualizado') {
+        logAction_('dni_alumno', after.student.emailKey, dniLog);
+        invalidateStudentsCache_();
+      }
+    } catch (eDni) { }
+    scheduleRebuilds_();
+  }
   // La inscripcion del alumno no rehace hojas derivadas: eran dos hojas
   // enteras por cada alta y el alumno esperaba varios segundos de mas.
   return resp;
@@ -4105,7 +4188,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     for (var i = 0; i < talks.length; i++) {
       talksById[talks[i].id] = talks[i];
     }
-    var signups = readSignups_();
+    var signups = readSignupsCached_();
     if (!current && !ticket && hasSignupsForEmail_(signups, s.email)) {
       return {
         ok: false,
@@ -4232,26 +4315,12 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     }
     // fresh ya refleja el alta (insert) o el cambio, sin releer la planilla.
     if (!fresh) fresh = signups;
-    // El mail de bienvenida sale cuando el alumno completa las franjas, con 2
-    // min de gracia; si cambia una charla, sale la linea del cambio (todo
-    // falla silencioso: el mail no puede bloquear el alta).
-    try {
-      scheduleStudentMail_(signups, fresh, s, (plan.action === 'change' ? talk : null), slots, talksById, cfg, plan.action);
-    } catch (eMail) { }
-    invalidateSignupsCache_();
-    // La inscripcion del alumno tambien cambia Reporte y Alumnos (hojas
-    // derivadas): queda marcada y la corro el trigger, que unicamente hace
-    // un trabajo para el grupo de cambios.
-    scheduleRebuilds_();
-    try {
-      var dniLog = upsertStudentsDni_(s, dni);
-      if (dniLog === 'nuevo' || dniLog === 'actualizado') {
-        logAction_('dni_alumno', s.emailKey, dniLog);
-        // El roster y la ficha leen Students cacheado: sin esto la ficha
-        // puede quedar sin DNI hasta vencer el TTL.
-        invalidateSignupsCache_();
-      }
-    } catch (eDni) { }
+    // El cache queda con la fila nueva: el proximo alta no relee la planilla
+    // mientras tiene el lock. Solo se toca si hubo insert o cambio.
+    if (plan.action === 'insert' || plan.action === 'change') putSignupsCache_(fresh);
+    // El mail, el DNI y las hojas derivadas no necesitan el lock: se hacen en
+    // apiRegister, con el lock ya suelto, para que el proximo alumno no espere
+    // por una escritura que no toca Signups.
     return {
       ok: true,
       message: message,
@@ -4259,7 +4328,18 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh),
       recordatorio: reminderOptIn_(fresh, s.email),
       session: rotated,
-      _rotar: rotar
+      _rotar: rotar,
+      _after: {
+        prev: signups,
+        post: fresh,
+        student: s,
+        talk: plan.action === 'change' ? talk : null,
+        slots: slots,
+        talksById: talksById,
+        cfg: cfg,
+        action: plan.action,
+        dni: dni
+      }
     };
   } catch (err) {
     return { ok: false, message: 'Error inesperado: ' + (err && err.message ? err.message : err) };
@@ -4448,11 +4528,10 @@ function apiAdminLogin(pin, ua, talkId) {
     var token = adminIssueToken_(auth.role);
     if (!token) return { ok: false, message: 'No se pudo emitir sesión.' };
     logAccess_(true, auth.role, ua);
-    // Instala el trigger diario de respaldo la primera vez que entra un admin.
-    try { configureDriveBackupTrigger_(); } catch (e) { }
     // El watchdog es la parte automatica de setup(): sin el, si algo se cae
-    // mientras nadie mira, queda muerto hasta que el admin vuelva.
-    try { ensureWatchdogTrigger_(); } catch (eW) { }
+    // mientras nadie mira, queda muerto hasta que el admin vuelva. Se revisa
+    // como mucho cada 6 h: enumerar triggers en cada login sumaba ~1 s.
+    try { maybeEnsureWatchdogTrigger_(); } catch (eW) { }
     // Los datos del panel viajan en el mismo viaje que el login: el panel abria
     // con dos llamadas de ~2,5 s cada una.
     var data = adminDataFor_(auth);
@@ -4488,8 +4567,9 @@ function apiAdminGetData(cred) {
 function adminDataFor_(auth) {
   try {
     var admin = isAdmin_(auth);
-    // Mantiene al dia las hojas derivadas (Alumnos y Reporte) cuando el panel lee.
-    if (admin) { try { maybeRebuildReport_(); } catch (e0) { } }
+    // El panel no rehace Reporte/Alumnos al leer: son hojas para la preceptora
+    // y el rebuild de 995 filas costaba 8-10 s en el login. Las corre el
+    // watchdog cada 2 min y la planilla se pide a mano cuando hace falta.
     var cfg = readConfigCached_();
     var slots = readSlotsCached_();
     var talks = readTalksCached_();
@@ -4512,7 +4592,9 @@ function adminDataFor_(auth) {
     var signups = admin ? signupsRaw.map(function (s) {
       return {
         id: s.id,
-        cuando: signupStamp_(s.ts, tz),
+        // La fecha se formatea en el celular: Utilities.formatDate por cada
+        // una de las ~1000 filas costaba 8-10 s de login.
+        ts: s.ts instanceof Date ? s.ts.getTime() : (Number(s.ts) || 0),
         email: s.email,
         apellido: s.apellido || apellidos[s.emailKey] || '',
         nombre: givenName_(s.nombre, s.apellido || apellidos[s.emailKey] || ''),
@@ -4566,6 +4648,7 @@ function adminDataFor_(auth) {
       }),
       talks: talksOut,
       signups: signups,
+      tz: tz,
       total: signupsRaw.length,
       studentCount: studentCount,
       testCount: admin ? signupsRaw.filter(function (x) { return !!x.prueba; }).length : 0,
@@ -4884,7 +4967,7 @@ function apiAdminDuplicates(cred) {
     var auth = adminAuth_(cred);
     var perm = requireAdmin_(auth);
     if (!perm.ok) return { ok: false, message: perm.message };
-    var signups = readSignups_();
+    var signups = readSignupsCached_();
     var talks = readTalksCached_();
     var slots = readSlotsCached_();
     var talkById = {};
@@ -5634,7 +5717,10 @@ function apiAdminErasePersonalData(cred, confirmation) {
     }
   });
   if (resp && resp.ok) {
-    scheduleRebuilds_();
+    // El borrado es una accion explicita del admin: las hojas derivadas se
+    // rehacen ya, no en la proxima vuelta del watchdog (el panel deja de
+    // mostrar datos personales al instante).
+    try { runPendingRebuilds_(); } catch (eRebuild) { }
   }
   return resp;
 }

@@ -2895,6 +2895,11 @@
             <select id="filter-curso" aria-label="Curso"></select>
             <select id="filter-division" aria-label="División"></select>
             <select id="filter-charla" aria-label="Charla"></select>
+            <select id="filter-orden" aria-label="Orden por inscripción">
+              <option value="">Orden: por alta</option>
+              <option value="primeros">Primeros en inscribirse</option>
+              <option value="ultimos">Últimos en inscribirse</option>
+            </select>
           </div>
           <div class="view-head">
             <span class="view-count" id="a-table-count">0 reservas</span>
@@ -9046,6 +9051,78 @@
       }
     }
 
+    // El backend manda ts (epoch ms) y tz; formatear en el celular evita
+    // ~1000 llamadas a Utilities.formatDate en el login. Los datos viejos en
+    // cache todavia traen cuando: se respeta.
+    function aCuando_(s) {
+      if (!s) return '';
+      if (s.cuando) return s.cuando;
+      var ms = Number(s.ts || 0);
+      if (!ms) return '';
+      var tz = (aData && aData.tz) || 'America/Argentina/Cordoba';
+      try {
+        var parts = new Intl.DateTimeFormat('es-AR', {
+          timeZone: tz, day: '2-digit', month: '2-digit',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        }).formatToParts(new Date(ms));
+        var get = function (t) {
+          for (var i = 0; i < parts.length; i++) if (parts[i].type === t) return parts[i].value;
+          return '';
+        };
+        return get('day') + '/' + get('month') + ' ' + get('hour') + ':' + get('minute');
+      } catch (e) {
+        var d = new Date(ms);
+        return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2)
+          + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+      }
+    }
+
+    // Fecha de una reserva para ordenar por alta. El backend manda ts (epoch);
+    // los datos viejos en cache pueden traer cuando ("dd/MM HH:mm").
+    function aSignupTs_(s) {
+      if (!s) return 0;
+      if (typeof s.ts === 'string') {
+        var parsed = Date.parse(s.ts);
+        if (parsed) return parsed;
+      }
+      var ms = Number(s.ts || 0);
+      if (ms) return ms;
+      var m = String(s.cuando || '').match(/^(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
+      if (!m) return 0;
+      var now = new Date();
+      var d = new Date(now.getFullYear(), Number(m[2]) - 1, Number(m[1]), Number(m[3]), Number(m[4]));
+      if (d.getTime() > now.getTime() + 86400000) d.setFullYear(d.getFullYear() - 1);
+      return d.getTime();
+    }
+
+    function aGroupFirstTs_(g) {
+      var min = 0;
+      for (var i = 0; i < g.signups.length; i++) {
+        var t = aSignupTs_(g.signups[i]);
+        if (t && (!min || t < min)) min = t;
+      }
+      return min;
+    }
+
+    function aGroupLastTs_(g) {
+      var max = 0;
+      for (var i = 0; i < g.signups.length; i++) {
+        var t = aSignupTs_(g.signups[i]);
+        if (t > max) max = t;
+      }
+      return max;
+    }
+
+    function aGroupLastSignup_(g) {
+      var best = null;
+      var bestTs = -1;
+      for (var i = 0; i < g.signups.length; i++) {
+        var t = aSignupTs_(g.signups[i]);
+        if (t >= bestTs) { bestTs = t; best = g.signups[i]; }
+      }
+      return best || g.student;
+    }
+
     function aRenderTable() {
       var d = aData;
       if (!d) return;
@@ -9053,8 +9130,10 @@
       var fCurso = $('filter-curso') ? $('filter-curso').value : '';
       var fDiv = $('filter-division') ? $('filter-division').value : '';
       var fCharla = $('filter-charla') ? $('filter-charla').value : '';
+      var orden = $('filter-orden') ? $('filter-orden').value : '';
+      var fechaHead = orden === 'ultimos' ? 'Última' : 'Fecha';
       var rows = '<div class="table-wrap"><table><thead><tr>'
-        + '<th>Fecha</th><th>Alumno</th><th>Curso</th><th colspan="2">Charlas</th><th></th>'
+        + '<th>' + fechaHead + '</th><th>Alumno</th><th>Curso</th><th colspan="2">Charlas</th><th></th>'
         + '</tr></thead><tbody>';
       // Agrupar por alumno: una fila por alumno, con sus charlas al lado.
       var groups = {};
@@ -9068,10 +9147,25 @@
         }
         groups[key].signups.push(gs);
       }
+      // Primeros/últimos por alta: el orden se arma con la primera o la
+      // última reserva del alumno, no con la fila que quedó primera en la hoja.
+      if (orden) {
+        groupOrder.sort(function (a, b) {
+          var ga = groups[a];
+          var gb = groups[b];
+          var ta = orden === 'ultimos' ? aGroupLastTs_(ga) : aGroupFirstTs_(ga);
+          var tb = orden === 'ultimos' ? aGroupLastTs_(gb) : aGroupFirstTs_(gb);
+          if (ta !== tb) return orden === 'ultimos' ? tb - ta : ta - tb;
+          return 0;
+        });
+      }
       var shown = 0;
       for (var gi = 0; gi < groupOrder.length; gi++) {
         var g = groups[groupOrder[gi]];
         var s0 = g.student;
+        // Con "últimos" la columna muestra la última reserva, que es la que
+        // se usa para ordenar; con "primeros" o el orden por alta, la primera.
+        var fechaS = orden === 'ultimos' ? aGroupLastSignup_(g) : s0;
         // Filtros: el alumno se muestra si al menos una de sus reservas cumple.
         var match = false;
         var filteredSignups = [];
@@ -9121,7 +9215,7 @@
         }
         charlasHtml += '</div></div>';
         rows += '<tr style="--i:' + (shown > 12 ? 12 : shown) + '">'
-          + '<td class="narrow" data-label="Fecha">' + esc(s0.cuando) + '</td>'
+          + '<td class="narrow" data-label="' + fechaHead + '">' + esc(aCuando_(fechaS)) + '</td>'
           + '<td data-label="Alumno">' + aStudentNameHtml_(s0, 'row-name', true, charlasStr)
           + '</td>'
           + '<td data-label="Curso">' + esc(s0.curso) + '</td>'
@@ -10470,7 +10564,7 @@
           html += '<li><label><input type="checkbox" data-over-id="' + esc(s.id) + '" data-over-group="' + gi + '">'
             + '<span class="over-who">' + esc((s.apellido ? s.apellido + ', ' : '') + s.nombre)
             + '<span class="hint-line">' + esc(s.curso || '') + ' · ' + esc(s.email || '')
-            + (s.cuando ? ' · ' + esc(s.cuando) : '') + '</span></span></label></li>';
+            + (aCuando_(s) ? ' · ' + esc(aCuando_(s)) : '') + '</span></span></label></li>';
         }
         html += '</ul></div>';
       }
@@ -10778,6 +10872,7 @@
       $('filter-curso').addEventListener('change', aRenderTable);
       $('filter-division').addEventListener('change', aRenderTable);
       $('filter-charla').addEventListener('change', aRenderTable);
+      if ($('filter-orden')) $('filter-orden').addEventListener('change', aRenderTable);
       if ($('admin-tabs')) $('admin-tabs').addEventListener('keydown', aOnTabKey_);
       if ($('btn-menu')) $('btn-menu').addEventListener('click', function () {
         aMenuSet_(!aMenuOpen, aMenuOpen);
