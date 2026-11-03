@@ -128,6 +128,12 @@ de la cuenta `esi@`, que corre solo cada minuto. Manda desde `esi@` y no usa
 tokens ni depende de que un celular esté prendido. El código y los pasos están
 en `tools/mailer/` de este repo.
 
+El código del robot se actualiza solo: cada cambio de `esi-mailer.gs` en `main`
+lo publica un workflow de GitHub con la Apps Script API, sin abrir el editor ni
+copiar/pegar. El trigger de cada minuto ejecuta el contenido nuevo sin
+redeploy. El refresh token del deploy vence a los 7 días; si el workflow
+empieza a fallar, hay que generarlo de nuevo (pasos en `tools/mailer/README.md`).
+
 Para ver cómo viene la cola, abrí en el navegador:
 
 ```
