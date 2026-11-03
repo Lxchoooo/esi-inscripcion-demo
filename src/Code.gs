@@ -5909,15 +5909,19 @@ function reportSlots_(slots) {
   });
 }
 
-// Total de alumnos por curso segun la preceptora (3/11/2026). Los cursos que
-// no estan en el mapa muestran el total vacio en el reporte.
+// Total de alumnos por curso segun la preceptora (3/11/2026). Si falta un
+// curso en el mapa, el reporte no muestra la tarjeta de total.
 var COURSE_TOTALS_ = {
+  '1\u00B0A': 37,
+  '1\u00B0B': 38,
   '2\u00B0A': 34,
   '2\u00B0B': 39,
   '3\u00B0A': 39,
   '3\u00B0B': 37,
   '4\u00B0Turismo': 33,
   '4\u00B0Econom\u00EDa': 32,
+  '5\u00B0Turismo': 35,
+  '5\u00B0Econom\u00EDa': 33,
   '6\u00B0Turismo': 39,
   '6\u00B0Econom\u00EDa': 35
 };

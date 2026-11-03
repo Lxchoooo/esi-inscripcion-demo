@@ -2418,6 +2418,23 @@ t('apiAdminReports computes totals from signups, without a roster', () => {
   assertEq(curso.presentBySlot[1].presentes, 1);
 });
 
+t('apiAdminReports incluye los totales de 1° y 5°', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  reportSeed(services);
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio'], [
+    ['s1', new Date(), 'ana2029@secundariosalsipuedes.edu.ar', 'Ana Gómez', '1°A', 'basico', 1, 'B1', 'no', 'Gómez', false],
+    ['s2', new Date(), 'beto2029@secundariosalsipuedes.edu.ar', 'Beto Díaz', '5°Turismo', 'orientado', 2, 'O1', 'no', 'Díaz', false]
+  ]);
+  const api = backendApi(services, 'apiAdminReports');
+  const r = api.apiAdminReports('1111');
+  const c1 = r.courses.filter((c) => c.curso === '1°A')[0];
+  const c5 = r.courses.filter((c) => c.curso === '5°Turismo')[0];
+  assertEq(c1.total, 37);
+  assertEq(c1.faltan, 36);
+  assertEq(c5.total, 35);
+  assertEq(c5.faltan, 34);
+});
+
 t('apiAdminReports sorts each course by surname and lists the three slots', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
   reportSeed(services);
