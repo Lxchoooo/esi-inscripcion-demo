@@ -42,9 +42,49 @@ muestra como `latido`, asi se ve si el trigger esta vivo sin abrir la hoja.
 
 ## Actualizar el codigo
 
-Si cambia `esi-mailer.gs`, se pega de nuevo entero en el editor del proyecto de
-`esi@` y se guarda. El trigger sigue instalado; no hay que volver a correr
-`setup()` salvo que se quiera reinstalar el trigger o mandar otra prueba.
+Cada push a `main` que toque `tools/mailer/esi-mailer.gs` lo publica solo en el
+proyecto de `esi@` con la Apps Script API (`.github/workflows/mailer-deploy.yml`
++ `scripts/deploy-mailer-api.sh`). No hay que abrir el editor ni copiar/pegar.
+
+El trigger de cada minuto ejecuta el contenido nuevo sin redeploy: los triggers
+de Apps Script corren el HEAD del proyecto, no una version publicada. No hay que
+volver a correr `setup()` salvo que se quiera reinstalar el trigger o mandar
+otra prueba.
+
+### Configuracion por unica vez (cuenta `esi@`)
+
+1. **Activar la Apps Script API** para `esi@`: entrar a
+   <https://script.google.com/home/usersettings> con esa cuenta y poner en
+   "on" la opcion **Google Apps Script API**. Sin esto la API contesta 403.
+2. **Sacar el ID del proyecto**: abrir el proyecto del robot en
+   <https://script.google.com> y copiar el ID que aparece en la URL, entre
+   `/projects/` y `/edit` (es un texto largo, no es secreto).
+3. **Generar un refresh token con permiso de publicar**: entrar al
+   <https://developers.google.com/oauthplayground/> con la cuenta `esi@`, en
+   el paso 1 pegar el scope
+   `https://www.googleapis.com/auth/script.projects`, tocar **Authorize APIs**
+   y en el paso 2 **Exchange authorization code for tokens**. Copiar el
+   **Refresh token**. Es un secreto: no va al repo ni al chat.
+4. **Guardarlo en GitHub** (desde Termux, con `gh` autenticado como dueno del
+   repo; el token se pega y no queda en el historial):
+
+   ```sh
+   gh variable set ESI_SCRIPT_ID --body '<ID-del-proyecto>'
+   gh secret set ESI_REFRESH_TOKEN   # pegar el refresh token y Enter
+   ```
+
+5. **Probar**: `gh workflow run mailer-deploy.yml` y mirar el run. Si dice
+   `robot actualizado en esi@: Codigo.gs`, el proyecto ya tiene la ultima
+   version. Despues abrir el editor y correr `diagnostico()`: el `latido` tiene
+   que seguir avanzando cada minuto.
+
+El workflow **no imprime el token** y solo pide el scope `script.projects`
+(no puede mandar mails ni leer la planilla: eso lo hace el robot con la
+autorizacion propia de `esi@`). Si el proyecto tuviera mas de un archivo `.gs`,
+el script frena en vez de adivinar cual es el robot.
+
+Si el colegio bloquea la API o el scope, el plan B sigue siendo pegar
+`esi-mailer.gs` entero una vez en el editor y guardar.
 
 ## Apagar el poller de Termux
 
@@ -78,6 +118,11 @@ externo y no caduca.
 
 ## Archivos
 
-- `esi-mailer.gs`: el proyecto completo (copiar y pegar en Apps Script).
+- `esi-mailer.gs`: el proyecto completo. Es la fuente: el workflow lo publica
+  solo en `esi@` con la Apps Script API.
+- `../../scripts/deploy-mailer-api.sh`: el que hace el PUT a la API (tambien
+  sirve a mano con `ESI_REFRESH_TOKEN` y `ESI_SCRIPT_ID` en el entorno).
+- `../../.github/workflows/mailer-deploy.yml`: dispara el deploy cuando cambia
+  el `.gs` en `main`.
 - `tools/mailer/` en el repo `esi-inscripcion-demo`: la misma copia
   versionada, para que no se pierda si se reinstala Termux.
