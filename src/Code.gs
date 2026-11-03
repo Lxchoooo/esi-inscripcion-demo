@@ -1252,7 +1252,7 @@ function gmailApiSend_(to, subject, bodyText) {
       method: 'post',
       contentType: 'application/json',
       headers: { Authorization: 'Bearer ' + token },
-      payload: JSON.stringify({ raw: Utilities.base64WebSafe(mime) }),
+      payload: JSON.stringify({ raw: Utilities.base64EncodeWebSafe(mime) }),
       muteHttpExceptions: true
     });
     if (Number(resp.getResponseCode()) === 200) return true;
