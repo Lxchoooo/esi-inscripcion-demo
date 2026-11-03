@@ -8230,12 +8230,17 @@
       aRepCurso = course.curso;
       if ($('rep-curso')) $('rep-curso').value = course.curso;
       var showMail = true;
-      var html = reportStats_([
+      var stats = [
         [course.roster, 'Alumnos'],
         [course.complete, 'Completos'],
         [course.incomplete, 'Incompletos'],
         [course.presentBySlot.reduce(function (a, x) { return a + x.presentes; }, 0), 'Presentes']
-      ]);
+      ];
+      if (course.total) {
+        stats.unshift([course.total, 'Total del curso']);
+        stats.push([course.faltan, 'Faltan']);
+      }
+      var html = reportStats_(stats);
       html += aCharts_('curso', course);
       html += '<p class="hint-line">' + esc(reportPresentLine_(course.presentBySlot)) + '</p>';
       html += '<div class="table-wrap report-table"><table><thead><tr>'
@@ -8469,7 +8474,10 @@
       if (aRepType === 'curso') {
         for (i = 0; i < d.courses.length; i++) {
           var course = d.courses[i];
-          var summary = 'Alumnos: ' + course.roster + ' · Completos: ' + course.complete
+          var summary = (course.total
+            ? 'Total del curso: ' + course.total + ' · Faltan: ' + course.faltan + ' · '
+            : '')
+            + 'Alumnos: ' + course.roster + ' · Completos: ' + course.complete
             + ' · Incompletos: ' + course.incomplete
             + ' · ' + reportPresentLine_(course.presentBySlot);
           var rows = '';

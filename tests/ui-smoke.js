@@ -599,6 +599,7 @@ function tick() {
     totals: { roster: 2, complete: 1, incomplete: 1, missing: 0, presentBySlot: [] },
     courses: [{
       curso: '2°B', roster: 2, complete: 1, incomplete: 1, missing: 0,
+      total: 39, faltan: 37,
       presentBySlot: [{ slot: '1ra', presentes: 1 }],
       students: [{
         apellido: 'Gómez', nombre: 'Ana', curso: '2°B',
@@ -615,9 +616,13 @@ function tick() {
     }]
   });
   ui.aRepSetType('curso');
+  assert(document.getElementById('rep-out').innerHTML.includes('Total del curso'), 'stat total del curso');
+  assert(document.getElementById('rep-out').innerHTML.includes('Faltan'), 'stat faltan');
   ui.aBuildPrint();
   let printHtml = document.getElementById('print-area').innerHTML;
   assert(printHtml.includes('Firma o presente'), 'columna de firma en el PDF');
+  assert(printHtml.includes('Total del curso: 39'), 'total del curso en el PDF');
+  assert(printHtml.includes('Faltan: 37'), 'faltan en el PDF');
   assert(printHtml.includes('Reporte por curso: 2°B'), 'encabezado del curso');
   assert(printHtml.includes('Emitido el'), 'fecha de emision');
   assert(printHtml.includes('Instituto Secundario Salsipuedes (ISS)'), 'institucion en el PDF');

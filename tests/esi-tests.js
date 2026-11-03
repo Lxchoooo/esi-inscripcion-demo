@@ -2410,6 +2410,8 @@ t('apiAdminReports computes totals from signups, without a roster', () => {
   assertEq(r.courses.length, 1);
   const curso = r.courses.filter((c) => c.curso === '2°B')[0];
   assertEq(curso.roster, 3);
+  assertEq(curso.total, 39);
+  assertEq(curso.faltan, 36);
   assertEq(curso.complete, 1);
   assertEq(curso.incomplete, 2);
   assertEq(curso.missing, 0);

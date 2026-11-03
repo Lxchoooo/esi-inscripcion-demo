@@ -5909,6 +5909,19 @@ function reportSlots_(slots) {
   });
 }
 
+// Total de alumnos por curso segun la preceptora (3/11/2026). Los cursos que
+// no estan en el mapa muestran el total vacio en el reporte.
+var COURSE_TOTALS_ = {
+  '2\u00B0A': 34,
+  '2\u00B0B': 39,
+  '3\u00B0A': 39,
+  '3\u00B0B': 37,
+  '4\u00B0Turismo': 33,
+  '4\u00B0Econom\u00EDa': 32,
+  '6\u00B0Turismo': 39,
+  '6\u00B0Econom\u00EDa': 35
+};
+
 function apiAdminReports(cred) {
   try {
     var auth = adminAuth_(cred);
@@ -5984,6 +5997,8 @@ function apiAdminReports(cred) {
       if (!coursesMap[curso]) {
         coursesMap[curso] = {
           curso: curso,
+          total: Number(COURSE_TOTALS_[curso] || 0),
+          faltan: 0,
           roster: 0,
           complete: 0,
           incomplete: 0,
@@ -6039,6 +6054,9 @@ function apiAdminReports(cred) {
         row.missing++;
         totals.missing++;
       }
+    }
+    for (var ct in coursesMap) {
+      coursesMap[ct].faltan = Math.max(0, Number(coursesMap[ct].total || 0) - coursesMap[ct].roster);
     }
     totals.absent = Math.max(0, totals.signups - totals.present);
     for (var pb = 0; pb < totals.presentBySlot.length; pb++) {
