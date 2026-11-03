@@ -1132,7 +1132,9 @@ function flushMailQueue_(nowMs) {
   // watchdog o con dos corridas del mismo handler y mandar dos veces el mismo
   // pendiente (MailApp a veces despacha con segundos de diferencia).
   var lock = null;
-  try { lock = LockService.getScriptLock(); } catch (eLock0) { }
+  // El backup y los rebuilds usan el lock del script. El envio usa el lock
+  // del usuario para no quedar esperando detras de un backup largo.
+  try { lock = LockService.getUserLock ? LockService.getUserLock() : LockService.getScriptLock(); } catch (eLock0) { }
   var locked = false;
   try { if (lock) locked = !!lock.tryLock(5); } catch (eLock) { }
   if (!locked) return { sent: 0, lock: 'ocupado' };
