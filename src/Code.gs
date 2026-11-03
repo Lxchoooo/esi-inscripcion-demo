@@ -4188,8 +4188,8 @@ function logAccess_(ok, role, ua) {
     sh.appendRow([cuando, ok ? 'entro' : 'fallo', String(role || ''), cleanLogText_(ua, 140)]);
     // La fila recien agregada puede caer fuera de A2:A251 cuando la hoja ya
     // esta llena. Ahi Sheets la interpreta como fecha con la TZ de la hoja
-    // (UTC) y el panel la muestra 3 h menos. Se reescribe como texto en la
-    // fila exacta, antes de podar.
+    // (America/Los_Angeles en produccion) y la hora se corre. Se reescribe
+    // como texto en la fila exacta, antes de podar.
     var nuevaFila = sh.getLastRow();
     try {
       var celdaFecha = sh.getRange(nuevaFila, 1);
@@ -4207,29 +4207,16 @@ function apiAdminAccessLog(cred) {
   try {
     var sh = sheet_(ACCESS_SHEET);
     if (!sh) return { ok: true, rows: [] };
-    var vals = sh.getDataRange().getValues();
+    var range = sh.getDataRange();
+    var vals = range.getValues();
+    var disp = range.getDisplayValues();
     var rows = [];
     for (var i = vals.length - 1; i >= 1 && rows.length < 40; i--) {
-      // Filas nuevas: ya vienen como string en hora argentina (logAccess_
-      // formatea al escribir; la re-lectura de un Date por la hoja corria la
-      // hora ~8h). Filas viejas/parseadas: Date => TZ de la hoja.
-      var raw = vals[i][0];
-      var fecha;
-      if (raw instanceof Date) {
-        // Filas viejas o celdas que Sheets alcanzo a parsear: el serial se
-        // leyo con la TZ de la hoja. Formatear con Buenos_Aires restaba 3 h
-        // cuando la hoja estaba en UTC. Se usa la TZ de la hoja para
-        // recuperar la hora escrita; si no se puede, cae a Argentina.
-        var tzAcceso = 'America/Argentina/Cordoba';
-        try {
-          tzAcceso = SpreadsheetApp.getActive().getSpreadsheetTimeZone() || tzAcceso;
-        } catch (eTz) { }
-        fecha = Utilities.formatDate(raw, tzAcceso, 'd/M/yyyy HH:mm');
-      } else {
-        fecha = String(raw || '');
-      }
+      // La hoja muestra la fecha como texto ya formateado (d/M/yyyy HH:mm).
+      // Usar getDisplayValues evita reinterpretar un Date con la TZ de la
+      // hoja (America/Los_Angeles), que restaba 3 h al pasarlo a Argentina.
       rows.push({
-        fecha: fecha,
+        fecha: String((disp[i] && disp[i][0]) || ''),
         resultado: String(vals[i][1] || ''),
         rol: String(vals[i][2] || ''),
         dispositivo: String(vals[i][3] || '')
