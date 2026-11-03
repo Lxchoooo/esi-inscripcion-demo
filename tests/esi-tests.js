@@ -5357,6 +5357,33 @@ t('r30: la fecha del acceso sale en hora argentina (formato server)', () => {
   if (String(log.rows[0].fecha).indexOf('T') >= 0) throw new Error('la fecha sigue en ISO UTC: ' + log.rows[0].fecha);
 });
 
+t('r30: la hora del acceso no se corre si la hoja esta en UTC', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const ss = services.SpreadsheetApp.getActive();
+  services.SpreadsheetApp.getActive = () => ({
+    getSheetByName: (n) => ss.getSheetByName(n),
+    getSpreadsheetTimeZone: () => 'UTC',
+    getId: () => ss.getId()
+  });
+  services.sheets.Accesos = fakeSheet('Accesos', ['fecha', 'resultado', 'rol', 'dispositivo'], [
+    [new Date('2026-11-02T23:30:00Z'), 'entro', 'admin', 'x'],
+    ['2/11/2026 23:30', 'entro', 'admin', 'y']
+  ]);
+  services.Utilities.formatDate = (d, tz, fmt) => {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(d);
+    const get = (type) => (parts.find((p) => p.type === type) || {}).value || '';
+    return get('day') + '/' + get('month') + '/' + get('year') + ' ' + get('hour') + ':' + get('minute');
+  };
+  const api = backendApi(services, 'apiAdminAccessLog');
+  const log = api.apiAdminAccessLog('1111');
+  assertEq(log.ok, true, 'endpoint ok');
+  assertEq(log.rows[0].fecha, '2/11/2026 23:30', 'string pasa tal cual');
+  assertEq(log.rows[1].fecha, '02/11/2026 23:30', 'Date parseado en UTC conserva la hora escrita');
+});
+
 t('r30: el registro de accesos muestra modelo, version y hora argentina', () => {
   // Formatada al ESCRIBIR (la re-lectura de un Date corria la hora ~8h).
   const lw = codeSrc.indexOf('function logAccess_');
