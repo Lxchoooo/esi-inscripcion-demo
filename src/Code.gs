@@ -534,6 +534,14 @@ function mailLine_(value) {
     .trim();
 }
 
+// El nombre puede venir cargado en minusculas ("ana", "alumna"): en el
+// saludo se ve mal. No corrige tildes ni inventa nada, solo la inicial.
+function mailName_(value) {
+  var v = mailLine_(value);
+  if (!v) return '';
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
 // "A confirmar" es el relleno del seed, no un lugar real: no va en los mails.
 function mailLugar_(value) {
   var v = mailLine_(value);
