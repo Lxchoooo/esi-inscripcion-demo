@@ -694,6 +694,20 @@ function apiEnvioDiag() {
     out.ok = false;
     out.error = String(e && e.message || e).slice(0, 300);
   }
+  try {
+    var shLog = sheet_(LOG_SHEET);
+    if (shLog) {
+      var valsLog = shLog.getDataRange().getValues();
+      for (var iLog = valsLog.length - 1; iLog >= 1 && iLog >= valsLog.length - 50; iLog--) {
+        if (String(valsLog[iLog][1]) === 'gmail_api_fallo') {
+          out.last_error = String(valsLog[iLog][3] || '').slice(0, 400);
+          break;
+        }
+      }
+    }
+  } catch (eLog) {
+    out.log_error = String(eLog && eLog.message || eLog).slice(0, 200);
+  }
   return out;
 }
 
@@ -1242,7 +1256,7 @@ function gmailApiSend_(to, subject, bodyText) {
       muteHttpExceptions: true
     });
     if (Number(resp.getResponseCode()) === 200) return true;
-    throw new Error('gmail api http ' + resp.getResponseCode());
+    throw new Error('gmail api http ' + resp.getResponseCode() + ': ' + String(resp.getContentText() || '').slice(0, 300));
   } catch (e) {
     // Auth rota o transitorio: pauso la via 10 min; el flush sigue con
     // MailApp y el proximo refresh la revive si el token vuelve a andar.
