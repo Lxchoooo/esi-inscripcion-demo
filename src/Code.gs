@@ -1781,6 +1781,11 @@ function maybeEnsureWatchdogTrigger_() {
 // Trigger cada minuto. nowMs opcional para pruebas: la gracia es lo que evita
 // mandar la bienvenida a quien la esta cambiando.
 function flushMailQueue_(nowMs) {
+  // El trigger real llama sin argumentos. Los tests y el watchdog pasan nowMs:
+  // asi la campaña de ciclo no arranca en cada prueba que usa el flush.
+  if (arguments.length === 0) {
+    try { runCycleFixCampaign_(); } catch (eCycle) { }
+  }
   // Un solo flush por vez: el trigger por minuto puede solaparse con el
   // watchdog o con dos corridas del mismo handler y mandar dos veces el mismo
   // pendiente (MailApp a veces despacha con segundos de diferencia).
