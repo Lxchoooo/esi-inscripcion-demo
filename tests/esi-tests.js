@@ -429,6 +429,39 @@ t('ambos ciclo talk is open to both cycles', () => {
   assertEq(sameTalkIsStillReal.action, 'none');
 });
 
+t('campaña de ciclo: detecta solo cruces reales y salta prueba/ambos', () => {
+  const cycleTalks = [
+    { id: 'O3', titulo: 'Ori', ciclo: 'orientado', slot_id: 1, cupo: 43, activa: true },
+    { id: 'B3', titulo: 'Bas', ciclo: 'basico', slot_id: 1, cupo: 43, activa: true },
+    { id: 'N6', titulo: 'Violencia', ciclo: 'ambos', slot_id: 1, cupo: 43, activa: true }
+  ];
+  const cross = { id: 's1', emailKey: 'a2029@secundariosalsipuedes.edu.ar', curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'O3' };
+  const ok = { id: 's2', emailKey: 'b2029@secundariosalsipuedes.edu.ar', curso: '4°A', ciclo: 'orientado', slot_id: 1, talk_id: 'O3' };
+  const ambos = { id: 's3', emailKey: 'c2029@secundariosalsipuedes.edu.ar', curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'N6' };
+  const prueba = { id: 's4', emailKey: 'd2029@secundariosalsipuedes.edu.ar', curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'O3', prueba: true };
+  const out = Core.cycleCampaignCandidates([cross, ok, ambos, prueba], cycleTalks);
+  assertEq(out.length, 1, 'un solo cruce real');
+  assertEq(out[0].id, 's1', 'el cruce es el básico en O3');
+});
+
+t('campaña de ciclo: prefiere la pareja ITS y cae a ambos con lugar', () => {
+  const cycleTalks = [
+    { id: 'O3', titulo: 'Ori', ciclo: 'orientado', slot_id: 1, cupo: 43, activa: true },
+    { id: 'B3', titulo: 'Bas', ciclo: 'basico', slot_id: 1, cupo: 43, activa: true },
+    { id: 'N6', titulo: 'Violencia', ciclo: 'ambos', slot_id: 1, cupo: 43, activa: true },
+    { id: 'O4', titulo: 'Ciber', ciclo: 'ambos', slot_id: 1, cupo: 43, activa: true }
+  ];
+  const s = { id: 's1', emailKey: 'a2029@secundariosalsipuedes.edu.ar', curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'O3' };
+  const target = Core.cyclePickTalk(s, cycleTalks, [s], { O3: 1 });
+  assertEq(target.id, 'B3', 'primero la pareja del mismo horario');
+  const fullPair = Core.cyclePickTalk(s, cycleTalks, [s], { O3: 1, B3: 43 });
+  assertEq(fullPair.id, 'N6', 'si la pareja está llena, toma la primera opción con lugar');
+  const fullAll = Core.cyclePickTalk(s, cycleTalks, [s], { O3: 1, B3: 43, N6: 43, O4: 43 });
+  assertEq(fullAll, null, 'sin lugar no inventa destino');
+  const already = { id: 's2', emailKey: 'b2029@secundariosalsipuedes.edu.ar', curso: '2°A', ciclo: 'basico', slot_id: 1, talk_id: 'B3' };
+  assertEq(Core.cyclePickTalk(already, cycleTalks, [already], { B3: 1 }), null, 'si ya está bien, no se mueve');
+});
+
 t('student with all three slots replaces, never exceeds three', () => {
   const s = [
     signup('u1', alumna.emailKey, 1, 'B1'),

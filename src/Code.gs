@@ -89,6 +89,32 @@ var REGISTER_LOCK_MS = 40000;
 var A_MARK_BATCH_MAX = 100;
 var ADMIN_LOCK_MS = 5000;
 
+/* Aviso y autocorreccion de cruces de ciclo (3/11/2026).
+   Los cruces son inscripciones viejas que quedaron en una charla del otro
+   ciclo. Primero se avisa a cada alumno; si a las 2 horas sigue en la charla
+   equivocada, el watchdog lo pasa a una charla de su ciclo con lugar en la
+   misma franja. La lista se congela al arrancar: no toca altas nuevas. */
+var CYCLE_CAMPAIGN_PROP = 'CICLO_AVISO_AUTO_V1';
+var CYCLE_CAMPAIGN_OFF_PROP = 'CICLO_AVISO_AUTO_OFF';
+var CYCLE_CAMPAIGN_DELAY_MS = 2 * 60 * 60 * 1000;
+var CYCLE_CAMPAIGN_MAIL_TYPE = 'ciclo_aviso';
+var CYCLE_CAMPAIGN_CHANGE_TYPE = 'ciclo_cambio';
+var CYCLE_CAMPAIGN_MAX_ATTEMPTS = 6;
+// Pareja ITS del mismo horario: es el destino natural si tiene lugar.
+var CYCLE_COUNTERPART_ = {
+  O3: 'B3', B3: 'O3',
+  N8: 'N9', N9: 'N8',
+  B8: 'O8', O8: 'B8'
+};
+// Si la pareja esta llena, se elige una charla "ambos" del mismo horario.
+// El orden prioriza temas que suelen interesar y deja los cupos mas libres
+// como segundo criterio.
+var CYCLE_FALLBACK_BY_SLOT_ = {
+  1: ['N6', 'O4', 'N3', 'N4', 'N5', 'N1', 'O2', 'N2'],
+  2: ['N12', 'N10', 'O6', 'B6', 'N11', 'N7', 'O5', 'O7'],
+  3: ['N16', 'N14', 'B9', 'O9', 'N15', 'N17', 'B10', 'N13']
+};
+
 var ERROR_MESSAGES_ = {
   full: 'Sin lugares: elegí otra charla de esa franja.',
   talkNotFound: 'No encontramos esa charla.',
@@ -442,6 +468,102 @@ var EsiCore = (function () {
     return { action: 'insert' };
   }
 
+  function talkCycleOf_(value) {
+    var c = String(value == null ? '' : value).trim().toLowerCase();
+    return c === 'basico' || c === 'orientado' ? c : '';
+  }
+
+  // Inscripciones que estan en una charla exclusiva del otro ciclo. No mira
+  // filas de ensayo ni charlas "ambos": esas no se tocan.
+  function cycleCampaignCandidates(signups, talks) {
+    var byId = {};
+    var i;
+    for (i = 0; i < (talks || []).length; i++) byId[String(talks[i].id)] = talks[i];
+    var out = [];
+    for (i = 0; i < (signups || []).length; i++) {
+      var s = signups[i];
+      if (!s || s.prueba) continue;
+      var t = byId[String(s.talk_id)];
+      if (!t) continue;
+      var tc = talkCycleOf_(t.ciclo);
+      if (!tc) continue;
+      var sc = talkCycleOf_(s.ciclo) || cicloFromCurso(s.curso);
+      if (!sc || sc === tc) continue;
+      out.push(s);
+    }
+    out.sort(function (a, b) {
+      var c = Number(a.slot_id) - Number(b.slot_id);
+      if (c) return c;
+      c = String(a.talk_id).localeCompare(String(b.talk_id), 'es', { sensitivity: 'base' });
+      if (c) return c;
+      return normalizeEmail(a.emailKey || a.email || '').localeCompare(normalizeEmail(b.emailKey || b.email || ''));
+    });
+    return out;
+  }
+
+  // Elige el destino de una inscripcion cruzada: primero la pareja ITS del
+  // mismo horario; si esta llena o no existe, una charla "ambos" con lugar.
+  // Devuelve null cuando ya esta bien o cuando no hay ningun lugar libre.
+  function cyclePickTalk(signup, talks, signups, counts) {
+    if (!signup) return null;
+    var byId = {};
+    var i;
+    for (i = 0; i < (talks || []).length; i++) byId[String(talks[i].id)] = talks[i];
+    var current = byId[String(signup.talk_id)];
+    if (!current) return null;
+    var tc = talkCycleOf_(current.ciclo);
+    if (!tc) return null;
+    var sc = talkCycleOf_(signup.ciclo) || cicloFromCurso(signup.curso);
+    if (!sc || sc === tc) return null;
+    var emailKey = normalizeEmail(signup.emailKey || signup.email || '');
+    var mine = {};
+    for (i = 0; i < (signups || []).length; i++) {
+      var s = signups[i];
+      if (!s) continue;
+      if (normalizeEmail(s.emailKey || s.email || '') !== emailKey) continue;
+      mine[String(s.talk_id)] = true;
+    }
+    mine[String(current.id)] = true;
+    var slot = Number(current.slot_id);
+    var candidates = [];
+    var counterpart = CYCLE_COUNTERPART_[String(current.id)];
+    if (counterpart && byId[String(counterpart)]) candidates.push(byId[String(counterpart)]);
+    var prefs = CYCLE_FALLBACK_BY_SLOT_[slot] || [];
+    var rank = function (id) {
+      var at = prefs.indexOf(String(id));
+      return at < 0 ? prefs.length : at;
+    };
+    var fallback = [];
+    for (i = 0; i < (talks || []).length; i++) {
+      var t = talks[i];
+      if (Number(t.slot_id) !== slot) continue;
+      if (String(t.ciclo == null ? '' : t.ciclo).trim().toLowerCase() !== 'ambos') continue;
+      if (t.activa === false) continue;
+      if (mine[String(t.id)]) continue;
+      fallback.push(t);
+    }
+    fallback.sort(function (a, b) {
+      var c = rank(a.id) - rank(b.id);
+      if (c) return c;
+      var fa = Number(a.cupo || 0) - Number(counts[a.id] || 0);
+      var fb = Number(b.cupo || 0) - Number(counts[b.id] || 0);
+      if (fb !== fa) return fb - fa;
+      return String(a.id).localeCompare(String(b.id), 'es', { sensitivity: 'base' });
+    });
+    candidates = candidates.concat(fallback);
+    for (i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      if (!c) continue;
+      if (c.activa === false) continue;
+      if (Number(c.slot_id) !== slot) continue;
+      if (!cycleAllowsTalk(c.ciclo, sc)) continue;
+      if (mine[String(c.id)]) continue;
+      if (Number(counts[c.id] || 0) >= Number(c.cupo || 0)) continue;
+      return c;
+    }
+    return null;
+  }
+
   return {
     normalizeText: normalizeText,
     sanitizeName: sanitizeName,
@@ -456,6 +578,8 @@ var EsiCore = (function () {
     cycleAllowsTalk: cycleAllowsTalk,
     validateStudentInput: validateStudentInput,
     planRegistration: planRegistration,
+    cycleCampaignCandidates: cycleCampaignCandidates,
+    cyclePickTalk: cyclePickTalk,
     cursoFromParts: cursoFromParts,
     parseCurso: parseCurso,
     divisionsForYear: divisionsForYear,
@@ -950,6 +1074,82 @@ function adminChangeBody_(name, horario, talk, items) {
   return lines.join('\n');
 }
 
+function cycleLabel_(ciclo) {
+  var c = String(ciclo == null ? '' : ciclo).trim().toLowerCase();
+  if (c === 'basico') return 'Ciclo Básico';
+  if (c === 'orientado') return 'Ciclo Orientado';
+  return 'ambos ciclos';
+}
+
+function cycleDeadlineLabel_(ms, cfg) {
+  var tz = String((cfg && cfg.evento_zona) || EVENT_DEFAULT_TZ_).trim() || EVENT_DEFAULT_TZ_;
+  try {
+    return Utilities.formatDate(new Date(ms), tz, 'dd/MM') + ' a las ' +
+      Utilities.formatDate(new Date(ms), tz, 'HH:mm');
+  } catch (e) {
+    return new Date(ms).toISOString();
+  }
+}
+
+// Primer aviso: explica el cruce, invita a cambiarlo en el panel y avisa que
+// a las 2 horas se corrige solo si el alumno no hizo nada.
+function cycleNoticeBody_(signup, currentTalk, items, deadline, cfg) {
+  var name = displayName_(signup.nombre, signup.apellido);
+  var horario = slotLabelFor_(readSlots_(), currentTalk.slot_id);
+  var alumnoCiclo = String(signup.ciclo || EsiCore.cicloFromCurso(signup.curso) || '').trim().toLowerCase();
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Estamos revisando las inscripciones de la ' + EVENT_TITLE_ + ' y vimos que en el horario de ' +
+      mailLine_(horario) + ' tenés una charla que no corresponde a tu ciclo:',
+    '',
+    '- ' + mailLine_(currentTalk.titulo) + ' (' + cycleLabel_(currentTalk.ciclo) + ')',
+    ''
+  ];
+  if (signup.curso) {
+    lines.push('Por tu curso (' + mailLine_(signup.curso) + ') te corresponde el ' + cycleLabel_(alumnoCiclo) + '.');
+  } else {
+    lines.push('Te corresponde el ' + cycleLabel_(alumnoCiclo) + '.');
+  }
+  lines.push('');
+  lines.push('Entrá al panel y cambiá esa charla por una de tu ciclo o por una de las charlas para ambos ciclos en el mismo horario. El panel te muestra las que tienen lugar:');
+  lines.push(PANEL_LINK);
+  lines.push('');
+  lines.push('Si no podés cambiarla, respondé este mail lo antes posible y la revisamos nosotros.');
+  lines.push('');
+  lines.push('Si no la cambiás ni respondés, el ' + cycleDeadlineLabel_(deadline, cfg) +
+    ' la vamos a cambiar automáticamente por otra charla con lugar libre en el mismo horario.');
+  lines.push('');
+  lines.push('Así está tu inscripción ahora:');
+  lines = lines.concat(mailCharlasList_(items));
+  lines.push('');
+  lines.push('Gracias,');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
+  return lines.join('\n');
+}
+
+// Segundo aviso: el cambio automatico ya se hizo y muestra como quedo.
+function cycleAutoChangeBody_(name, horario, talk, items) {
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Como no pudimos coordinar el cambio antes del plazo, la organización movió tu charla del horario de ' +
+      mailLine_(horario) + ' a "' + mailLine_(talk.titulo) + '"' +
+      (mailLugar_(talk.lugar) ? ' (' + mailLugar_(talk.lugar) + ')' : '') + '.',
+    '',
+    'Así queda tu inscripción:'
+  ];
+  lines = lines.concat(mailCharlasList_(items));
+  lines.push('');
+  lines.push('Si querés revisar o cambiar otra charla, entrá al panel:');
+  lines.push(PANEL_LINK);
+  lines.push('');
+  lines.push('Si hay un error, respondé este mail y lo revisamos.');
+  lines.push('');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
+  return lines.join('\n');
+}
+
 // Aviso cuando el panel agrega una charla que faltaba (alumno con horarios
 // vacios): mismo formato que el cambio, con el verbo "agregamos".
 function adminAddBody_(name, addedItems, items) {
@@ -1268,6 +1468,10 @@ function watchdog() {
   } catch (eTrigger) { }
   try { configureDriveBackupTrigger_(); } catch (eBackup) { }
   try { ensurePreceptorPlanillaTrigger_(); } catch (ePl) { }
+  // Aviso y autocorreccion de cruces de ciclo: arranca en la primera vuelta
+  // despues del deploy y resuelve a las 2 horas. Va antes del flush para que
+  // los mails que encola salgan en la misma corrida.
+  try { runCycleFixCampaign_(); } catch (eCycle) { }
   // Ejectuar el flush como red de seguridad: se vio que el planificador de
   // Google puede dejar de ejecutar el trigger de cada minuto y el registro
   // del trigger miente ("existe" no es "corre"). Si el watchdog corre, la
@@ -1278,6 +1482,274 @@ function watchdog() {
     try { logAction_('watchdog_fix', 'panel', fixes.join(', ')); } catch (eLog) { }
   }
   return { ok: true, fixes: fixes };
+}
+
+function ensureMailQueueSheet_() {
+  try {
+    var ss = SpreadsheetApp.getActive();
+    if (!ss.getSheetByName(MAIL_QUEUE_SHEET)) {
+      ensureSheet_(ss, MAIL_QUEUE_SHEET,
+        ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+    }
+  } catch (e) { }
+}
+
+// Encola un aviso de ciclo sin pisar una bienvenida pendiente. La dedup es
+// por tipo + destinatario: si el watchdog se repite, no manda dos veces.
+function queueCycleMail_(email, tipo, subject, body) {
+  var dest = String(email || '').trim().toLowerCase();
+  if (!dest) return false;
+  ensureMailQueueSheet_();
+  var q;
+  try { q = readMailQueueRaw_(); } catch (e) { return false; }
+  if (q.map && q.map.email >= 0 && q.map.tipo >= 0 && q.map.estado >= 0) {
+    for (var i = 1; i < q.vals.length; i++) {
+      if (String(q.vals[i][q.map.email]).trim().toLowerCase() !== dest) continue;
+      var est = String(q.vals[i][q.map.estado] || '').trim().toLowerCase();
+      if (est !== 'pendiente' && est !== 'cola_nube' && est !== 'cola_termux') continue;
+      if (String(q.vals[i][q.map.tipo] || '').trim().toLowerCase() === String(tipo).trim().toLowerCase()) return false;
+    }
+  }
+  try {
+    q.sh.appendRow([
+      Utilities.getUuid(), new Date(), new Date(Date.now() + MAIL_QUEUE_GRACE_MS),
+      dest, tipo, 'pendiente', 0, subject, body
+    ]);
+  } catch (e2) { return false; }
+  return true;
+}
+
+function cycleCampaignState_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(CYCLE_CAMPAIGN_PROP);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function writeCycleCampaign_(c) {
+  PropertiesService.getScriptProperties().setProperty(CYCLE_CAMPAIGN_PROP, JSON.stringify(c));
+}
+
+// Encola el primer aviso a los IDs congelados al arrancar. Si un alumno ya
+// corrigio su charla, no se le manda nada.
+function queueCycleCampaignEmails_(c, cfg, talks, signups) {
+  if (!c || c.phase === 'done') return { ok: true, phase: 'done' };
+  if (!cfg) cfg = readConfig_();
+  if (!talks) talks = readTalks_();
+  if (!signups) signups = readSignups_();
+  var slots = readSlots_();
+  var talkById = {};
+  var i;
+  for (i = 0; i < talks.length; i++) talkById[String(talks[i].id)] = talks[i];
+  var byId = {};
+  for (i = 0; i < signups.length; i++) byId[String(signups[i].id)] = signups[i];
+  var queued = 0;
+  for (i = 0; i < (c.ids || []).length; i++) {
+    var s = byId[String(c.ids[i])];
+    if (!s) continue;
+    var t = talkById[String(s.talk_id)];
+    if (!t) continue;
+    var tc = String(t.ciclo || '').trim().toLowerCase();
+    var sc = String(s.ciclo || EsiCore.cicloFromCurso(s.curso) || '').trim().toLowerCase();
+    if (tc !== 'basico' && tc !== 'orientado') continue;
+    if (!sc || sc === tc) continue;
+    var dest = queueDestination_(s.email, cfg) || String(s.email || '').trim().toLowerCase();
+    if (!dest) continue;
+    var bySlot = mineMap_(signups, s.emailKey);
+    var items = itemsForEmail_(bySlot, slots, talkById);
+    var subject = 'Revisá tu charla - ' + EVENT_TITLE_;
+    var body = cycleNoticeBody_(s, t, items, Number(c.deadline), cfg);
+    if (queueCycleMail_(dest, CYCLE_CAMPAIGN_MAIL_TYPE, subject, body)) queued++;
+  }
+  c.emailsQueued = true;
+  c.emailed = queued;
+  c.emailAt = Date.now();
+  writeCycleCampaign_(c);
+  try { logAction_('ciclo_aviso', '', 'encolados=' + queued + ';candidatos=' + (c.ids || []).length); } catch (eL) { }
+  return { ok: true, phase: 'active', emailed: queued, deadline: Number(c.deadline) };
+}
+
+function startCycleFixCampaign_() {
+  var resp = withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    var props = PropertiesService.getScriptProperties();
+    if (String(props.getProperty(CYCLE_CAMPAIGN_OFF_PROP) || '') === '1') return { ok: true, off: true };
+    if (props.getProperty(CYCLE_CAMPAIGN_PROP)) return { ok: true, already: true };
+    var cfg = readConfig_();
+    // En modo ensayo no se manda una campaña real ni se mueven inscripciones
+    // de prueba. Al apagarlo, la proxima vuelta del watchdog arranca sola.
+    if (convertBool_(cfg[CONFIG_TEST_MODE])) return { ok: true, skipped: 'modo_prueba' };
+    var talks = readTalks_();
+    var signups = readSignups_();
+    var candidates = EsiCore.cycleCampaignCandidates(signups, talks);
+    var now = Date.now();
+    if (!candidates.length) {
+      var done = {
+        v: 1, startedAt: now, deadline: now, phase: 'done', emailsQueued: true,
+        emailed: 0, moved: 0, unresolved: 0, reason: 'sin cruces'
+      };
+      writeCycleCampaign_(done);
+      try { logAction_('ciclo_aviso', '', 'sin cruces'); } catch (eL) { }
+      return { ok: true, phase: 'done', candidates: 0 };
+    }
+    var c = {
+      v: 1, startedAt: now, deadline: now + CYCLE_CAMPAIGN_DELAY_MS,
+      phase: 'active', emailsQueued: false, ids: candidates.map(function (s) { return String(s.id); }),
+      attempts: 0, moved: 0, unresolved: candidates.length
+    };
+    writeCycleCampaign_(c);
+    return queueCycleCampaignEmails_(c, cfg, talks, signups);
+  });
+  if (resp && resp.busy) return { ok: false, busy: true };
+  return resp || { ok: false };
+}
+
+function finishCycleFixCampaign_(c) {
+  var resp = withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    var props = PropertiesService.getScriptProperties();
+    var raw = props.getProperty(CYCLE_CAMPAIGN_PROP);
+    if (!raw) return { ok: false, message: 'Sin campaña.' };
+    var cur = JSON.parse(raw);
+    if (cur.phase === 'done') return { ok: true, phase: 'done' };
+    if (Date.now() < Number(cur.deadline)) return { ok: true, phase: 'waiting', deadline: Number(cur.deadline) };
+    var cfg = readConfig_();
+    var talks = readTalks_();
+    var slots = readSlots_();
+    var signups = readSignups_();
+    var talkById = {};
+    var i;
+    for (i = 0; i < talks.length; i++) talkById[String(talks[i].id)] = talks[i];
+    var counts = cupoCounts_(signups, cfg);
+    var byID = {};
+    for (i = 0; i < signups.length; i++) byID[String(signups[i].id)] = signups[i];
+    var pending = [];
+    for (i = 0; i < (cur.ids || []).length; i++) {
+      var s = byID[String(cur.ids[i])];
+      if (!s) continue;
+      var t = talkById[String(s.talk_id)];
+      if (!t) continue;
+      var tc = String(t.ciclo || '').trim().toLowerCase();
+      var sc = String(s.ciclo || EsiCore.cicloFromCurso(s.curso) || '').trim().toLowerCase();
+      if (tc !== 'basico' && tc !== 'orientado') continue;
+      if (!sc || sc === tc) continue;
+      pending.push(s);
+    }
+    if (!pending.length) {
+      cur.phase = 'done'; cur.doneAt = Date.now(); cur.unresolved = 0;
+      writeCycleCampaign_(cur);
+      return { ok: true, phase: 'done', moved: 0, pending: 0, mails: 0 };
+    }
+    var sh = sheet_(SIGNUPS_SHEET);
+    var vals = sh.getDataRange().getValues();
+    var map = signupsHeaderMap_(vals[0] || []);
+    var rowById = {};
+    for (i = 1; i < vals.length; i++) {
+      if (map.id >= 0) rowById[String(vals[i][map.id])] = i + 1;
+    }
+    var moved = [];
+    var guard = 0;
+    while (pending.length && guard < 40) {
+      guard++;
+      // Primero los que hoy ocupan una charla llena: al salir liberan cupo
+      // para los que quieren entrar a la pareja ITS.
+      pending.sort(function (a, b) {
+        var at = talkById[String(a.talk_id)];
+        var bt = talkById[String(b.talk_id)];
+        var af = at && Number(counts[a.talk_id] || 0) >= Number(at.cupo) ? 0 : 1;
+        var bf = bt && Number(counts[b.talk_id] || 0) >= Number(bt.cupo) ? 0 : 1;
+        if (af !== bf) return af - bf;
+        var c = Number(a.slot_id) - Number(b.slot_id);
+        if (c) return c;
+        return String(a.id).localeCompare(String(b.id));
+      });
+      var progressed = false;
+      for (i = 0; i < pending.length; i++) {
+        var p = pending[i];
+        var target = EsiCore.cyclePickTalk(p, talks, signups, counts);
+        if (!target) continue;
+        var row = rowById[String(p.id)];
+        if (!row) continue;
+        var from = String(p.talk_id);
+        setSignupFields_(sh, map, row, { talk_id: String(target.id), presente: '', ausente: '' });
+        counts[from] = Math.max(0, Number(counts[from] || 0) - 1);
+        counts[target.id] = Number(counts[target.id] || 0) + 1;
+        p.talk_id = String(target.id);
+        p.slot_id = Number(target.slot_id);
+        moved.push({ signup: p, talk: target, from: from });
+        try { logAction_('ciclo_auto', p.id, from + '->' + target.id); } catch (eL) { }
+        pending.splice(i, 1);
+        i--;
+        progressed = true;
+      }
+      if (!progressed) break;
+    }
+    if (moved.length) {
+      try { invalidateDataCache_(); } catch (eI) { }
+      try { scheduleRebuilds_(); } catch (eR) { }
+    }
+    var queued = 0;
+    for (i = 0; i < moved.length; i++) {
+      var m = moved[i];
+      var sm = m.signup;
+      var bySlot = mineMap_(signups, sm.emailKey);
+      var items = itemsForEmail_(bySlot, slots, talkById);
+      var dest = queueDestination_(sm.email, cfg) || String(sm.email || '').trim().toLowerCase();
+      if (!dest) continue;
+      var name = displayName_(sm.nombre, sm.apellido);
+      var subject = 'Cambiamos tu charla - ' + EVENT_TITLE_;
+      var body = cycleAutoChangeBody_(name, slotLabelFor_(slots, m.talk.slot_id), m.talk, items);
+      if (queueCycleMail_(dest, CYCLE_CAMPAIGN_CHANGE_TYPE, subject, body)) queued++;
+    }
+    cur.moved = Number(cur.moved || 0) + moved.length;
+    cur.unresolved = pending.length;
+    cur.attempts = Number(cur.attempts || 0) + 1;
+    cur.lastRunAt = Date.now();
+    cur.autoEmailed = Number(cur.autoEmailed || 0) + queued;
+    if (!pending.length || cur.attempts >= CYCLE_CAMPAIGN_MAX_ATTEMPTS) {
+      cur.phase = 'done';
+      cur.doneAt = Date.now();
+    }
+    writeCycleCampaign_(cur);
+    try { logAction_('ciclo_auto_lote', '', 'movidos=' + moved.length + ';sin_lugar=' + pending.length + ';mails=' + queued); } catch (eL2) { }
+    return { ok: true, phase: cur.phase, moved: moved.length, pending: pending.length, mails: queued };
+  });
+  if (resp && resp.busy) return { ok: false, busy: true };
+  return resp || { ok: false };
+}
+
+function runCycleFixCampaign_() {
+  try {
+    if (String(PropertiesService.getScriptProperties().getProperty(CYCLE_CAMPAIGN_OFF_PROP) || '') === '1') {
+      return { ok: true, off: true };
+    }
+  } catch (eOff) { }
+  var c = cycleCampaignState_();
+  if (!c) return startCycleFixCampaign_();
+  if (c.phase === 'done') return { ok: true, phase: 'done' };
+  if (!c.emailsQueued) return queueCycleCampaignEmails_(c);
+  if (Date.now() < Number(c.deadline)) return { ok: true, phase: 'waiting', deadline: Number(c.deadline) };
+  return finishCycleFixCampaign_(c);
+}
+
+// Diagnostico publico de la campaña: solo agregados, sin mails ni nombres.
+function apiCicloDiag() {
+  var off = false;
+  try { off = String(PropertiesService.getScriptProperties().getProperty(CYCLE_CAMPAIGN_OFF_PROP) || '') === '1'; } catch (eOff) { }
+  var c = cycleCampaignState_();
+  if (!c) return { ok: true, started: false, off: off };
+  return {
+    ok: true,
+    started: true,
+    off: off,
+    phase: c.phase,
+    startedAt: Number(c.startedAt || 0),
+    deadline: Number(c.deadline || 0),
+    now: Date.now(),
+    emailsQueued: !!c.emailsQueued,
+    emailed: Number(c.emailed || 0),
+    moved: Number(c.moved || 0),
+    unresolved: Number(c.unresolved || 0),
+    attempts: Number(c.attempts || 0)
+  };
 }
 
 function ensureWatchdogTrigger_() {
@@ -2080,6 +2552,7 @@ var API_FN_MAP_ = {
   apiAdminDrill: apiAdminDrill,
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
+  apiCicloDiag: apiCicloDiag,
   apiCuposDiag: apiCuposDiag,
   apiEnvioDiag: apiEnvioDiag,
   apiDriveDiag: apiDriveDiag,

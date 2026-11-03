@@ -197,6 +197,46 @@ filtros de curso, división y charla.
 
 La prueba no inscribe a nadie ni anota en `Mails`: no hay que borrar nada.
 
+### Aviso y autocorrección de cruces de ciclo (3/11)
+
+El 3/11 quedaron 23 inscripciones viejas en una charla exclusiva del otro ciclo
+(12 del básico en una charla orientada y 11 del orientado en una charla básica).
+El panel ya no permite crear ese cruce, pero las filas anteriores seguían ahí.
+
+La corrección automática funciona así:
+
+1. En la primera vuelta del watchdog después del deploy, el panel congela la
+   lista de cruces que encuentra en ese momento y encola un mail a cada alumno.
+   Si alguien ya se corrigió, no recibe nada.
+2. El mail explica el cruce, manda al panel a cambiarlo y pide que respondan
+   ese mismo mail si no pueden. También avisa que, si no hacen nada, a las
+   **2 horas** se corrige solo.
+3. A las 2 horas, el watchdog vuelve a leer la lista congelada. Si el alumno
+   sigue en la charla equivocada, lo pasa a la pareja ITS del mismo horario
+   (B3/O3, N8/N9, B8/O8) si tiene lugar. Si está llena, elige una charla
+   `ambos` del mismo horario con cupo libre, en orden de preferencia
+   (violencia de género, ciberbullying, masculinidades, etc.). Nunca crea un
+   cruce nuevo ni supera el cupo.
+4. El cambio se registra en `Log` como `ciclo_auto` y encola un segundo mail
+   con el horario definitivo. El primer mail no pisa una bienvenida pendiente.
+
+Para mirar el estado sin abrir la planilla:
+
+```
+https://script.google.com/macros/s/AKfycbwkl-bCNFqUYzjjezaSzpgaC2U0fxe0B1JznKTLODG7VI4ZlVLAb06R1zvZ332kslEVkQ/exec?fn=apiCicloDiag
+```
+
+Devuelve solo agregados: `phase`, `emailed`, `moved`, `unresolved`, `deadline`.
+Si `started: false`, el watchdog todavía no corrió o está en modo ensayo. En
+modo ensayo (`modo_prueba=si`) la campaña no arranca, para no mandar mails ni
+mover datos de prueba.
+
+**Para frenar la autocorrección antes de las 2 horas**: en el proyecto de Apps
+Script, engranaje → **Propiedades del proyecto**, creá `CICLO_AVISO_AUTO_OFF`
+con valor `1`. El watchdog deja de mover y de encolar avisos nuevos; los mails
+ya encolados pueden salir igual. Borrá esa propiedad para reanudar. La lista y
+el estado de la campaña quedan en `CICLO_AVISO_AUTO_V1`.
+
 ## Carpetas en el Drive
 
 Todo lo que el script crea cae en una sola carpeta del inicio:
