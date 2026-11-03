@@ -80,8 +80,9 @@ otra prueba.
 
 El workflow **no imprime el token** y solo pide el scope `script.projects`
 (no puede mandar mails ni leer la planilla: eso lo hace el robot con la
-autorizacion propia de `esi@`). Si el proyecto tuviera mas de un archivo `.gs`,
-el script frena en vez de adivinar cual es el robot.
+autorizacion propia de `esi@`). La API devuelve el archivo de codigo sin
+extension (por ejemplo `Código`), asi que el script filtra por tipo
+`SERVER_JS`; si hubiera mas de uno, frena en vez de adivinar cual es el robot.
 
 Si el colegio bloquea la API o el scope, el plan B sigue siendo pegar
 `esi-mailer.gs` entero una vez en el editor y guardar.

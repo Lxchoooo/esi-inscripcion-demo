@@ -41,13 +41,14 @@ fi
 curl -fsS -H "Authorization: Bearer $TOKEN" \
   "https://script.googleapis.com/v1/projects/$ESI_SCRIPT_ID/content" -o "$TMP/actual.json"
 
-# 3. Reemplaza el único archivo .gs y conserva el manifiesto y cualquier otro
-#    archivo (HTML/JSON). Si el proyecto tuviera dos .gs, frena: mejor no
-#    adivinar cuál es el robot.
+# 3. Reemplaza el único archivo de código y conserva el manifiesto y cualquier
+#    otro archivo (HTML/JSON). La API devuelve los .gs sin extensión (por
+#    ejemplo "Código"), así que se filtra por tipo SERVER_JS. Si hubiera dos,
+#    frena: mejor no adivinar cuál es el robot.
 jq --rawfile src "$SRC" '
-  ([.files[] | select(.type=="SERVER_JS" and (.name|endswith(".gs")))] | length) as $n
-  | if $n != 1 then error("el proyecto debe tener exactamente un archivo .gs (tiene \($n))") else . end
-  | {files: [.files[] | {name, type, source: (if (.type=="SERVER_JS" and (.name|endswith(".gs"))) then $src else .source end)}]}
+  ([.files[] | select(.type=="SERVER_JS")] | length) as $n
+  | if $n != 1 then error("el proyecto debe tener exactamente un archivo SERVER_JS (tiene \($n))") else . end
+  | {files: [.files[] | {name, type, source: (if .type=="SERVER_JS" then $src else .source end)}]}
 ' "$TMP/actual.json" > "$TMP/nuevo.json"
 
 # 4. Guarda. El trigger de cada minuto ejecuta el contenido nuevo sin redeploy:
