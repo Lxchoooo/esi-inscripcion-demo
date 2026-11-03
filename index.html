@@ -6982,6 +6982,10 @@
     // localStorage para survive a recargas y cierre del navegador.
     var A_SESSION_KEY = 'esi_admin_session';
     var A_SESSION_MS = 7200000;
+    // Ultima charla y ultima seccion: el profe vuelve justo donde estaba y el
+    // login puede pedir el roster en el mismo viaje (un round trip menos).
+    var A_LAST_TALK_KEY = 'esi_admin_last_talk';
+    var A_LAST_TAB_KEY = 'esi_admin_last_tab';
     var A_MARK_QUEUE = 'esi_mark_queue';
     var aRole = 'admin';
     var aTalkData = null;
@@ -7062,6 +7066,7 @@
     var aMailBusy = false;
     var aPendingData = null;
     var aTalkId = '';
+    var aRosterFresh_ = 0; // roster recien llegado con el login: no repedir
     var aReports = null;
     var aRepType = 'curso';
     var aRepCurso = '';
@@ -7170,13 +7175,30 @@
       return Promise.resolve(deviceUA_());
     }
 
+    function aFocusPin_() {
+      var el = $('input-pin');
+      if (!el) return;
+      try { el.focus({ preventScroll: true }); } catch (e) { }
+    }
+
     function aLogin(pin) {
       if (aBusy) return;
       aBusy = true;
+      var btn = $('btn-pin');
+      var btnLabel = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
+      function restore_() {
+        if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
+      }
       deviceLabelP_().then(function (label) {
-      call('apiAdminLogin', [pin, label || deviceUA_()])
+      // Si la ultima seccion fue la asistencia, el roster de esa charla viene
+      // en el mismo viaje que el login.
+      var lastTab = lsGet(A_LAST_TAB_KEY);
+      var talkArg = (lastTab === 'charla' && aTalkId) ? String(aTalkId) : '';
+      call('apiAdminLogin', [pin, label || deviceUA_(), talkArg])
         .then(function (resp) {
           aBusy = false;
+          restore_();
           if (resp.ok) {
             aRole = resp.role || 'admin';
             adminCred = resp.token ? resp.token : (TRANSPORT === 'demo' ? aRole : pin);
@@ -7192,15 +7214,29 @@
             } else {
               aLoad(true);
             }
+            // Roster en el mismo viaje: se pinta ya y no se vuelve a pedir.
+            if (resp.roster && resp.roster.ok && resp.roster.talk) {
+              aTalkId = String(resp.roster.talk.id);
+              aTalkData = resp.roster;
+              aApplyQueued_(aTalkData);
+              aRenderTalk();
+              aTalkSeenId = aTalkId;
+              aTalkSeenCount = resp.roster.count;
+              aRosterFresh_ = Date.now();
+            }
+            if (lastTab) aTab(lastTab);
             aRefreshView();
             aStartAutoRefresh();
           } else {
             $('gate-msg').textContent = resp.message || 'Clave incorrecta.';
             $('gate-msg').style.display = 'block';
+            $('input-pin').value = '';
+            aFocusPin_();
           }
         })
         .catch(function () {
           aBusy = false;
+          restore_();
           $('gate-msg').textContent = 'Sin conexión.';
           $('gate-msg').style.display = 'block';
         });
@@ -7304,7 +7340,11 @@
 
     function aRefreshView() {
       if (!adminCred) return;
-      if (aTabName === 'charla') aLoadTalk();
+      if (aTabName === 'charla') {
+        // Si el roster acaba de llegar con el login, no se pide de nuevo.
+        if (aRosterFresh_ && Date.now() - aRosterFresh_ < 15000) { aRosterFresh_ = 0; return; }
+        aLoadTalk();
+      }
       else if (aTabName === 'pend') aLoadPending();
       else if (aTabName === 'reportes') aLoadReports();
       else if (aTabName === 'estado') aLoadStatus();
@@ -8805,6 +8845,7 @@
 
     function aTab(name) {
       aTabName = name;
+      lsSet(A_LAST_TAB_KEY, name);
       var panes = [['pane-charla', name === 'charla'], ['pane-pend', name === 'pend'],
         ['pane-reportes', name === 'reportes'], ['pane-estado', name === 'estado'],
         ['pane-inscriptos', name === 'inscriptos'], ['pane-mails', name === 'mails'],
@@ -10182,6 +10223,9 @@
           aRole = String(ses.role || 'admin');
         }
       }
+      // Vuelve a la ultima charla elegida (si sigue existiendo).
+      var lastTalk = lsGet(A_LAST_TALK_KEY);
+      if (lastTalk) aTalkId = String(lastTalk);
       $('btn-pin').addEventListener('click', function () {
         var pin = $('input-pin').value;
         if (!pin) return;
@@ -10226,6 +10270,12 @@
       $('input-pin').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') $('btn-pin').click();
       });
+      // Clave de 6 digitos: al sexto digito entra sola, sin tocar Entrar.
+      // Si la clave configurada tiene otra longitud, el boton sigue igual.
+      $('input-pin').addEventListener('input', function () {
+        if (this.value.length === 6) $('btn-pin').click();
+      });
+      aFocusPin_();
       $('btn-copiar-link').addEventListener('click', function () {
         aMenuSet_(false);
         aCopyLink();
@@ -10339,6 +10389,7 @@
       });
       $('select-charla').addEventListener('change', function () {
         aTalkId = this.value;
+        lsSet(A_LAST_TALK_KEY, this.value);
         aLoadTalk();
       });
       $('input-buscar-charla').addEventListener('input', aRenderTalk);
@@ -10428,6 +10479,8 @@
 
       if (adminCred) {
         showScreen(A_SCREENS, 'a-screen-panel');
+        var lastTabSes = lsGet(A_LAST_TAB_KEY);
+        if (lastTabSes) aTab(lastTabSes);
         aKeepAwake_();
         aLoad(true);
         // Reingreso con sesion guardada: sin esto el panel quedaba sin refresh

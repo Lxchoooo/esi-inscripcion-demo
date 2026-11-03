@@ -4310,7 +4310,7 @@ function resetAdminFailures_() {
   props.deleteProperty(ADMIN_BLOCK_PROP);
 }
 
-function apiAdminLogin(pin, ua) {
+function apiAdminLogin(pin, ua, talkId) {
   try {
     var auth = adminAuth_(pin);
     if (!auth.ok) {
@@ -4330,6 +4330,15 @@ function apiAdminLogin(pin, ua) {
     var data = adminDataFor_(auth);
     if (!data.ok) return { ok: true, role: auth.role, token: token };
     data.token = token;
+    // La lista de asistencia viaja en el mismo viaje que el login: el panel
+    // abre directo en la ultima charla que uso el profe (un round trip menos,
+    // ~3-4 s en el celular).
+    if (talkId) {
+      try {
+        var roster = apiAdminTalkRoster(token, talkId);
+        if (roster && roster.ok) data.roster = roster;
+      } catch (eR) { }
+    }
     return data;
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };

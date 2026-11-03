@@ -910,9 +910,31 @@ t('Panel keeps the admin session in localStorage and logs device on login', () =
   if (!panelHtml.includes('Registro de accesos')) throw new Error('missing markup registro');
   for (const needle of ["A_SESSION_KEY = 'esi_admin_session'", 'A_SESSION_MS = 7200000',
     'aSessionSave_(adminCred, aRole)', 'adminCred = String(ses.token);',
-    "call('apiAdminAccessLog', [adminCred])", "call('apiAdminLogin', [pin, label || deviceUA_()])"]) {
+    "call('apiAdminAccessLog', [adminCred])", "call('apiAdminLogin', [pin, label || deviceUA_(), talkArg])"]) {
     if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
   }
+});
+
+t('Panel: la clave de 6 digitos entra sola y recuerda charla y seccion', () => {
+  for (const needle of ["A_LAST_TALK_KEY = 'esi_admin_last_talk'", "A_LAST_TAB_KEY = 'esi_admin_last_tab'",
+    "$('input-pin').addEventListener('input'", "if (this.value.length === 6) $('btn-pin').click();",
+    'lsSet(A_LAST_TALK_KEY, this.value)', 'lsSet(A_LAST_TAB_KEY, name)',
+    'aFocusPin_();', 'resp.roster && resp.roster.ok']) {
+    if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+});
+
+t('apiAdminLogin trae el roster de la ultima charla en el mismo viaje', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminLogin, apiAdminGetData');
+  const data = api.apiAdminGetData('1111');
+  const talkId = data.talks[0].id;
+  const login = api.apiAdminLogin('1111', 'ua', talkId);
+  assertEq(login.ok, true, 'login ok');
+  if (!login.roster || !login.roster.ok) throw new Error('login sin roster');
+  assertEq(String(login.roster.talk.id), String(talkId), 'roster de la charla pedida');
+  const sinTalk = api.apiAdminLogin('1111', 'ua', '');
+  if (sinTalk.roster) throw new Error('sin talkId no debe mandar roster');
 });
 
 t('Panel caches data on device for fast open (stale-while-revalidate)', () => {
@@ -5109,9 +5131,11 @@ t('r25: el panel sin red se queda con el cache del propio alumno', () => {
 });
 
 t('r25: el reingreso de admin arranca el refresh automatico y hay un solo poller', () => {
-  const idx = panelSrc.indexOf("showScreen(A_SCREENS, 'a-screen-panel');");
-  if (idx < 0) throw new Error('sin boot del panel');
-  if (!/aStartAutoRefresh\(\);/.test(panelSrc.slice(idx, idx + 400))) throw new Error('restore sin auto-refresh');
+  const boot = panelSrc.indexOf('if (adminCred) {');
+  if (boot < 0) throw new Error('sin boot del panel');
+  const idx = panelSrc.indexOf("showScreen(A_SCREENS, 'a-screen-panel');", boot);
+  if (idx < 0) throw new Error('sin showScreen del panel');
+  if (!/aStartAutoRefresh\(\);/.test(panelSrc.slice(idx, idx + 600))) throw new Error('restore sin auto-refresh');
   if (/window\.setInterval\(function \(\) \{\n        if \(document\.visibilityState === 'visible' && adminCred && aData/.test(panelSrc)) {
     throw new Error('poller doble en aInit');
   }
