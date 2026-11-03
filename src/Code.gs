@@ -5475,7 +5475,11 @@ function upsertStudentsDni_(s, dni) {
   var row = [];
   for (var c = 0; c < span; c++) row.push('');
   row[emailIdx] = s.email;
-  if (map && map.nombre != null) row[map.nombre] = s.nombre || '';
+  if (map && map.nombre != null) {
+    // Con columna de apellido aparte, en `nombre` va solo el nombre de pila:
+    // si se guarda el completo, readStudents_ lo vuelve a pegar al apellido.
+    row[map.nombre] = map.apellido != null ? givenName_(s.nombre, s.apellido) : (s.nombre || '');
+  }
   if (map && map.completo != null) row[map.completo] = String((s.nombre || '') + ' ' + (s.apellido || '')).trim();
   if (map && map.apellido != null) row[map.apellido] = s.apellido || '';
   if (map && map.curso != null) row[map.curso] = s.curso || '';

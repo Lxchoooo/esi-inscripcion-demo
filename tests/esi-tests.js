@@ -1038,6 +1038,24 @@ t('el DNI autodeclarado del registro queda en Students y la ficha lo trae', () =
   assertEq(r3.ok, true, 'dni invalido no bloquea el alta: ' + r3.message);
 });
 
+t('upsertStudentsDni_ no duplica el apellido al crear la fila', () => {
+  const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'apellido', 'nombre', 'curso', 'dni'], []);
+  const api = backendApi(services, 'upsertStudentsDni_, readStudents_');
+  const code = api.upsertStudentsDni_({
+    email: 'nueva2029@secundariosalsipuedes.edu.ar',
+    nombre: 'Nueva Alumna',
+    apellido: 'Alumna',
+    curso: '2°B'
+  }, '30123456');
+  assertEq(code, 'nuevo', 'fila nueva en Students');
+  const st = api.readStudents_()[0];
+  assertEq(st.nombre, 'Nueva', 'nombre de pila en la columna nombre');
+  assertEq(st.apellido, 'Alumna', 'apellido en su columna');
+  assertEq(st.nombreCompleto, 'Nueva Alumna', 'sin apellido duplicado');
+  assertEq(st.dni, '30123456', 'DNI en la fila nueva');
+});
+
 t('Panel pide DNI en la primera inscripcion y lo manda con cada charla', () => {
   for (const needle of ['id="input-dni-datos"', 'input-dni-datos', "sState.dni = EsiClient.normalizeDni(dniDato)"]) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
