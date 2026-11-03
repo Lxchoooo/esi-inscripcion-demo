@@ -1153,15 +1153,6 @@ function autorizarEnvioNube() {
   return r;
 }
 
-// Envio manual de la cola sin el lock del script, para cuando un backup
-// largo deja el lock ocupado. Protegido con un secreto de un solo uso.
-function apiEnviarColaAhora(secret) {
-  if (String(secret) !== 'ESI-2026-cola-9f3a') return { ok: false, message: 'no' };
-  var r = flushMailQueueLocked_(Date.now());
-  Logger.log('apiEnviarColaAhora: ' + JSON.stringify(r));
-  return { ok: true, flush: r };
-}
-
 // Revoca la autorizacion vieja del script para que el proximo run vuelva a
 // pedir todos los permisos, incluido script.external_request. Se corre una
 // sola vez desde el editor y despues se corre autorizarEnvioNube.
@@ -1897,7 +1888,6 @@ var API_FN_MAP_ = {
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
   apiEnvioDiag: apiEnvioDiag,
-  apiEnviarColaAhora: apiEnviarColaAhora,
   apiDriveDiag: apiDriveDiag,
   apiAdminPlanillaRun: apiAdminPlanillaRun,
   apiAdminCloseEvent: apiAdminCloseEvent,
