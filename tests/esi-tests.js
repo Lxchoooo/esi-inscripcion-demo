@@ -5514,6 +5514,7 @@ t('r69: el confirm durante una request no se pierde: se encola y se confirma al 
 });
 
 t('r35: el admin ve por que el panel no reacciona mientras el server actualiza', () => {
+  const css = panelCss();
   // 1) La etiqueta de frescura muestra "Actualizando…" en lugar de quedarse congelada.
   if (!/var label = 'Actualizado hace ' \+ secs \+ 's';\s*if \(aBusy\) label = 'Actualizando…';/.test(panelSrc)) {
     throw new Error('la etiqueta del admin no muestra el estado de actualizacion');
@@ -5528,8 +5529,15 @@ t('r35: el admin ve por que el panel no reacciona mientras el server actualiza',
   }
   // 3) Con limite: maximo un aviso cada 2 s.
   if (!/now - aTapHintLast < 2000/.test(panelSrc)) throw new Error('sin limite de frecuencia en el aviso');
-  if (!/toast\('Un segundo: el panel está actualizando datos\.', 'ok'\)/.test(panelSrc)) {
+  if (!/toastTop\('Un segundo: el panel está actualizando datos\.', 'ok'\)/.test(panelSrc)) {
     throw new Error('sin el mensaje del aviso');
+  }
+  // 4) El aviso va arriba y chico, no en el pie del celular.
+  if (!/function toastTop\(text, type, act\) \{\s*return toast\(text, type, act, \{ top: true \}\);/.test(panelSrc)) {
+    throw new Error('sin variante de toast superior');
+  }
+  if (!/\.toast\.toast-top\s*\{[\s\S]{0,220}bottom: auto;[\s\S]{0,220}top: calc\(8px \+ env\(safe-area-inset-top\)\)/.test(css)) {
+    throw new Error('el aviso de actualizacion no queda arriba');
   }
 });
 

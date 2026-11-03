@@ -942,6 +942,16 @@
     }
     .toast.show { transform: translate(-50%, 0); opacity: 1; transition-duration: var(--dur-2); }
     .toast.err { background: var(--danger); color: var(--paper); }
+    /* Aviso chico arriba: en el celular el toast del pie tapaba la barra y
+       el contenido que se estaba tocando. */
+    .toast.toast-top {
+      bottom: auto; top: calc(8px + env(safe-area-inset-top));
+      width: min(86vw, 360px); padding: 8px 12px;
+      font-size: 12.5px; line-height: 1.25; border-radius: 10px;
+      min-height: 0; z-index: 96;
+      transform: translate(-50%, -8px);
+    }
+    .toast.toast-top.show { transform: translate(-50%, 0); }
     /* Accion dentro del toast (ej. Deshacer). */
     .toast-btn {
       flex: 0 0 auto; margin-left: 10px; padding: 7px 14px; min-height: 36px;
@@ -2311,6 +2321,15 @@
     @media (max-width: 719px) {
       body[data-screen="a-screen-panel"] .toast { bottom: calc(78px + env(safe-area-inset-bottom)); }
     }
+    /* El aviso de "actualizando datos" del admin va arriba y chico: no debe
+       quedar en el pie, donde tapa la barra de acciones en el celular. */
+    body[data-screen="a-screen-panel"] .toast.toast-top {
+      bottom: auto; top: calc(8px + env(safe-area-inset-top));
+      width: min(86vw, 360px); padding: 8px 12px;
+      font-size: 12.5px; line-height: 1.25; border-radius: 10px;
+      min-height: 0;
+    }
+    body[data-screen="a-screen-panel"] .toast.toast-top.show { transform: translate(-50%, 0); }
 
     /* ==== v109: ficha del alumno (sheet) ====
        Datos en tarjetas tipeables: DNI y mail se copian con un toque
@@ -5147,7 +5166,7 @@
     }
 
     var toastTimer = null;
-    function toast(text, type, act) {
+    function toast(text, type, act, opts) {
       var el = $('toast');
       var bn = $('s-banner');
       // Un solo cartel a la vez: el toast REEMPLAZA al banner (y no se
@@ -5157,7 +5176,7 @@
         bn.textContent = '';
       }
       el.textContent = text || '';
-      el.className = 'toast show' + (type === 'err' ? ' err' : '');
+      el.className = 'toast show' + (type === 'err' ? ' err' : '') + (opts && opts.top ? ' toast-top' : '');
       var html = esc(text || '');
       if (act && act.label && act.fn) {
         html += '<button type="button" class="toast-btn" aria-label="' + esc(act.label) + '">' + esc(act.label) + '</button>';
@@ -5188,6 +5207,10 @@
         el.innerHTML = '';
       };
       toastTimer = window.setTimeout(hideToast_, 3400);
+    }
+
+    function toastTop(text, type, act) {
+      return toast(text, type, act, { top: true });
     }
 
     var sheetCb = null;
@@ -10113,7 +10136,7 @@
         var now = Date.now();
         if (now - aTapHintLast < 2000) return;
         aTapHintLast = now;
-        toast('Un segundo: el panel está actualizando datos.', 'ok');
+        toastTop('Un segundo: el panel está actualizando datos.', 'ok');
       }, true);
       $('input-pin').addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') $('btn-pin').click();
