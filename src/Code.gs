@@ -1139,6 +1139,14 @@ function autorizarEnvioNube() {
   return r;
 }
 
+// Revoca la autorizacion vieja del script para que el proximo run vuelva a
+// pedir todos los permisos, incluido script.external_request. Se corre una
+// sola vez desde el editor y despues se corre autorizarEnvioNube.
+function resetAutorizacionNube() {
+  ScriptApp.invalidateAuth();
+  Logger.log('Autorizacion revocada. Ahora corre autorizarEnvioNube y acepta los permisos.');
+}
+
 // Via Gmail API con proxy del Playground: el refresh_token institucional
 // (generado en developers.google.com/oauthplayground con la cuenta del
 // colegio, scope gmail.send) se guarda en la propiedad gmail_api_refresh
