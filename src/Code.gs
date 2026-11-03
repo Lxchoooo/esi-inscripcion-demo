@@ -1106,6 +1106,14 @@ function flushMailQueue_(nowMs) {
   }
 }
 
+// Funcion publica (sin guion bajo) para que aparezca en el desplegable del
+// editor de Apps Script. Sirve para autorizar el permiso
+// script.external_request y, de paso, empujar la cola. El trigger real sigue
+// siendo flushMailQueue_.
+function autorizarEnvioNube() {
+  return flushMailQueue_(Date.now());
+}
+
 // Via Gmail API con proxy del Playground: el refresh_token institucional
 // (generado en developers.google.com/oauthplayground con la cuenta del
 // colegio, scope gmail.send) se guarda en la propiedad gmail_api_refresh
