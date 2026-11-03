@@ -10076,9 +10076,11 @@
             }
             html += '<li><b>' + esc(mail) + '</b>'
               + (where.length ? '<span class="dup-where">' + esc(where.join(' · ')) + '</span>' : '')
+              + '<button class="btn red small" type="button" data-del="' + esc(mail) + '"'
+              + ' aria-label="Borrar ' + esc(mail) + ' sin unir las charlas">Borrar este mail</button>'
               + '</li>';
           }
-          html += '</ol><p class="hint-line">Elegí qué número conservar; el otro se une a ese mail.</p>';
+          html += '</ol><p class="hint-line">Elegí qué número conservar y unir, o borrá un mail entero sin conservar sus charlas.</p>';
           for (var k2 = 0; k2 < g.emails.length; k2++) {
             for (var m = 0; m < g.emails.length; m++) {
               if (k2 === m) continue;
@@ -10109,6 +10111,27 @@
             aBusy = false;
             if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo fusionar.', 'err'); return; }
             aCorrMsg_('Duplicados fusionados.', 'ok');
+            aCorrDuplicates_();
+            aLoad(true);
+          }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
+        }
+      });
+    }
+
+    function aDeleteDuplicate_(email) {
+      if (!email || aBusy) return;
+      openSheet({
+        title: 'Borrar mail duplicado',
+        body: '<p>Se borran <b>todas las inscripciones</b> de <b>' + esc(email) + '</b>.</p>'
+          + '<p class="sheet-warn">No se conserva ni se une ninguna charla. El alumno puede volver a inscribirse con otro mail.</p>',
+        confirm: 'Borrar mail',
+        danger: true,
+        onConfirm: function () {
+          aBusy = true;
+          call('apiAdminDeleteStudent', [adminCred, email]).then(function (resp) {
+            aBusy = false;
+            if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo borrar.', 'err'); return; }
+            aCorrMsg_('Mail borrado: ' + (resp.deleted || 0) + ' inscripciones.', 'ok');
             aCorrDuplicates_();
             aLoad(true);
           }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
@@ -10830,6 +10853,8 @@
         var keep = btn ? btn.getAttribute('data-keep') : '';
         var drop = btn ? btn.getAttribute('data-drop') : '';
         if (keep && drop) aMergeDuplicates_(keep, drop);
+        var del = btn ? btn.getAttribute('data-del') : '';
+        if (del) aDeleteDuplicate_(del);
         var pick = btn ? btn.getAttribute('data-talk-pick') : '';
         if (pick) aCorrTalksPick_(pick);
         if (btn && btn.id === 'btn-talks-save') aCorrTalksSave_();

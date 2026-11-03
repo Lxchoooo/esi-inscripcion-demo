@@ -3151,6 +3151,18 @@ t('Panel: Arreglar datos tiene Cambiar charlas y Fuera de cupo', () => {
   }
 });
 
+t('Panel: alumnos duplicados permite borrar un mail sin unir charlas', () => {
+  for (const needle of ['data-del=', 'function aDeleteDuplicate_', 'Borrar este mail']) {
+    if (panelSrc.indexOf(needle) < 0) throw new Error('missing ' + needle);
+  }
+  if (!/function aDeleteDuplicate_[\s\S]{0,1200}apiAdminDeleteStudent/.test(panelSrc)) {
+    throw new Error('borrar duplicado no llama a apiAdminDeleteStudent');
+  }
+  if (!/data-del="' \+ esc\(mail\)/.test(panelSrc)) {
+    throw new Error('el boton de borrar no lleva el mail');
+  }
+});
+
 t('r41: Charlas duplicadas lista los alumnos y abre la correccion', () => {
   if (!/aDupTalkRows_[\s\S]{0,1800}Object\.keys\(slots\)\.length < 2/.test(panelSrc)) {
     throw new Error('aDupTalkRows_ no exige dos horarios distintos');
