@@ -673,6 +673,42 @@ function apiMailDiag(args) {
   return out;
 }
 
+// Diagnostico publico de cupos: por charla, cupo y anotados. Sin datos
+// personales; sirve para ver sobrecupos sin abrir el panel.
+function apiCuposDiag() {
+  var out = { ok: true, talks: [], resumen: {} };
+  try {
+    var cfg = readConfigCached_();
+    var talks = readTalksCached_();
+    var signups = readSignupsCached_();
+    var counts = cupoCounts_(signups, cfg);
+    var total = 0;
+    var sobre = 0;
+    for (var i = 0; i < talks.length; i++) {
+      var t = talks[i];
+      var anotados = counts[t.id] || 0;
+      var cupo = Number(t.cupo);
+      if (anotados > cupo) sobre++;
+      total += anotados;
+      out.talks.push({
+        id: t.id,
+        titulo: t.titulo,
+        ciclo: t.ciclo,
+        slot_id: Number(t.slot_id),
+        cupo: cupo,
+        anotados: anotados,
+        restantes: Math.max(0, cupo - anotados),
+        exceso: Math.max(0, anotados - cupo)
+      });
+    }
+    out.resumen = { charlas: talks.length, anotados: total, sobrecupo: sobre };
+  } catch (e) {
+    out.ok = false;
+    out.message = String(e && e.message || e).slice(0, 300);
+  }
+  return out;
+}
+
 // Diagnostico publico del envio en la nube: dice si el token institucional
 // se puede renovar desde Apps Script. No devuelve el token ni datos de
 // alumnos, solo el error si falla. Sirve para ver si falta el permiso
@@ -1889,6 +1925,7 @@ var API_FN_MAP_ = {
   apiAdminDrill: apiAdminDrill,
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
+  apiCuposDiag: apiCuposDiag,
   apiEnvioDiag: apiEnvioDiag,
   apiDriveDiag: apiDriveDiag,
   apiAdminPlanillaRun: apiAdminPlanillaRun,
@@ -3453,6 +3490,38 @@ function migrateTalkCupo_() {
     try { logAction_('cupo_43', '', 'filas=' + changed); } catch (eL) { }
     invalidateDataCache_();
   } catch (e) { }
+}
+
+// One-shot de editor: baja a 43 los cupos que quedaron por encima (la hoja
+// viva tenia 55 de la seed vieja). No toca cupos mas chicos ni
+// inscripciones; solo el valor de la columna cupo. No esta en el mapa
+// publico: se corre a mano desde el editor si hace falta.
+function fixCupo43_() {
+  try {
+    var sh = SpreadsheetApp.getActive().getSheetByName(TALKS_SHEET);
+    if (!sh) return { ok: false, message: 'Falta la hoja Charlas.' };
+    var vals = sh.getDataRange().getValues();
+    if (vals.length < 2) return { ok: true, changed: 0 };
+    var cupoIdx = -1;
+    for (var i = 0; i < vals[0].length; i++) {
+      if (EsiCore.normalizeText(vals[0][i]) === 'cupo') cupoIdx = i;
+    }
+    if (cupoIdx < 0) return { ok: false, message: 'Falta la columna cupo.' };
+    var changed = 0;
+    for (var r = 1; r < vals.length; r++) {
+      var raw = vals[r][cupoIdx];
+      if (String(raw).trim() === '') continue;
+      if (Number(raw) > 43) {
+        sh.getRange(r + 1, cupoIdx + 1).setValue(43);
+        changed++;
+      }
+    }
+    invalidateDataCache_();
+    try { logAction_('cupo_43_live', '', 'filas=' + changed); } catch (eL) { }
+    return { ok: true, changed: changed };
+  } catch (e) {
+    return { ok: false, message: String(e && e.message || e).slice(0, 300) };
+  }
 }
 
 // Auto-setup: hoy el check "Version" del panel queda amarillo ("corre
