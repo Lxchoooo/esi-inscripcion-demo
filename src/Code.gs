@@ -1731,15 +1731,28 @@ function runCycleFixCampaign_() {
 }
 
 // Diagnostico publico de la campaña: solo agregados, sin mails ni nombres.
-function apiCicloDiag() {
+// Con args=["iniciar"] fuerza una vuelta (idempotente) y repone el trigger
+// del watchdog si falta; sirve cuando el planificador de Google se atrasa.
+function apiCicloDiag(args) {
+  var action = '';
+  if (typeof args === 'string') action = args;
+  else if (args && args.length) action = String(args[0]);
+  var run = null;
+  if (action === 'iniciar') {
+    try { ensureWatchdogTrigger_(); } catch (eTrig) { }
+    try { run = runCycleFixCampaign_(); } catch (eRun) {
+      return { ok: false, message: 'Error: ' + String(eRun && eRun.message || eRun).slice(0, 200) };
+    }
+  }
   var off = false;
   try { off = String(PropertiesService.getScriptProperties().getProperty(CYCLE_CAMPAIGN_OFF_PROP) || '') === '1'; } catch (eOff) { }
   var c = cycleCampaignState_();
-  if (!c) return { ok: true, started: false, off: off };
+  if (!c) return { ok: true, started: false, off: off, run: run };
   return {
     ok: true,
     started: true,
     off: off,
+    run: run,
     phase: c.phase,
     startedAt: Number(c.startedAt || 0),
     deadline: Number(c.deadline || 0),
@@ -1784,7 +1797,9 @@ function flushMailQueue_(nowMs) {
   // El trigger real llama sin argumentos. Los tests y el watchdog pasan nowMs:
   // asi la campaña de ciclo no arranca en cada prueba que usa el flush.
   if (arguments.length === 0) {
-    try { runCycleFixCampaign_(); } catch (eCycle) { }
+    try { runCycleFixCampaign_(); } catch (eCycle) {
+      try { logAction_('ciclo_error', '', String(eCycle && eCycle.message || eCycle).slice(0, 200)); } catch (eLog) { }
+    }
   }
   // Un solo flush por vez: el trigger por minuto puede solaparse con el
   // watchdog o con dos corridas del mismo handler y mandar dos veces el mismo
