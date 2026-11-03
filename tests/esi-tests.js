@@ -4196,6 +4196,34 @@ t('v80: gmail api manda el aviso con el token del colegio', () => {
   assertEq(props.gmail_api_refresh, '1//refresh', 'el token no se toca al mandar');
 });
 
+t('v82: el cuerpo del mail viaja en base64 UTF-8 (acentos y eñes)', () => {
+  const props = { gmail_api_refresh: '1//refresh' };
+  const services = backendStub(props);
+  services.Utilities = Object.assign({}, services.Utilities, {
+    base64Encode: (v, cs) => 'b64(' + String(cs) + '):' + String(v),
+    base64EncodeWebSafe: (v) => 'ws:' + String(v),
+    Charset: { UTF_8: 'utf8' }
+  });
+  const calls = [];
+  services.UrlFetchApp = {
+    fetch: (url, req) => {
+      calls.push({ url: url, req: req });
+      if (String(url).indexOf('oauthplayground/refreshAccessToken') >= 0) {
+        return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ success: true, access_token: 'acc1' }) };
+      }
+      return { getResponseCode: () => 200, getContentText: () => '{"id":"m1"}' };
+    }
+  };
+  const api = backendApi(services, 'gmailApiSend_');
+  const cuerpo = 'Hola, inscripción: educación y año';
+  assertEq(api.gmailApiSend_('ana2029@secundariosalsipuedes.edu.ar', 'Aviso', cuerpo), true, 'send ok');
+  const sendCall = calls.filter((c) => String(c.url).indexOf('users/me/messages/send') >= 0)[0];
+  if (!sendCall) throw new Error('no llama a gmail/v1/users/me/messages/send');
+  const raw = JSON.stringify(sendCall.req.payload);
+  if (raw.indexOf('Content-Transfer-Encoding: base64') < 0) throw new Error('el cuerpo no va en base64');
+  if (raw.indexOf('b64(utf8):' + cuerpo) < 0) throw new Error('el cuerpo no se codifica en UTF-8');
+});
+
 t('v80: si la via gmail se cae, gmailApiSend_ devuelve false y queda en pausa', () => {
   const props = { gmail_api_refresh: '1//r' };
   const services = backendStub(props);
