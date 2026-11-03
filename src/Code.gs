@@ -673,6 +673,29 @@ function apiMailDiag(args) {
   return out;
 }
 
+// Diagnostico publico del envio en la nube: dice si el token institucional
+// se puede renovar desde Apps Script. No devuelve el token ni datos de
+// alumnos, solo el error si falla. Sirve para ver si falta el permiso
+// script.external_request sin abrir el editor.
+function apiEnvioDiag() {
+  var out = { ok: true, ready: false, props: false, token: null };
+  try {
+    out.ready = gmailApiReady_();
+    var props = gmailApiProps_();
+    out.props = !!props;
+    if (!props) { out.message = 'sin gmail_api_refresh'; return out; }
+    try {
+      var tok = gmailApiAccessToken_(props);
+      out.token = { ok: true, len: String(tok || '').length };
+    } catch (eTok) {
+      out.token = { ok: false, error: String(eTok && eTok.message || eTok).slice(0, 300) };
+    }
+  } catch (e) {
+    out.ok = false;
+    out.error = String(e && e.message || e).slice(0, 300);
+  }
+  return out;
+}
 
 function readSentMails_(subject) {
   try {
@@ -1111,7 +1134,9 @@ function flushMailQueue_(nowMs) {
 // script.external_request y, de paso, empujar la cola. El trigger real sigue
 // siendo flushMailQueue_.
 function autorizarEnvioNube() {
-  return flushMailQueue_(Date.now());
+  var r = flushMailQueue_(Date.now());
+  Logger.log('autorizarEnvioNube: ' + JSON.stringify(r));
+  return r;
 }
 
 // Via Gmail API con proxy del Playground: el refresh_token institucional
@@ -1840,6 +1865,7 @@ var API_FN_MAP_ = {
   apiAdminDrill: apiAdminDrill,
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
+  apiEnvioDiag: apiEnvioDiag,
   apiDriveDiag: apiDriveDiag,
   apiAdminPlanillaRun: apiAdminPlanillaRun,
   apiAdminCloseEvent: apiAdminCloseEvent,
