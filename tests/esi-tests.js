@@ -1541,6 +1541,27 @@ t('El login arranca con mail o DNI y los datos de primera vez van en su pantalla
   }
 });
 
+t('La sesión perdida en iPhone se puede recuperar con DNI', () => {
+  // El server no deja abrir otra sesión por mail cuando ya hay inscripciones;
+  // si Safari borra localStorage, la única salida es el DNI. El panel tiene
+  // que mostrarlo en vez de dejar el campo oculto y repetir el mismo error.
+  if (!/function sShowDniLogin_\(\)[\s\S]{0,320}login-mail-wrap[\s\S]{0,220}login-dni-wrap/.test(panelSrc)) {
+    throw new Error('sShowDniLogin_ no alterna mail por DNI');
+  }
+  if (!/resp\.needsLogin[\s\S]{0,180}sShowDniLogin_\(\)/.test(panelSrc)) {
+    throw new Error('needsLogin no destraba el campo DNI');
+  }
+  const submitAt = panelSrc.indexOf('function sLoginSubmit');
+  const submit = panelSrc.slice(submitAt, submitAt + 1000);
+  if (submitAt < 0 || submit.indexOf('if (dni)') < 0 || submit.indexOf('if (email)') < 0
+    || submit.indexOf('if (dni)') > submit.indexOf('if (email)')) {
+    throw new Error('sLoginSubmit no prioriza el DNI visible');
+  }
+  if (!/teniaEmail[\s\S]{0,320}sShowDniLogin_\(\)/.test(panelSrc)) {
+    throw new Error('la sesión vencida no ofrece DNI');
+  }
+});
+
 t('gate: la clave no se sale del card', () => {
   if (!/\.pin-wrap input\s*\{[^}]*width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;/
     .test(panelHtml)) {

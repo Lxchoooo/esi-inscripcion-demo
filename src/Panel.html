@@ -3269,6 +3269,21 @@
       if ($('btn-datos-go')) $('btn-datos-go').classList.remove('is-ready');
     }
 
+    // Si el mail ya tiene inscripciones, el server no deja abrir una sesion
+    // nueva por mail: hay que volver a entrar con DNI. En iPhone el
+    // localStorage se pierde (modo privado, limpieza de Safari o cambio de
+    // navegador), asi que sin esta via el alumno quedaba encerrado: el mail
+    // le decia "entra con DNI" y el campo DNI estaba oculto.
+    function sShowDniLogin_() {
+      if ($('login-mail-wrap')) $('login-mail-wrap').hidden = true;
+      if ($('login-dni-wrap')) $('login-dni-wrap').hidden = false;
+      if ($('input-mail')) $('input-mail').value = '';
+      if ($('mail-hint')) $('mail-hint').hidden = true;
+      if ($('input-dni')) {
+        try { $('input-dni').focus(); } catch (e) { }
+      }
+    }
+
     // Los datos de primera vez viven en su propia pantalla (paso 3): el mail
     // ya no despliega el form "hacia abajo", el paso va adelante.
     function sOpenLoginExtra_() {
@@ -6267,13 +6282,22 @@
               'Reintentar', function () { sRetry_(); });
             if (resp.needsLogin) {
               sState.login = '';
+              sShowDniLogin_();
               showScreen(S_SCREENS, 's-screen-login');
+              sBanner('Ese mail ya tiene inscripciones. Para volver a entrar, usá tu DNI.', 'err');
               return;
             }
             if (resp.expired) {
+              var teniaEmail = !!sState.email;
               sClearStudentSession_();
               sState = sEmptyState_();
-              showScreen(S_SCREENS, 's-screen-mail');
+              if (teniaEmail) {
+                sShowDniLogin_();
+                showScreen(S_SCREENS, 's-screen-login');
+                sBanner('Tu sesión venció. Para volver a entrar, usá tu DNI.', 'err');
+              } else {
+                showScreen(S_SCREENS, 's-screen-mail');
+              }
             }
           }
         })
@@ -6627,12 +6651,15 @@
       }
       var email = EsiClient.normalizeEmail($('input-mail').value);
       var dni = sDniMode_() ? EsiClient.normalizeDni($('input-dni').value) : '';
-      if (email) {
-        sLookup();
-        return;
-      }
+      // Cuando el mail ya tiene inscripciones, el server pide DNI. El DNI
+      // manda si esta visible y cargado: si no, el mail viejo seguia en el
+      // campo y volvia a caer en el mismo "entra con DNI".
       if (dni) {
         sLookupDni();
+        return;
+      }
+      if (email) {
+        sLookup();
         return;
       }
       if (sDniMode_()) {
@@ -6873,9 +6900,16 @@
               }
               return;
             }
+            var teniaEmail = !!(sState.email || (cachedBoot && cachedBoot.student && cachedBoot.student.email));
             sClearStudentSession_();
-            sBanner('Tu sesión venció: entrá de nuevo con tu mail institucional.', 'err');
-            showScreen(S_SCREENS, 's-screen-mail');
+            if (teniaEmail) {
+              sShowDniLogin_();
+              showScreen(S_SCREENS, 's-screen-login');
+              sBanner('Tu sesión venció. Para volver a entrar, usá tu DNI.', 'err');
+            } else {
+              sBanner('Tu sesión venció: entrá de nuevo con tu mail institucional.', 'err');
+              showScreen(S_SCREENS, 's-screen-mail');
+            }
           })
           .catch(function () {
             // Sin red no es igual que sesion vencida: si el boot ya dibujo el
