@@ -10198,60 +10198,65 @@
       var html = '<p><b>' + esc((st.apellido ? st.apellido + ', ' : '') + st.nombre) + '</b>'
         + ' <span class="hint-line">' + esc(st.curso || '') + ' · ' + esc(st.email) + '</span></p>';
       html += '<div class="corr-form">';
-      var sels = 0;
       for (var i = 0; i < aData.slots.length; i++) {
         var slot = aData.slots[i];
         var cur = null;
         for (var j = 0; j < st.signups.length; j++) {
           if (Number(st.signups[j].slot_id) === Number(slot.id)) { cur = st.signups[j]; break; }
         }
-        if (!cur) {
-          html += '<div><b>' + esc(slot.label) + '</b><p class="hint-line">Sin charla en este horario.</p></div>';
-          continue;
-        }
-        sels++;
-        var opts = '<option value="' + esc(cur.talk_id) + '" selected>'
-          + esc(cur.talkTitulo) + ' · actual</option>';
+        var opts = cur
+          ? '<option value="' + esc(cur.talk_id) + '" selected>' + esc(cur.talkTitulo) + ' · actual</option>'
+          : '<option value="">— Sin charla —</option>';
         for (var t = 0; t < aData.talks.length; t++) {
           var tk = aData.talks[t];
           if (!tk.activa || Number(tk.slot_id) !== Number(slot.id)) continue;
-          if (String(tk.id) === String(cur.talk_id)) continue;
+          if (cur && String(tk.id) === String(cur.talk_id)) continue;
           if (!aTalkAllowedFor_(tk, st.ciclo)) continue;
           var left = Number(tk.cupo) - Number(tk.anotados || 0);
           opts += '<option value="' + esc(tk.id) + '"' + (left <= 0 ? ' disabled' : '') + '>'
             + esc(tk.titulo) + ' · ' + (left > 0 ? left + ' lugares' : 'sin lugares') + '</option>';
         }
         html += '<label for="talk-pick-' + esc(slot.id) + '">' + esc(slot.label)
-          + '<select id="talk-pick-' + esc(slot.id) + '" data-talk-signup="' + esc(cur.id)
-          + '" data-talk-original="' + esc(cur.talk_id) + '">' + opts + '</select></label>';
+          + '<select id="talk-pick-' + esc(slot.id) + '" '
+          + (cur
+            ? 'data-talk-signup="' + esc(cur.id) + '" data-talk-original="' + esc(cur.talk_id) + '"'
+            : 'data-talk-slot="' + esc(slot.id) + '" data-talk-original=""')
+          + '>' + opts + '</select></label>';
       }
       html += '</div>';
       html += '<div class="toolbar">'
         + '<button id="btn-talks-save" class="btn small" type="button">Guardar cambios</button>'
         + '<button id="btn-talks-back" class="btn secondary small" type="button">Buscar otro alumno</button>'
         + '</div>';
-      if (!sels) html += '<p class="hint-line">Ese alumno no tiene charlas asignadas.</p>';
       $('corr-out').innerHTML = html;
     }
 
     function aCorrTalksSave_() {
       if (!aData || aBusy) return;
-      var sels = document.querySelectorAll('#corr-out [data-talk-signup]');
+      var sels = document.querySelectorAll('#corr-out [data-talk-signup], #corr-out [data-talk-slot]');
       var todo = [];
       for (var i = 0; i < sels.length; i++) {
+        var signupId = sels[i].getAttribute('data-talk-signup');
+        var slotId = sels[i].getAttribute('data-talk-slot');
         var orig = String(sels[i].getAttribute('data-talk-original') || '');
-        if (String(sels[i].value) === orig) continue;
-        todo.push({ signupId: sels[i].getAttribute('data-talk-signup'), talkId: sels[i].value });
+        var val = String(sels[i].value || '');
+        if (val === orig) continue;
+        if (signupId) todo.push({ signupId: signupId, talkId: val });
+        else if (slotId && val) todo.push({ slotId: slotId, talkId: val });
       }
       if (!todo.length) { aCorrMsg_('No cambiaste ninguna charla.', 'err'); return; }
       aBusy = true;
       var done = 0;
       var errores = [];
+      var st = aStudentIndex_().by[aTalksPickKey] || null;
       function next() {
         if (done >= todo.length) {
           aBusy = false;
           if (errores.length) {
             aCorrMsg_('Cambios guardados: ' + (todo.length - errores.length) + '. ' + errores.join(' '), 'err');
+            // Si el ultimo cambio fallo, el aviso de los anteriores quedo en
+            // cola: empujamos la cola (el trigger no siempre corre).
+            try { call('apiMailDiag', ['empujar']).catch(function () { }); } catch (e) { }
           } else {
             aCorrMsg_('Charlas actualizadas: ' + todo.length + '.', 'ok');
           }
@@ -10260,18 +10265,51 @@
           return;
         }
         var it = todo[done++];
-        // El flush del aviso va solo en el ultimo cambio del lote: los
-        // anteriores solo re-escriben la fila pendiente con el estado final.
-        call('apiAdminMoveTalk', [adminCred, it.signupId, it.talkId, done >= todo.length]).then(function (resp) {
-          if (!resp || !resp.ok) {
-            errores.push((resp && resp.message) || 'No se pudo cambiar una charla.');
-          } else {
-            for (var z = 0; z < aData.signups.length; z++) {
-              if (String(aData.signups[z].id) !== String(it.signupId)) continue;
-              aData.signups[z].talk_id = it.talkId;
-              if (resp.talk && resp.talk.titulo) aData.signups[z].talkTitulo = resp.talk.titulo;
-              break;
+        var last = done >= todo.length;
+        if (it.signupId) {
+          // El flush del aviso va solo en el ultimo cambio del lote: los
+          // anteriores solo re-escriben la fila pendiente con el estado final.
+          call('apiAdminMoveTalk', [adminCred, it.signupId, it.talkId, last]).then(function (resp) {
+            if (!resp || !resp.ok) {
+              errores.push((resp && resp.message) || 'No se pudo cambiar una charla.');
+            } else {
+              for (var z = 0; z < aData.signups.length; z++) {
+                if (String(aData.signups[z].id) !== String(it.signupId)) continue;
+                aData.signups[z].talk_id = it.talkId;
+                if (resp.talk && resp.talk.titulo) aData.signups[z].talkTitulo = resp.talk.titulo;
+                break;
+              }
             }
+            next();
+          }).catch(function () { errores.push('Sin conexión.'); next(); });
+          return;
+        }
+        if (!st) { errores.push('No encontramos el alumno.'); next(); return; }
+        call('apiAdminAddStudent', [adminCred, {
+          email: st.email,
+          nombre: st.nombre,
+          apellido: st.apellido,
+          curso: st.curso,
+          talkIds: [it.talkId]
+        }, last]).then(function (resp) {
+          if (!resp || !resp.ok) {
+            errores.push((resp && resp.message) || 'No se pudo agregar una charla.');
+          } else {
+            var tk = null;
+            for (var q = 0; q < aData.talks.length; q++) {
+              if (String(aData.talks[q].id) === String(it.talkId)) { tk = aData.talks[q]; break; }
+            }
+            aData.signups.push({
+              id: (resp.added && resp.added[0] && resp.added[0].id) || '',
+              email: st.email,
+              nombre: st.nombre,
+              apellido: st.apellido,
+              curso: st.curso,
+              ciclo: st.ciclo,
+              slot_id: tk ? Number(tk.slot_id) : Number(it.slotId),
+              talk_id: it.talkId,
+              talkTitulo: tk ? tk.titulo : ''
+            });
           }
           next();
         }).catch(function () { errores.push('Sin conexión.'); next(); });

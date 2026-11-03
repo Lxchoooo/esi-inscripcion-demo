@@ -3142,7 +3142,7 @@ t('Panel: Arreglar datos tiene Cambiar charlas y Fuera de cupo', () => {
   if (!/aCorrOvercupoApply_[\s\S]{0,3000}apiAdminDropOvercupo/.test(panelSrc)) {
     throw new Error('la baja no llama a apiAdminDropOvercupo');
   }
-  if (!/aCorrTalksSave_[\s\S]{0,1600}apiAdminMoveTalk/.test(panelSrc)) {
+  if (!/aCorrTalksSave_[\s\S]{0,3200}apiAdminMoveTalk/.test(panelSrc)) {
     throw new Error('cambiar charlas no llama a apiAdminMoveTalk');
   }
 });
@@ -5275,8 +5275,66 @@ t('r39: mover una charla desde el panel encola y manda el aviso del estado nuevo
 });
 
 t('r39: el panel manda el flush del aviso solo en el ultimo cambio del lote', () => {
-  if (!/apiAdminMoveTalk', \[adminCred, it\.signupId, it\.talkId, done >= todo\.length\]/.test(panelSrc)) {
+  if (!/var last = done >= todo\.length/.test(panelSrc)) {
+    throw new Error('aCorrTalksSave_ no calcula el ultimo cambio');
+  }
+  if (!/apiAdminMoveTalk', \[adminCred, it\.signupId, it\.talkId, last\]/.test(panelSrc)) {
     throw new Error('aCorrTalksSave_ no pasa el flush del ultimo cambio');
+  }
+});
+
+t('r40: displayName_ arma el saludo sin duplicar el apellido', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'displayName_');
+  assertEq(api.displayName_('Zobka, Paulina', 'Zobka'), 'Paulina Zobka', 'apellido, nombre');
+  assertEq(api.displayName_('Ana Gomez', 'Gomez'), 'Ana Gomez', 'apellido pegado');
+  assertEq(api.displayName_('Ana', 'Gomez'), 'Ana Gomez', 'nombre + apellido');
+  assertEq(api.displayName_('Ana', ''), 'Ana', 'sin apellido');
+});
+
+t('r40: agregar una charla faltante desde el panel avisa el estado nuevo', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Config.data.push(['avisos_mail', 'si']);
+  services.sheets.MailQueue = fakeSheet('MailQueue',
+    ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
+  const sent = [];
+  services.MailApp = {
+    sendEmail: (opts) => { sent.push(opts); },
+    getRemainingDailyQuota: () => 100
+  };
+  const api = backendApi(services, 'apiAdminLogin, apiAdminAddStudent, readMailQueueRaw_');
+  const token = api.apiAdminLogin('1111').token;
+  // Ana ya tiene B1 (slot 1); le agregamos B2 (slot 2).
+  const res = api.apiAdminAddStudent(token, {
+    email: 'ana2029@secundariosalsipuedes.edu.ar',
+    nombre: 'Ana', apellido: 'Gomez', curso: '2°B', talkIds: ['B2']
+  });
+  assertEq(res.ok, true, 'add ok: ' + res.message);
+  assertEq(res.added.length, 1, 'una charla agregada');
+  assertEq(res.mail && res.mail.queued, true, 'aviso encolado');
+  assertEq(res.mail && res.mail.sent, 1, 'aviso enviado');
+  const q = api.readMailQueueRaw_();
+  const rows = [];
+  for (let i = 1; i < q.vals.length; i++) {
+    const row = {};
+    for (const k in q.map) if (q.map[k] >= 0) row[k] = q.vals[i][q.map[k]];
+    rows.push(row);
+  }
+  const mail = rows.filter((r) => r.email === 'ana2029@secundariosalsipuedes.edu.ar')[0];
+  if (!mail) throw new Error('no se encoló el aviso del alta');
+  assertEq(mail.tipo, 'cambio_admin', 'tipo de aviso');
+  if (!/Agregamos tu charla/.test(mail.cuerpo)) throw new Error('el aviso no dice que agregamos la charla');
+  if (!/Charla dos/.test(mail.cuerpo)) throw new Error('el aviso no menciona la charla nueva');
+  if (!sent.length) throw new Error('el aviso no se envió');
+  if (!/Charla dos/.test(sent[0].body)) throw new Error('el mail enviado no tiene la charla nueva');
+});
+
+t('r40: el panel deja elegir una charla en los horarios vacios', () => {
+  if (!/aCorrTalksPick_[\s\S]{0,2600}data-talk-slot/.test(panelSrc)) {
+    throw new Error('aCorrTalksPick_ no muestra el select de los horarios vacios');
+  }
+  if (!/aCorrTalksSave_[\s\S]{0,4200}apiAdminAddStudent/.test(panelSrc)) {
+    throw new Error('aCorrTalksSave_ no agrega la charla faltante');
   }
 });
 

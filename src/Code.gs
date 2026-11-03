@@ -552,6 +552,25 @@ function mailLugar_(value) {
   return /^a confirmar$/i.test(v) ? '' : v;
 }
 
+// Nombre para el saludo del mail: el padron puede venir "Apellido, Nombre" y
+// el apellido ya separado. No duplicamos ni dejamos el formato de lista.
+function displayName_(nombre, apellido) {
+  var n = String(nombre || '').replace(/\s+/g, ' ').trim();
+  var a = String(apellido || '').replace(/\s+/g, ' ').trim();
+  if (n.indexOf(',') >= 0) {
+    var parts = n.split(',');
+    var ape = String(parts[0] || '').trim();
+    var nom = String(parts.slice(1).join(',') || '').trim();
+    if (nom && ape) return nom + ' ' + ape;
+  }
+  if (a) {
+    var normN = EsiCore.normalizeText(n);
+    var normA = EsiCore.normalizeText(a);
+    if (!normN || normN.slice(-normA.length) !== normA) return (n ? n + ' ' : '') + a;
+  }
+  return n;
+}
+
 function reminderBody_(r, cfg) {
   var lines = [
     'Hola ' + mailLine_(r.nombre) + ':',
@@ -914,7 +933,40 @@ function adminChangeBody_(name, horario, talk, items) {
   ];
   lines = lines.concat(mailCharlasList_(items));
   lines.push('');
-  lines.push('Si tenés algún problema con el cambio, respondé este mail y lo revisamos.');
+  lines.push('Si tenés alguna duda, respondé este mail y lo revisamos.');
+  lines.push('');
+  lines.push(PANEL_LINK);
+  lines.push('');
+  lines.push('Equipo ESI · Instituto Secundario Salsipuedes');
+  return lines.join('\n');
+}
+
+// Aviso cuando el panel agrega una charla que faltaba (alumno con horarios
+// vacios): mismo formato que el cambio, con el verbo "agregamos".
+function adminAddBody_(name, addedItems, items) {
+  var lines = [
+    'Hola ' + mailLine_(name) + ':',
+    '',
+    'Te escribimos desde la organización de la ' + EVENT_TITLE_ + '.',
+    ''
+  ];
+  if (addedItems.length === 1) {
+    var a0 = addedItems[0];
+    lines.push('Agregamos tu charla del horario de ' + mailLine_(a0.horario) + ': "' +
+      mailLine_(a0.titulo) + '"' + (mailLugar_(a0.lugar) ? ' (' + mailLugar_(a0.lugar) + ')' : '') + '.');
+  } else {
+    lines.push('Agregamos las charlas que faltaban:');
+    for (var i = 0; i < addedItems.length; i++) {
+      var a = addedItems[i];
+      lines.push('- ' + mailLine_(a.horario) + ': "' + mailLine_(a.titulo) + '"' +
+        (mailLugar_(a.lugar) ? ' (' + mailLugar_(a.lugar) + ')' : ''));
+    }
+  }
+  lines.push('');
+  lines.push('Así queda tu inscripción:');
+  lines = lines.concat(mailCharlasList_(items));
+  lines.push('');
+  lines.push('Si tenés alguna duda, respondé este mail y lo revisamos.');
   lines.push('');
   lines.push(PANEL_LINK);
   lines.push('');
@@ -990,16 +1042,9 @@ function scheduleStudentMail_(prev, post, s, talk, slots, talksById, cfg, action
   var doneBefore = Object.keys(slotsBefore).length >= slotsCount;
   var doneAfter = Object.keys(slotsAfter).length >= slotsCount;
   if (!doneAfter) return;
-  // validateStudentInput ya puede traer el apellido pegado al nombre: no lo
-  // repite (Ana + Gomez = "Ana Gomez", no "Ana Gomez Gomez").
-  var nombre = String(s.nombre || '').trim();
-  var apellido = String(s.apellido || '').trim();
-  var name = nombre;
-  if (apellido) {
-    var normN = EsiCore.normalizeText(nombre);
-    var normA = EsiCore.normalizeText(apellido);
-    if (normN.slice(-normA.length) !== normA) name = nombre + ' ' + apellido;
-  }
+  // El padron puede venir "Apellido, Nombre" o con el apellido ya pegado:
+  // displayName_ arma un saludo limpio en los dos casos.
+  var name = displayName_(s.nombre, s.apellido);
   var items = itemsForEmail_(mineMap_(post, s.email), slots, talksById);
   var dest = queueDestination_(s.email, cfg);
   // Ensayo sin remitente: ni una fila ni nada. Antes el aviso se perdian en
@@ -4733,14 +4778,7 @@ function apiAdminDropOvercupo(cred, signupIds, notify) {
               }
               otras = itemsForEmail_(bySlot, slots, talkById);
             } catch (eOtras) { }
-            var nomM = String(info.nombre || '').trim();
-            var apeM = String(info.apellido || '').trim();
-            var name = nomM;
-            if (apeM) {
-              var normNM = EsiCore.normalizeText(nomM);
-              var normAM = EsiCore.normalizeText(apeM);
-              if (normNM.slice(-normAM.length) !== normAM) name = nomM + ' ' + apeM;
-            }
+            var name = displayName_(info.nombre, info.apellido);
             upsertPendingMail_(dest, 'sobrecupo',
               'Cambiá una charla - ' + EVENT_TITLE_,
               overcupoBody_(name, talkM, slotM, otras));
@@ -4902,7 +4940,7 @@ function apiAdminDuplicates(cred) {
   }
 }
 
-function apiAdminAddStudent(cred, data) {
+function apiAdminAddStudent(cred, data, flush) {
   var auth = adminAuth_(cred);
   var perm = requireAdmin_(auth);
   if (!perm.ok) return { ok: false, message: perm.message };
@@ -4914,7 +4952,7 @@ function apiAdminAddStudent(cred, data) {
   if (Object.prototype.toString.call(ids) !== '[object Array]' || !ids.length) {
     return { ok: false, message: 'Elegí al menos una charla.' };
   }
-  return withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+  var resp = withScriptLock_(ADMIN_LOCK_MS * 2, function () {
     try {
       var talks = readTalksCached_();
       var talkById = {};
@@ -4926,10 +4964,12 @@ function apiAdminAddStudent(cred, data) {
       var counts = cupoCounts_(signups, cfg);
       var bySlot = {};
       var mine = {};
+      var hadReal = false;
       for (var m = 0; m < signups.length; m++) {
         if (signups[m].emailKey === v.email) {
           bySlot[Number(signups[m].slot_id)] = true;
           mine[String(signups[m].talk_id)] = true;
+          if (!signups[m].prueba) hadReal = true;
         }
       }
       var chosen = [];
@@ -4963,11 +5003,48 @@ function apiAdminAddStudent(cred, data) {
         added.push({ id: id, talk_id: chosen[k].id });
       }
       invalidateDataCache_();
-      return { ok: true, added: added, message: 'Alumno anotado.' };
+      scheduleRebuilds_();
+      // Si el alumno ya tenia charlas reales, el alta es un cambio: aviso.
+      var mail = { queued: false, sent: 0 };
+      if (hadReal && convertBool_(cfg[CONFIG_MAIL_WELCOME])) {
+        try {
+          var slotsMail = readSlots_();
+          var post = signups.slice();
+          for (var q = 0; q < chosen.length; q++) {
+            post.push({ emailKey: v.emailKey, slot_id: Number(chosen[q].slot_id), talk_id: String(chosen[q].id) });
+          }
+          var items = itemsForEmail_(mineMap_(post, v.email), slotsMail, talkById);
+          var dest = queueDestination_(v.email, cfg);
+          if (!dest) dest = String(v.email || '').trim().toLowerCase();
+          if (dest) {
+            var addedItems = [];
+            for (var w = 0; w < chosen.length; w++) {
+              addedItems.push({
+                horario: slotLabelFor_(slotsMail, chosen[w].slot_id),
+                titulo: chosen[w].titulo,
+                lugar: chosen[w].lugar
+              });
+            }
+            upsertPendingMail_(dest, 'cambio_admin',
+              'Actualizamos tu inscripción - ' + EVENT_TITLE_,
+              adminAddBody_(displayName_(v.nombre, v.apellido), addedItems, items));
+            mail.queued = true;
+            try { ensureMailQueueTrigger_(); } catch (eT) { }
+          }
+        } catch (eMail) { }
+      }
+      return { ok: true, added: added, mail: mail, message: 'Alumno anotado.' };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
   });
+  if (resp && resp.ok && resp.mail && resp.mail.queued && flush !== false) {
+    try {
+      var flushed = flushMailQueue_(Date.now() + MAIL_QUEUE_GRACE_MS);
+      if (flushed) resp.mail.sent = Number(flushed.sent) || 0;
+    } catch (eFlush) { }
+  }
+  return resp;
 }
 
 function apiAdminCorrectStudent(cred, email, data) {
@@ -5072,14 +5149,7 @@ function apiAdminMoveTalk(cred, signupId, talkId, flush) {
             var dest = queueDestination_(current.email, cfgMail);
             if (!dest) dest = String(current.email || '').trim().toLowerCase();
             if (dest) {
-              var nomM = String(current.nombre || '').trim();
-              var apeM = String(current.apellido || '').trim();
-              var nameM = nomM;
-              if (apeM) {
-                var normNM = EsiCore.normalizeText(nomM);
-                var normAM = EsiCore.normalizeText(apeM);
-                if (normNM.slice(-normAM.length) !== normAM) nameM = nomM + ' ' + apeM;
-              }
+              var nameM = displayName_(current.nombre, current.apellido);
               var horario = slotLabelFor_(slotsMail, talk.slot_id);
               if (pendingMailType_(dest) === 'bienvenida') {
                 // Todavia no le salio la bienvenida: se re-escribe con el
