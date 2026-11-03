@@ -1440,8 +1440,13 @@
       transition: transform var(--dur-1) var(--ease-out);
     }
     .present-btn.on { color: #FAF8F5; background: var(--btn-bg-hi); border-color: var(--btn-bg-hi); }
+    .present-btn.absent-btn.on { color: var(--paper); background: var(--danger); border-color: var(--danger); }
     .present-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+    .mark-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; order: 3; }
     .roster-row.is-present .roster-name { text-decoration: line-through; opacity: .75; }
+    .roster-row.is-absent { box-shadow: inset 3px 0 0 var(--danger); }
+    .roster-row.is-absent .roster-name { opacity: .75; }
+    .roster-row.is-present .present-btn, .roster-row.is-absent .absent-btn { animation: popIn .2s var(--ease-pop); }
     .roster-row { transition: none; }
     .roster-row:hover { background: var(--surface-2); }
     .roster-row:focus-within { background: var(--accent-soft); }
@@ -2291,7 +2296,7 @@
     body.admin .roster-row { min-height: 58px; }
     body.admin #charla-list .roster-row:nth-child(even):not(.is-present) { background: var(--surface-2); }
     body.admin .present-btn:not(.on) {
-      border-radius: 12px; padding: 10px 18px; min-width: 108px;
+      border-radius: 12px; padding: 10px 12px; min-width: 96px;
       color: var(--ink); background: var(--surface-2); border-color: var(--line-strong);
     }
 
@@ -2808,6 +2813,7 @@
             <div class="status-chips" id="charla-filtro" role="group" aria-label="Filtrar por asistencia">
               <button type="button" data-filter="all" class="active" aria-pressed="true">Todos</button>
               <button type="button" data-filter="present" aria-pressed="false">Presentes</button>
+              <button type="button" data-filter="absent" aria-pressed="false">Ausentes</button>
               <button type="button" data-filter="faltan" aria-pressed="false">Faltan</button>
             </div>
             <span class="live-dot" id="live-dot" aria-hidden="true"></span>
@@ -4185,6 +4191,7 @@
             signups[k].talk_id = String(talkId);
             signups[k].ts = Date.now();
             signups[k].presente = false;
+            signups[k].ausente = false;
           }
         }
         message = 'Listo, cambiaste de charla.';
@@ -4233,6 +4240,7 @@
           talkTitulo: titulos[s.talk_id] || s.talk_id,
           lugar: lugares[s.talk_id] || '',
           presente: !!s.presente,
+          ausente: !!s.ausente,
           prueba: !!s.prueba
         };
       }) : [];
@@ -4603,7 +4611,8 @@
           nombre: demoGiven_(signups[si].nombre, signups[si].apellido || rosterAps[EsiClient.normalizeEmail(signups[si].email)] || ''),
           nombreCompleto: signups[si].nombre || '',
           curso: signups[si].curso || '',
-          presente: !!signups[si].presente
+          presente: !!signups[si].presente,
+          ausente: !!signups[si].ausente
         };
         if (admin) st.email = signups[si].email;
         row.students.push(st);
@@ -4661,7 +4670,8 @@
             slot_id: slots[di].id, slot: slots[di].nombre, slotLabel: slots[di].label,
             talk_id: talkInfo ? talkInfo.id : '', titulo: talkInfo ? talkInfo.titulo : '',
             lugar: talkInfo ? (talkInfo.lugar || '') : '', signup_id: choice ? choice.id : '',
-            presente: !!(choice && choice.presente)
+            presente: !!(choice && choice.presente),
+            ausente: !!(choice && choice.ausente)
           });
         }
         var rs = {
@@ -4782,6 +4792,7 @@
           curso: signups[j].curso,
           slotLabel: demoSlotLabel_(signups[j].slot_id),
           presente: !!signups[j].presente,
+          ausente: !!signups[j].ausente,
           dni: dniT
         };
         if (admin) row.email = signups[j].email;
@@ -4789,8 +4800,10 @@
       }
       demoSort_(rows);
       var presentesD = 0;
+      var ausentesD = 0;
       for (var pd = 0; pd < rows.length; pd++) {
         if (rows[pd].presente) presentesD++;
+        else if (rows[pd].ausente) ausentesD++;
       }
       return {
         ok: true,
@@ -4806,6 +4819,7 @@
         },
         count: rows.length,
         presentes: presentesD,
+        ausentes: ausentesD,
         students: rows
       };
     }
@@ -5025,7 +5039,9 @@
             if (String(all[bj].id) === String(batch[bi] && batch[bi].id)) { hitRow = all[bj]; break; }
           }
           if (!hitRow) { missingIds.push(String(batch[bi] && batch[bi].id)); continue; }
-          hitRow.presente = !!batch[bi].presente;
+          var markP = !!batch[bi].presente;
+          hitRow.presente = markP;
+          hitRow.ausente = !!batch[bi].ausente && !markP;
           doneIds.push(String(hitRow.id));
         }
         if (doneIds.length) demoWrite('esi_demo_signups', all);
@@ -5033,11 +5049,16 @@
       }
       if (fn === 'apiAdminSetPresent') {
         var signupsP = demoSignups();
+        var presentP = !!a[2];
+        var absentP = !!a[3] && !presentP;
         for (var q = 0; q < signupsP.length; q++) {
-          if (String(signupsP[q].id) === String(a[1])) signupsP[q].presente = !!a[2];
+          if (String(signupsP[q].id) === String(a[1])) {
+            signupsP[q].presente = presentP;
+            signupsP[q].ausente = absentP;
+          }
         }
         demoWrite('esi_demo_signups', signupsP);
-        return Promise.resolve({ ok: true, presente: !!a[2] });
+        return Promise.resolve({ ok: true, presente: presentP, ausente: absentP });
       }
       if (fn === 'apiAdminTalkRoster') return Promise.resolve(demoTalkRoster(a[1], demoRole_(a[0])));
       if (fn === 'apiAdminPending') return Promise.resolve(demoPending(demoRole_(a[0])));
@@ -7377,6 +7398,14 @@
     }
 
     function aOnPresent(signupId) {
+      aToggleMark_(signupId, 'presente');
+    }
+
+    function aOnAbsent(signupId) {
+      aToggleMark_(signupId, 'ausente');
+    }
+
+    function aToggleMark_(signupId, kind) {
       if (aMarkBusy[String(signupId)]) return;
       if (!adminCred || !aTalkData) return;
       var id = String(signupId);
@@ -7385,24 +7414,34 @@
         if (String(aTalkData.students[i].id) === id) { target = aTalkData.students[i]; break; }
       }
       if (!target) return;
-      var prev = !!target.presente;
-      var next = !prev;
-      target.presente = next;
+      var prev = { presente: !!target.presente, ausente: !!target.ausente };
+      var nextPresente = kind === 'presente' ? !prev.presente : false;
+      var nextAusente = kind === 'ausente' ? !prev.ausente : false;
+      // Si se toca el botón que ya está activo, se limpia la marca. Los dos
+      // estados nunca quedan prendidos a la vez.
+      if (kind === 'presente' && prev.presente) { nextPresente = false; nextAusente = false; }
+      if (kind === 'ausente' && prev.ausente) { nextPresente = false; nextAusente = false; }
+      target.presente = nextPresente;
+      target.ausente = nextAusente;
       var presentes = 0;
+      var ausentes = 0;
       for (var j = 0; j < aTalkData.students.length; j++) {
         if (aTalkData.students[j].presente) presentes++;
+        else if (aTalkData.students[j].ausente) ausentes++;
       }
       aTalkData.presentes = presentes;
+      aTalkData.ausentes = ausentes;
       aRenderTalk();
-      haptic_(next ? 14 : 8);
-      aQueueMark_(id, next);
+      haptic_(nextPresente || nextAusente ? 14 : 8);
+      aQueueMark_(id, nextPresente, nextAusente);
       aMarkBusy[id] = true;
-      call('apiAdminSetPresent', [adminCred, id, next])
+      call('apiAdminSetPresent', [adminCred, id, nextPresente, nextAusente])
         .then(function (resp) {
           delete aMarkBusy[id];
           if (!resp.ok) {
             aUnqueue_(id);
-            target.presente = prev;
+            target.presente = prev.presente;
+            target.ausente = prev.ausente;
             aRenderTalk();
             aBanner(resp.message || 'No se pudo marcar.', 'err');
             return;
@@ -7418,18 +7457,24 @@
 
     function aOfferUndo_(id, prev) {
       var who = '';
+      var current = null;
       if (aTalkData && aTalkData.students) {
         for (var ui = 0; ui < aTalkData.students.length; ui++) {
-          if (String(aTalkData.students[ui].id) === String(id)) { who = aTalkData.students[ui].nombre || ''; break; }
+          if (String(aTalkData.students[ui].id) === String(id)) {
+            who = aTalkData.students[ui].nombre || '';
+            current = aTalkData.students[ui];
+            break;
+          }
         }
       }
+      var what = current && current.presente ? ' presente.' : (current && current.ausente ? ' ausente.' : ' sin marcar.');
       // Toast con Deshacer: se ve AUNQUE el guia scrollee al final de la lista
       // (el banner a-msg vive arriba del pane y scrollea con el contenido).
-      toast((who ? who + ' presente.' : 'Marcado.'), 'ok', {
+      toast((who ? who + what : 'Marcado.'), 'ok', {
         label: 'Deshacer',
         fn: function () {
           if (!adminCred) return;
-          call('apiAdminSetPresent', [adminCred, id, prev])
+          call('apiAdminSetPresent', [adminCred, id, prev.presente, prev.ausente])
             .then(function (resp) {
               if (!resp.ok) { aBanner(resp.message || 'No se pudo deshacer.', 'err'); return; }
               aUnqueue_(id);
@@ -7437,7 +7482,7 @@
               aLoadTalk();
             })
             .catch(function () {
-              aQueueMark_(id, prev);
+              aQueueMark_(id, prev.presente, prev.ausente);
               aBanner('Sin conexión. Se reintentará.', 'err');
             });
         }
@@ -7453,9 +7498,14 @@
     }
     var A_QUEUE_MAX = 2000;
     function aWriteQueue_(list) { lsSet(A_MARK_QUEUE, JSON.stringify(list.slice(-A_QUEUE_MAX))); }
-    function aQueueMark_(id, presente) {
+    function aQueueMark_(id, presente, ausente) {
       var list = aReadQueue_().filter(function (x) { return String(x.id) !== String(id); });
-      list.push({ id: String(id), presente: !!presente, t: Date.now() });
+      list.push({
+        id: String(id),
+        presente: !!presente,
+        ausente: !!ausente && !presente,
+        t: Date.now()
+      });
       aWriteQueue_(list);
     }
     function aUnqueue_(id) {
@@ -7465,13 +7515,26 @@
       if (!d || !d.students) return;
       var q = aReadQueue_();
       var by = {};
-      for (var i = 0; i < q.length; i++) by[String(q[i].id)] = !!q[i].presente;
+      for (var i = 0; i < q.length; i++) {
+        by[String(q[i].id)] = {
+          presente: !!q[i].presente,
+          ausente: !!q[i].ausente && !q[i].presente
+        };
+      }
       for (var j = 0; j < d.students.length; j++) {
-        if (Object.prototype.hasOwnProperty.call(by, String(d.students[j].id))) d.students[j].presente = by[String(d.students[j].id)];
+        var mark = by[String(d.students[j].id)];
+        if (!mark) continue;
+        d.students[j].presente = mark.presente;
+        d.students[j].ausente = mark.ausente;
       }
       var presentes = 0;
-      for (var k = 0; k < d.students.length; k++) if (d.students[k].presente) presentes++;
+      var ausentes = 0;
+      for (var k = 0; k < d.students.length; k++) {
+        if (d.students[k].presente) presentes++;
+        else if (d.students[k].ausente) ausentes++;
+      }
       d.presentes = presentes;
+      d.ausentes = ausentes;
     }
     var A_MARK_BATCH = 50;
     function aFlushMarks_() {
@@ -7486,7 +7549,7 @@
         // Un solo viaje por bloque: con 1500 marcas encoladas el flush de a una
         // tardaba minutos y el celular se trababa.
         call('apiAdminSetPresentBatch', [adminCred, chunk.map(function (row) {
-          return { id: row.id, presente: !!row.presente };
+          return { id: row.id, presente: !!row.presente, ausente: !!row.ausente && !row.presente };
         })])
           .then(function (resp) {
             if (aAuthLost(resp)) return;
@@ -7524,6 +7587,7 @@
       if (!d) return;
       var focusEl = document.activeElement;
       var focusId = focusEl && focusEl.getAttribute ? focusEl.getAttribute('data-id') : '';
+      var focusMark = focusEl && focusEl.getAttribute ? focusEl.getAttribute('data-mark') : '';
       var q = $('input-buscar-charla') ? $('input-buscar-charla').value : '';
       var fCurso = $('filter-curso-charla') ? $('filter-curso-charla').value : '';
       tweenCount_($('charla-count'), d.count, '', ' de ' + d.talk.cupo + ' lugares');
@@ -7549,17 +7613,19 @@
       var rosterKey = String(aTalkId) + '|' + q + '|' + fCurso + '|' + aTalkFilter;
       aRosterStagger = rosterKey !== aRosterKey;
       aRosterKey = rosterKey;
-      var allChip = null, presChip = null, faltChip = null;
+      var allChip = null, presChip = null, absChip = null, faltChip = null;
       try {
         var chipNodes = $('charla-filtro').querySelectorAll('button');
         for (var ci = 0; ci < chipNodes.length; ci++) {
           if (chipNodes[ci].getAttribute('data-filter') === 'all') allChip = chipNodes[ci];
           if (chipNodes[ci].getAttribute('data-filter') === 'present') presChip = chipNodes[ci];
+          if (chipNodes[ci].getAttribute('data-filter') === 'absent') absChip = chipNodes[ci];
           if (chipNodes[ci].getAttribute('data-filter') === 'faltan') faltChip = chipNodes[ci];
         }
       } catch (eChips) { }
       if (allChip) allChip.textContent = 'Todos ' + d.count;
       if (presChip) presChip.textContent = 'Presentes ' + (d.presentes || 0);
+      if (absChip) absChip.textContent = 'Ausentes ' + (d.ausentes || 0);
       if (faltChip) faltChip.textContent = 'Faltan ' + Math.max(0, d.count - (d.presentes || 0));
       var rows = '';
       var shown = 0;
@@ -7569,16 +7635,22 @@
         if (st.curso) cursos[st.curso] = 1;
         if (fCurso && st.curso !== fCurso) continue;
         if (aTalkFilter === 'present' && !st.presente) continue;
+        if (aTalkFilter === 'absent' && !st.ausente) continue;
         if (aTalkFilter === 'faltan' && st.presente) continue;
-        // Filtro 'Faltan' eliminado: solo se marcan presentes.
         if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
         shown++;
-        rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + '"'
+        rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + (st.ausente ? ' is-absent' : '') + '"'
           + (aRosterStagger ? ' style="--i:' + shown + '"' : '') + '>'
+          + '<span class="mark-actions">'
           + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
-          + ' data-id="' + esc(st.id) + '" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
+          + ' data-id="' + esc(st.id) + '" data-mark="presente" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
           + ' aria-label="' + (st.presente ? 'Quitar presente a ' : 'Marcar presente a ')
           + esc(aDisplay_(st, false)) + '">Presente</button>'
+          + '<button class="present-btn absent-btn' + (st.ausente ? ' on' : '') + '" type="button"'
+          + ' data-id="' + esc(st.id) + '" data-mark="ausente" aria-pressed="' + (st.ausente ? 'true' : 'false') + '"'
+          + ' aria-label="' + (st.ausente ? 'Quitar ausente a ' : 'Marcar ausente a ')
+          + esc(aDisplay_(st, false)) + '">Ausente</button>'
+          + '</span>'
           + '<span class="roster-who">' + aAvatarHtml_(st)
           + aStudentNameHtml_(st, 'roster-name', true) + '</span>'
           + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
@@ -7598,7 +7670,8 @@
         var list = $('charla-list');
         var buttons = list && list.querySelectorAll ? list.querySelectorAll('.present-btn') : [];
         for (var b = 0; b < buttons.length; b++) {
-          if (buttons[b].getAttribute('data-id') === focusId) {
+          if (buttons[b].getAttribute('data-id') === focusId
+            && (!focusMark || buttons[b].getAttribute('data-mark') === focusMark)) {
             try { buttons[b].focus(); } catch (e) { }
             break;
           }
@@ -8116,20 +8189,32 @@
       var q = aReadQueue_();
       if (!q.length) return;
       var by = {};
-      for (var i = 0; i < q.length; i++) by[String(q[i].id)] = !!q[i].presente;
+      for (var i = 0; i < q.length; i++) {
+        by[String(q[i].id)] = {
+          presente: !!q[i].presente,
+          ausente: !!q[i].ausente && !q[i].presente
+        };
+      }
       var list = aReports.talks || [];
       for (var t = 0; t < list.length; t++) {
         var students = list[t].students || [];
         var hit = false;
         var presentes = 0;
+        var ausentes = 0;
         for (var s = 0; s < students.length; s++) {
           var key = String(students[s].id);
-          if (Object.prototype.hasOwnProperty.call(by, key)) { students[s].presente = by[key]; hit = true; }
+          var mark = by[key];
+          if (mark) {
+            students[s].presente = mark.presente;
+            students[s].ausente = mark.ausente;
+            hit = true;
+          }
           if (students[s].presente) presentes++;
+          else if (students[s].ausente) ausentes++;
         }
         if (hit) {
           list[t].presentes = presentes;
-          list[t].ausentes = Math.max(0, Number(list[t].anotados || 0) - presentes);
+          list[t].ausentes = ausentes;
         }
       }
     }
@@ -9261,10 +9346,10 @@
     function aDownloadCsv() {
       var d = aData;
       if (!d) return;
-      var rows = [['Apellido', 'Nombre', 'Curso', 'Horario', 'Charla', 'Lugar', 'Presente', 'Mail']];
+      var rows = [['Apellido', 'Nombre', 'Curso', 'Horario', 'Charla', 'Lugar', 'Presente', 'Ausente', 'Mail']];
       for (var i = 0; i < d.signups.length; i++) {
         var s = d.signups[i];
-        rows.push([s.apellido || '', s.nombre, s.curso, s.slotLabel, s.talkTitulo, s.lugar || '', s.presente ? 'si' : 'no', s.email]);
+        rows.push([s.apellido || '', s.nombre, s.curso, s.slotLabel, s.talkTitulo, s.lugar || '', s.presente ? 'si' : 'no', s.ausente ? 'si' : 'no', s.email]);
       }
       var csv = '\uFEFF' + rows.map(function (r) {
         return r.map(aCsvCell).join(';');
@@ -10283,7 +10368,9 @@
       $('charla-list').addEventListener('click', function (ev) {
         var btn = ev.target && ev.target.classList && ev.target.classList.contains('present-btn')
           ? ev.target : null;
-        if (btn) aOnPresent(btn.getAttribute('data-id'));
+        if (!btn) return;
+        if (btn.getAttribute('data-mark') === 'ausente') aOnAbsent(btn.getAttribute('data-id'));
+        else aOnPresent(btn.getAttribute('data-id'));
       });
       $('btn-refresh-pend').addEventListener('click', function () { aLoadPending(); });
       $('btn-save-config').addEventListener('click', aSaveConfig);

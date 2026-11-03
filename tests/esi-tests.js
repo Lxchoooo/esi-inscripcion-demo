@@ -2268,10 +2268,11 @@ t('parseRoster accepts a documento header in any order', () => {
 });
 
 t('CSV keeps the mail last and includes the attendance columns', () => {
-  if (!/\[\['Apellido', 'Nombre', 'Curso', 'Horario', 'Charla', 'Lugar', 'Presente', 'Mail'\]\]/.test(panelSrc)) {
+  if (!/\[\['Apellido', 'Nombre', 'Curso', 'Horario', 'Charla', 'Lugar', 'Presente', 'Ausente', 'Mail'\]\]/.test(panelSrc)) {
     throw new Error('csv header changed');
   }
   if (!/s\.presente \? 'si' : 'no'/.test(panelSrc)) throw new Error('csv present column missing');
+  if (!/s\.ausente \? 'si' : 'no'/.test(panelSrc)) throw new Error('csv absent column missing');
 });
 
 
@@ -3541,7 +3542,8 @@ t('la hoja Alumnos ordena por ciclo, curso y apellido', () => {
   assertEq(orden[3], '2°B/Ruiz', 'la fila de prueba queda en su curso: ' + orden.join(' '));
   assertEq(orden[4], '10°A/Sosa', 'orientado al final y 10 despues de 2: ' + orden.join(' '));
   assertEq(rows[4][8], 'no', 'presente se escribe si/no');
-  assertEq(rows[4][9], 'si', 'prueba marcada en su columna');
+  assertEq(rows[4][9], 'no', 'ausente vacio en su columna');
+  assertEq(rows[4][10], 'si', 'prueba marcada en su columna');
   assertEq(rows[3][8], 'si', 'Ana Ruiz presente');
   assertEq(rows[1][6], 'B1 · Ansiedad', 'charla con id y titulo');
   assertEq(rows[1][5], '10:30 a 11:20', 'horario de la charla');
@@ -3586,10 +3588,11 @@ t('las hojas derivadas conservan lo que se escribe a mano', () => {
 
   // Alguien agrega una columna y escribe una fila a mano.
   alumnos.data[0].push('Nota');
+  const notaIdx = alumnos.data[0].length - 1;
   const filaAna = alumnos.data.findIndex((r) => String(r[4]).indexOf('ana2029@') === 0);
   if (filaAna < 1) throw new Error('no encontre la fila de Ana: ' + JSON.stringify(alumnos.data));
-  alumnos.data[filaAna][10] = 'llegó tarde';
-  alumnos.data.push(['Básico', '1°A', 'Extra', 'Alumno', 'z@x.com', '10:30 a 11:20', 'B9 · Manual', '', 'no', 'no', 'anotado a mano']);
+  alumnos.data[filaAna][notaIdx] = 'llegó tarde';
+  alumnos.data.push(['Básico', '1°A', 'Extra', 'Alumno', 'z@x.com', '10:30 a 11:20', 'B9 · Manual', '', 'no', 'no', 'no', 'anotado a mano']);
 
   api.rebuildAlumnos_();
 
@@ -4463,8 +4466,8 @@ t('r15: cambiar de charla desmarca la asistencia', () => {
   if (!/sh\.getRange\(row, map\.presente \+ 1\)\.setValue\(''\)/.test(codeSrc)) {
     throw new Error('Code.gs no limpia presente al cambiar de charla');
   }
-  if (!/setSignupFields_\(sh, map, row, \{ talk_id: String\(talk\.id\), presente: '' \}\)/.test(codeSrc)) {
-    throw new Error('la correccion manual no limpia presente');
+  if (!/setSignupFields_\(sh, map, row, \{ talk_id: String\(talk\.id\), presente: '', ausente: '' \}\)/.test(codeSrc)) {
+    throw new Error('la correccion manual no limpia presente/ausente');
   }
   if (!/signups\[k\]\.presente = false;/.test(panelHtml)) throw new Error('el demo no limpia presente');
 });
@@ -4474,8 +4477,8 @@ t('r15: la asistencia se encola antes de la request', () => {
   const j = panelHtml.indexOf('function aOfferUndo_', i);
   const body = panelHtml.slice(i, j);
   if (body.indexOf("call('apiAdminSetPresent'") < 0) throw new Error('no llama al api');
-  if (body.indexOf('aQueueMark_(id, next)') < 0) throw new Error('no encola la marca');
-  if (body.indexOf('aQueueMark_(id, next)') > body.indexOf("call('apiAdminSetPresent'")) {
+  if (body.indexOf('aQueueMark_(id, nextPresente, nextAusente)') < 0) throw new Error('no encola la marca');
+  if (body.indexOf('aQueueMark_(id, nextPresente, nextAusente)') > body.indexOf("call('apiAdminSetPresent'")) {
     throw new Error('encola despues de la request: se pierde si cierran la pestana');
   }
   if (!/if \(!resp\.ok\) \{\n            aUnqueue_\(id\);/.test(body)) throw new Error('no descarta la marca si el servidor falla');
@@ -5723,6 +5726,35 @@ t('r79: la pantalla de listo tiene salir chiquito al fondo', () => {
   if (!/sSalirDobleToque_\('btn-done-salir'\)/.test(panelHtml)) throw new Error('el boton de listo no esta cableado');
   if (!/sSalirDobleToque_\('btn-alumno-salir'\)/.test(panelHtml)) throw new Error('el salir del panel no usa el helper');
   if (!/function sSalirDobleToque_\(id\)/.test(panelHtml)) throw new Error('falta el helper del doble toque');
+});
+
+t('r80: el botón de ausente guarda la columna y no se mezcla con presente', () => {
+  const services = backendStub({ ADMIN_PIN: '1111' });
+  const api = backendApi(services, 'apiAdminSetPresent, apiAdminSetPresentBatch, apiAdminTalkRoster');
+  let r = api.apiAdminSetPresent('1111', 's1', false, true);
+  assertEq(r.ok, true, 'marca ausente ok: ' + r.message);
+  assertEq(r.presente, false, 'ausente no queda presente');
+  assertEq(r.ausente, true, 'ausente queda marcado');
+  const sh = services.sheets.Signups;
+  const colP = sh.data[0].indexOf('presente');
+  const colA = sh.data[0].indexOf('ausente');
+  if (colP < 0 || colA < 0) throw new Error('faltan columnas presente/ausente');
+  assertEq(sh.data[1][colP], 'no', 'presente se apaga');
+  assertEq(sh.data[1][colA], 'si', 'ausente se prende');
+  const roster = api.apiAdminTalkRoster('1111', 'B1');
+  assertEq(roster.ok, true, 'roster ok');
+  assertEq(roster.ausentes, 1, 'roster cuenta ausentes');
+  const s1 = (roster.students || []).filter((x) => String(x.id) === 's1')[0];
+  assertEq(s1.ausente, true, 'roster devuelve ausente');
+  r = api.apiAdminSetPresent('1111', 's1', true, true);
+  assertEq(r.presente, true, 'presente gana');
+  assertEq(r.ausente, false, 'no pueden estar los dos');
+  r = api.apiAdminSetPresentBatch('1111', [{ id: 's2', presente: false, ausente: true }]);
+  assertEq(r.ok, true, 'lote ausente ok');
+  assertEq(sh.data[2][colA], 'si', 'lote guarda ausente');
+  if (!/data-mark="ausente"/.test(panelSrc)) throw new Error('falta boton ausente');
+  if (!/function aOnAbsent\(signupId\)/.test(panelSrc)) throw new Error('falta aOnAbsent');
+  if (!/class="present-btn absent-btn/.test(panelSrc)) throw new Error('falta clase del boton ausente');
 });
 
 summary();

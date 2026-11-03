@@ -1641,13 +1641,13 @@ var EXPECTED_COLUMNS_ = {
   Config: ['clave', 'valor'],
   Slots: ['id', 'nombre', 'inicio', 'fin', 'orden'],
   Talks: ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'],
-  Signups: ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
+  Signups: ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'apellido', 'recordatorio', 'prueba'],
   Sessions: ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'],
   Mails: ['email', 'fecha', 'asunto'],
   MailQueue: ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
   Log: ['fecha', 'accion', 'signup_id', 'detalle'],
   Accesos: ['fecha', 'resultado', 'rol', 'dispositivo'],
-  Backup: ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'],
+  Backup: ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'apellido', 'recordatorio', 'prueba'],
   Resumen: ['talk_id', 'slot_id', 'ciclo', 'anotados', 'presentes']
 };
 
@@ -2018,6 +2018,7 @@ function apiJsonp_(p) {
 
 function setup(quiet) {
   var ss = SpreadsheetApp.getActive();
+  ensureGuidePin_();
   ensureSheet_(ss, CONFIG_SHEET, ['clave', 'valor'], [
     ['evento_abierto', 'abierto']
   ]);
@@ -2039,17 +2040,18 @@ function setup(quiet) {
   ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
   ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
   ensureSheet_(ss, ACCESS_SHEET, ['fecha', 'resultado', 'rol', 'dispositivo'], []);
-  ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
+  ensureSheet_(ss, BACKUP_SHEET, ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'apellido', 'recordatorio', 'prueba'], []);
+  ensureColumn_(sheet_(BACKUP_SHEET), 'ausente');
   ensureSheet_(ss, ERRORS_SHEET, ['fecha', 'mensaje', 'origen', 'linea', 'stack', 'version', 'url', 'ua'], []);
   ensureSheet_(ss, MAIL_QUEUE_SHEET, ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'], []);
   ensureConfigDefault_(CONFIG_MAIL_WELCOME, 'si');
   var signupsSh = sheet_(SIGNUPS_SHEET);
   ensureColumn_(signupsSh, 'presente');
+  ensureColumn_(signupsSh, 'ausente');
   ensureColumn_(signupsSh, 'apellido');
   ensureColumn_(signupsSh, 'recordatorio');
   ensureColumn_(signupsSh, 'prueba');
   ensureAdminPin_();
-  ensureGuidePin_();
   noteSetupRun_();
   configureBackupTrigger_();
   try { ensureMailQueueTrigger_(); } catch (eQ) { }
@@ -2278,12 +2280,14 @@ function preceptorRows_(signups, students, talks, slots) {
   var cuposMap = {};
   var alumnos = {};
   var presentes = 0;
+  var ausentes = 0;
   for (var j = 0; j < signups.length; j++) {
     var s = signups[j];
     if (s.prueba) continue;
     var key = EsiCore.normalizeEmail(s.email);
     alumnos[key] = 1;
     if (s.presente) presentes++;
+    else if (s.ausente) ausentes++;
     var talk = talksById[String(s.talk_id)] || {};
     inscriptos.push({
       curso: String(s.curso || ''),
@@ -2294,7 +2298,8 @@ function preceptorRows_(signups, students, talks, slots) {
       charla: String(talk.titulo || s.talk_id || ''),
       slot: slotLabelFor_(slots, s.slot_id),
       lugar: String(talk.lugar || ''),
-      presente: s.presente ? 'SI' : 'no'
+      presente: s.presente ? 'SI' : 'no',
+      ausente: s.ausente ? 'SI' : 'no'
     });
     var key = String(s.talk_id);
     if (!cuposMap[key]) cuposMap[key] = 0;
@@ -2332,6 +2337,7 @@ function preceptorRows_(signups, students, talks, slots) {
     ['Alumnos con reservas', mailUnicos],
     ['Reservas', inscriptos.length],
     ['Presentes', presentes],
+    ['Ausentes', ausentes],
     ['Charlas con cupo completo', agotados]
   ];
   return { inscriptos: inscriptos, cupos: cupos, resumen: resumen };
@@ -2434,11 +2440,11 @@ function preceptorPlanillaRun_(force) {
     var stamp = Utilities.formatDate(new Date(), tz, 'dd/MM/yyyy HH:mm');
     fillPreceptorSheet_(ss, 'Resumen', ['Indicador', 'Valor'], data.resumen, { widths: [230, 110] });
     fillPreceptorSheet_(ss, 'Inscriptos',
-      ['Curso', 'Apellido', 'Nombre', 'DNI', 'Mail', 'Charla', 'Horario', 'Lugar', 'Presente'],
+      ['Curso', 'Apellido', 'Nombre', 'DNI', 'Mail', 'Charla', 'Horario', 'Lugar', 'Presente', 'Ausente'],
       data.inscriptos.map(function (r) {
-        return [r.curso, r.apellido, r.nombre, r.dni, r.email, r.charla, r.slot, r.lugar, r.presente];
+        return [r.curso, r.apellido, r.nombre, r.dni, r.email, r.charla, r.slot, r.lugar, r.presente, r.ausente];
       }),
-      { dniCol: 4, widths: [64, 130, 100, 96, 250, 240, 74, 96, 74] });
+      { dniCol: 4, widths: [64, 130, 100, 96, 250, 240, 74, 96, 74, 74] });
     fillPreceptorSheet_(ss, 'Cupos por charla',
       ['Charla', 'Horario', 'Lugar', 'Ciclo', 'Cupo', 'Anotados', 'Libres'],
       data.cupos.map(function (r) {
@@ -2557,16 +2563,35 @@ function backupSignups_() {
       var signups = readSignups_();
       if (!signups.length) return { ok: true, rows: 0, copies: 0 };
       var sh = sheet_(BACKUP_SHEET);
+      ensureColumn_(sh, 'presente');
+      ensureColumn_(sh, 'ausente');
+      var head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0];
       var stamp = new Date();
       var rows = [];
       for (var i = 0; i < signups.length; i++) {
         var s = signups[i];
-        rows.push([
-          stamp, s.id, s.ts, s.email, s.nombre, s.curso, s.ciclo, s.slot_id, s.talk_id,
-          s.presente ? 'si' : 'no', s.apellido, s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
-        ]);
+        var row = [];
+        for (var h = 0; h < head.length; h++) {
+          var key = EsiCore.normalizeText(head[h]);
+          if (key === 'backup_at') row.push(stamp);
+          else if (key === 'id') row.push(s.id);
+          else if (key === 'ts') row.push(s.ts);
+          else if (key === 'email' || key === 'mail') row.push(s.email);
+          else if (key === 'nombre') row.push(s.nombre);
+          else if (key === 'apellido') row.push(s.apellido);
+          else if (key === 'curso') row.push(s.curso);
+          else if (key === 'ciclo') row.push(s.ciclo);
+          else if (key === 'slot_id') row.push(s.slot_id);
+          else if (key === 'talk_id') row.push(s.talk_id);
+          else if (key === 'presente') row.push(s.presente ? 'si' : 'no');
+          else if (key === 'ausente') row.push(s.ausente ? 'si' : 'no');
+          else if (key === 'recordatorio') row.push(s.recordatorio ? 'si' : 'no');
+          else if (key === 'prueba') row.push(s.prueba ? 'si' : 'no');
+          else row.push('');
+        }
+        rows.push(row);
       }
-      if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 13).setValues(rows);
+      if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, head.length).setValues(rows);
       var copies = pruneBackup_(sh);
       return { ok: true, rows: rows.length, copies: copies };
     } catch (e) {
@@ -2878,7 +2903,7 @@ function readTalks_() {
 }
 
 function signupsHeaderMap_(head) {
-  var map = { id: -1, ts: -1, email: -1, nombre: -1, apellido: -1, curso: -1, ciclo: -1, slot_id: -1, talk_id: -1, presente: -1, recordatorio: -1, prueba: -1 };
+  var map = { id: -1, ts: -1, email: -1, nombre: -1, apellido: -1, curso: -1, ciclo: -1, slot_id: -1, talk_id: -1, presente: -1, ausente: -1, recordatorio: -1, prueba: -1 };
   for (var i = 0; i < (head || []).length; i++) {
     var h = EsiCore.normalizeText(head[i]);
     if (h === 'id') map.id = i;
@@ -2886,6 +2911,7 @@ function signupsHeaderMap_(head) {
     else if (h === 'email' || h === 'mail') map.email = i;
     else if (h === 'nombre') map.nombre = i;
     else if (h === 'presente') map.presente = i;
+    else if (h === 'ausente') map.ausente = i;
     else if (h === 'apellido') map.apellido = i;
     else if (h === 'curso') map.curso = i;
     else if (h === 'ciclo') map.ciclo = i;
@@ -2916,6 +2942,7 @@ function readSignups_() {
       slot_id: Number(map.slot_id >= 0 ? vals[i][map.slot_id] : vals[i][6]),
       talk_id: String(map.talk_id >= 0 ? vals[i][map.talk_id] : vals[i][7]),
       presente: map.presente >= 0 ? convertBool_(vals[i][map.presente]) : false,
+      ausente: map.ausente >= 0 ? convertBool_(vals[i][map.ausente]) : false,
       recordatorio: map.recordatorio >= 0 ? convertBool_(vals[i][map.recordatorio]) : false,
       prueba: map.prueba >= 0 ? convertBool_(vals[i][map.prueba]) : false,
       emailKey: EsiCore.normalizeEmail(vals[i][map.email])
@@ -2941,6 +2968,7 @@ function appendSignupRow_(student, talk) {
     else if (key === 'slot_id') row.push(Number(talk.slot_id));
     else if (key === 'talk_id') row.push(String(talk.id));
     else if (key === 'presente') row.push('');
+    else if (key === 'ausente') row.push('');
     else if (key === 'recordatorio') row.push(!!student.recordatorio);
     else if (key === 'prueba') row.push(!!student.prueba);
     else row.push('');
@@ -2958,6 +2986,18 @@ function presenteCol_(sh) {
   var col = Math.max(2, last + 1);
   sh.getRange(1, col).setValue('presente');
   return col;
+}
+
+function ausenteCol_(sh) {
+  return ensureColumn_(sh, 'ausente');
+}
+
+function setAttendanceMark_(sh, row, present, absent) {
+  var p = !!present;
+  var a = !!absent && !p;
+  sh.getRange(row, presenteCol_(sh)).setValue(p ? 'si' : 'no');
+  sh.getRange(row, ausenteCol_(sh)).setValue(a ? 'si' : 'no');
+  return { presente: p, ausente: a };
 }
 
 function studentsHeader_(head) {
@@ -4019,6 +4059,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
         slot_id: Number(talk.slot_id),
         talk_id: String(talk.id),
         presente: false,
+        ausente: false,
         recordatorio: !!s.recordatorio,
         prueba: !!s.prueba
       });
@@ -4033,6 +4074,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       sh.getRange(row, map.ts + 1).setValue(new Date());
       sh.getRange(row, map.talk_id + 1).setValue(talkId);
       if (map.presente >= 0) sh.getRange(row, map.presente + 1).setValue('');
+      if (map.ausente >= 0) sh.getRange(row, map.ausente + 1).setValue('');
       fresh = signups.map(function (x) {
         if (String(x.id) !== String(plan.signupId)) return x;
         var copia = {};
@@ -4041,6 +4083,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
         copia.talk_id = String(talk.id);
         copia.slot_id = Number(talk.slot_id);
         copia.presente = false;
+        copia.ausente = false;
         return copia;
       });
       message = 'Cambiaste tu charla de ese horario a ' + talk.titulo + '.';
@@ -4346,6 +4389,7 @@ function adminDataFor_(auth) {
         lugar: lugares[s.talk_id] || '',
         dni: dnis[s.emailKey] || '',
         presente: !!s.presente,
+        ausente: !!s.ausente,
         prueba: !!s.prueba
       };
     }) : [];
@@ -4592,7 +4636,8 @@ function apiAdminDuplicates(cred) {
         titulo: talk ? talk.titulo : s.talk_id,
         lugar: talk ? (talk.lugar || '') : '',
         slotLabel: slotLabelFor_(slots, s.slot_id),
-        presente: !!s.presente
+        presente: !!s.presente,
+        ausente: !!s.ausente
       });
     }
     var out = [];
@@ -4760,7 +4805,7 @@ function apiAdminMoveTalk(cred, signupId, talkId) {
       }
       var sh = sheet_(SIGNUPS_SHEET);
       var map = signupsHeaderMap_(sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]);
-      setSignupFields_(sh, map, row, { talk_id: String(talk.id), presente: '' });
+      setSignupFields_(sh, map, row, { talk_id: String(talk.id), presente: '', ausente: '' });
       logAction_('move_talk', signupId, talk.id);
       invalidateDataCache_();
       // cambiar charla no cambia longitud ni conteos: sin marca quedan las
@@ -5117,13 +5162,13 @@ function csvCell_(value) {
 function exportPersonalData_(signups) {
   if (typeof DriveApp === 'undefined') return { ok: false, skipped: true };
   try {
-    var head = ['email', 'nombre', 'apellido', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'recordatorio', 'prueba'];
+    var head = ['email', 'nombre', 'apellido', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'recordatorio', 'prueba'];
     var lines = [head.join(',')];
     for (var i = 0; i < signups.length; i++) {
       var s = signups[i];
       lines.push([
         s.email, s.nombre, s.apellido, s.curso, s.ciclo, s.slot_id, s.talk_id,
-        s.presente ? 'si' : 'no', s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
+        s.presente ? 'si' : 'no', s.ausente ? 'si' : 'no', s.recordatorio ? 'si' : 'no', s.prueba ? 'si' : 'no'
       ].map(csvCell_).join(','));
     }
     var name = 'esi-datos-' + new Date().toISOString().replace(/[:.]/g, '-') + '.csv';
@@ -5207,7 +5252,9 @@ function apiAdminErasePersonalData(cred, confirmation) {
         studentsSh.getRange(1, 1, 1, studentsHead.length).setValues([studentsHead]);
       }
       var backupSh = ensureSheet_(ss, BACKUP_SHEET,
-        ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'apellido', 'recordatorio', 'prueba'], []);
+        ['backup_at', 'id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'apellido', 'recordatorio', 'prueba'], []);
+      ensureColumn_(backupSh, 'presente');
+      ensureColumn_(backupSh, 'ausente');
       var backupHead = backupSh.getRange(1, 1, 1, Math.max(1, backupSh.getLastColumn())).getValues()[0];
       backupSh.clearContents();
       backupSh.getRange(1, 1, 1, backupHead.length).setValues([backupHead]);
@@ -5336,6 +5383,7 @@ function apiAdminTalkRoster(cred, talkId) {
         curso: signups[j].curso,
         slotLabel: slotLabelFor_(slots, signups[j].slot_id),
         presente: !!signups[j].presente,
+        ausente: !!signups[j].ausente,
         dni: dnis[signups[j].emailKey] || ''
       };
       if (admin) row.email = signups[j].email;
@@ -5343,8 +5391,10 @@ function apiAdminTalkRoster(cred, talkId) {
     }
     sortBySurname_(rows);
     var presentes = 0;
+    var ausentes = 0;
     for (var p = 0; p < rows.length; p++) {
       if (rows[p].presente) presentes++;
+      else if (rows[p].ausente) ausentes++;
     }
     return {
       ok: true,
@@ -5360,6 +5410,7 @@ function apiAdminTalkRoster(cred, talkId) {
       },
       count: rows.length,
       presentes: presentes,
+      ausentes: ausentes,
       students: rows
     };
   } catch (err) {
@@ -5367,7 +5418,7 @@ function apiAdminTalkRoster(cred, talkId) {
   }
 }
 
-function apiAdminSetPresent(cred, signupId, present) {
+function apiAdminSetPresent(cred, signupId, present, absent) {
   var auth = adminAuth_(cred);
   if (!auth.ok) return { ok: false, message: auth.message };
   return withScriptLock_(ADMIN_LOCK_MS, function () {
@@ -5375,10 +5426,9 @@ function apiAdminSetPresent(cred, signupId, present) {
       var sh = sheet_(SIGNUPS_SHEET);
       var row = findSignupRow_(signupId);
       if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
-      var col = presenteCol_(sh);
-      sh.getRange(row, col).setValue(present ? 'si' : 'no');
+      var mark = setAttendanceMark_(sh, row, present, absent);
       invalidateDataCache_();
-      return { ok: true, presente: !!present };
+      return { ok: true, presente: mark.presente, ausente: mark.ausente };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
@@ -5397,7 +5447,8 @@ function apiAdminSetPresentBatch(cred, marks) {
       if (!vals.length) return { ok: false, message: 'No hay inscripciones.' };
       var map = signupsHeaderMap_(vals[0]);
       if (map.id < 0) return { ok: false, message: 'Falta la columna id.' };
-      var col = presenteCol_(sh);
+      var colP = presenteCol_(sh);
+      var colA = ausenteCol_(sh);
       var byId = {};
       for (var i = 1; i < vals.length; i++) byId[String(vals[i][map.id])] = i + 1;
       var done = [];
@@ -5406,7 +5457,10 @@ function apiAdminSetPresentBatch(cred, marks) {
         var id = String(marks[k] && marks[k].id);
         var row = byId[id];
         if (!row) { missing.push(id); continue; }
-        sh.getRange(row, col).setValue(marks[k].presente ? 'si' : 'no');
+        var present = !!marks[k].presente;
+        var absent = !!marks[k].ausente && !present;
+        sh.getRange(row, colP).setValue(present ? 'si' : 'no');
+        sh.getRange(row, colA).setValue(absent ? 'si' : 'no');
         done.push(id);
       }
       if (done.length) invalidateDataCache_();
@@ -5543,7 +5597,8 @@ function apiAdminReports(cred) {
           titulo: talk ? talk.titulo : '',
           lugar: talk ? (talk.lugar || '') : '',
           signup_id: signup ? signup.id : '',
-          presente: !!(signup && signup.presente)
+          presente: !!(signup && signup.presente),
+          ausente: !!(signup && signup.ausente)
         });
       }
       return out;
@@ -5671,7 +5726,8 @@ function apiAdminReports(cred) {
         nombre: givenName_(signup.nombre, signup.apellido),
         nombreCompleto: signup.nombre || '',
         curso: signup.curso,
-        presente: !!signup.presente
+        presente: !!signup.presente,
+        ausente: !!signup.ausente
       };
       if (admin) talkStudent.email = signup.email;
       talkRow.students.push(talkStudent);
@@ -5709,7 +5765,7 @@ function apiAdminReports(cred) {
 
 var REPORTE_SHEET = 'Reporte';
 var ALUMNOS_SHEET = 'Alumnos';
-var ALUMNOS_HEADERS = ['Ciclo', 'Curso', 'Apellido', 'Nombre', 'Mail', 'Horario', 'Charla', 'Lugar', 'Presente', 'Prueba'];
+var ALUMNOS_HEADERS = ['Ciclo', 'Curso', 'Apellido', 'Nombre', 'Mail', 'Horario', 'Charla', 'Lugar', 'Presente', 'Ausente', 'Prueba'];
 
 // El reporte es cosmetico (los numeros salen de Signups) y reescribirlo en cada
 // inscripcion cuesta una hoja entera. Se refresca como mucho cada 15 segundos.
@@ -5719,15 +5775,17 @@ function derivedFingerprint_() {
   try {
     var signups = readSignupsCached_();
     var presentes = 0;
+    var ausentes = 0;
     var last = '';
     for (var i = 0; i < signups.length; i++) {
       if (signups[i].presente) presentes++;
+      else if (signups[i].ausente) ausentes++;
       last = String(signups[i].id || '');
     }
     var talks = readTalksCached_();
     var cupos = 0;
     for (var t = 0; t < talks.length; t++) cupos += Number(talks[t].cupo) || 0;
-    return signups.length + ':' + presentes + ':' + last + ':' + talks.length + ':' + cupos
+    return signups.length + ':' + presentes + ':' + ausentes + ':' + last + ':' + talks.length + ':' + cupos
       + ':' + (isOpen_(readConfigCached_()) ? '1' : '0');
   } catch (e) {
     return 'sin-datos';
@@ -5781,6 +5839,7 @@ function alumnosRows_(signups, talks, slots, apellidos) {
       titulo: titulos[s.talk_id] || s.talk_id,
       lugar: lugares[s.talk_id] || '',
       presente: s.presente ? 'si' : 'no',
+      ausente: s.ausente ? 'si' : 'no',
       prueba: s.prueba ? 'si' : 'no'
     });
   }
@@ -5799,7 +5858,7 @@ function alumnosRows_(signups, talks, slots, apellidos) {
     var r = list[j];
     rows.push([
       cicloLabel[r.ciclo] || r.ciclo, r.curso, r.apellido, r.nombre, r.email,
-      r.slot, r.talk + ' · ' + r.titulo, r.lugar, r.presente, r.prueba
+      r.slot, r.talk + ' · ' + r.titulo, r.lugar, r.presente, r.ausente, r.prueba
     ]);
   }
   return rows;
