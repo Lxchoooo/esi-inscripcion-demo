@@ -84,8 +84,20 @@ function setup() {
   return out;
 }
 
-/** Estado de la cola y del trigger (para revisar a mano desde el editor). */
-function diagnostico() {
+/**
+ * Mail de prueba a una casilla concreta (para confirmar que llega afuera):
+ * correr prueba('docente@example.com') desde el editor.
+ */
+function prueba(destino) {
+  var to = String(destino || Session.getActiveUser().getEmail()).trim();
+  GmailApp.sendEmail(to, 'ESI: prueba del robot de mails',
+    'Mail de prueba enviado desde el robot de la ESI con la cuenta ' +
+    Session.getActiveUser().getEmail() + '. Si llego, el envio anda.');
+  Logger.log('prueba enviada a ' + to);
+  return { ok: true, to: to };
+}
+
+/** Estado de la cola y del trigger (para revisar a mano desde el editor). */function diagnostico() {
   var out = { cuenta: Session.getActiveUser().getEmail(), hoja: false, trigger: false };
   try {
     var sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);

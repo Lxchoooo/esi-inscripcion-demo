@@ -27,7 +27,7 @@ Pasos, desde el navegador con la cuenta **esi@**:
    - verifica que puede abrir `MailQueue`,
    - instala el trigger `flushQueue` cada 1 minuto (idempotente),
    - manda un mail de prueba a `esi@`.
-5. Revisar **Ejecuciones**: `setup OK`. Opcional: correr **`diagnostico`**
+5. Revisar **Ejecuciones**: `setup OK`. Opcional: correr **`diagnostico`** (o `prueba("tu@mail")` para confirmar que llega afuera)
    para ver filas por estado y el trigger.
 
 Cuando el trigger corre, toma las filas `pendiente` vencidas, las reclama como
