@@ -4167,6 +4167,7 @@ t('v80: gmail api manda el aviso con el token del colegio', () => {
   services.Utilities = Object.assign({}, services.Utilities, {
     base64Encode: (v) => 'b64:' + String(v),
     base64WebSafe: (v) => 'ws:' + String(v),
+    base64EncodeWebSafe: (v) => 'ws:' + String(v),
     Charset: { UTF_8: 'utf8' }
   });
   const calls = [];
@@ -4200,7 +4201,7 @@ t('v80: si la via gmail se cae, gmailApiSend_ devuelve false y queda en pausa', 
   const services = backendStub(props);
   services.Utilities = Object.assign({}, services.Utilities, {
     base64Encode: () => 'b64',
-    base64WebSafe: () => 'ws',
+    base64WebSafe: () => 'ws', base64EncodeWebSafe: () => 'ws',
     Charset: { UTF_8: 'u' }
   });
   services.MailApp = { getRemainingDailyQuota: () => 95, sendEmail: () => { } };
@@ -4228,7 +4229,7 @@ t('v81: con gmail api configurada, si falla no cae a MailApp', () => {
   const services = backendStub({ gmail_api_refresh: '1//r' });
   enableMail_(services);
   services.Utilities = Object.assign({}, services.Utilities, {
-    base64Encode: () => 'b64', base64WebSafe: () => 'ws', Charset: { UTF_8: 'u' }
+    base64Encode: () => 'b64', base64WebSafe: () => 'ws', base64EncodeWebSafe: () => 'ws', Charset: { UTF_8: 'u' }
   });
   services.UrlFetchApp = {
     fetch: (url) => {
