@@ -4254,13 +4254,13 @@ t('r15: el README linkea los documentos del evento', () => {
   });
 });
 
-t('r15: EVENTO.md explica como probar los recordatorios', () => {
+t('r15: EVENTO.md explica la cola de mails y los recordatorios', () => {
   const doc = read('../docs/EVENTO.md');
-  if (doc.indexOf('## Probar los recordatorios') < 0) throw new Error('falta la seccion de recordatorios');
-  ['Enviar recordatorios', 'Vista previa', 'Mails', 'recordatorio', 'cuota'].forEach((n) => {
+  if (doc.indexOf('## Mails: cómo salen hoy') < 0) throw new Error('falta la seccion de mails');
+  ['MailQueue', 'esi@', 'apiMailDiag', 'Recordatorios', 'Vista previa', 'Mails', 'cuota'].forEach((n) => {
     if (doc.indexOf(n) < 0) throw new Error('falta ' + n);
   });
-  if (!/una sola vez/.test(doc)) throw new Error('no aclara que se prueba una vez');
+  if (!/cada minuto/.test(doc)) throw new Error('no explica el trigger');
   if (doc.indexOf('sin enviar a alumnos') >= 0) throw new Error('texto raro');
 });
 

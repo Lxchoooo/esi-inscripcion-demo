@@ -37,6 +37,10 @@ var CLAIMED = 'cola_nube';     // estado de reclamo, igual que espera la webapp
 var STALE_MS = 5 * 60 * 1000;  // reclamo viejo => se retoma
 var TZ_OFFSET_H = -3;          // America/Argentina/Cordoba
 var SENDER_NAME = 'Equipo ESI';
+var HEARTBEAT_PROP = 'MAIL_HEARTBEAT';
+// Errores de cuota/servicio: no se gastan reintentos, se espera al proximo
+// minuto. Los de destinatario invalido si cuentan (no se arreglan solos).
+var QUOTA_RE = /too many times|quota|rate limit|exceeded|service invoked|temporarily unavailable|backend error/i;
 
 /** Instalacion: verifica acceso, instala el trigger y manda un mail de prueba. */
 function setup() {
@@ -97,7 +101,8 @@ function prueba(destino) {
   return { ok: true, to: to };
 }
 
-/** Estado de la cola y del trigger (para revisar a mano desde el editor). */function diagnostico() {
+/** Estado de la cola y del trigger (para revisar a mano desde el editor). */
+function diagnostico() {
   var out = { cuenta: Session.getActiveUser().getEmail(), hoja: false, trigger: false };
   try {
     var sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
@@ -114,11 +119,29 @@ function prueba(destino) {
     var triggers = ScriptApp.getProjectTriggers();
     out.trigger = triggers.some(function (t) { return t.getHandlerFunction() === 'flushQueue'; });
     out.ultimos = ultimosEnvios_(vals, map, 3);
+    out.latido = heartbeat_();
   } catch (e) {
     out.error = e && e.message ? e.message : String(e);
   }
   Logger.log(JSON.stringify(out));
   return out;
+}
+
+function beat_(data) {
+  try {
+    PropertiesService.getScriptProperties().setProperty(HEARTBEAT_PROP, JSON.stringify(data));
+  } catch (e) { }
+}
+
+function heartbeat_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(HEARTBEAT_PROP);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function isQuotaError_(e) {
+  return QUOTA_RE.test(String((e && e.message) || e || ''));
 }
 
 /** Trigger de cada minuto (idempotente). */
@@ -137,18 +160,27 @@ function installTrigger_() {
 function flushQueue() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return;
+  var sent = 0;
+  var errors = 0;
+  var quotaStop = false;
   try {
     var sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
-    if (!sh) return;
+    if (!sh) {
+      beat_({ at: nowIso_(), sent: 0, errors: 0, error: 'falta la hoja ' + SHEET_NAME });
+      return;
+    }
     var vals = sh.getDataRange().getValues();
-    if (vals.length < 2) return;
+    if (vals.length < 2) {
+      beat_({ at: nowIso_(), sent: 0, errors: 0, filas: 0 });
+      return;
+    }
     var map = headerMap_(vals[0] || []);
     if (map.estado == null || map.envio_at == null) {
       Logger.log('faltan columnas estado/envio_at');
+      beat_({ at: nowIso_(), sent: 0, errors: 0, error: 'faltan columnas' });
       return;
     }
     var now = Date.now();
-    var sent = 0;
     for (var i = 1; i < vals.length && sent < MAX_PER_RUN; i++) {
       var r = vals[i];
       var estado = String(r[map.estado] || '').toLowerCase().trim();
@@ -170,16 +202,30 @@ function flushQueue() {
         sh.getRange(i + 1, map.estado + 1).setValue('enviado');
         sent++;
       } catch (e) {
+        if (isQuotaError_(e)) {
+          // Cuota del Workspace: la fila vuelve a pendiente SIN gastar intento
+          // y se corta el lote; el proximo minuto sigue donde quedo.
+          sh.getRange(i + 1, map.estado + 1).setValue('pendiente');
+          quotaStop = true;
+          Logger.log('cuota: ' + String(e && e.message ? e.message : e).slice(0, 120));
+          break;
+        }
         tries++;
+        errors++;
         sh.getRange(i + 1, map.estado + 1).setValue(tries >= MAX_TRIES ? 'error' : 'pendiente');
         sh.getRange(i + 1, map.intentos + 1).setValue(tries);
         Logger.log('fallo fila ' + (i + 1) + ': ' + (e && e.message ? e.message : e));
       }
     }
+    beat_({ at: nowIso_(), sent: sent, errors: errors, quota: quotaStop, filas: vals.length - 1 });
     if (sent) Logger.log('enviados: ' + sent);
   } finally {
     lock.releaseLock();
   }
+}
+
+function nowIso_() {
+  return new Date().toISOString();
 }
 
 function headerMap_(head) {

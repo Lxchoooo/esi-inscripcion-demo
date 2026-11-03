@@ -33,7 +33,18 @@ Pasos, desde el navegador con la cuenta **esi@**:
 Cuando el trigger corre, toma las filas `pendiente` vencidas, las reclama como
 `cola_nube` (asi el trigger viejo de la webapp no las toca), manda y marca
 `enviado`. Si el proceso muere, a los 5 minutos retoma las `cola_nube`; a los
-5 intentos fallidos la fila queda `error`.
+5 intentos fallidos la fila queda `error`. Si Gmail devuelve cuota agotada, la
+fila vuelve a `pendiente` **sin gastar intento** y sigue en el proximo minuto.
+
+Cada corrida deja un latido en las propiedades del script (`MAIL_HEARTBEAT`)
+con hora, enviados, errores y si hubo corte por cuota. `diagnostico()` lo
+muestra como `latido`, asi se ve si el trigger esta vivo sin abrir la hoja.
+
+## Actualizar el codigo
+
+Si cambia `esi-mailer.gs`, se pega de nuevo entero en el editor del proyecto de
+`esi@` y se guarda. El trigger sigue instalado; no hay que volver a correr
+`setup()` salvo que se quiera reinstalar el trigger o mandar otra prueba.
 
 ## Apagar el poller de Termux
 

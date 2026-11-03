@@ -1,7 +1,7 @@
 # Jornada ESI 2026 — documento del día
 
-Esto es para el 3 y el 4 de noviembre. No tiene claves, ni mails, ni datos de
-alumnos: este repo es público.
+Esto es para el 3 y el 4 de noviembre. No lleva claves, ni mails, ni datos de
+alumnos.
 
 ## Un solo panel para todos
 
@@ -30,6 +30,7 @@ con la misma clave.
 | Después | Abrir **Listo para el evento** y revisar que todo esté en verde | Panel, primera sección |
 | Antes de imprimir | Cerrar la inscripción para la prueba | Panel → Configuración |
 | Cuando esté verde | Imprimir las listas por franja y por curso | Panel → Tomar asistencia / Reportes |
+| Antes de abrir | Verificar la cola de mails: 0 pendientes y `trigger: true` | Navegador (ver "Mails") |
 | Si hay tiempo | Correr el simulacro de carga contra una copia (ver abajo) | Termux o una computadora |
 | Último paso | Dejar la inscripción **abierta** para el día | Panel → Configuración |
 
@@ -41,6 +42,7 @@ arreglan antes de abrir.
 | Momento | Qué |
 |---|---|
 | 30 minutos antes | Abrir el panel, entrar con una clave y mirar **Listo para el evento** |
+| 30 minutos antes | Mirar la cola de mails: sin pendientes vencidos |
 | Ensayo | Pedirle a una guía que entre con la otra clave y haga de cuenta que busca a un alumno: tiene que ver lo mismo que vos |
 | Antes de la primera franja | Confirmar que la inscripción está abierta y que la fecha dice 4/11 |
 | Durante cada franja | **Tomar asistencia** → elegir la franja → tocar el alumno cuando llega |
@@ -118,36 +120,46 @@ Se vuelve con `git revert`, nunca con `git reset` ni con `--force`: eso reescrib
    eso vuelve a servir la versión que funcionaba, sin tocar los datos.
 5. Confirmá que `/exec` responde y que el pie dice la versión esperada.
 
-## Probar los recordatorios (una vez, antes del evento)
+## Mails: cómo salen hoy
 
-El envío de mails es lo único que nunca corrió de verdad. Se prueba una sola vez,
-con tu propio mail, y no se manda nada a los alumnos hasta verlo funcionar.
+Los mails (bienvenida, cambio de charla y recordatorios) no los manda el panel:
+quedan encolados en la hoja `MailQueue` y los envía un proyecto de Apps Script
+de la cuenta `esi@`, que corre solo cada minuto. Manda desde `esi@` y no usa
+tokens ni depende de que un celular esté prendido. El código y los pasos están
+en `tools/mailer/` de este repo.
 
-El recordatorio le llega a **todos los inscriptos**, hayan tildado algo o no.
+Para ver cómo viene la cola, abrí en el navegador:
 
-1. En **Configuración**, revisá el remitente. Si queda vacío, el mail sale con la
-   cuenta del instituto, que suele ser la correcta.
-2. Volvé al panel, sección de mails, y tocá **Vista previa**: muestra el texto,
-   cuántos inscriptos son y cuánta cuota queda.
-3. Escribí **tu mail** en el campo `Tu mail, para probar` y tocá **Mandar prueba**.
-   Llega con el asunto prefijado `PRUEBA ·` y no se anota en `Mails`, así que no
-   bloquea el envío real. Revisá bandeja y spam.
-4. Si la prueba está bien, tocá **Enviar recordatorios**. La tanda es de veinte y
-   al final lista los mails que fallaron para reintentar.
-5. Revisá que en la hoja `Mails` quede una fila por destinatario y que al tocar
-   **Enviar recordatorios** otra vez no se duplique.
-6. Mirá **Listo para el evento**: el control de mails tiene que seguir en verde y
-   con la cuota descontada.
+```
+https://script.google.com/macros/s/AKfycbwkl-bCNFqUYzjjezaSzpgaC2U0fxe0B1JznKTLODG7VI4ZlVLAb06R1zvZ332kslEVkQ/exec?fn=apiMailDiag
+```
 
-Ojo con la cuota: una cuenta Gmail común permite unos 100 mails por día, así que
-con 500 inscriptos el envío se corta ese día y sigue al siguiente (los enviados
-quedan anotados). Con Google Workspace del colegio el tope es 1500 por día.
+Es un diagnóstico público y sin datos de alumnos. Mirá:
 
-Si no llega: revisá spam, que el remitente sea una cuenta con permiso para enviar
-y que los permisos de envío estén autorizados (los pide la primera ejecución de
-`setup()`). Sin cuota no hay reintento: se espera al día siguiente.
+- `queue.estados.pendiente`: tiene que bajar solo en el minuto siguiente.
+- `pendientes_vencidos: 0`: no hay atrasos.
+- `trigger: true`: el robot está instalado y activo.
 
-La prueba no inscribe a nadie: no hay que borrar nada después.
+Si algo no sale:
+
+- `trigger: false` → en el proyecto de `esi@` correr `setup()` de nuevo.
+- Hay pendientes que no bajan → correr `diagnostico()` en ese proyecto y mirar
+  `latido` (hora de la última corrida) y el estado de la hoja.
+- Una fila en `error` significa que rebotó 5 veces (casilla inexistente).
+  Corregí el mail del alumno en **Arreglar datos** y volvé a encolar el aviso.
+- Cuota: el Workspace permite 1500 mails por día. Si se agota, la fila queda
+  `pendiente` y sigue al día siguiente; no se pierde.
+
+### Probar antes de mandar a todos
+
+1. **Vista previa** muestra el texto, a cuántos les corresponde y la cuota.
+2. **Mandar prueba** manda el recordatorio a la casilla que escribas, con el
+   asunto `PRUEBA ·`. Ojo: esa prueba sale con la cuenta del panel (MailApp),
+   no con el robot de `esi@`; sirve para revisar el texto y la llegada.
+3. **Recordatorios** ya no manda directo: encola para los alumnos a los que les
+   falta al menos una charla. El robot los manda en los minutos siguientes.
+
+La prueba no inscribe a nadie ni anota en `Mails`: no hay que borrar nada.
 
 ## Carpetas en el Drive
 
