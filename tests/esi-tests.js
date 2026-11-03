@@ -5368,6 +5368,9 @@ t('r30: la hora del acceso no se corre si la hoja esta en UTC', () => {
   services.sheets.Accesos = fakeSheet('Accesos', ['fecha', 'resultado', 'rol', 'dispositivo'], [
     [new Date('2026-11-02T23:30:00Z'), 'entro', 'admin', 'x'],
     ['2/11/2026 23:30', 'entro', 'admin', 'y']
+  ], [
+    ['2/11/2026 23:30', 'entro', 'admin', 'x'],
+    ['2/11/2026 23:30', 'entro', 'admin', 'y']
   ]);
   services.Utilities.formatDate = (d, tz, fmt) => {
     const parts = new Intl.DateTimeFormat('en-GB', {
@@ -5381,7 +5384,7 @@ t('r30: la hora del acceso no se corre si la hoja esta en UTC', () => {
   const log = api.apiAdminAccessLog('1111');
   assertEq(log.ok, true, 'endpoint ok');
   assertEq(log.rows[0].fecha, '2/11/2026 23:30', 'string pasa tal cual');
-  assertEq(log.rows[1].fecha, '02/11/2026 23:30', 'Date parseado en UTC conserva la hora escrita');
+  assertEq(log.rows[1].fecha, '2/11/2026 23:30', 'Date conserva la hora visible de la hoja');
 });
 
 t('r30: el registro de accesos muestra modelo, version y hora argentina', () => {
@@ -5392,11 +5395,12 @@ t('r30: el registro de accesos muestra modelo, version y hora argentina', () => 
   if (/appendRow\(\[new Date\(\)/.test(lwBody)) throw new Error('la fila de acceso sigue guardando Date crudo');
   if (!/setNumberFormat\('@'\)/.test(lwBody)) throw new Error('la columna fecha se parsea en fecha por la hoja auto (TZ de la hoja desplaza la hora)');
   if (!/getRange\(nuevaFila, 1\)[\s\S]*?setValue\(cuando\)/.test(lwBody)) throw new Error('la fila nueva fuera de A2:A251 no se reescribe como texto');
-  // Lectura: string pasa tal cual; Date viejo/parseado usa la TZ de la hoja.
+  // Lectura: se usa el texto visible de la hoja, no se reinterpreta el Date.
   const al = codeSrc.indexOf('function apiAdminAccessLog');
   const ab = codeSrc.slice(al, al + 1400);
-  if (!/getSpreadsheetTimeZone\(\)/.test(ab)) throw new Error('las filas viejas no usan la TZ de la hoja');
-  if (!/Utilities\.formatDate\(raw, tzAcceso/.test(ab)) throw new Error('las filas viejas sin formato de hora');
+  if (!/getDisplayValues\(\)/.test(ab)) throw new Error('la fecha no se lee como texto visible de la hoja');
+  if (!/disp\[i\] && disp\[i\]\[0\]/.test(ab)) throw new Error('la fecha visible no se usa');
+  if (/formatDate\(raw/.test(ab)) throw new Error('la fecha del acceso se sigue reinterpretando por TZ');
   if (/toISOString\(\)/.test(ab)) throw new Error('la fecha del acceso sigue en UTC');
   if (!/function deviceLabelP_/.test(panelSrc)) throw new Error('sin etiqueta async del dispositivo');
   if (!/getHighEntropyValues\(/.test(panelSrc)) throw new Error('sin datos altos del navegador (modelo real)');
