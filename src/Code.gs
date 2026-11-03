@@ -1256,6 +1256,12 @@ function gmailApiAccessToken_(props) {
   return String(body.access_token);
 }
 
+function wrapBase64_(s) {
+  var out = [];
+  for (var i = 0; i < s.length; i += 76) out.push(s.slice(i, i + 76));
+  return out.join('\r\n');
+}
+
 function gmailApiSend_(to, subject, bodyText) {
   var props = gmailApiProps_();
   if (!props || typeof UrlFetchApp === 'undefined' || !UrlFetchApp) return false;
@@ -1268,14 +1274,17 @@ function gmailApiSend_(to, subject, bodyText) {
     // token (la institucional). Poner un From a mano exige que el alias
     // este verificado en esa casilla; el display name lo pone el colegio.
     var asuntoB64 = Utilities.base64Encode(asunto, Utilities.Charset.UTF_8);
+    // El cuerpo va en base64 UTF-8: con 8bit, el raw de Apps Script
+    // convertia los acentos en '?' y llegaba "inscripci?n".
+    var cuerpoB64 = Utilities.base64Encode(cuerpo, Utilities.Charset.UTF_8);
     var mime = [
       'To: ' + String(to),
       'Subject: =?UTF-8?B?' + asuntoB64 + '?=',
       'MIME-Version: 1.0',
       'Content-Type: text/plain; charset=UTF-8',
-      'Content-Transfer-Encoding: 8bit',
+      'Content-Transfer-Encoding: base64',
       '',
-      cuerpo
+      wrapBase64_(cuerpoB64)
     ].join('\r\n');
     var resp = UrlFetchApp.fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'post',
