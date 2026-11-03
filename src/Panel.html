@@ -4248,9 +4248,11 @@
         lugares[DEMO_TALKS[t].id] = DEMO_TALKS[t].lugar || '';
       }
       var apellidos = {};
+      var dnis = {};
       var rosterA = demoRoster();
       for (var ra = 0; ra < rosterA.length; ra++) {
         apellidos[rosterA[ra].email] = rosterA[ra].apellido || '';
+        dnis[EsiClient.normalizeEmail(rosterA[ra].email)] = rosterA[ra].dni || '';
       }
       var out = admin ? signups.map(function (s) {
         return {
@@ -4266,6 +4268,7 @@
           slotLabel: demoSlotLabel_(s.slot_id),
           talkTitulo: titulos[s.talk_id] || s.talk_id,
           lugar: lugares[s.talk_id] || '',
+          dni: dnis[EsiClient.normalizeEmail(s.email)] || '',
           presente: !!s.presente,
           ausente: !!s.ausente,
           prueba: !!s.prueba
@@ -4353,6 +4356,19 @@
       var d = data || {};
       var v = EsiClient.validateStudentInput(key, d.nombre, d.curso, d.apellido);
       if (!v.ok) return { ok: false, message: STUDENT_MSG[v.error] || 'Datos inválidos.' };
+      var dni = EsiClient.normalizeDni(String(d.dni == null ? '' : d.dni));
+      if (dni && !EsiClient.isValidDni(dni)) {
+        return { ok: false, message: 'El DNI tiene 7 u 8 números, sin puntos.' };
+      }
+      var roster = demoRoster();
+      if (dni) {
+        for (var r = 0; r < roster.length; r++) {
+          if (EsiClient.normalizeEmail(roster[r].email) === key) continue;
+          if (EsiClient.normalizeDni(String(roster[r].dni || '')) === dni) {
+            return { ok: false, message: 'Ese DNI ya está cargado en otro alumno.' };
+          }
+        }
+      }
       var signups = demoSignups();
       var n = 0;
       for (var i = 0; i < signups.length; i++) {
@@ -4365,7 +4381,23 @@
       }
       if (!n) return { ok: false, message: 'Ese mail no tiene inscripciones.' };
       demoWrite('esi_demo_signups', signups);
-      return { ok: true, updated: n };
+      // La ficha y el login por DNI leen la misma fuente de la demo que el
+      // backend real (roster/Students).
+      var encontrado = false;
+      for (var j = 0; j < roster.length; j++) {
+        if (EsiClient.normalizeEmail(roster[j].email) !== key) continue;
+        roster[j].apellido = v.apellido;
+        roster[j].nombre = v.nombre;
+        roster[j].curso = v.curso;
+        if (dni) roster[j].dni = dni;
+        encontrado = true;
+        break;
+      }
+      if (dni && !encontrado) {
+        roster.push({ email: key, apellido: v.apellido, nombre: v.nombre, curso: v.curso, dni: dni });
+      }
+      if (encontrado || dni) demoWrite('esi_demo_roster', roster);
+      return { ok: true, updated: n, dni: dni };
     }
     function demoAdminMoveTalk(signupId, talkId) {
       var signups = demoSignups();
@@ -9923,56 +9955,106 @@
       el.style.display = text ? 'block' : 'none';
     }
 
-    function aCorrTalkOptions_() {
-      var d = aData;
-      if (!d) return '';
-      var html = '';
-      for (var s = 0; s < d.slots.length; s++) {
-        var slot = d.slots[s];
-        var opts = '';
-        for (var t = 0; t < d.talks.length; t++) {
-          var talk = d.talks[t];
-          if (!talk.activa || Number(talk.slot_id) !== Number(slot.id)) continue;
-          var left = Number(talk.cupo) - Number(talk.anotados || 0);
-          opts += '<option value="' + esc(talk.id) + '">' + esc(talk.titulo + ' · ' + left + ' lugares') + '</option>';
-        }
-        if (opts) html += '<optgroup label="' + esc(slot.label) + '">' + opts + '</optgroup>';
-      }
-      return html;
-    }
-
-    function aCorrFields_(prefix, withTalks, mailFirst, mailLabel) {
+    function aCorrFields_(prefix, mailFirst, mailLabel) {
       var mail = '<label for="' + prefix + '-email">' + esc(mailLabel || 'Mail institucional')
-        + '<input id="' + prefix + '-email" type="email" autocomplete="off"></label>';
+        + '<input id="' + prefix + '-email" type="email" autocomplete="off" spellcheck="false" autocapitalize="none"></label>';
+      var anios = '';
+      for (var y = 1; y <= 6; y++) {
+        anios += '<option value="' + y + '">' + y + '°</option>';
+      }
       var html = '<div class="corr-form">';
       if (mailFirst) html += mail;
       html += '<label for="' + prefix + '-apellido">Apellido<input id="' + prefix + '-apellido"'
         + ' type="text" autocomplete="off" autocapitalize="words"></label>'
         + '<label for="' + prefix + '-nombre">Nombre<input id="' + prefix + '-nombre"'
         + ' type="text" autocomplete="off" autocapitalize="words"></label>'
-        + '<label for="' + prefix + '-curso">Curso<input id="' + prefix + '-curso"'
-        + ' type="text" autocomplete="off" placeholder="2°B"></label>';
+        + '<label for="' + prefix + '-anio">Año<select id="' + prefix + '-anio">'
+        + '<option value="">Elegí...</option>' + anios + '</select></label>'
+        + '<label for="' + prefix + '-division">División<select id="' + prefix + '-division">'
+        + '<option value="">Elegí...</option></select></label>'
+        + '<label for="' + prefix + '-dni">DNI (opcional)<input id="' + prefix + '-dni"'
+        + ' type="text" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="7 u 8 números, sin puntos"></label>';
       if (!mailFirst) html += mail;
-      if (withTalks) {
-        html += '<label for="' + prefix + '-talks">Charlas<select id="' + prefix + '-talks" multiple size="8">'
-          + aCorrTalkOptions_() + '</select></label>'
-          + '<p class="hint-line">Elegí una charla por horario. El sistema controla cupo y ciclo.</p>';
-      }
       return html + '</div>';
+    }
+
+    function aCorrFillDivisions_(prefix, selected) {
+      var sel = $(prefix + '-division');
+      if (!sel) return;
+      var anio = $(prefix + '-anio') ? $(prefix + '-anio').value : '';
+      var list = EsiClient.divisionsForYear(anio);
+      var want = String(selected == null ? '' : selected);
+      var html = '<option value="">Elegí...</option>';
+      for (var i = 0; i < list.length; i++) {
+        html += '<option value="' + esc(list[i]) + '"'
+          + (String(list[i]) === want ? ' selected' : '') + '>' + esc(list[i]) + '</option>';
+      }
+      sel.innerHTML = html;
+    }
+
+    function aCorrStudentByEmail_(email) {
+      if (!aData || !aData.signups) return null;
+      var key = EsiClient.normalizeEmail(email);
+      if (!key) return null;
+      for (var i = 0; i < aData.signups.length; i++) {
+        if (EsiClient.normalizeEmail(aData.signups[i].email) === key) return aData.signups[i];
+      }
+      return null;
+    }
+
+    function aCorrPrefill_(prefix) {
+      var st = aCorrStudentByEmail_($(prefix + '-email') ? $(prefix + '-email').value : '');
+      if (!st) return;
+      if ($(prefix + '-apellido')) $(prefix + '-apellido').value = st.apellido || '';
+      if ($(prefix + '-nombre')) $(prefix + '-nombre').value = st.nombre || '';
+      if ($(prefix + '-dni')) $(prefix + '-dni').value = st.dni || '';
+      var pc = EsiClient.parseCurso(st.curso || '');
+      var anio = '';
+      var division = '';
+      if (pc) {
+        var m = String(pc).match(/^(\d)°/);
+        if (m) {
+          anio = m[1];
+          division = String(pc).slice(m[0].length);
+        }
+      }
+      if ($(prefix + '-anio')) $(prefix + '-anio').value = anio;
+      aCorrFillDivisions_(prefix, division);
+      if ($(prefix + '-division')) $(prefix + '-division').value = division;
     }
 
     function aCorrEdit_() {
       if (!aData || aBusy) return;
       openSheet({
         title: 'Corregir alumno',
-        body: aCorrFields_('corr-edit', false, true, 'Mail actual') + '<p class="hint-line">Escribí el mail actual y los datos corregidos.</p>',
+        body: aCorrFields_('corr-edit', true, 'Mail actual')
+          + '<p class="hint-line">Escribí el mail actual: se cargan los datos y cambiá solo lo que esté mal. Si el DNI queda vacío, no se toca.</p>',
         confirm: 'Guardar',
         onConfirm: function () {
+          // Si el cambio de foco no llegó a disparar el prefill, se completa
+          // acá antes de leer los campos.
+          if (!$('corr-edit-nombre').value && !$('corr-edit-apellido').value) {
+            aCorrPrefill_('corr-edit');
+          }
+          var curso = EsiClient.cursoFromParts(
+            $('corr-edit-anio') ? $('corr-edit-anio').value : '',
+            $('corr-edit-division') ? $('corr-edit-division').value : ''
+          );
+          if (!curso) {
+            aCorrMsg_('Elegí año y división.', 'err');
+            return;
+          }
+          var dni = EsiClient.normalizeDni($('corr-edit-dni') ? $('corr-edit-dni').value : '');
+          if (dni && !EsiClient.isValidDni(dni)) {
+            aCorrMsg_('El DNI tiene 7 u 8 números, sin puntos.', 'err');
+            return;
+          }
           aBusy = true;
           call('apiAdminCorrectStudent', [adminCred, $('corr-edit-email').value, {
             apellido: $('corr-edit-apellido').value,
             nombre: $('corr-edit-nombre').value,
-            curso: $('corr-edit-curso').value
+            curso: curso,
+            dni: dni
           }]).then(function (resp) {
             aBusy = false;
             if (!resp.ok) { aCorrMsg_(resp.message || 'No se pudo corregir.', 'err'); return; }
@@ -9981,6 +10063,15 @@
           }).catch(function () { aBusy = false; aCorrMsg_('Sin conexión.', 'err'); });
         }
       });
+      var mailIn = $('corr-edit-email');
+      if (mailIn) {
+        mailIn.addEventListener('input', function () { aCorrPrefill_('corr-edit'); });
+        mailIn.addEventListener('change', function () { aCorrPrefill_('corr-edit'); });
+      }
+      var anioSel = $('corr-edit-anio');
+      if (anioSel) {
+        anioSel.addEventListener('change', function () { aCorrFillDivisions_('corr-edit', ''); });
+      }
     }
 
     function aCorrDeleteList_() {

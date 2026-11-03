@@ -1053,6 +1053,21 @@ t('Panel pide DNI en la primera inscripcion y lo manda con cada charla', () => {
   }
 });
 
+t('Corregir alumno usa año, división y DNI', () => {
+  for (const needle of ["prefix + '-anio'", "prefix + '-division'", "prefix + '-dni'",
+    'function aCorrFillDivisions_', 'function aCorrPrefill_']) {
+    if (!panelSrc.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (/prefix \+ '-curso'/.test(panelSrc)) throw new Error('el curso sigue siendo texto libre');
+  if (!panelSrc.includes("var dni = EsiClient.normalizeDni($('corr-edit-dni')")) {
+    throw new Error('la corrección no normaliza el DNI');
+  }
+  if (!panelSrc.includes('dni: dni')) throw new Error('la corrección no manda el DNI');
+  if (!panelSrc.includes("aCorrFillDivisions_('corr-edit', '')")) {
+    throw new Error('la división no se rellena al cambiar el año');
+  }
+});
+
 t('el panel ordena por primeros y últimos inscriptos', () => {
   for (const needle of ['id="filter-orden"', 'Primeros en inscribirse', 'Últimos en inscribirse']) {
     if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
@@ -3652,6 +3667,21 @@ t('admin r12 status, duplicates, manual fixes, test data, close and erase', () =
   const afterCorrect = api.apiAdminGetData(token).signups.filter((x) => x.email === 'nueva2029@secundariosalsipuedes.edu.ar')[0];
   assertEq(afterCorrect.nombreCompleto, 'Nueva Alumna', 'corrected name kept');
   assertEq(afterCorrect.curso, '2°B', 'corrected course');
+  const conDni = api.apiAdminCorrectStudent(token, 'nueva2029@secundariosalsipuedes.edu.ar', {
+    nombre: 'Nueva', apellido: 'Alumna', curso: '2°B', dni: '30123456'
+  });
+  assertEq(conDni.ok, true, 'correccion con DNI: ' + conDni.message);
+  const afterDni = api.apiAdminGetData(token).signups.filter((x) => x.email === 'nueva2029@secundariosalsipuedes.edu.ar')[0];
+  assertEq(afterDni.dni, '30123456', 'el DNI corregido se ve en la ficha');
+  const dupDni = api.apiAdminCorrectStudent(token, 'ana2029@secundariosalsipuedes.edu.ar', {
+    nombre: 'Ana', apellido: 'Gomez', curso: '2°B', dni: '30123456'
+  });
+  assertEq(dupDni.ok, false, 'DNI repetido rechazado');
+  assertEq(/ya está cargado/.test(dupDni.message), true, 'mensaje de DNI repetido');
+  const malDni = api.apiAdminCorrectStudent(token, 'nueva2029@secundariosalsipuedes.edu.ar', {
+    nombre: 'Nueva', apellido: 'Alumna', curso: '2°B', dni: '123'
+  });
+  assertEq(malDni.ok, false, 'DNI corto rechazado');
   assertEq(api.apiAdminMoveTalk(token, addedId, 'B2').ok, true, 'manual move same slot ok');
   assertEq(api.apiAdminMoveTalk(token, addedId, 'B5').ok, false, 'move across slot rejected');
   assertEq(api.apiAdminDeleteTestData(token, 'BORRAR PRUEBA').deleted, 1, 'test data deleted');

@@ -105,9 +105,13 @@ que la tenía para que use la nueva.
 
 ### Hay que corregir una inscripción
 
-En **Arreglar datos** se puede mover a un alumno de charla, corregir nombre o
-apellido, y borrar una inscripción. Después de cualquier cambio, volvé a
-**Listo para el evento** y mirá que siga en verde.
+En **Arreglar datos** se puede mover a un alumno de charla, corregir sus datos y
+borrar una inscripción. En **Corregir alumno**, escribí el mail actual: el
+formulario carga el nombre, apellido, año, división y DNI que ya tiene. Cambiá
+solo lo que esté mal. El año y la división son desplegables, y el DNI es
+opcional: si lo dejás vacío, no se toca. El panel rechaza un DNI que ya tenga
+otro alumno. Después de cualquier cambio, volvé a **Listo para el evento** y
+mirá que siga en verde.
 
 ### Hay que volver a una versión anterior
 

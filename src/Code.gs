@@ -5201,6 +5201,10 @@ function apiAdminCorrectStudent(cred, email, data) {
   var v = EsiCore.validateStudentInput(email, d.nombre, d.curso, d.apellido);
   if (!v.ok) return { ok: false, message: STUDENT_ERRORS_[v.error] || 'Datos inválidos.' };
   if (!EsiCore.isInstitutionalEmail(v.email)) return { ok: false, message: STUDENT_ERRORS_.email };
+  var dni = EsiCore.normalizeDni(String(d.dni == null ? '' : d.dni));
+  if (dni && !EsiCore.isValidDni(dni)) {
+    return { ok: false, message: 'El DNI tiene 7 u 8 números, sin puntos.' };
+  }
   return withScriptLock_(ADMIN_LOCK_MS, function () {
     try {
       var rows = signupRowsByEmail_(v.email);
@@ -5212,6 +5216,18 @@ function apiAdminCorrectStudent(cred, email, data) {
         var talk = talkById[String(rows[i].signup.talk_id)];
         if (talk && !EsiCore.cycleAllowsTalk(talk.ciclo, v.ciclo)) {
           return { ok: false, message: 'Ese cambio de ciclo no coincide con las charlas anotadas.' };
+        }
+      }
+      // El DNI es la otra llave de ingreso: si ya lo tiene otro mail, el
+      // login por DNI queda ambiguo. Se lee la hoja fresca (no el cache) para
+      // no dejar pasar un duplicado cargado por otro admin hace minutos.
+      if (dni) {
+        var roster = readStudents_();
+        for (var r = 0; r < roster.length; r++) {
+          if (roster[r].email === v.email) continue;
+          if (EsiCore.normalizeDni(String(roster[r].dni || '')) === dni) {
+            return { ok: false, message: 'Ese DNI ya está cargado en otro alumno.' };
+          }
         }
       }
       var sh = sheet_(SIGNUPS_SHEET);
@@ -5226,12 +5242,20 @@ function apiAdminCorrectStudent(cred, email, data) {
       }
       updateSessionsStudent_(v);
       updateRosterStudent_(v);
+      if (dni) {
+        var dniLog = upsertStudentsDni_(v, dni);
+        if (dniLog === 'nuevo' || dniLog === 'actualizado') logAction_('dni_alumno', rows[0].signup.id, dniLog);
+      }
       logAction_('correct_student', rows[0].signup.id, '');
       invalidateDataCache_();
       // Correcto cambia curso/ciclo/nombre en filas: derivedFingerprint_ es
       // ciego a eso (solo cuenta). La marca asegura rebuild de Reporte/Alumnos.
       scheduleRebuilds_();
-      return { ok: true, updated: rows.length, student: { email: v.email, nombre: v.nombre, apellido: v.apellido, curso: v.curso, ciclo: v.ciclo } };
+      return {
+        ok: true,
+        updated: rows.length,
+        student: { email: v.email, nombre: v.nombre, apellido: v.apellido, curso: v.curso, ciclo: v.ciclo, dni: dni }
+      };
     } catch (err) {
       return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
     }
