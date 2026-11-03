@@ -145,10 +145,36 @@ Si algo no sale:
 - `trigger: false` → en el proyecto de `esi@` correr `setup()` de nuevo.
 - Hay pendientes que no bajan → correr `diagnostico()` en ese proyecto y mirar
   `latido` (hora de la última corrida) y el estado de la hoja.
-- Una fila en `error` significa que rebotó 5 veces (casilla inexistente).
-  Corregí el mail del alumno en **Arreglar datos** y volvé a encolar el aviso.
+- Una fila en `error` significa que el envío falló 5 veces. Ojo: un rebote
+  (casilla inexistente) no siempre cae acá, porque Gmail acepta el envío y
+  después devuelve el aviso a la casilla de `esi@`. Si el mail del alumno está
+  mal, corregilo (ver abajo) y volvé a encolar el aviso.
 - Cuota: el Workspace permite 1500 mails por día. Si se agota, la fila queda
   `pendiente` y sigue al día siguiente; no se pierde.
+
+### Si un mail rebota
+
+El aviso de rebote llega a la casilla de `esi@` (Mail Delivery Subsystem); el
+panel **no lee esa casilla**, así que la lista de rebotes se mira ahí. Las
+causas más comunes son:
+
+- La casilla no existe: alumnos de ciclo básico menores de 13 que todavía no
+  tienen cuenta en el Workspace. No hay combinación de nombre que la arregle.
+- El mail está mal escrito: nombre antes que apellido, apellido incompleto,
+  año de egreso equivocado o el dominio duplicado.
+
+Para corregir hoy: en **Arreglar datos** borrá las inscripciones del mail viejo
+y volvé a anotar al alumno con el mail correcto (o con el del tutor si no tiene
+casilla). Entrar con **DNI y apellido** también trae el mail que figura en el
+padrón, que es la mejor pista para saber cuál es el correcto. Cambiar el mail de
+una inscripción sin borrarla todavía no está en el panel.
+
+### Ver los primeros y los últimos
+
+En **Inscriptos**, el selector **Mostrar** recorta la tabla a los primeros o
+últimos 30, 50 o 100 alumnos por orden de alta. El orden usa la primera reserva
+(primeros) o la última (últimos) de cada alumno, y convive con la búsqueda y los
+filtros de curso, división y charla.
 
 ### Probar antes de mandar a todos
 
