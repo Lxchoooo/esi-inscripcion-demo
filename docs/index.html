@@ -327,6 +327,17 @@
   .thanks h2 { font-size: clamp(3.4rem, 9vw, 7rem); margin-bottom: 24px; }
   .thanks .lead { max-width: 58ch; }
   .thanks-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .thanks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
+  .thanks-card { padding: 22px; }
+  .thanks-card h3 {
+    color: var(--gold);
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    font-weight: 400;
+    letter-spacing: -.01em;
+    margin-bottom: 7px;
+  }
+  .thanks-card p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.55; }
   .ghost-btn {
     border: 1px solid var(--line);
     background: transparent;
@@ -385,7 +396,7 @@
     .split, .chart-grid, .effort-grid { grid-template-columns: 1fr; }
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .slot-grid { grid-template-columns: 1fr; }
-    .lesson-grid { grid-template-columns: 1fr; }
+    .lesson-grid, .thanks-grid { grid-template-columns: 1fr; }
     .cover h1 { max-width: 14ch; }
     .donut { width: min(300px, 70vw); }
   }
@@ -428,7 +439,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter" aria-live="polite">01 / 11</span>
+    <span id="counter" class="counter" aria-live="polite">01 / 12</span>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
   </div>
 </header>
@@ -619,7 +630,41 @@
         <div class="lesson glass">
           <div class="idx">04</div>
           <h3>Esto se hace entre muchos</h3>
-          <p>Preceptores, profes, alumnos y equipos directivos. La jornada fue una suma de voluntades.</p>
+          <p>Profes, preceptores, auxiliares, familias, alumnos y equipos directivos. La jornada fue una suma de voluntades de toda la comunidad del ISS.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Gracias a quienes lo hicieron posible" aria-label="Gracias a quienes lo hicieron posible">
+    <div class="wrap">
+      <p class="eyebrow">Gracias a quienes lo hicieron posible</p>
+      <h2>Esto no lo hizo una persona. <span class="accent">Lo hizo una comunidad.</span></h2>
+      <p class="lead" style="max-width: 74ch;">Gracias a los profes que prepararon cada charla, a los preceptores que sostuvieron las listas y los cursos, al equipo directivo y auxiliar que abrió la puerta, y a toda la comunidad del ISS que acompañó.</p>
+      <div class="thanks-grid">
+        <div class="thanks-card glass">
+          <h3>Profes</h3>
+          <p>Por regalar su tiempo, sus temas y sus preguntas. Por animarse a hablar de ESI con los pibes.</p>
+        </div>
+        <div class="thanks-card glass">
+          <h3>Preceptores</h3>
+          <p>Por sostener las listas, los cursos y el cuidado de cada día. Por estar cuando había que resolver.</p>
+        </div>
+        <div class="thanks-card glass">
+          <h3>Equipo directivo</h3>
+          <p>Por abrir la puerta y confiar en que esta primera jornada era posible.</p>
+        </div>
+        <div class="thanks-card glass">
+          <h3>Auxiliares y administrativos</h3>
+          <p>Por hacer que todo funcionara detrás de escena, incluso cuando nadie lo veía.</p>
+        </div>
+        <div class="thanks-card glass">
+          <h3>Comunidad del ISS</h3>
+          <p>Por acompañar, preguntar y sentir la jornada como propia. Esto también es de ustedes.</p>
+        </div>
+        <div class="thanks-card glass">
+          <h3>Alumnos y familias</h3>
+          <p>Por animarse a escuchar, a hablar y a seguir cuidándose. La ESI se construye entre todos.</p>
         </div>
       </div>
     </div>
@@ -629,7 +674,7 @@
     <div class="wrap narrow">
       <p class="eyebrow">Gracias</p>
       <h2>Gracias.</h2>
-      <p class="lead">A quienes se animaron a hablar de ESI. A quienes escucharon. A quienes organizaron, corrigieron, insistieron y sostuvieron. A los que vinieron y a los que no pudieron venir.</p>
+      <p class="lead">A los profes, preceptores, equipo directivo, auxiliares, familias y a toda la comunidad del ISS. A quienes se animaron a hablar de ESI. A quienes escucharon. A quienes organizaron, corrigieron, insistieron y sostuvieron. A los que vinieron y a los que no pudieron venir.</p>
       <p class="lead">La ESI no termina en una jornada. Esto recién empieza.</p>
       <div class="thanks-actions">
         <button class="ghost-btn" type="button" data-go="0">Volver al inicio</button>
@@ -647,7 +692,7 @@
     <button class="nav-btn" type="button" data-next aria-label="Diapositiva siguiente">→</button>
   </div>
   <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <div class="counter" id="navCounter">01 / 11</div>
+  <div class="counter" id="navCounter">01 / 12</div>
 </nav>
 <div class="progress" id="progress" aria-hidden="true"></div>
 
