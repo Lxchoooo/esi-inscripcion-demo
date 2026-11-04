@@ -114,7 +114,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: clamp(70px, 8vh, 110px) clamp(20px, 6vw, 90px) clamp(90px, 12vh, 130px);
+    padding: clamp(70px, 8vh, 110px) clamp(20px, 6vw, 90px) clamp(70px, 10vh, 120px);
     opacity: 0;
     transform: translateY(18px) scale(.992);
     pointer-events: none;
@@ -204,7 +204,7 @@
       box-shadow: 0 30px 86px rgba(0, 0, 0, .3);
     }
   }
-  .start:active, .ghost-btn:active, .nav-btn:active, .icon-btn:active { transform: scale(.97); }
+  .start:active, .ghost-btn:active, .icon-btn:active { transform: scale(.97); }
 
   .cover .wrap { max-width: 1080px; }
   .cover h1 { max-width: 14ch; font-size: clamp(3rem, 7vw, 6.2rem); }
@@ -496,39 +496,6 @@
   }
   .ghost-btn:hover { background: rgba(255, 255, 255, .07); color: var(--cream); border-color: rgba(245, 241, 232, .3); }
 
-  .nav {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    z-index: 40;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    padding: 16px clamp(18px, 4vw, 48px);
-    background: linear-gradient(0deg, rgba(8, 20, 15, .92), rgba(8, 20, 15, .55) 55%, transparent);
-  }
-  .nav-group { display: flex; align-items: center; gap: 8px; }
-  .nav-btn {
-    width: 42px; height: 42px;
-    display: grid; place-items: center;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .04);
-    color: var(--cream);
-    cursor: pointer;
-    transition: background .2s, border-color .2s, transform .2s;
-  }
-  .nav-btn:hover { background: rgba(255, 255, 255, .1); border-color: rgba(245, 241, 232, .3); transform: translateY(-1px); }
-  .nav-btn:disabled { opacity: .28; cursor: default; transform: none; }
-  .dots { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
-  .dot {
-    width: 7px; height: 7px; padding: 0;
-    border: 0; border-radius: 50%;
-    background: rgba(245, 241, 232, .24);
-    cursor: pointer;
-    transition: background .2s, transform .2s;
-  }
-  .dot.active { background: var(--gold); transform: scale(1.45); }
   .progress {
     position: fixed; left: 0; bottom: 0;
     height: 3px; width: 0;
@@ -570,11 +537,15 @@
       position: relative;
       min-height: 100dvh;
       inset: auto;
-      padding: 78px 18px calc(92px + env(safe-area-inset-bottom));
+      padding: 78px 18px calc(44px + env(safe-area-inset-bottom));
       align-items: flex-start;
       display: none;
     }
-    .slide.active { display: flex; }
+    .slide.active { display: flex; animation: page-in .6s cubic-bezier(.2, .8, .2, 1) both; }
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(26px); }
+      to { opacity: 1; transform: none; }
+    }
     .slide.active .wrap > *, .slide.active .mini-grid > *, .slide.active .kpi-grid > *,
     .slide.active .lesson-grid > *, .slide.active .thanks-grid > *, .slide.active .timeline > * {
       animation-duration: .55s;
@@ -621,16 +592,7 @@
     .course { min-width: 48px; flex-basis: 48px; }
     .slot-grid { gap: 10px; }
     .lesson-grid, .thanks-grid, .timeline { gap: 10px; }
-    .nav {
-      padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-      gap: 10px;
-      background: linear-gradient(0deg, rgba(8, 20, 15, .98), rgba(8, 20, 15, .72) 70%, transparent);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-    .nav-btn { width: 44px; height: 44px; }
     .counter { min-width: auto; font-size: .62rem; letter-spacing: .1em; }
-    .dots { display: none; }
     .cover::before, .promo::before, .promo-speech::before, .farewell::before {
       inset: -6%;
       background-size: 92vmin;
@@ -993,14 +955,6 @@
 
 </main>
 
-<nav class="nav" aria-label="Navegación de la presentación">
-  <div class="nav-group">
-    <button class="nav-btn" type="button" data-prev aria-label="Diapositiva anterior">←</button>
-    <button class="nav-btn" type="button" data-next aria-label="Diapositiva siguiente">→</button>
-  </div>
-  <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <div class="counter" id="navCounter">01 / 16</div>
-</nav>
 <div class="progress" id="progress" aria-hidden="true"></div>
 
 <noscript>
@@ -1063,13 +1017,13 @@ function go(index, updateHash = true) {
   if (current >= 0) slides[current].classList.remove('active');
   slides[n].classList.add('active');
   current = n;
-  Array.from(dotsEl.children).forEach((dot, i) => {
+  Array.from(dotsEl ? dotsEl.children : []).forEach((dot, i) => {
     dot.classList.toggle('active', i === n);
     dot.setAttribute('aria-current', i === n ? 'true' : 'false');
   });
   const label = String(n + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
   counterEl.textContent = label;
-  navCounterEl.textContent = label;
+  if (navCounterEl) navCounterEl.textContent = label;
   progressEl.style.width = (((n + 1) / slides.length) * 100) + '%';
   animateCounters(slides[n]);
   const deckScroller = document.getElementById('deck');
@@ -1187,6 +1141,7 @@ function renderSlots() {
 }
 
 function buildDots() {
+  if (!dotsEl) return;
   slides.forEach((slide, i) => {
     const dot = document.createElement('button');
     dot.type = 'button';
@@ -1248,8 +1203,29 @@ function bindNavigation() {
     touchY = 0;
   }, { passive: true });
 
-  const fullscreenBtn = document.getElementById('fullscreen');
-  fullscreenBtn.addEventListener('click', async () => {
+  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    let dragX = 0;
+    let dragY = 0;
+    let dragging = false;
+    document.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0 || event.target.closest('button, a')) return;
+      dragging = true;
+      dragX = event.clientX;
+      dragY = event.clientY;
+    }, { passive: true });
+    document.addEventListener('pointerup', (event) => {
+      if (!dragging) return;
+      dragging = false;
+      try { if (String(window.getSelection()).length) return; } catch (e) {}
+      const dx = event.clientX - dragX;
+      const dy = event.clientY - dragY;
+      const horizontal = Math.abs(dx) >= Math.abs(dy);
+      if (horizontal && Math.abs(dx) > 70) go(current + (dx < 0 ? 1 : -1));
+      else if (!horizontal && Math.abs(dy) > 90) go(current + (dy < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+
+  const fullscreenBtn = document.getElementById('fullscreen');  fullscreenBtn.addEventListener('click', async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
