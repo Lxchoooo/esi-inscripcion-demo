@@ -3,6 +3,7 @@ var SLOTS_SHEET = 'Slots';
 var TALKS_SHEET = 'Talks';
 var SIGNUPS_SHEET = 'Signups';
 var STUDENTS_SHEET = 'Students';
+var ENTRY_SHEET = 'Entrada';
 var SESSIONS_SHEET = 'Sessions';
 var SENT_MAILS_SHEET = 'Mails';
 var LOG_SHEET = 'Log';
@@ -68,7 +69,7 @@ var ROLE_ADMIN = 'admin';
 // Las dos claves (ADMIN_PIN y GUIDE_PIN) abren el mismo panel con los mismos permisos.
 // ROLE_GUIDE queda solo por compatibilidad con tokens viejos en cache.
 var ROLE_GUIDE = 'guide';
-var BACKEND_VERSION = 'v72';
+var BACKEND_VERSION = 'v73';
 // Las hojas se leen por cache; cualquier escritura la invalida, asi que subir el
 // TTL solo evita releer 5 hojas en cada toque del panel.
 var DATA_CACHE_TTL = 45;
@@ -2406,6 +2407,7 @@ var EXPECTED_COLUMNS_ = {
   Slots: ['id', 'nombre', 'inicio', 'fin', 'orden'],
   Talks: ['id', 'titulo', 'ciclo', 'slot_id', 'lugar', 'cupo', 'activa'],
   Signups: ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'apellido', 'recordatorio', 'prueba'],
+  Entrada: ['email', 'presente', 'ausente', 'actualizado'],
   Sessions: ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'],
   Mails: ['email', 'fecha', 'asunto'],
   MailQueue: ['id', 'ts', 'envio_at', 'email', 'tipo', 'estado', 'intentos', 'asunto', 'cuerpo'],
@@ -2703,6 +2705,8 @@ var API_FN_MAP_ = {
   apiAdminDropOvercupo: apiAdminDropOvercupo,
   apiAdminImportRoster: apiAdminImportRoster,
   apiAdminTalkRoster: apiAdminTalkRoster,
+  apiAdminEntryRoster: apiAdminEntryRoster,
+  apiAdminSetEntry: apiAdminSetEntry,
   apiAdminPending: apiAdminPending,
   apiAdminSetPresent: apiAdminSetPresent,
   apiAdminSetPresentBatch: apiAdminSetPresentBatch,
@@ -2802,6 +2806,7 @@ function setup(quiet) {
   ensureSheet_(ss, STUDENTS_SHEET, ['email', 'nombre', 'curso'], []);
   ensureSheet_(ss, SESSIONS_SHEET, ['token_hash', 'email', 'nombre', 'curso', 'ciclo', 'created_at', 'expires_at', 'revoked'], []);
   ensureSheet_(ss, SIGNUPS_SHEET, ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
+  ensureSheet_(ss, ENTRY_SHEET, ['email', 'presente', 'ausente', 'actualizado'], []);
   repairErasedSignups_(ss);
   ensureSheet_(ss, SENT_MAILS_SHEET, ['email', 'fecha', 'asunto'], []);
   ensureSheet_(ss, LOG_SHEET, ['fecha', 'accion', 'signup_id', 'detalle'], []);
@@ -3688,6 +3693,86 @@ function signupsHeaderMap_(head) {
     else if (h === 'prueba') map.prueba = i;
   }
   return map;
+}
+
+function entryHeaderMap_(head) {
+  var map = { email: -1, presente: -1, ausente: -1, actualizado: -1 };
+  for (var i = 0; i < (head || []).length; i++) {
+    var h = EsiCore.normalizeText(head[i]);
+    if (h === 'email' || h === 'mail' || h === 'correo') map.email = i;
+    else if (h === 'presente') map.presente = i;
+    else if (h === 'ausente') map.ausente = i;
+    else if (h === 'actualizado' || h === 'fecha') map.actualizado = i;
+  }
+  return map;
+}
+
+function ensureEntrySheet_() {
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(ENTRY_SHEET);
+  if (!sh) sh = ensureSheet_(ss, ENTRY_SHEET, ['email', 'presente', 'ausente', 'actualizado'], []);
+  if (sh.getLastColumn() < 1) {
+    sh.getRange(1, 1, 1, 4).setValues([['email', 'presente', 'ausente', 'actualizado']]);
+  } else {
+    ensureColumn_(sh, 'email');
+    ensureColumn_(sh, 'presente');
+    ensureColumn_(sh, 'ausente');
+    ensureColumn_(sh, 'actualizado');
+  }
+  return sh;
+}
+
+function readEntryMarks_() {
+  var sh = ensureEntrySheet_();
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return {};
+  var map = entryHeaderMap_(vals[0]);
+  if (map.email < 0) return {};
+  var out = {};
+  for (var i = 1; i < vals.length; i++) {
+    var key = EsiCore.normalizeEmail(vals[i][map.email]);
+    if (!key) continue;
+    var presente = map.presente >= 0 ? convertBool_(vals[i][map.presente]) : false;
+    var ausente = map.ausente >= 0 ? convertBool_(vals[i][map.ausente]) : false;
+    out[key] = { presente: presente, ausente: ausente && !presente };
+  }
+  return out;
+}
+
+function setEntryMark_(email, present, absent) {
+  var sh = ensureEntrySheet_();
+  var key = EsiCore.normalizeEmail(email);
+  var p = !!present;
+  var a = !!absent && !p;
+  if (!key) return { presente: false, ausente: false };
+  var vals = sh.getDataRange().getValues();
+  var map = entryHeaderMap_(vals[0] || []);
+  if (map.email < 0) {
+    map.email = ensureColumn_(sh, 'email') - 1;
+    map.presente = ensureColumn_(sh, 'presente') - 1;
+    map.ausente = ensureColumn_(sh, 'ausente') - 1;
+    map.actualizado = ensureColumn_(sh, 'actualizado') - 1;
+  }
+  var row = 0;
+  for (var i = 1; i < vals.length; i++) {
+    if (EsiCore.normalizeEmail(vals[i][map.email]) === key) { row = i + 1; break; }
+  }
+  if (!row) {
+    var width = Math.max(map.email, map.presente, map.ausente, map.actualizado) + 1;
+    var fila = [];
+    for (var k = 0; k < width; k++) fila.push('');
+    fila[map.email] = email;
+    fila[map.presente] = p ? 'si' : 'no';
+    fila[map.ausente] = a ? 'si' : 'no';
+    fila[map.actualizado] = new Date();
+    sh.appendRow(fila);
+  } else {
+    sh.getRange(row, map.email + 1).setValue(email);
+    sh.getRange(row, map.presente + 1).setValue(p ? 'si' : 'no');
+    sh.getRange(row, map.ausente + 1).setValue(a ? 'si' : 'no');
+    sh.getRange(row, map.actualizado + 1).setValue(new Date());
+  }
+  return { presente: p, ausente: a };
 }
 
 function readSignups_() {
@@ -6492,6 +6577,14 @@ function apiAdminErasePersonalData(cred, confirmation) {
       queueSh.clearContents();
       queueSh.getRange(1, 1, 1, queueHead.length).setValues([queueHead]);
 
+      // La lista de entrada tambien guarda mails: se limpia con el resto.
+      var entrySh = ss.getSheetByName(ENTRY_SHEET);
+      if (entrySh) {
+        var entryHead = entrySh.getRange(1, 1, 1, Math.max(1, entrySh.getLastColumn())).getValues()[0];
+        entrySh.clearContents();
+        entrySh.getRange(1, 1, 1, entryHead.length).setValues([entryHead]);
+      }
+
       var studentsSh = ss.getSheetByName(STUDENTS_SHEET);
       if (studentsSh) {
         var studentsHead = studentsSh.getRange(1, 1, 1, Math.max(1, studentsSh.getLastColumn())).getValues()[0];
@@ -6666,6 +6759,99 @@ function apiAdminTalkRoster(cred, talkId) {
   } catch (err) {
     return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
   }
+}
+
+function apiAdminEntryRoster(cred) {
+  try {
+    var auth = adminAuth_(cred);
+    if (!auth.ok) return { ok: false, message: auth.message };
+    var admin = isAdmin_(auth);
+    var roster = readStudentsCached_();
+    var apellidos = {};
+    var dnis = {};
+    for (var r = 0; r < roster.length; r++) {
+      var rosterKey = roster[r].emailKey || roster[r].email;
+      apellidos[rosterKey] = roster[r].apellido || '';
+      dnis[rosterKey] = roster[r].dni || '';
+    }
+    var signups = readSignupsCached_();
+    var entry = readEntryMarks_();
+    var byEmail = {};
+    var rows = [];
+    for (var i = 0; i < signups.length; i++) {
+      var s = signups[i];
+      if (s.prueba) continue;
+      var key = s.emailKey || EsiCore.normalizeEmail(s.email);
+      if (!key) continue;
+      var row = byEmail[key];
+      if (!row) {
+        row = {
+          id: s.id,
+          emailKey: key,
+          email: s.email,
+          apellido: s.apellido || apellidos[key] || '',
+          nombreCompleto: s.nombre,
+          curso: s.curso || '',
+          dni: dnis[key] || ''
+        };
+        byEmail[key] = row;
+        rows.push(row);
+      } else {
+        if (!row.apellido && (s.apellido || apellidos[key])) row.apellido = s.apellido || apellidos[key];
+        if (!row.curso && s.curso) row.curso = s.curso;
+        if (!row.dni && dnis[key]) row.dni = dnis[key];
+      }
+    }
+    var presentes = 0;
+    var ausentes = 0;
+    var sinMarcar = 0;
+    for (var j = 0; j < rows.length; j++) {
+      var st = rows[j];
+      var mark = entry[st.emailKey] || null;
+      st.presente = !!(mark && mark.presente);
+      st.ausente = !!(mark && mark.ausente) && !st.presente;
+      st.marcado = !!(st.presente || st.ausente);
+      st.nombre = givenName_(st.nombreCompleto, st.apellido);
+      if (st.presente) presentes++;
+      else if (st.ausente) ausentes++;
+      else sinMarcar++;
+      delete st.emailKey;
+      if (!admin) delete st.email;
+    }
+    sortBySurname_(rows);
+    return {
+      ok: true,
+      role: auth.role,
+      count: rows.length,
+      presentes: presentes,
+      ausentes: ausentes,
+      sinMarcar: sinMarcar,
+      students: rows
+    };
+  } catch (err) {
+    return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function apiAdminSetEntry(cred, signupId, present, absent) {
+  var auth = adminAuth_(cred);
+  if (!auth.ok) return { ok: false, message: auth.message };
+  return withScriptLock_(ADMIN_LOCK_MS, function () {
+    try {
+      var row = findSignupRow_(signupId);
+      if (!row) return { ok: false, message: 'No encontramos esa inscripción.' };
+      var sh = sheet_(SIGNUPS_SHEET);
+      var vals = sh.getDataRange().getValues();
+      var map = signupsHeaderMap_(vals[0]);
+      if (map.email < 0) return { ok: false, message: 'Falta la columna email.' };
+      var email = String(vals[row - 1][map.email] || '');
+      if (!EsiCore.normalizeEmail(email)) return { ok: false, message: 'La inscripción no tiene mail.' };
+      var mark = setEntryMark_(email, present, absent);
+      return { ok: true, presente: mark.presente, ausente: mark.ausente };
+    } catch (err) {
+      return { ok: false, message: 'Error: ' + (err && err.message ? err.message : err) };
+    }
+  });
 }
 
 function apiAdminSetPresent(cred, signupId, present, absent) {

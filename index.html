@@ -1649,7 +1649,7 @@
     .a-tabbar button .nav-ico { width: 21px; height: 21px; }
     .a-tabbar button.on { color: var(--accent-strong); background: var(--accent-soft); }
     @media (max-width: 959px) {
-      .a-tabbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+      .a-tabbar { display: grid; grid-template-columns: repeat(5, 1fr); }
       .a-tabbar button { display: flex; }
       .workspace { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
     }
@@ -1831,11 +1831,12 @@
         box-shadow: inset 0 -1px 0 var(--line-strong);
       }
       body.admin .roster-row { flex-wrap: nowrap; gap: 12px; padding: 8px 12px; }
-      body.admin #charla-list, body.admin #pend-list {
+      body.admin #charla-list, body.admin #pend-list, body.admin #entrada-list {
         border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
       }
       body.admin #charla-list .roster-row:last-child,
-      body.admin #pend-list .roster-row:last-child { border-bottom: 0; }
+      body.admin #pend-list .roster-row:last-child,
+      body.admin #entrada-list .roster-row:last-child { border-bottom: 0; }
       body.admin .roster-who { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; }
       body.admin .roster-name { flex: 0 1 auto; }
       body.admin .roster-curso { flex: 0 0 90px; }
@@ -2210,10 +2211,10 @@
       transition-duration: var(--dur-1) !important;
     }
     /* modo verificación de guías: cero decoración */
-    #pane-charla *, #pane-pend * { animation: none !important; transition-duration: 1ms !important; }
-    #pane-charla .btn, #pane-pend .btn,
-    #pane-charla .present-btn, #pane-pend .present-btn,
-    #pane-charla .status-chips button { transition-duration: var(--dur-1) !important; }
+    #pane-charla *, #pane-pend *, #pane-entrada * { animation: none !important; transition-duration: 1ms !important; }
+    #pane-charla .btn, #pane-pend .btn, #pane-entrada .btn,
+    #pane-charla .present-btn, #pane-pend .present-btn, #pane-entrada .present-btn,
+    #pane-charla .status-chips button, #pane-entrada .status-chips button { transition-duration: var(--dur-1) !important; }
     #nav::after { will-change: opacity; }
     .acc-body {
       display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; opacity: 1;
@@ -2304,7 +2305,8 @@
     body.admin .status-chips button.active { font-weight: 800; }
     body.admin .asis-bar { height: 8px; }
     body.admin .roster-row { min-height: 58px; }
-    body.admin #charla-list .roster-row:nth-child(even):not(.is-present) { background: var(--surface-2); }
+    body.admin #charla-list .roster-row:nth-child(even):not(.is-present),
+    body.admin #entrada-list .roster-row:nth-child(even):not(.is-present) { background: var(--surface-2); }
     body.admin .present-btn:not(.on) {
       border-radius: 12px; padding: 10px 12px; min-width: 96px;
       color: var(--ink); background: var(--surface-2); border-color: var(--line-strong);
@@ -2711,6 +2713,10 @@
           </div>
           <div class="side-group" role="presentation">
             <span class="side-label" role="button" tabindex="0" aria-expanded="true">Asistencia</span>
+            <button id="tab-entrada" class="tab" type="button" role="tab" aria-selected="false" aria-controls="pane-entrada" tabindex="-1">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/><path d="M10 8l4 4-4 4"/><path d="M3 12h11"/></svg>
+              <span>Lista de entrada</span>
+            </button>
             <button id="tab-charla" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="pane-charla">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               <span>Tomar asistencia</span>
@@ -2765,9 +2771,13 @@
           </div>
         </nav>
 
-        <!-- Barra inferior del celular: espeja las cuatro secciones
-             principales (data-for → tabs de arriba), sin duplicar lógica. -->
+        <!-- Barra inferior del celular: espeja las secciones principales
+             (data-for → tabs de arriba), sin duplicar lógica. -->
         <nav id="a-tabbar" class="a-tabbar" aria-label="Secciones del panel en celular">
+          <button type="button" data-for="tab-entrada" aria-pressed="false">
+            <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/><path d="M10 8l4 4-4 4"/><path d="M3 12h11"/></svg>
+            <span>Entrada</span>
+          </button>
           <button type="button" data-for="tab-charla" aria-pressed="false">
             <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             <span>Asistencia</span>
@@ -2802,6 +2812,32 @@
           </div>
           <p class="hint-line">Solo lectura: no cambia nada, solo cuenta cómo está todo antes de abrir.</p>
           <ul id="ev-lista" class="ev-list"></ul>
+        </div>
+      </div>
+
+      <div id="pane-entrada" class="tabpanel" tabindex="-1" role="tabpanel" aria-labelledby="tab-entrada" hidden>
+        <div class="card">
+          <div class="a-asis-head">
+            <div class="filters">
+              <input id="input-buscar-entrada" type="text" autocomplete="off" placeholder="Buscar por nombre, mail o DNI" aria-label="Buscar por nombre, mail o DNI">
+              <select id="filter-curso-entrada" aria-label="Curso"></select>
+            </div>
+            <div class="view-head">
+              <span class="view-count" id="entrada-count">0 de 0</span>
+              <span class="hint-line" id="entrada-presentes">Llegaron 0 de 0</span>
+              <button id="btn-refresh-entrada" class="btn secondary small" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Actualizar</span></button>
+            </div>
+            <div class="asis-bar" aria-hidden="true"><span id="entrada-bar-fill"></span></div>
+            <div class="status-chips" id="entrada-filtro" role="group" aria-label="Filtrar por entrada">
+              <button type="button" data-filter="all" class="active" aria-pressed="true">Todos</button>
+              <button type="button" data-filter="present" aria-pressed="false">Llegaron</button>
+              <button type="button" data-filter="absent" aria-pressed="false">Ausentes</button>
+              <button type="button" data-filter="unmarked" aria-pressed="false">Sin marcar</button>
+            </div>
+            <span class="hint-line" id="entrada-updated">Actualizado hace 0s</span>
+          </div>
+          <p class="hint-line" style="margin-top:8px">Lista de entrada al evento: una marca por alumno. No cambia la asistencia de cada charla.</p>
+          <div id="entrada-list"></div>
         </div>
       </div>
 
@@ -3230,7 +3266,7 @@
     var TEXTO_DIRECCION = '';
     var EVENT_DATE = '2026-11-04';
     var EVENT_TZ = 'America/Argentina/Cordoba';
-    var APP_VERSION = 'v72';
+    var APP_VERSION = 'v73';
     var errorReports_ = 0;
     var CICLO_LABELS = { basico: 'Ciclo Básico', orientado: 'Ciclo Orientado' };
 
@@ -4920,6 +4956,83 @@
         students: rows
       };
     }
+    function demoEntryMarks() {
+      return demoRead('esi_demo_entry', {}) || {};
+    }
+    function demoEntryRoster(role) {
+      var admin = role === 'admin';
+      var signups = demoSignups();
+      var marks = demoEntryMarks();
+      var roster = demoRoster();
+      var byEmail = {};
+      var rows = [];
+      for (var i = 0; i < signups.length; i++) {
+        var key = EsiClient.normalizeEmail(signups[i].email);
+        if (!key) continue;
+        var row = byEmail[key];
+        if (!row) {
+          row = {
+            id: signups[i].id,
+            email: signups[i].email,
+            apellido: signups[i].apellido || '',
+            nombreCompleto: signups[i].nombre || '',
+            curso: signups[i].curso || '',
+            dni: ''
+          };
+          for (var r = 0; r < roster.length; r++) {
+            if (EsiClient.normalizeEmail(roster[r].email) !== key) continue;
+            if (!row.apellido && roster[r].apellido) row.apellido = roster[r].apellido;
+            if (roster[r].dni) row.dni = roster[r].dni;
+            break;
+          }
+          row.nombre = demoGiven_(row.nombreCompleto, row.apellido);
+          byEmail[key] = row;
+          rows.push(row);
+        } else {
+          if (!row.apellido && signups[i].apellido) row.apellido = signups[i].apellido;
+          if (!row.curso && signups[i].curso) row.curso = signups[i].curso;
+        }
+      }
+      var presentes = 0;
+      var ausentes = 0;
+      var sinMarcar = 0;
+      for (var j = 0; j < rows.length; j++) {
+        var st = rows[j];
+        var mark = marks[EsiClient.normalizeEmail(st.email)] || null;
+        st.presente = !!(mark && mark.presente);
+        st.ausente = !!(mark && mark.ausente) && !st.presente;
+        st.marcado = !!(st.presente || st.ausente);
+        if (st.presente) presentes++;
+        else if (st.ausente) ausentes++;
+        else sinMarcar++;
+        if (!admin) delete st.email;
+      }
+      demoSort_(rows);
+      return {
+        ok: true,
+        role: role,
+        count: rows.length,
+        presentes: presentes,
+        ausentes: ausentes,
+        sinMarcar: sinMarcar,
+        students: rows
+      };
+    }
+    function demoSetEntry(signupId, present, absent) {
+      var signups = demoSignups();
+      var email = '';
+      for (var i = 0; i < signups.length; i++) {
+        if (String(signups[i].id) === String(signupId)) { email = signups[i].email; break; }
+      }
+      if (!email) return { ok: false, message: 'No encontramos esa inscripción.' };
+      var key = EsiClient.normalizeEmail(email);
+      var marks = demoEntryMarks();
+      var p = !!present;
+      var a = !!absent && !p;
+      marks[key] = { presente: p, ausente: a, actualizado: Date.now() };
+      demoWrite('esi_demo_entry', marks);
+      return { ok: true, presente: p, ausente: a };
+    }
     function demoPending(role) {
       var admin = role === 'admin';
       var signups = demoSignups();
@@ -5158,6 +5271,11 @@
         return Promise.resolve({ ok: true, presente: presentP, ausente: absentP });
       }
       if (fn === 'apiAdminTalkRoster') return Promise.resolve(demoTalkRoster(a[1], demoRole_(a[0])));
+      if (fn === 'apiAdminEntryRoster') return Promise.resolve(demoEntryRoster(demoRole_(a[0])));
+      if (fn === 'apiAdminSetEntry') {
+        var entryResp = demoSetEntry(a[1], a[2], a[3]);
+        return Promise.resolve(entryResp);
+      }
       if (fn === 'apiAdminPending') return Promise.resolve(demoPending(demoRole_(a[0])));
       if (fn === 'apiAdminReports') return Promise.resolve(demoReports(demoRole_(a[0])));
       if (fn === 'apiAdminGetConfig') {
@@ -7106,6 +7224,9 @@
     var aRole = 'admin';
     var aTalkData = null;
     var aTalkFilter = 'all';
+    var aEntryData = null;
+    var aEntryFilter = 'all';
+    var aEntryBusy = {};
     var aBannerSeq_ = 0; // cada banner invalida los limpiadores previos
     var aWakeLock = null;
     function aSessionSave_(token, role) {
@@ -7371,6 +7492,8 @@
       aClearTalkCaches_();
       aClearAdminCaches_();
       aData = null;
+      aEntryData = null;
+      aEntryBusy = {};
       $('gate-msg').textContent = msg || 'Sesión vencida. Entrá de nuevo.';
       $('gate-msg').style.display = 'block';
       showScreen(A_SCREENS, 'a-screen-gate');
@@ -7452,6 +7575,8 @@
       if (dot && dot.classList) dot.classList.toggle('off', !!aOfflineAt);
       var el2 = $('pend-updated');
       if (el2) el2.textContent = label;
+      var el3 = $('entrada-updated');
+      if (el3) el3.textContent = label;
     }
 
     function aRefreshView() {
@@ -7461,6 +7586,7 @@
         if (aRosterFresh_ && Date.now() - aRosterFresh_ < 15000) { aRosterFresh_ = 0; return; }
         aLoadTalk();
       }
+      else if (aTabName === 'entrada') aLoadEntry();
       else if (aTabName === 'pend') aLoadPending();
       else if (aTabName === 'reportes') aLoadReports();
       else if (aTabName === 'estado') aLoadStatus();
@@ -7551,6 +7677,188 @@
           }
           aBanner('Sin conexión: revisá el wifi o los datos y probá de nuevo.', 'err');
         });
+    }
+
+    function aLoadEntry() {
+      if (!adminCred) return;
+      if (!aEntryData) {
+        var hitE = aCacheGet_('entrada');
+        if (hitE) {
+          aEntryData = hitE.data;
+          aRenderEntry();
+        }
+      }
+      btnLoading_('btn-refresh-entrada', true);
+      aSkeletonIfEmpty_('entrada-list');
+      call('apiAdminEntryRoster', [adminCred])
+        .then(function (resp) {
+          btnLoading_('btn-refresh-entrada', false);
+          if (!resp.ok) {
+            if (aAuthLost(resp)) return;
+            aBanner(resp.message || 'No se pudo cargar la entrada.', 'err');
+            return;
+          }
+          aEntryData = resp;
+          aCacheSet_('entrada', resp, true);
+          aUpdatedAt = Date.now();
+          aOfflineAt = 0;
+          aUpdateAges();
+          aRenderEntry();
+        })
+        .catch(function () {
+          btnLoading_('btn-refresh-entrada', false);
+          if (!aEntryData) {
+            var hit = aCacheGet_('entrada');
+            if (hit) {
+              aEntryData = hit.data;
+              aRenderEntry();
+              aBanner('Sin conexión. Mostrando datos guardados.', 'err');
+              return;
+            }
+          }
+          aBanner('Sin conexión. Mostrando la última lista de entrada.', 'err');
+        });
+    }
+
+    function aOnEntry(signupId, kind) {
+      aToggleEntry_(signupId, kind);
+    }
+
+    function aToggleEntry_(signupId, kind) {
+      var id = String(signupId);
+      if (aEntryBusy[id] || !adminCred || !aEntryData) return;
+      var target = null;
+      for (var i = 0; i < aEntryData.students.length; i++) {
+        if (String(aEntryData.students[i].id) === id) { target = aEntryData.students[i]; break; }
+      }
+      if (!target) return;
+      var prev = { presente: !!target.presente, ausente: !!target.ausente };
+      var nextPresente = kind === 'presente' ? !prev.presente : false;
+      var nextAusente = kind === 'ausente' ? !prev.ausente : false;
+      if (kind === 'presente' && prev.presente) { nextPresente = false; nextAusente = false; }
+      if (kind === 'ausente' && prev.ausente) { nextPresente = false; nextAusente = false; }
+      target.presente = nextPresente;
+      target.ausente = nextAusente;
+      target.marcado = nextPresente || nextAusente;
+      aRecountEntry_(aEntryData);
+      aRenderEntry();
+      haptic_(nextPresente || nextAusente ? 14 : 8);
+      aEntryBusy[id] = true;
+      call('apiAdminSetEntry', [adminCred, id, nextPresente, nextAusente])
+        .then(function (resp) {
+          delete aEntryBusy[id];
+          if (!resp.ok) {
+            target.presente = prev.presente;
+            target.ausente = prev.ausente;
+            target.marcado = prev.presente || prev.ausente;
+            aRecountEntry_(aEntryData);
+            aRenderEntry();
+            aBanner(resp.message || 'No se pudo marcar la entrada.', 'err');
+            return;
+          }
+          aOfferEntryUndo_(id, prev);
+        })
+        .catch(function () {
+          delete aEntryBusy[id];
+          aBanner('Sin conexión. La marca de entrada quedó solo en este teléfono.', 'err');
+        });
+    }
+
+    function aOfferEntryUndo_(id, prev) {
+      var who = '';
+      var what = 'sin marcar';
+      if (aEntryData && aEntryData.students) {
+        for (var i = 0; i < aEntryData.students.length; i++) {
+          if (String(aEntryData.students[i].id) === String(id)) {
+            who = aEntryData.students[i].nombre || '';
+            what = aEntryData.students[i].presente ? 'llegó'
+              : (aEntryData.students[i].ausente ? 'ausente' : 'sin marcar');
+            break;
+          }
+        }
+      }
+      toast(who ? who + ' ' + what + ' en la entrada.' : 'Entrada actualizada.', 'ok', {
+        label: 'Deshacer',
+        fn: function () {
+          if (!adminCred) return;
+          call('apiAdminSetEntry', [adminCred, id, prev.presente, prev.ausente])
+            .then(function (resp) {
+              if (!resp.ok) { aBanner(resp.message || 'No se pudo deshacer.', 'err'); return; }
+              aBanner('Deshecho.', 'ok');
+              aLoadEntry();
+            })
+            .catch(function () { aBanner('Sin conexión. No se pudo deshacer.', 'err'); });
+        }
+      });
+    }
+
+    function aRecountEntry_(d) {
+      var presentes = 0;
+      var ausentes = 0;
+      var sinMarcar = 0;
+      for (var i = 0; i < d.students.length; i++) {
+        if (d.students[i].presente) presentes++;
+        else if (d.students[i].ausente) ausentes++;
+        else sinMarcar++;
+      }
+      d.presentes = presentes;
+      d.ausentes = ausentes;
+      d.sinMarcar = sinMarcar;
+    }
+
+    function aRenderEntry() {
+      var d = aEntryData;
+      if (!d) return;
+      var q = $('input-buscar-entrada') ? $('input-buscar-entrada').value : '';
+      var fCurso = $('filter-curso-entrada') ? $('filter-curso-entrada').value : '';
+      $('entrada-count').textContent = d.count + (d.count === 1 ? ' alumno' : ' alumnos');
+      $('entrada-presentes').textContent = 'Llegaron ' + (d.presentes || 0) + ' de ' + d.count;
+      var fill = $('entrada-bar-fill');
+      if (fill) fill.style.width = (d.count ? Math.min(100, Math.round((d.presentes || 0) * 100 / d.count)) : 0) + '%';
+      var chips = $('entrada-filtro') ? $('entrada-filtro').querySelectorAll('button') : [];
+      for (var ci = 0; ci < chips.length; ci++) {
+        var f = chips[ci].getAttribute('data-filter');
+        if (f === 'all') chips[ci].textContent = 'Todos ' + d.count;
+        else if (f === 'present') chips[ci].textContent = 'Llegaron ' + (d.presentes || 0);
+        else if (f === 'absent') chips[ci].textContent = 'Ausentes ' + (d.ausentes || 0);
+        else if (f === 'unmarked') chips[ci].textContent = 'Sin marcar ' + (d.sinMarcar || 0);
+      }
+      var rows = '';
+      var shown = 0;
+      var cursos = {};
+      for (var i = 0; i < d.students.length; i++) {
+        var st = d.students[i];
+        if (st.curso) cursos[st.curso] = 1;
+        if (fCurso && st.curso !== fCurso) continue;
+        if (aEntryFilter === 'present' && !st.presente) continue;
+        if (aEntryFilter === 'absent' && !st.ausente) continue;
+        if (aEntryFilter === 'unmarked' && st.marcado) continue;
+        if (!EsiClient.searchMatch(aSearch_(st), q)) continue;
+        shown++;
+        rows += '<div class="roster-row' + (st.presente ? ' is-present' : '') + (st.ausente ? ' is-absent' : '') + '">'
+          + '<span class="mark-actions">'
+          + '<button class="present-btn' + (st.presente ? ' on' : '') + '" type="button"'
+          + ' data-id="' + esc(st.id) + '" data-mark="presente" aria-pressed="' + (st.presente ? 'true' : 'false') + '"'
+          + ' aria-label="' + (st.presente ? 'Quitar llegada a ' : 'Marcar llegada de ')
+          + esc(aDisplay_(st, false)) + '">Llegó</button>'
+          + '<button class="present-btn absent-btn' + (st.ausente ? ' on' : '') + '" type="button"'
+          + ' data-id="' + esc(st.id) + '" data-mark="ausente" aria-pressed="' + (st.ausente ? 'true' : 'false') + '"'
+          + ' aria-label="' + (st.ausente ? 'Quitar ausente a ' : 'Marcar ausente a ')
+          + esc(aDisplay_(st, false)) + '">Ausente</button>'
+          + '</span>'
+          + '<span class="roster-who">' + aAvatarHtml_(st)
+          + aStudentNameHtml_(st, 'roster-name', true) + '</span>'
+          + '<span class="roster-curso">' + esc(st.curso || '') + '</span>'
+          + '</div>';
+      }
+      fillFilter('filter-curso-entrada', cursos, 'Todos los cursos');
+      if (fCurso) $('filter-curso-entrada').value = fCurso;
+      if (!d.students.length) {
+        rows = '<div class="empty-state"><p class="es-title">Todavía no hay alumnos anotados.</p></div>';
+      } else if (!shown) {
+        rows = '<div class="empty-state"><p class="es-title">No hay resultados.</p></div>';
+      }
+      $('entrada-list').innerHTML = rows;
     }
 
     function aOnPresent(signupId) {
@@ -8933,9 +9241,10 @@
     // Las dos claves ven las mismas secciones: no hay tabs de admin y tabs de guia.
     var A_TAB_ORDER = [
       ['evento', 'tab-evento'],
-      ['charla', 'tab-charla'], ['pend', 'tab-pend'], ['reportes', 'tab-reportes'],
-      ['estado', 'tab-estado'], ['inscriptos', 'tab-inscriptos'],
-      ['mails', 'tab-mails'], ['corr', 'tab-corr'], ['config', 'tab-config']
+      ['entrada', 'tab-entrada'], ['charla', 'tab-charla'], ['pend', 'tab-pend'],
+      ['reportes', 'tab-reportes'], ['estado', 'tab-estado'],
+      ['inscriptos', 'tab-inscriptos'], ['mails', 'tab-mails'],
+      ['corr', 'tab-corr'], ['config', 'tab-config']
     ];
 
     function aTabList_() {
@@ -8970,7 +9279,8 @@
     function aTab(name) {
       aTabName = name;
       lsSet(A_LAST_TAB_KEY, name);
-      var panes = [['pane-charla', name === 'charla'], ['pane-pend', name === 'pend'],
+      var panes = [['pane-entrada', name === 'entrada'],
+        ['pane-charla', name === 'charla'], ['pane-pend', name === 'pend'],
         ['pane-reportes', name === 'reportes'], ['pane-estado', name === 'estado'],
         ['pane-inscriptos', name === 'inscriptos'], ['pane-mails', name === 'mails'],
         ['pane-corr', name === 'corr'], ['pane-config', name === 'config'],
@@ -9023,6 +9333,7 @@
         void shownPane.offsetWidth;
         shownPane.classList.add('pane-in');
       }
+      if (name === 'entrada') aSkeletonIfEmpty_('entrada-list');
       if (name === 'charla') aSkeletonIfEmpty_('charla-list');
       if (name === 'pend') aSkeletonIfEmpty_('pend-list');
       if (name === 'mails' && !aMailPreview) aLoadMailPreview();
@@ -9060,7 +9371,7 @@
     }
 
     function aFocusSearch_() {
-      var ids = { charla: 'input-buscar-charla', pend: 'input-buscar-pend', inscriptos: 'input-buscar' };
+      var ids = { entrada: 'input-buscar-entrada', charla: 'input-buscar-charla', pend: 'input-buscar-pend', inscriptos: 'input-buscar' };
       var id = ids[aTabName];
       if (!id) {
         aTab('charla');
@@ -9699,6 +10010,8 @@
       adminCred = '';
       aRole = 'admin';
       aTalkData = null;
+      aEntryData = null;
+      aEntryBusy = {};
       aPendingData = null;
       aTalkId = '';
       aConfigLoaded = false;
@@ -10880,6 +11193,8 @@
             // sobreviven al borrado, al reabrir se muestran como vigentes.
             aClearAdminCaches_();
             aPendingData = null;
+            aEntryData = null;
+            aEntryBusy = {};
             aLoad(true);
           }).catch(function () { aBusy = false; aDangerMsg_('Sin conexión.', 'err'); });
         }
@@ -11110,6 +11425,29 @@
         aTalkId = this.value;
         lsSet(A_LAST_TALK_KEY, this.value);
         aLoadTalk();
+      });
+      $('input-buscar-entrada').addEventListener('input', aRenderEntry);
+      $('filter-curso-entrada').addEventListener('change', aRenderEntry);
+      $('entrada-filtro').addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.getAttribute ? ev.target : null;
+        var val = btn ? btn.getAttribute('data-filter') : '';
+        if (!val) return;
+        aEntryFilter = val;
+        var nodes = $('entrada-filtro').querySelectorAll('button');
+        for (var i = 0; i < nodes.length; i++) {
+          var on = nodes[i].getAttribute('data-filter') === val;
+          nodes[i].classList.toggle('active', on);
+          nodes[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        aRenderEntry();
+      });
+      $('btn-refresh-entrada').addEventListener('click', function () { aLoadEntry(); });
+      $('entrada-list').addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.classList && ev.target.classList.contains('present-btn')
+          ? ev.target : null;
+        if (!btn) return;
+        if (btn.getAttribute('data-mark') === 'ausente') aOnEntry(btn.getAttribute('data-id'), 'ausente');
+        else aOnEntry(btn.getAttribute('data-id'), 'presente');
       });
       $('input-buscar-charla').addEventListener('input', aRenderTalk);
       $('filter-curso-charla').addEventListener('change', aRenderTalk);

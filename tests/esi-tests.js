@@ -976,6 +976,9 @@ t('Backup prune writes the kept copies before clearing the tail', () => {
 
 t('Erase exports personal data before clearing and aborts if it fails', () => {
   const services = backendStub({ ADMIN_PIN: '1111' });
+  services.sheets.Entrada = fakeSheet('Entrada', ['email', 'presente', 'ausente', 'actualizado'], [
+    ['ana2029@secundariosalsipuedes.edu.ar', 'si', 'no', new Date()]
+  ]);
   const api = backendApi(services, 'apiAdminErasePersonalData');
   const files = [];
   global.DriveApp = {
@@ -994,6 +997,7 @@ t('Erase exports personal data before clearing and aborts if it fails', () => {
     }
     assertEq(r.export, files[0].name, 'export name returned');
     assertEq(services.sheets.Signups.data.length, 1, 'signups cleared after export');
+    assertEq(services.sheets.Entrada.data.length, 1, 'entrada cleared after export');
   } finally {
     delete global.DriveApp;
   }
@@ -2378,6 +2382,60 @@ t('Code.gs marks attendance under lock and counts it per talk', () => {
   assertEq(missing.ok, false, 'unknown signup');
   const noKey = api.apiAdminSetPresent('', 's1', true);
   assertEq(noKey.ok, false, 'no key');
+});
+
+t('Code.gs toma lista de entrada por alumno sin tocar la asistencia de las charlas', () => {
+  const services = backendStub({ ADMIN_PIN: '1111', GUIDE_PIN: '2222' });
+  services.sheets.Signups = fakeSheet('Signups',
+    ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id', 'presente', 'ausente', 'apellido'], [
+      ['s1', new Date(), 'ana2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 1, 'B1', 'no', 'no', 'Gomez'],
+      ['s2', new Date(), 'ana2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '2°B', 'basico', 2, 'B2', 'no', 'no', 'Gomez'],
+      ['s3', new Date(), 'beto2029@secundariosalsipuedes.edu.ar', 'Beto Sanchez', '5°Turismo', 'orientado', 1, 'B1', 'no', 'no', 'Sanchez']
+    ]);
+  services.sheets.Entrada = fakeSheet('Entrada', ['email', 'presente', 'ausente', 'actualizado'], []);
+  const api = backendApi(services, 'apiAdminEntryRoster, apiAdminSetEntry, apiAdminTalkRoster');
+  const before = api.apiAdminEntryRoster('2222');
+  assertEq(before.ok, true, 'roster de entrada ok');
+  assertEq(before.count, 2, 'un alumno por mail, no una fila por charla');
+  assertEq(before.presentes, 0, 'arranca sin marcas');
+  assertEq(before.sinMarcar, 2, 'sin marcar');
+
+  const mark = api.apiAdminSetEntry('2222', 's1', true, false);
+  assertEq(mark.ok, true, 'marca de entrada ok');
+  assertEq(mark.presente, true, 'presente en la entrada');
+  assertEq(mark.ausente, false, 'no queda ausente');
+  const after = api.apiAdminEntryRoster('2222');
+  assertEq(after.presentes, 1, 'cuenta una llegada');
+  assertEq(after.students.filter((s) => s.presente).length, 1, 'una sola fila marcada');
+  const talk = api.apiAdminTalkRoster('2222', 'B1');
+  assertEq(talk.presentes, 0, 'la entrada no cambia la asistencia de la charla');
+  assertEq(services.sheets.Signups.data[1][8], 'no', 'la fila de la charla sigue sin presente');
+
+  const absent = api.apiAdminSetEntry('2222', 's1', false, true);
+  assertEq(absent.ausente, true, 'marca ausente en la entrada');
+  const cleared = api.apiAdminSetEntry('2222', 's1', false, false);
+  assertEq(cleared.presente, false, 'se puede limpiar');
+  assertEq(cleared.ausente, false, 'se puede limpiar el ausente');
+  const missing = api.apiAdminSetEntry('2222', 'nope', true, false);
+  assertEq(missing.ok, false, 'inscripcion desconocida');
+});
+
+t('setup crea la hoja Entrada con sus columnas', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'setup');
+  api.setup();
+  const sh = services.sheets.Entrada;
+  if (!sh) throw new Error('falta la hoja Entrada');
+  assertEq(sh.data[0].join(','), 'email,presente,ausente,actualizado', 'encabezados');
+});
+
+t('Panel tiene una lista de entrada separada de las charlas', () => {
+  for (const needle of ['id="tab-entrada"', 'id="pane-entrada"', 'id="entrada-list"',
+    'apiAdminEntryRoster', 'apiAdminSetEntry', 'Lista de entrada al evento']) {
+    if (!panelHtml.includes(needle)) throw new Error('missing ' + needle);
+  }
+  if (!panelSrc.includes("fn === 'apiAdminEntryRoster'")) throw new Error('demo sin entrada');
+  if (!panelSrc.includes("fn === 'apiAdminSetEntry'")) throw new Error('demo sin marcar entrada');
 });
 
 t('Code.gs writes attendance after taking the lock', () => {
@@ -4185,10 +4243,10 @@ t('r14: el CSS y el JS nuevos caben en el presupuesto', () => {
 
 t('r14: el modo verificacion de guias no anima', () => {
   const css = panelCss();
-  if (!/#pane-charla \*, #pane-pend \* \{ animation: none !important; transition-duration: 1ms !important; \}/.test(css)) {
+  if (!/#pane-charla \*, #pane-pend \*, #pane-entrada \* \{ animation: none !important; transition-duration: 1ms !important; \}/.test(css)) {
     throw new Error('sin bloque de verificacion');
   }
-  if (!/#pane-charla \.btn, #pane-pend \.btn/.test(css)) throw new Error('sin feedback de toque en verificacion');
+  if (!/#pane-charla \.btn, #pane-pend \.btn, #pane-entrada \.btn/.test(css)) throw new Error('sin feedback de toque en verificacion');
 });
 
 t('r14: barras y dona crecen una sola vez', () => {
@@ -4591,7 +4649,7 @@ t('v79: auto-setup corre setup() solo cuando el registro de la hoja es de otra v
   const services = backendStub(props);
   const api = backendApi(services, 'autoSetup_,logAction_');
   api.autoSetup_();
-  assertEq(props.LAST_SETUP_VERSION, 'v72', 'auto-setup marca la version del deploy');
+  assertEq(props.LAST_SETUP_VERSION, 'v73', 'auto-setup marca la version del deploy');
   if (!props.LAST_SETUP_AT) throw new Error('auto-setup no registro la fecha del setup');
   const antes = props.LAST_SETUP_AT;
   api.autoSetup_();
