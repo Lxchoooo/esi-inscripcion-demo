@@ -1730,6 +1730,110 @@ function runCycleFixCampaign_() {
   return finishCycleFixCampaign_(c);
 }
 
+// Swap pareado por ciclo, a la MISMA charla del otro ciclo (ITS basico <->
+// ITS orientado). A diferencia de la campaña, NO respeta cupo: mueve a todos
+// los cruzados y acepta sobrecupo transitorio. Temporal y con nonce; apaga la
+// campaña automatica para que no pise el resultado con la regla vieja.
+function apiSwapCycleSameTalk(a) {
+  a = a || {};
+  if (String(a.nonce || '') !== 'esi-cycle-swap-2026-11-03-9f3a') return { ok: false, message: 'nonce' };
+  var resp = withScriptLock_(ADMIN_LOCK_MS * 2, function () {
+    try { PropertiesService.getScriptProperties().setProperty(CYCLE_CAMPAIGN_OFF_PROP, '1'); } catch (eOff) { }
+    try {
+      var rawC = PropertiesService.getScriptProperties().getProperty(CYCLE_CAMPAIGN_PROP);
+      if (rawC) {
+        var st = JSON.parse(rawC);
+        if (st.phase !== 'done') { st.phase = 'done'; st.doneAt = Date.now(); st.manualSwap = true; }
+        PropertiesService.getScriptProperties().setProperty(CYCLE_CAMPAIGN_PROP, JSON.stringify(st));
+      }
+    } catch (eSt) { }
+    var cfg = readConfig_();
+    var talks = readTalks_();
+    var slots = readSlots_();
+    var signups = readSignups_();
+    var talkById = {};
+    var i, j;
+    for (i = 0; i < talks.length; i++) talkById[String(talks[i].id)] = talks[i];
+    var sh = sheet_(SIGNUPS_SHEET);
+    var vals = sh.getDataRange().getValues();
+    var map = signupsHeaderMap_(vals[0] || []);
+    var rowById = {};
+    for (i = 1; i < vals.length; i++) {
+      if (map.id >= 0) rowById[String(vals[i][map.id])] = i + 1;
+    }
+    var seen = {};
+    var pairs = {};
+    var leftover = [];
+    var moved = 0;
+    var mails = 0;
+    var ids = Object.keys(CYCLE_COUNTERPART_);
+    ids.sort();
+    for (var k = 0; k < ids.length; k++) {
+      var from = ids[k];
+      var to = CYCLE_COUNTERPART_[from];
+      if (!to) continue;
+      var pk = from < to ? from + '>' + to : to + '>' + from;
+      if (seen[pk]) continue;
+      seen[pk] = true;
+      var tf = talkById[from];
+      var tt = talkById[to];
+      if (!tf || !tt) continue;
+      var fc = String(tf.ciclo || '').trim().toLowerCase();
+      if (fc !== 'basico' && fc !== 'orientado') continue;
+      if (Number(tf.slot_id) !== Number(tt.slot_id)) continue;
+      var group = [];
+      for (i = 0; i < signups.length; i++) {
+        var s = signups[i];
+        if (!s || s.prueba) continue;
+        if (String(s.talk_id) !== String(from)) continue;
+        var sc = String(s.ciclo || '').trim().toLowerCase() || EsiCore.cicloFromCurso(s.curso);
+        if (!sc || sc === fc) continue;
+        var already = false;
+        for (j = 0; j < signups.length; j++) {
+          if (!signups[j]) continue;
+          if (signups[j].emailKey !== s.emailKey) continue;
+          if (String(signups[j].talk_id) !== String(to)) continue;
+          if (String(signups[j].id) === String(s.id)) continue;
+          already = true;
+          break;
+        }
+        if (already) {
+          leftover.push({ nombre: displayName_(s.nombre, s.apellido), curso: s.curso, from: from, to: to, motivo: 'ya tiene la charla destino' });
+          continue;
+        }
+        group.push(s);
+      }
+      for (i = 0; i < group.length; i++) {
+        var p = group[i];
+        var row = rowById[String(p.id)];
+        if (!row) {
+          leftover.push({ nombre: displayName_(p.nombre, p.apellido), curso: p.curso, from: from, to: to, motivo: 'fila no encontrada' });
+          continue;
+        }
+        setSignupFields_(sh, map, row, { talk_id: String(to), presente: '', ausente: '' });
+        try { logAction_('ciclo_swap', p.id, from + '->' + to); } catch (eL) { }
+        p.talk_id = String(to);
+        p.slot_id = Number(tt.slot_id);
+        moved++;
+        pairs[pk] = Number(pairs[pk] || 0) + 1;
+        var bySlot = mineMap_(signups, p.emailKey);
+        var items = itemsForEmail_(bySlot, slots, talkById);
+        var dest = queueDestination_(p.email, cfg) || String(p.email || '').trim().toLowerCase();
+        var name = displayName_(p.nombre, p.apellido);
+        var subject = 'Cambiamos tu charla - ' + EVENT_TITLE_;
+        var body = cycleAutoChangeBody_(name, slotLabelFor_(slots, tt.slot_id), tt, items);
+        if (dest && queueCycleMail_(dest, CYCLE_CAMPAIGN_CHANGE_TYPE, subject, body)) mails++;
+      }
+    }
+    if (moved) {
+      try { invalidateDataCache_(); } catch (eI) { }
+      try { scheduleRebuilds_(); } catch (eR) { }
+    }
+    return { ok: true, moved: moved, pairs: pairs, mails: mails, leftover: leftover };
+  });
+  return resp || { ok: false, message: 'ocupado' };
+}
+
 // Diagnostico publico de la campaña: solo agregados, sin mails ni nombres.
 // Con args=["iniciar"] fuerza una vuelta (idempotente) y repone el trigger
 // del watchdog si falta; sirve cuando el planificador de Google se atrasa.
@@ -2573,6 +2677,7 @@ var API_FN_MAP_ = {
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
   apiCicloDiag: apiCicloDiag,
+  apiSwapCycleSameTalk: apiSwapCycleSameTalk,
   apiCuposDiag: apiCuposDiag,
   apiEnvioDiag: apiEnvioDiag,
   apiDriveDiag: apiDriveDiag,
