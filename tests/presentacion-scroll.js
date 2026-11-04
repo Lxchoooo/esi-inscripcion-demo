@@ -48,6 +48,20 @@ function check(name, ok, detail) {
   console.log((ok ? 'ok    ' : 'FALLA ') + name + (detail === undefined ? '' : ' · ' + detail));
 }
 
+function observeLongTasks() {
+  window.__long = { task: [], frame: [] };
+  try {
+    new PerformanceObserver((list) => {
+      list.getEntries().forEach((e) => window.__long.task.push(Math.round(e.duration)));
+    }).observe({ entryTypes: ['longtask'] });
+  } catch (e) { /* sin soporte */ }
+  try {
+    new PerformanceObserver((list) => {
+      list.getEntries().forEach((e) => window.__long.frame.push(Math.round(e.duration)));
+    }).observe({ entryTypes: ['long-animation-frame'] });
+  } catch (e) { /* sin soporte */ }
+}
+
 async function rects(page) {
   return page.evaluate(() => Array.from(document.querySelectorAll('section.slide')).map((slide) => {
     const r = slide.getBoundingClientRect();
@@ -70,19 +84,7 @@ async function main() {
   page.on('pageerror', (err) => pageErrors.push(String(err)));
   page.on('console', (msg) => { if (msg.type() === 'error') pageErrors.push(msg.text()); });
 
-  await page.addInitScript(() => {
-    window.__long = { task: [], frame: [] };
-    try {
-      new PerformanceObserver((list) => {
-        list.getEntries().forEach((e) => window.__long.task.push(Math.round(e.duration)));
-      }).observe({ entryTypes: ['longtask'] });
-    } catch (e) { /* sin soporte */ }
-    try {
-      new PerformanceObserver((list) => {
-        list.getEntries().forEach((e) => window.__long.frame.push(Math.round(e.duration)));
-      }).observe({ entryTypes: ['long-animation-frame'] });
-    } catch (e) { /* sin soporte */ }
-  });
+  await page.addInitScript(observeLongTasks);
 
   await page.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
   await page.waitForTimeout(900);
@@ -166,34 +168,58 @@ async function main() {
   await page.evaluate(() => { window.scrollTo(0, 0); window.__long = { task: [], frame: [] }; });
   await page.waitForTimeout(300);
 
-  for (let i = 0; i < 18; i += 1) {
-    await cdp.send('Input.synthesizeScrollGesture', {
-      x: 195, y: 500, xDistance: 0, yDistance: -620, speed: 1400, gestureSourceType: 'touch'
-    });
-    await page.waitForTimeout(90);
-  }
-  const afterTouch = await page.evaluate(() => window.scrollY);
-  check('el gesto touch scrollea el documento', afterTouch > 500, 'scrollY ' + afterTouch);
-
-  for (let i = 0; i < 20; i += 1) {
-    try {
-      await page.mouse.wheel(0, -700);
-    } catch (e) {
-      console.log('rueda no disponible en este entorno: ' + e.message);
-      break;
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  async function touchSwipe(fromY, toY) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: fromY }] });
+    for (let step = 1; step <= 12; step += 1) {
+      const y = Math.round(fromY + ((toY - fromY) * step) / 12);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: y }] });
+      await wait(16);
     }
-    await page.waitForTimeout(60);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await wait(150);
   }
-  await page.keyboard.press('End');
-  await page.waitForTimeout(400);
-  await page.keyboard.press('Home');
-  await page.waitForTimeout(600);
 
-  const perf = await page.evaluate(() => ({
-    task: window.__long.task,
-    frame: window.__long.frame,
-    scrollY: window.scrollY
-  }));
+  for (let i = 0; i < 20; i += 1) await touchSwipe(700, 120);
+  let afterTouch = await page.evaluate(() => window.scrollY);
+  let touchMethod = 'touch nativo';
+  if (afterTouch < 500) {
+    for (let i = 0; i < 18; i += 1) {
+      await cdp.send('Input.synthesizeScrollGesture', {
+        x: 195, y: 600, xDistance: 0, yDistance: -600, speed: 1400, gestureSourceType: 'touch'
+      });
+      await wait(120);
+    }
+    afterTouch = await page.evaluate(() => window.scrollY);
+    touchMethod = 'gesto sintético touch';
+  }
+  check('el gesto touch scrollea el documento', afterTouch > 500, touchMethod + ', scrollY ' + afterTouch);
+
+  // Rueda y teclado en escritorio, en un contexto aparte sobre el mismo archivo.
+  const desktop = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const deskPage = await desktop.newPage();
+  await deskPage.addInitScript(observeLongTasks);
+  await deskPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await deskPage.waitForTimeout(800);
+  await deskPage.evaluate(() => { window.scrollTo(0, 0); window.__long = { task: [], frame: [] }; });
+  for (let i = 0; i < 20; i += 1) {
+    await deskPage.mouse.wheel(0, 700);
+    await wait(60);
+  }
+  const afterWheel = await deskPage.evaluate(() => window.scrollY);
+  check('la rueda scrollea el documento', afterWheel > 500, 'scrollY ' + afterWheel);
+  await deskPage.keyboard.press('End');
+  await wait(400);
+  await deskPage.keyboard.press('Home');
+  await wait(600);
+  const deskPerf = await deskPage.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame }));
+  await desktop.close();
+
+  const mobilePerf = await page.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame }));
+  const perf = {
+    task: mobilePerf.task.concat(deskPerf.task),
+    frame: mobilePerf.frame.concat(deskPerf.frame)
+  };
   const maxTask = perf.task.length ? Math.max.apply(null, perf.task) : 0;
   const overTask = perf.task.filter((d) => d > 50);
   const maxFrame = perf.frame.length ? Math.max.apply(null, perf.frame) : 0;

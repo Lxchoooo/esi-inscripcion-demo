@@ -79,6 +79,7 @@
     justify-content: space-between;
     gap: 16px;
     padding: 18px clamp(18px, 4vw, 48px);
+    background: linear-gradient(180deg, rgba(11, 31, 23, .94), rgba(11, 31, 23, .7) 62%, transparent);
     font-size: .68rem;
     letter-spacing: .18em;
     text-transform: uppercase;
@@ -1165,7 +1166,7 @@ function bindNavigation() {
       revealSlide(entry.target);
       revealObserver.unobserve(entry.target);
     });
-  }, { rootMargin: '0px 0px -30% 0px', threshold: 0 });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0 });
   slides.forEach((slide) => revealObserver.observe(slide));
 
   let restTimer = 0;
