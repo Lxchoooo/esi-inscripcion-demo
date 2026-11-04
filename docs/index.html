@@ -590,6 +590,36 @@
       filter: blur(6px);
       animation: none;
     }
+    /* Ajuste fino: que cada diapositiva entre en una pantalla */
+    .slide { padding: 72px 16px calc(36px + env(safe-area-inset-bottom)); }
+    h2 { font-size: clamp(1.85rem, 8.4vw, 2.7rem); margin-bottom: 16px; }
+    .lead, .cover .lead { font-size: .96rem; line-height: 1.52; }
+    .eyebrow { margin-bottom: 12px; }
+    .cover-meta { margin-top: 18px; }
+    .kpi-grid { gap: 8px; margin-top: 18px; }
+    .kpi { padding: 16px 14px; }
+    .course-chart { height: 200px; padding: 8px 2px 0; }
+    .course-bars { height: 148px; }
+    .slot-grid { gap: 8px; margin-top: 18px; }
+    .slot-card { padding: 16px 14px; }
+    .lesson-grid, .thanks-grid, .timeline { gap: 8px; margin-top: 20px; }
+    .lesson, .thanks-card, .timeline-item { padding: 16px; }
+    .bars { margin-top: 12px; }
+    .chart-legend { margin-top: 10px; }
+    .note { margin-top: 14px; }
+    .stat-row { margin-top: 18px; }
+    .thanks-actions { margin-top: 20px; }
+  }
+  @media (max-width: 768px) {
+    /* En celulares de gama baja, blur y sombras grandes son lo primero que traba. */
+    .glass { box-shadow: none; }
+    .brand-logo { filter: none; }
+    .cover::before, .promo::before, .promo-speech::before, .farewell::before,
+    .cover::after, .promo::after, .promo-speech::after, .farewell::after {
+      filter: none;
+    }
+    .cover::before, .promo::before, .promo-speech::before, .farewell::before { opacity: .22; }
+    .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }

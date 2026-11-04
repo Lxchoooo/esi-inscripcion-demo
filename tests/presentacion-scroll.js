@@ -105,6 +105,14 @@ async function main() {
   const scrollable = await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight * 10);
   check('el documento scrollea de forma nativa', scrollable);
 
+  const heights = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('section.slide')).map((slide) => Math.round(slide.getBoundingClientRect().height))
+  );
+  const tall = heights.map((height, i) => ({ height: height, index: i + 1 })).filter((item) => item.height > 900);
+  console.log('\naltos en 390x844: ' + heights.join(', '));
+  check('casi todas las diapositivas entran en una pantalla', tall.length <= 4,
+    tall.map((item) => '#' + item.index + '=' + item.height).join(', ') || 'todas');
+
   // 2. Todas las diapositivas alcanzables y reveladas.
   const unreachable = [];
   const notRevealed = [];
@@ -284,7 +292,8 @@ async function main() {
     .concat([
       '',
       '- longtask: ' + perf.task.length + ' (max ' + maxTask + ' ms)',
-      '- long-animation-frame: ' + perf.frame.length + ' (max ' + maxFrame + ' ms)'
+      '- long-animation-frame: ' + perf.frame.length + ' (max ' + maxFrame + ' ms)',
+      '- altos 390x844: ' + heights.join(', ')
     ]);
 
   console.log('\n' + (results.length - failed.length) + ' ok, ' + failed.length + ' fallas');
