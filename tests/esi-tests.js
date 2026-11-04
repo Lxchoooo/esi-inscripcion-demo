@@ -353,6 +353,84 @@ t('validateStudentInput canonicalizes the course and rejects formulas', () => {
   });
 });
 
+t('suggestInstitutionalEmail reordena apellido y nombre sin tocar mails ajenos', () => {
+  const u = Core.suggestInstitutionalEmail(
+    'anagomez2029@secundariosalsipuedes.edu.ar', 'Ana', 'Gomez', '6°Turismo', []);
+  assertEq(u.email, 'gomezana2029@secundariosalsipuedes.edu.ar', 'nombre y apellido al reves');
+
+  const l = Core.suggestInstitutionalEmail(
+    'alumnantonioperez2029@secundariosalsipuedes.edu.ar',
+    'Juan Antonio', 'Pérez', '4°A', []);
+  assertEq(l.email, 'perezalumnantonio2029@secundariosalsipuedes.edu.ar', 'nombre extra');
+
+  const ok = Core.suggestInstitutionalEmail(
+    'perezjuan2029@secundariosalsipuedes.edu.ar', 'Juan Pérez', 'Díaz', '2°A', []);
+  assertEq(ok, null, 'un mail que ya coincide no se toca');
+
+  const ajeno = Core.suggestInstitutionalEmail(
+    'alumna2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', 'Gomez', '2°B', []);
+  assertEq(ajeno, null, 'no inventa una direccion con un local ajeno al nombre');
+});
+
+t('suggestEmailFromRoster reconoce el mismo mail al reves y un typo corto', () => {
+  const reves = Core.suggestEmailFromRoster(
+    'anagomez2029@secundariosalsipuedes.edu.ar',
+    ['gomezana2029@secundariosalsipuedes.edu.ar']);
+  assertEq(reves.email, 'gomezana2029@secundariosalsipuedes.edu.ar', 'anagrama del padron');
+  assertEq(reves.confidence, 'alta', 'confianza alta');
+
+  const typo = Core.suggestEmailFromRoster(
+    'gomezperezmariela2029@secundariosalsipuedes.edu.ar',
+    ['gomezperezmaria2029@secundariosalsipuedes.edu.ar']);
+  assertEq(typo.email, 'gomezperezmaria2029@secundariosalsipuedes.edu.ar', 'typo de dos letras');
+  assertEq(typo.confidence, 'media', 'confianza media');
+
+  const corto = Core.suggestEmailFromRoster(
+    'alumna2029@secundariosalsipuedes.edu.ar',
+    ['ana2029@secundariosalsipuedes.edu.ar']);
+  assertEq(corto, null, 'no confunde dos locales cortos distintos');
+});
+
+t('apiLookup usa el mail oficial del padron cuando el escrito es el mismo nombre al reves', () => {
+  const services = backendStub({});
+  services.sheets.Students = fakeSheet('Students', ['email', 'nombre', 'curso'], [
+    ['gomezana2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '6°Turismo']
+  ]);
+  services.sheets.Signups = fakeSheet('Signups', ['id', 'ts', 'email', 'nombre', 'curso', 'ciclo', 'slot_id', 'talk_id'], []);
+  const api = backendApi(services, 'apiLookup');
+  const r = api.apiLookup('anagomez2029@secundariosalsipuedes.edu.ar');
+  assertEq(r.ok, true, 'lookup ok');
+  assertEq(r.email, 'gomezana2029@secundariosalsipuedes.edu.ar', 'devuelve la direccion oficial');
+  assertEq(r.suggestedEmail, 'gomezana2029@secundariosalsipuedes.edu.ar', 'avisa la correccion');
+  assertEq(r.nombre, 'Ana Gomez', 'nombre del padron');
+  if (!/^l_/.test(r.login)) throw new Error('sin ticket de login para el mail corregido');
+});
+
+t('apiGetData corrige el mail de un alumno nuevo con su nombre y curso', () => {
+  const services = backendStub({});
+  const api = backendApi(services, 'apiGetData');
+  const r = api.apiGetData('anagomez2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '6°Turismo', '', 'Gomez');
+  assertEq(r.ok, true, 'getData ok: ' + r.message);
+  assertEq(r.student.email, 'gomezana2029@secundariosalsipuedes.edu.ar', 'mail corregido');
+  assertEq(r.emailCorregido, 'anagomez2029@secundariosalsipuedes.edu.ar', 'avisa el original');
+  if (!r.session) throw new Error('sin sesion');
+});
+
+t('apiRegister guarda la inscripcion con el mail corregido', () => {
+  const services = backendStub({});
+  addStubTalk_(services);
+  const api = backendApi(services, 'apiRegister');
+  const r = api.apiRegister(
+    'anagomez2029@secundariosalsipuedes.edu.ar', 'Ana Gomez', '6°Turismo', 'O1', 'Gomez', '', '');
+  assertEq(r.ok, true, 'registro ok: ' + r.message);
+  assertEq(r.student.email, 'gomezana2029@secundariosalsipuedes.edu.ar', 'respuesta corregida');
+  assertEq(r.emailCorregido, 'anagomez2029@secundariosalsipuedes.edu.ar', 'avisa el original');
+  const filas = services.sheets.Signups.data.slice(1);
+  const fila = filas.filter((f) => f[7] === 'O1').pop();
+  if (!fila) throw new Error('sin fila en O1');
+  assertEq(fila[2], 'gomezana2029@secundariosalsipuedes.edu.ar', 'guarda el mail oficial');
+});
+
 t('insert when talk free', () => {
   const p = Core.planRegistration([], talks(), alumna, 'B1');
   assertEq(p.action, 'insert');

@@ -169,6 +169,155 @@ var EsiCore = (function () {
   function mailLocalOk_(local) {
     return MAIL_LOCAL_RE_.test(local);
   }
+
+  // El año del mail es el de egreso, no el del curso actual: 1° egresa en
+  // 2031 y 6° en 2026. Se usa para completar el año cuando el alumno lo
+  // escribio mal o no lo escribio.
+  function emailYearForCurso(curso) {
+    var c = parseCurso(curso);
+    var m = (c || String(curso == null ? '' : curso)).match(/\d/);
+    if (!m) return '';
+    return String(2032 - Number(m[0]));
+  }
+
+  function emailTokens_(value) {
+    return normalizeText(value)
+      .replace(/[^a-z]+/g, ' ')
+      .split(' ')
+      .filter(function (t) { return !!t; });
+  }
+
+  // El panel manda nombre completo + apellido, pero el padron tambien puede
+  // venir "Apellido, Nombre". Devuelve los dos bloques sin repetir el
+  // apellido cuando ya esta pegado al final del nombre.
+  function emailNameParts_(nombre, apellido) {
+    var rawNombre = sanitizeName(nombre);
+    var apTokens = emailTokens_(apellido);
+    var nomTokens = emailTokens_(rawNombre);
+    if (!apTokens.length && rawNombre.indexOf(',') >= 0) {
+      var parts = rawNombre.split(',');
+      apTokens = emailTokens_(parts.shift());
+      nomTokens = emailTokens_(parts.join(' '));
+    } else if (apTokens.length && nomTokens.length >= apTokens.length) {
+      var tail = nomTokens.slice(nomTokens.length - apTokens.length);
+      if (tail.join('') === apTokens.join('')) {
+        nomTokens = nomTokens.slice(0, nomTokens.length - apTokens.length);
+      }
+    }
+    return { apellido: apTokens, nombre: nomTokens };
+  }
+
+  function sortedLetters_(value) {
+    return String(value == null ? '' : value).split('').sort().join('');
+  }
+
+  function editDistance_(a, b) {
+    a = String(a == null ? '' : a);
+    b = String(b == null ? '' : b);
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    var prev = [];
+    for (var j = 0; j <= b.length; j++) prev[j] = j;
+    for (var i = 1; i <= a.length; i++) {
+      var cur = [i];
+      for (var k = 1; k <= b.length; k++) {
+        cur[k] = Math.min(
+          prev[k] + 1,
+          cur[k - 1] + 1,
+          prev[k - 1] + (a.charAt(i - 1) === b.charAt(k - 1) ? 0 : 1)
+        );
+      }
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  function emailLocalParts_(email) {
+    var e = normalizeEmail(email);
+    if (!isInstitutionalEmail(e)) return null;
+    var at = e.indexOf('@');
+    var local = e.slice(0, at);
+    var m = local.match(/^(.*?)(2026|2027|2028|2029|2030|2031)$/);
+    if (!m) return null;
+    return { email: e, local: local, body: m[1], year: m[2] };
+  }
+
+  // Busca en el padron una direccion que tenga las mismas letras (nombre y
+  // apellido al reves) o que este a uno/dos caracteres. Es la red de
+  // seguridad para alumnos que ya se habian anotado con el mail mal escrito.
+  function suggestEmailFromRoster(email, rosterEmails) {
+    var typed = emailLocalParts_(email);
+    if (!typed || !rosterEmails || !rosterEmails.length) return null;
+    var typedSorted = sortedLetters_(typed.body);
+    var best = null;
+    var bestScore = 99;
+    for (var i = 0; i < rosterEmails.length; i++) {
+      var cand = emailLocalParts_(rosterEmails[i]);
+      if (!cand || cand.year !== typed.year || cand.body === typed.body) continue;
+      var score = sortedLetters_(cand.body) === typedSorted
+        ? 0
+        : editDistance_(typed.body, cand.body);
+      // Dos letras de diferencia en un local corto ("alumna" vs "ana") no
+      // alcanzan para adivinar: pueden ser dos alumnos distintos.
+      if (score > 0 && Math.min(typed.body.length, cand.body.length) < 8) continue;
+      if (score > 2 || score >= bestScore) continue;
+      best = { email: cand.email, confidence: score === 0 ? 'alta' : 'media', motivo: 'padron' };
+      bestScore = score;
+    }
+    return best;
+  }
+
+  // Corrige el orden apellido+nombre y agrega los nombres que el alumno
+  // puso en el mail pero no estan en la hoja (ej. Leonardo Bernabe Munoz).
+  // Si no esta seguro devuelve null: es preferible no tocar una direccion
+  // valida antes que mandar el mail a otra persona.
+  function suggestInstitutionalEmail(email, nombre, apellido, curso, rosterEmails) {
+    var typed = emailLocalParts_(email);
+    if (!typed) return null;
+    var parts = emailNameParts_(nombre, apellido);
+    if (!parts.apellido.length && !parts.nombre.length) return null;
+    var known = parts.apellido.concat(parts.nombre);
+    // El mail local viene todo pegado, sin separadores: no se puede hacer
+    // split por nombres. Se van sacando los tokens conocidos y lo que sobra
+    // son nombres extra (ej. "antonio" en juanantonioperez).
+    var rest = typed.body;
+    for (var k = 0; k < known.length; k++) {
+      var pos = rest.indexOf(known[k]);
+      if (pos < 0) {
+        // Un typo dentro del nombre no se puede reconstruir con la hoja de
+        // datos, pero si el padron tiene una direccion oficial parecida, esa
+        // manda (mismo año y a lo sumo dos letras de diferencia).
+        return suggestEmailFromRoster(typed.email, rosterEmails);
+      }
+      rest = rest.slice(0, pos) + '|' + rest.slice(pos + known[k].length);
+    }
+    var extras = rest.split(/[^a-z]+/).filter(function (t) { return !!t; });
+    // Un nombre extra solo se agrega cuando el apellido esta al final: asi
+    // "juan antonio perez" se reordena seguro, pero "martino nicomas
+    // maximo" (que podria ser otro typo) no se toca a ciegas. Los restos
+    // largos suelen ser un dominio pegado por error, no un nombre.
+    if (extras.length) {
+      if (!parts.apellido.length) return null;
+      for (var e = 0; e < extras.length; e++) {
+        if (extras[e].length > 20 || /^(secundarios|alsipuedes|edu|com|ar)$/.test(extras[e])) return null;
+      }
+      var surname = parts.apellido.join('');
+      if (typed.body.slice(typed.body.length - surname.length) !== surname) return null;
+    }
+    var candidateBody = parts.apellido.concat(parts.nombre).concat(extras).join('');
+    // No cambiamos el año que el alumno ya escribio: un 2027 en 3° puede ser
+    // un dato viejo del curso y no queremos mandar el mail a otra casilla.
+    var year = typed.year;
+    var candidateLocal = candidateBody + year;
+    if (!mailLocalOk_(candidateLocal)) return null;
+    var candidateEmail = candidateLocal + INSTITUTIONAL_DOMAIN;
+    if (candidateEmail === typed.email) return null;
+    var roster = suggestEmailFromRoster(typed.email, rosterEmails);
+    if (roster) return roster;
+    return { email: candidateEmail, confidence: 'alta', motivo: 'orden' };
+  }
+
   var NAME_RE_ = /^[A-Za-zÀ-ÖØ-öø-ÿ' \u2019-]+$/;
   var NAME_LETTER_RE_ = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
 
@@ -571,6 +720,9 @@ var EsiCore = (function () {
     normalizeEmail: normalizeEmail,
     isValidEmail: isValidEmail,
     isInstitutionalEmail: isInstitutionalEmail,
+    emailYearForCurso: emailYearForCurso,
+    suggestEmailFromRoster: suggestEmailFromRoster,
+    suggestInstitutionalEmail: suggestInstitutionalEmail,
     normalizeDni: normalizeDni,
     isValidDni: isValidDni,
     looksLikeFormula_: looksLikeFormula_,
@@ -4011,6 +4163,23 @@ function buildStudent_(email, nombre, curso, apellido) {
   return { ok: true, student: v };
 }
 
+// Corrige el mail recien cuando el alumno es nuevo (el mail escrito no tiene
+// inscripciones): si ya existe una cuenta con esa direccion, esa cuenta manda
+// y el flujo normal pide DNI. El padron se usa para reconocer direcciones
+// oficiales parecidas, no para adivinar nombres.
+function emailCorrectionFor_(email, nombre, curso, apellido, roster, signups) {
+  var typed = EsiCore.normalizeEmail(email);
+  if (!EsiCore.isInstitutionalEmail(typed)) return { email: typed };
+  if (hasSignupsForEmail_(signups, typed)) return { email: typed };
+  var rosterEmails = [];
+  for (var i = 0; i < (roster || []).length; i++) {
+    if (roster[i] && roster[i].email) rosterEmails.push(roster[i].email);
+  }
+  var sug = EsiCore.suggestInstitutionalEmail(typed, nombre, apellido, curso, rosterEmails);
+  if (!sug || !sug.email || sug.email === typed) return { email: typed };
+  return { email: sug.email, from: typed, motivo: sug.motivo || '' };
+}
+
 // El mail alcanza para volver a entrar (pedido del 3/11): si la alumna ya se
 // inscribio o esta en el padron, el lookup devuelve sus datos y un ticket de
 // login, asi el panel le muestra "Hola, X. ¿Sos vos?" y la deja pasar. Antes
@@ -4039,9 +4208,29 @@ function apiLookup(email) {
       out.message = STUDENT_ERRORS_.email;
       return out;
     }
+    var signups = readSignupsCached_();
     var entry = findStudent_(roster, norm);
+    var suggested = '';
+    // Si el mail no esta exacto pero es el mismo nombre/apellido al reves (o
+    // un typo de uno/dos caracteres) y esa direccion existe en el padron, se
+    // usa la oficial. Solo cuando el mail escrito no tiene inscripciones: una
+    // cuenta vieja no se pisa por parecido.
+    if (!entry && !hasSignupsForEmail_(signups, norm)) {
+      var rosterEmails = [];
+      for (var ri = 0; ri < roster.length; ri++) {
+        if (roster[ri] && roster[ri].email) rosterEmails.push(roster[ri].email);
+      }
+      var sug = EsiCore.suggestEmailFromRoster(norm, rosterEmails);
+      if (sug && sug.email) {
+        var alt = findStudent_(roster, sug.email);
+        if (alt) {
+          entry = alt;
+          norm = sug.email;
+          suggested = sug.email;
+        }
+      }
+    }
     if (!entry) {
-      var signups = readSignupsCached_();
       var best = null;
       var bestTs = -1;
       for (var i = 0; i < signups.length; i++) {
@@ -4062,6 +4251,8 @@ function apiLookup(email) {
       }
     }
     if (!entry) return out;
+    out.email = norm;
+    if (suggested) out.suggestedEmail = suggested;
     var nombreCompleto = entry.nombreCompleto || entry.nombre || '';
     var pc = EsiCore.parseCurso(entry.curso);
     out.login = issueLoginTicket_({
@@ -4364,14 +4555,21 @@ function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
       return { ok: false, message: 'La sesión no coincide con el mail.' };
     }
     var identity = current || ticket;
-    var bs = identity
-      ? buildStudent_(identity.email, identity.nombre || nombre, identity.curso || curso, identity.apellido || apellido)
-      : buildStudent_(email, nombre, curso, apellido);
+    var signups = null;
+    var fix = null;
+    var bs;
+    if (identity) {
+      bs = buildStudent_(identity.email, identity.nombre || nombre, identity.curso || curso, identity.apellido || apellido);
+    } else {
+      signups = readSignupsCached_();
+      fix = emailCorrectionFor_(email, nombre, curso, apellido, readStudentsCached_(), signups);
+      bs = buildStudent_(fix.email, nombre, curso, apellido);
+    }
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
     var s = bs.student;
-    var signups = readSignupsCached_();
+    if (!signups) signups = readSignupsCached_();
     var mine = mineMap_(signups, s.email);
     // Con cache de 12 s este chequeo podia dejar entrar sin sesion a quien
     // solo sabe el mail; se lee crudo, y solo en el camino sin credencial.
@@ -4395,6 +4593,7 @@ function apiGetData(email, nombre, curso, sessionToken, apellido, loginToken) {
     return {
       ok: true,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
+      emailCorregido: fix && fix.from ? fix.from : '',
       data: publicData_(s.ciclo, mine),
       recordatorio: reminderOptIn_(signups, s.email),
       session: session
@@ -4728,9 +4927,16 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       return { ok: false, message: 'La sesión no coincide con el mail.' };
     }
     var identity = current || ticket;
-    var bs = identity
-      ? buildStudent_(identity.email, identity.nombre || nombre, identity.curso || curso, identity.apellido || apellido)
-      : buildStudent_(email, nombre, curso, apellido);
+    var signups = null;
+    var fix = null;
+    var bs;
+    if (identity) {
+      bs = buildStudent_(identity.email, identity.nombre || nombre, identity.curso || curso, identity.apellido || apellido);
+    } else {
+      signups = readSignupsCached_();
+      fix = emailCorrectionFor_(email, nombre, curso, apellido, readStudentsCached_(), signups);
+      bs = buildStudent_(fix.email, nombre, curso, apellido);
+    }
     if (!bs.ok) {
       return { ok: false, message: STUDENT_ERRORS_[bs.error] || 'Datos inválidos.' };
     }
@@ -4744,7 +4950,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
     for (var i = 0; i < talks.length; i++) {
       talksById[talks[i].id] = talks[i];
     }
-    var signups = readSignupsCached_();
+    if (!signups) signups = readSignupsCached_();
     if (!current && !ticket && hasSignupsForEmail_(signups, s.email)) {
       return {
         ok: false,
@@ -4881,6 +5087,7 @@ function registerLocked_(email, nombre, curso, talkId, apellido, sessionToken, l
       ok: true,
       message: message,
       student: { email: s.email, nombre: s.nombre, apellido: s.apellido, curso: s.curso, ciclo: s.ciclo },
+      emailCorregido: fix && fix.from ? fix.from : '',
       data: publicData_(s.ciclo, mineMap_(fresh, s.email), fresh),
       recordatorio: reminderOptIn_(fresh, s.email),
       session: rotated,

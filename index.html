@@ -6325,7 +6325,14 @@
               recordatorio: !!sState.recordatorio
             }));
           } catch (eCache) { }
+          var emailAviso = '';
+          if (resp.student && resp.student.email && resp.student.email !== sState.email) {
+            emailAviso = resp.student.email;
+            sState.email = emailAviso;
+            try { $('input-mail').value = emailAviso; } catch (eMail) { }
+          }
           sBanner('');
+          if (emailAviso) toast('Corregimos tu mail a ' + emailAviso, 'ok');
           sRender();
           // Ahora si: se cierra el ciclo del toque (y drena la cola). La
           // sesion/estado ya se guardaron, asi que el confirm en cola no
@@ -6393,6 +6400,12 @@
         .then(function (resp) {
           sUnbusy_();
           if (resp.ok) {
+            var emailAviso = '';
+            if (resp.student && resp.student.email && resp.student.email !== sState.email) {
+              emailAviso = resp.student.email;
+              sState.email = emailAviso;
+              try { $('input-mail').value = emailAviso; } catch (eMail) { }
+            }
             sState.student = resp.student;
             sState.nombre = resp.student.nombre;
             sState.apellido = resp.student.apellido || '';
@@ -6407,6 +6420,7 @@
               recordatorio: !!resp.recordatorio
             }));
             sBanner('');
+            if (emailAviso) toast('Corregimos tu mail a ' + emailAviso, 'ok');
             sSyncConfirmed_();
             if (sState.confirmed) {
               sRenderDone_();
@@ -6545,7 +6559,16 @@
             return;
           }
           sBanner('');
-          sState.email = email;
+          // El server puede devolver la direccion oficial del padron cuando
+          // el mail escrito era el mismo nombre/apellido al reves o tenia un
+          // typo. Se usa esa direccion y se avisa, para que despues pueda
+          // volver a entrar sin depender de nosotros.
+          var emailUsado = resp.email || email;
+          if (emailUsado !== email) {
+            $('input-mail').value = emailUsado;
+            toast('Corregimos tu mail a ' + emailUsado, 'ok');
+          }
+          sState.email = emailUsado;
           sState.login = resp.login || '';
           sState.lookup = resp;
           sState.nombre = resp.nombreCompleto || resp.nombre || '';
