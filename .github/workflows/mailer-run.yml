@@ -1,0 +1,45 @@
+name: mailer-run
+
+# Ejecuta una función del proyecto de Apps Script del robot de esi@ (diagnóstico
+# o la campaña de cierre) sin abrir el editor. No toca la webapp ni los QR.
+# Si el token no tiene permiso para ejecutar (403), la función se corre a mano
+# desde script.google.com con la cuenta esi@.
+
+on:
+  workflow_dispatch:
+    inputs:
+      fn:
+        description: 'Función a ejecutar'
+        required: true
+        default: 'diagnosticoCierre'
+        type: choice
+        options:
+          - diagnosticoCierre
+          - encolarCierrePrueba
+          - encolarCierre
+      params:
+        description: 'Parámetros JSON (opcional)'
+        required: false
+        default: '[]'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mailer-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Ejecutar en esi@
+        env:
+          ESI_REFRESH_TOKEN: ${{ secrets.ESI_REFRESH_TOKEN }}
+          ESI_SCRIPT_ID: ${{ vars.ESI_SCRIPT_ID }}
+          FN: ${{ inputs.fn }}
+          PARAMS: ${{ inputs.params }}
+        run: sh scripts/run-mailer-fn.sh "$FN" "$PARAMS"

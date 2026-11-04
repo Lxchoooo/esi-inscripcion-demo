@@ -1,13 +1,13 @@
 name: mailer-deploy
 
-# Publica tools/mailer/esi-mailer.gs en el proyecto de Apps Script de esi@
-# usando la Apps Script API. No hay que abrir el editor ni copiar/pegar.
+# Publica los .gs del robot (tools/mailer/*.gs) en el proyecto de Apps Script
+# de esi@ usando la Apps Script API. No hay que abrir el editor ni copiar/pegar.
 # Configuración por única vez: ver tools/mailer/README.md.
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/mailer/esi-mailer.gs'
+      - 'tools/mailer/*.gs'
       - 'scripts/deploy-mailer-api.sh'
       - '.github/workflows/mailer-deploy.yml'
   workflow_dispatch:

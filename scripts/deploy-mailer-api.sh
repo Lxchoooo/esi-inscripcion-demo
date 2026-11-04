@@ -12,10 +12,18 @@
 # Requiere curl y jq. Nunca imprime el token.
 set -eu
 
-SRC="${1:-tools/mailer/esi-mailer.gs}"
+# Por defecto publica todos los .gs del robot (esi-mailer + campañas). Con un
+# argumento publica solo ese archivo.
+if [ "$#" -ge 1 ]; then
+  SRCS="$1"
+else
+  SRCS="$(ls tools/mailer/*.gs)"
+fi
 : "${ESI_REFRESH_TOKEN:?falta ESI_REFRESH_TOKEN}"
 : "${ESI_SCRIPT_ID:?falta ESI_SCRIPT_ID}"
-[ -f "$SRC" ] || { echo "no existe $SRC" >&2; exit 1; }
+for f in $SRCS; do
+  [ -f "$f" ] || { echo "no existe $f" >&2; exit 1; }
+done
 command -v curl >/dev/null 2>&1 || { echo "falta curl" >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || { echo "falta jq" >&2; exit 1; }
 
@@ -41,14 +49,17 @@ fi
 curl -fsS -H "Authorization: Bearer $TOKEN" \
   "https://script.googleapis.com/v1/projects/$ESI_SCRIPT_ID/content" -o "$TMP/actual.json"
 
-# 3. Reemplaza el único archivo de código y conserva el manifiesto y cualquier
-#    otro archivo (HTML/JSON). La API devuelve los .gs sin extensión (por
-#    ejemplo "Código"), así que se filtra por tipo SERVER_JS. Si hubiera dos,
-#    frena: mejor no adivinar cuál es el robot.
-jq --rawfile src "$SRC" '
-  ([.files[] | select(.type=="SERVER_JS")] | length) as $n
-  | if $n != 1 then error("el proyecto debe tener exactamente un archivo SERVER_JS (tiene \($n))") else . end
-  | {files: [.files[] | {name, type, source: (if .type=="SERVER_JS" then $src else .source end)}]}
+# 3. Reemplaza los archivos SERVER_JS con los .gs del repo y conserva el
+#    manifiesto y cualquier otro archivo (HTML/JSON). La API devuelve los .gs
+#    sin extensión (por ejemplo "Código"), así que se filtra por tipo.
+: > "$TMP/files.ndjson"
+for f in $SRCS; do
+  jq -nc --arg n "$(basename "$f" .gs)" --rawfile s "$f" \
+    '{name:$n, type:"SERVER_JS", source:$s}' >> "$TMP/files.ndjson"
+done
+jq -s '.' "$TMP/files.ndjson" > "$TMP/files.json"
+jq --slurpfile nuevos "$TMP/files.json" '
+  {files: ([.files[] | select(.type!="SERVER_JS")] + $nuevos[0])}
 ' "$TMP/actual.json" > "$TMP/nuevo.json"
 
 # 4. Guarda. El trigger de cada minuto ejecuta el contenido nuevo sin redeploy:
