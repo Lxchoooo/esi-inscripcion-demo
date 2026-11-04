@@ -8492,12 +8492,13 @@
       for (var i = 0; i < list.length; i++) {
         parts.push((list[i].slot || '') + ' ' + list[i].presentes);
       }
-      return 'Presentes por franja: ' + parts.join(' · ');
+      return 'Presencias por franja: ' + parts.join(' · ');
     }
 
-    function chartDonut_(present, absent, label) {
+    function chartDonut_(present, absent, label, presentLabel) {
       var total = Number(present || 0) + Number(absent || 0);
       var pct = total ? Math.round(Number(present || 0) * 100 / total) : 0;
+      var word = presentLabel || 'presentes';
       return '<figure class="chart"><figcaption>' + esc(label) + '</figcaption>'
         + '<div class="donut-wrap"><svg class="donut" viewBox="0 0 42 42" role="img" aria-label="'
         + esc(label + ': ' + Number(present || 0) + ' de ' + total) + '">'
@@ -8506,7 +8507,7 @@
         + '<circle class="arc' + barIn_('d' + label) + '" cx="21" cy="21" r="15.9" fill="none" stroke="var(--accent)" stroke-width="6" pathLength="100"'
         + ' stroke-dasharray="' + pct + ' 100" transform="rotate(-90 21 21)"></circle>'
         + '<text x="21" y="21" dy=".35em">' + pct + '%</text></svg>'
-        + '<p class="chart-note">' + Number(present || 0) + ' presentes de ' + total
+        + '<p class="chart-note">' + Number(present || 0) + ' ' + word + ' de ' + total
         + (total ? ' · ' + Number(absent || 0) + ' ausentes' : ' · sin datos') + '</p></div>'
         + '<table class="sr-only"><caption>' + esc(label) + '</caption><tr><th>Presentes</th><td>'
         + Number(present || 0) + '</td></tr><tr><th>Ausentes</th><td>' + Number(absent || 0) + '</td></tr></table>'
@@ -8552,16 +8553,16 @@
           present += Number(course.students[s].presentes || 0);
           total += Number(course.students[s].count || 0);
         }
-        html += chartDonut_(present, Math.max(0, total - present), 'Asistencia en ' + course.curso);
+        html += chartDonut_(present, Math.max(0, total - present), 'Asistencia en ' + course.curso, 'presencias');
         html += chartBars_((d.courses || []).map(function (c) {
           return { label: c.curso, value: c.roster };
         }), 'Alumnos por curso');
       } else {
-        html += chartDonut_(t.present, t.absent, 'Asistencia general');
+        html += chartDonut_(t.present, t.absent, 'Asistencia general', 'presencias');
         html += chartBars_((t.presentBySlot || []).map(function (x) {
           return { label: x.slot + ' · ' + x.label, value: x.presentes, max: x.total };
         }), 'Presentes por franja');
-        html += chartDonut_((t.byCiclo || {}).basico, (t.byCiclo || {}).orientado, 'Alumnos por ciclo');
+        html += chartDonut_((t.byCiclo || {}).basico, (t.byCiclo || {}).orientado, 'Alumnos por ciclo', 'alumnos');
         html += chartBars_((d.talks || []).map(function (x) {
           return { label: x.titulo, value: x.anotados, max: x.cupo };
         }), 'Reservas por charla');
@@ -8775,15 +8776,26 @@
     function aRenderTotalReport() {
       var d = aReports;
       var t = d.totals || {};
+      var presentStudents = 0;
+      var courses = d.courses || [];
+      for (var ci = 0; ci < courses.length; ci++) {
+        var students = courses[ci].students || [];
+        for (var si = 0; si < students.length; si++) {
+          if (Number(students[si].presentes || 0) > 0) presentStudents++;
+        }
+      }
       var html = reportStats_([
         [t.roster || 0, 'Alumnos'],
         [t.complete || 0, 'Completos'],
         [t.incomplete || 0, 'Incompletos'],
         [t.signups || 0, 'Reservas'],
-        [t.present || 0, 'Presentes']
+        [presentStudents, 'Alumnos con asistencia'],
+        [t.present || 0, 'Presencias en charlas']
       ]);
       html += aCharts_('total');
       html += '<p class="hint-line">' + esc(reportPresentLine_(t.presentBySlot || [])) + '</p>';
+      html += '<p class="hint-line">Cada alumno suma hasta 3 presencias, una por franja. '
+        + 'No son alumnos: ' + presentStudents + ' alumnos asistieron a por lo menos una charla.</p>';
       html += '<div class="table-wrap report-table"><table><thead><tr>'
         + '<th>Charla</th><th>Ciclo</th><th>Horario</th><th>Reservas</th><th>Presentes</th><th>Ausentes</th><th>Cupo</th>'
         + '</tr></thead><tbody>';
@@ -8812,7 +8824,7 @@
         html += '<div class="empty-state"><p class="es-title">Todavía no hay charlas cargadas.</p></div>';
       } else {
         html += '<p class="hint-line">Total: ' + sumAnotados + ' reservas, ' + sumPresentes
-          + ' presentes, ' + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
+          + ' presencias en charlas, ' + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
       }
       $('rep-out').innerHTML = html;
       aSyncTableCards_();
