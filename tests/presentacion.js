@@ -24,6 +24,7 @@ function check(name, ok, detail) {
 // Navegación nativa: el navegador maneja rueda, touch y teclado.
 check('scroll-snap-type en el documento', /scroll-snap-type:\s*y\s+(proximity|mandatory)/.test(HTML));
 check('cada diapositiva declara scroll-snap-align', /scroll-snap-align:\s*start/.test(HTML));
+check('el snap no se salta diapositivas', /scroll-snap-stop:\s*always/.test(HTML));
 check('no hay listener de touchmove', !/addEventListener\(\s*['"]touchmove['"]/.test(HTML));
 check('no hay listener de pointermove', !/addEventListener\(\s*['"]pointermove['"]/.test(HTML));
 check('no hay listener de wheel', !/addEventListener\(\s*['"]wheel['"]/.test(HTML));

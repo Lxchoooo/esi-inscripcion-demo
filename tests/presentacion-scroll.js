@@ -281,23 +281,125 @@ async function main() {
   }
   check('el gesto touch scrollea el documento', afterTouch > 500, touchMethod + ', scrollY ' + afterTouch);
 
-  // Rueda y teclado en escritorio, en un contexto aparte sobre el mismo archivo.
-  const desktop = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // 5b. Escritorio: el contenido no se estira ni queda perdido en pantallas anchas.
+  const viewports = [
+    { width: 1366, height: 768 },
+    { width: 1536, height: 864 },
+    { width: 1920, height: 1080 }
+  ];
+  for (const vp of viewports) {
+    const ctx = await browser.newContext({ viewport: vp });
+    const p = await ctx.newPage();
+    await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+    await p.waitForTimeout(500);
+    const layout = await p.evaluate(() => {
+      const slide = document.querySelector('section.slide');
+      const wrap = slide.querySelector('.wrap');
+      const r = wrap.getBoundingClientRect();
+      const h2 = document.querySelector('.slide h2') || document.querySelector('.slide h1');
+      const kpi = document.querySelector('.kpi');
+      const donut = document.querySelector('.donut');
+      return {
+        overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+        wrapWidth: Math.round(r.width),
+        left: Math.round(r.left),
+        right: Math.round(window.innerWidth - r.right),
+        h2: Math.round(parseFloat(getComputedStyle(h2).fontSize)),
+        kpi: kpi ? Math.round(kpi.getBoundingClientRect().width) : 0,
+        donut: donut ? Math.round(donut.getBoundingClientRect().width) : 0
+      };
+    });
+    const label = vp.width + 'x' + vp.height;
+    check('sin desborde horizontal a ' + label, !layout.overflow, 'wrap ' + layout.wrapWidth + ' px');
+    check('contenido centrado a ' + label, Math.abs(layout.left - layout.right) <= 2,
+      'izq ' + layout.left + ' / der ' + layout.right);
+    check('max-width razonable a ' + label, layout.wrapWidth <= 1200 && layout.wrapWidth >= 900,
+      layout.wrapWidth + ' px');
+    check('tipografia escala a ' + label, layout.h2 >= 60, layout.h2 + ' px');
+    check('graficos y tarjetas en proporcion a ' + label,
+      (!layout.kpi || layout.kpi >= 200) && (!layout.donut || layout.donut >= 300),
+      'kpi ' + layout.kpi + ' px, dona ' + layout.donut + ' px');
+    await ctx.close();
+  }
+
+  // 6. Rueda, touchpad y teclado en escritorio.
+  const desktop = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const deskPage = await desktop.newPage();
   await deskPage.addInitScript(observeLongTasks);
   await deskPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
   await deskPage.waitForTimeout(800);
-  await deskPage.evaluate(() => { window.scrollTo(0, 0); window.__scrollStart = performance.now(); });
+  await deskPage.evaluate(() => { window.__scrollStart = performance.now(); });
+  const slideH = await deskPage.evaluate(() => Math.round(document.querySelector('section.slide').getBoundingClientRect().height));
+
+  // Un giro fuerte no debe saltarse diapositivas.
+  await deskPage.evaluate(() => window.scrollTo(0, 0));
+  await wait(300);
+  await deskPage.mouse.wheel(0, 3000);
+  await wait(1000);
+  const strongWheel = await deskPage.evaluate(() => window.scrollY);
+  check('un giro fuerte avanza una sola diapositiva',
+    strongWheel > slideH * 0.5 && strongWheel < slideH * 1.6,
+    'scrollY ' + strongWheel + ' con diapositiva de ' + slideH + ' px');
+
+  // Touchpad: varios ticks cortos seguidos.
+  await deskPage.evaluate(() => window.scrollTo(0, 0));
+  await wait(300);
+  for (let i = 0; i < 6; i += 1) {
+    await deskPage.mouse.wheel(0, 120);
+    await wait(50);
+  }
+  await wait(1000);
+  const touchpad = await deskPage.evaluate(() => window.scrollY);
+  check('el touchpad avanza una diapositiva',
+    touchpad > slideH * 0.5 && touchpad < slideH * 1.6,
+    'scrollY ' + touchpad + ' con diapositiva de ' + slideH + ' px');
+
+  // Teclado: AvPág, espacio, flecha abajo, Fin e Inicio.
+  await deskPage.evaluate(() => window.scrollTo(0, 0));
+  await wait(300);
+  await deskPage.keyboard.press('PageDown');
+  await wait(900);
+  const pageDown = await deskPage.evaluate(() => window.scrollY);
+  check('AvPág avanza una diapositiva',
+    pageDown > slideH * 0.5 && pageDown < slideH * 1.6,
+    'scrollY ' + pageDown + ' con diapositiva de ' + slideH + ' px');
+
+  await deskPage.evaluate(() => window.scrollTo(0, 0));
+  await wait(300);
+  await deskPage.keyboard.press('Space');
+  await wait(900);
+  const spaceScroll = await deskPage.evaluate(() => window.scrollY);
+  check('la barra espaciadora avanza una diapositiva',
+    spaceScroll > slideH * 0.5 && spaceScroll < slideH * 1.6,
+    'scrollY ' + spaceScroll + ' con diapositiva de ' + slideH + ' px');
+
+  await deskPage.evaluate(() => window.scrollTo(0, 0));
+  await wait(300);
+  await deskPage.keyboard.press('ArrowDown');
+  await wait(300);
+  const arrowDown = await deskPage.evaluate(() => window.scrollY);
+  check('la flecha abajo scrollea', arrowDown > 0, 'scrollY ' + arrowDown);
+
+  await deskPage.keyboard.press('End');
+  await wait(900);
+  const endPos = await deskPage.evaluate(() => ({ y: window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight }));
+  check('Fin llega al final', endPos.y > endPos.max - 900, 'scrollY ' + endPos.y + ' / ' + endPos.max);
+
+  await deskPage.keyboard.press('Home');
+  await wait(900);
+  const homePos = await deskPage.evaluate(() => window.scrollY);
+  check('Inicio vuelve al principio', homePos <= 4, 'scrollY ' + homePos);
+
+  // Rueda sostenida: recorre todo el documento.
+  await deskPage.evaluate(() => window.scrollTo(0, 0));
+  await wait(300);
   for (let i = 0; i < 20; i += 1) {
     await deskPage.mouse.wheel(0, 700);
     await wait(60);
   }
   const afterWheel = await deskPage.evaluate(() => window.scrollY);
-  check('la rueda scrollea el documento', afterWheel > 500, 'scrollY ' + afterWheel);
-  await deskPage.keyboard.press('End');
-  await wait(400);
-  await deskPage.keyboard.press('Home');
-  await wait(600);
+  check('la rueda recorre el documento', afterWheel > 500, 'scrollY ' + afterWheel);
+
   const deskPerf = await deskPage.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame, start: window.__scrollStart || 0 }));
   await desktop.close();
 
