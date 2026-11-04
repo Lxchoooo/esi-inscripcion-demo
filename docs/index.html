@@ -69,10 +69,11 @@
   }
   .topbar > * { pointer-events: auto; }
   .brand { display: flex; align-items: center; gap: 10px; }
-  .brand-mark {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--gold);
-    box-shadow: 0 0 0 5px rgba(230, 184, 92, .12);
+  .brand-logo {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 7px rgba(230, 184, 92, .18));
   }
   .top-actions { display: flex; align-items: center; gap: 14px; }
   .icon-btn {
@@ -375,8 +376,8 @@
     background:
       radial-gradient(circle at 30% 30%, rgba(79, 157, 138, .18), transparent 62%),
       url("assets/logo-iss.png") center / 58vmin no-repeat;
-    filter: blur(30px) saturate(1.08);
-    opacity: .18;
+    filter: blur(8px) saturate(1.08);
+    opacity: .38;
     transform: rotate(-8deg) scale(1.06);
   }
   .cover::after, .promo::after, .farewell::after {
@@ -389,10 +390,11 @@
     z-index: 0;
     pointer-events: none;
     background: url("assets/logo-aes.jpg") center / contain no-repeat;
-    filter: blur(26px) saturate(1.1);
-    opacity: .12;
+    filter: blur(10px) saturate(1.1);
+    opacity: .22;
     transform: rotate(10deg);
-    mix-blend-mode: soft-light;
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 22%, transparent 72%);
+    mask-image: radial-gradient(circle at 50% 50%, #000 22%, transparent 72%);
   }
   .cover .wrap, .promo .wrap, .farewell .wrap { position: relative; z-index: 1; }
   @media (min-width: 701px) {
@@ -507,7 +509,7 @@
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark" aria-hidden="true"></span>
+    <img class="brand-logo" src="assets/logo-iss.png" alt="">
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
