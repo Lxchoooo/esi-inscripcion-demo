@@ -1,0 +1,33 @@
+name: presentacion
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: presentacion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scroll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - name: Instalar Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Contrato de la presentación
+        run: node tests/presentacion.js
+      - name: Scroll real en viewport de celular
+        run: node tests/presentacion-scroll.js

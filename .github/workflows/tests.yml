@@ -26,5 +26,7 @@ jobs:
         run: node tests/esi-tests.js src
       - name: Smoke de interfaz
         run: node tests/ui-smoke.js src
+      - name: Contrato de la presentación
+        run: node tests/presentacion.js
       - name: Copia publicada
         run: cmp src/Panel.html index.html
