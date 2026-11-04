@@ -1072,6 +1072,11 @@ function animateCounters(slide) {
     const decimals = parseInt(el.dataset.decimals || '0', 10);
     const suffix = el.dataset.suffix || '';
     const prefix = el.dataset.prefix || '';
+    if (reduceMotion.matches) {
+      el.dataset.done = '1';
+      el.textContent = prefix + numberText(target, decimals) + suffix;
+      return;
+    }
     const duration = 1050;
     const start = performance.now();
     const tick = (now) => {

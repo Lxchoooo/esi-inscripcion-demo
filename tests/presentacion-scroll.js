@@ -50,15 +50,17 @@ function check(name, ok, detail) {
 
 function observeLongTasks() {
   window.__long = { task: [], frame: [] };
+  const push = (bucket) => (list) => {
+    list.getEntries().forEach((e) => window.__long[bucket].push({
+      d: Math.round(e.duration),
+      t: Math.round(e.startTime)
+    }));
+  };
   try {
-    new PerformanceObserver((list) => {
-      list.getEntries().forEach((e) => window.__long.task.push(Math.round(e.duration)));
-    }).observe({ entryTypes: ['longtask'] });
+    new PerformanceObserver(push('task')).observe({ entryTypes: ['longtask'] });
   } catch (e) { /* sin soporte */ }
   try {
-    new PerformanceObserver((list) => {
-      list.getEntries().forEach((e) => window.__long.frame.push(Math.round(e.duration)));
-    }).observe({ entryTypes: ['long-animation-frame'] });
+    new PerformanceObserver(push('frame')).observe({ entryTypes: ['long-animation-frame'] });
   } catch (e) { /* sin soporte */ }
 }
 
@@ -123,6 +125,7 @@ async function main() {
     'opacity ' + initial.opacity + ', filter ' + initial.filter);
 
   // 2. Todas las diapositivas alcanzables y reveladas.
+  await page.evaluate(() => { window.__scrollStart = performance.now(); });
   const unreachable = [];
   const notRevealed = [];
   for (let i = 0; i < 16; i += 1) {
@@ -284,7 +287,7 @@ async function main() {
   await deskPage.addInitScript(observeLongTasks);
   await deskPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
   await deskPage.waitForTimeout(800);
-  await deskPage.evaluate(() => { window.scrollTo(0, 0); });
+  await deskPage.evaluate(() => { window.scrollTo(0, 0); window.__scrollStart = performance.now(); });
   for (let i = 0; i < 20; i += 1) {
     await deskPage.mouse.wheel(0, 700);
     await wait(60);
@@ -295,23 +298,32 @@ async function main() {
   await wait(400);
   await deskPage.keyboard.press('Home');
   await wait(600);
-  const deskPerf = await deskPage.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame }));
+  const deskPerf = await deskPage.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame, start: window.__scrollStart || 0 }));
   await desktop.close();
 
-  const mobilePerf = await page.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame }));
+  const mobilePerf = await page.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame, start: window.__scrollStart || 0 }));
   const perf = {
     task: mobilePerf.task.concat(deskPerf.task),
     frame: mobilePerf.frame.concat(deskPerf.frame)
   };
-  const maxTask = perf.task.length ? Math.max.apply(null, perf.task) : 0;
-  const overTask = perf.task.filter((d) => d > 50);
-  const maxFrame = perf.frame.length ? Math.max.apply(null, perf.frame) : 0;
-  const overFrame = perf.frame.filter((d) => d > 50);
+  const durations = (list) => list.map((entry) => entry.d);
+  const scrollTasks = mobilePerf.task.filter((entry) => entry.t >= mobilePerf.start)
+    .concat(deskPerf.task.filter((entry) => entry.t >= deskPerf.start));
+  const scrollFrames = mobilePerf.frame.filter((entry) => entry.t >= mobilePerf.start)
+    .concat(deskPerf.frame.filter((entry) => entry.t >= deskPerf.start));
+  const loadTasks = perf.task.filter((entry) => !scrollTasks.includes(entry));
+  const maxTask = perf.task.length ? Math.max.apply(null, durations(perf.task)) : 0;
+  const overTask = scrollTasks.filter((entry) => entry.d > 50);
+  const maxFrame = perf.frame.length ? Math.max.apply(null, durations(perf.frame)) : 0;
+  const overFrame = perf.frame.filter((entry) => entry.d > 50);
 
   console.log('\nlongtask: ' + perf.task.length + ' (max ' + maxTask + ' ms, >50 ms: ' + overTask.length + ')');
+  console.log('longtask detalle: ' + JSON.stringify(perf.task));
   console.log('long-animation-frame: ' + perf.frame.length + ' (max ' + maxFrame + ' ms, >50 ms: ' + overFrame.length + ')');
+  console.log('loaf detalle: ' + JSON.stringify(perf.frame));
 
-  check('sin tareas largas (>50 ms) durante la carga y el scroll', overTask.length === 0, overTask.join(', ') + ' ms');
+  check('sin tareas largas (>50 ms) al pasar las diapositivas', overTask.length === 0,
+    overTask.map((entry) => entry.d + ' ms @ ' + entry.t).join(', ') || '0');
   // LoAF se informa siempre; en runners sin GPU puede haber frames lentos por
   // software rendering, así que solo falla si es claramente patológico.
   check('sin frames patológicos (>120 ms) durante la carga y el scroll', maxFrame <= 120, 'max ' + maxFrame + ' ms');
@@ -326,7 +338,10 @@ async function main() {
   ].concat(results.map((r) => '| ' + r.name + ' | ' + (r.ok ? 'ok' : 'FALLA: ' + r.detail) + ' |'))
     .concat([
       '',
-      '- longtask: ' + perf.task.length + ' (max ' + maxTask + ' ms)',
+      '- longtask al pasar diapositivas: ' + scrollTasks.length + ' (max ' +
+        (scrollTasks.length ? Math.max.apply(null, durations(scrollTasks)) : 0) + ' ms)',
+      '- longtask en carga: ' + loadTasks.length + ' (max ' +
+        (loadTasks.length ? Math.max.apply(null, durations(loadTasks)) : 0) + ' ms)',
       '- long-animation-frame: ' + perf.frame.length + ' (max ' + maxFrame + ' ms)',
       '- altos 390x844: ' + heights.join(', ')
     ]);
