@@ -8561,7 +8561,7 @@
         html += chartDonut_(t.present, t.absent, 'Asistencia general', 'presencias');
         html += chartBars_((t.presentBySlot || []).map(function (x) {
           return { label: x.slot + ' · ' + x.label, value: x.presentes, max: x.total };
-        }), 'Presentes por franja');
+        }), 'Presencias por franja');
         html += chartDonut_((t.byCiclo || {}).basico, (t.byCiclo || {}).orientado, 'Alumnos por ciclo', 'alumnos');
         html += chartBars_((d.talks || []).map(function (x) {
           return { label: x.titulo, value: x.anotados, max: x.cupo };
@@ -8824,7 +8824,8 @@
         html += '<div class="empty-state"><p class="es-title">Todavía no hay charlas cargadas.</p></div>';
       } else {
         html += '<p class="hint-line">Total: ' + sumAnotados + ' reservas, ' + sumPresentes
-          + ' presencias en charlas, ' + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
+          + (sumPresentes === 1 ? ' presencia en charlas, ' : ' presencias en charlas, ')
+          + (sumAnotados - sumPresentes) + ' ausentes, ' + sumCupo + ' lugares.</p>';
       }
       $('rep-out').innerHTML = html;
       aSyncTableCards_();

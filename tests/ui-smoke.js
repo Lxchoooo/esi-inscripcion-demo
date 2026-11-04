@@ -527,7 +527,7 @@ function tick() {
   let rep = document.getElementById('rep-out').innerHTML;
   assert(rep.includes('Díaz, Beto'), 'apellido primero en el reporte');
   assert(rep.includes('Completos'), 'totales del curso');
-  assert(rep.includes('Presentes por franja'), 'presentes por franja');
+  assert(rep.includes('Presencias por franja'), 'presencias por franja');
   assert(rep.includes('Sin anotar'), 'charla sin anotar en el reporte');
   assert(rep.includes('student-mail-btn'), 'mail detras del nombre en el reporte');
   assert(rep.includes('data-mail="beto@esc.edu.ar"'), 'mail disponible en el reporte');
@@ -613,8 +613,8 @@ function tick() {
   ui.aRepSetType('total');
   let repTotal = document.getElementById('rep-out').innerHTML;
   assert(repTotal.includes('Alumnos'), 'totales generales');
-  assert(repTotal.includes('Presentes por franja'), 'presentes por franja en el total');
-  assert(repTotal.includes('Total: 3 reservas, 1 presentes'), 'resumen del total');
+  assert(repTotal.includes('Presencias por franja'), 'presencias por franja en el total');
+  assert(repTotal.includes('Total: 3 reservas, 1 presencia en charlas'), 'resumen del total');
   assert(repTotal.includes('Básico'), 'ciclo en la tabla total');
 
   ui.setReports({
