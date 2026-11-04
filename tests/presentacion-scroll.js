@@ -331,13 +331,16 @@ async function main() {
   await deskPage.evaluate(() => { window.__scrollStart = performance.now(); });
   const slideH = await deskPage.evaluate(() => Math.round(document.querySelector('section.slide').getBoundingClientRect().height));
 
-  // Un giro fuerte no debe saltarse diapositivas.
+  // Un gesto fuerte de touchpad (varios eventos seguidos) no debe saltarse diapositivas.
   await deskPage.evaluate(() => window.scrollTo(0, 0));
   await wait(300);
-  await deskPage.mouse.wheel(0, 3000);
-  await wait(1000);
+  for (let i = 0; i < 12; i += 1) {
+    await deskPage.mouse.wheel(0, 150);
+    await wait(20);
+  }
+  await wait(1200);
   const strongWheel = await deskPage.evaluate(() => window.scrollY);
-  check('un giro fuerte avanza una sola diapositiva',
+  check('un gesto fuerte no salta más de una diapositiva',
     strongWheel > slideH * 0.5 && strongWheel < slideH * 1.6,
     'scrollY ' + strongWheel + ' con diapositiva de ' + slideH + ' px');
 
@@ -382,8 +385,18 @@ async function main() {
 
   await deskPage.keyboard.press('End');
   await wait(900);
-  const endPos = await deskPage.evaluate(() => ({ y: window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight }));
-  check('Fin llega al final', endPos.y > endPos.max - 900, 'scrollY ' + endPos.y + ' / ' + endPos.max);
+  const endPos = await deskPage.evaluate(() => {
+    const slides = document.querySelectorAll('section.slide');
+    const last = slides[slides.length - 1];
+    return {
+      y: Math.round(window.scrollY),
+      last: Math.round(last.getBoundingClientRect().top + window.scrollY),
+      max: Math.round(document.documentElement.scrollHeight - window.innerHeight)
+    };
+  });
+  check('Fin llega a la última diapositiva',
+    Math.abs(endPos.y - endPos.last) <= 4 || endPos.y >= endPos.max - 4,
+    'scrollY ' + endPos.y + ', última ' + endPos.last + ', tope ' + endPos.max);
 
   await deskPage.keyboard.press('Home');
   await wait(900);
