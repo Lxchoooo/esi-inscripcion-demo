@@ -148,7 +148,7 @@
   }
 
   .cover .wrap { max-width: 1080px; }
-  .cover h1 { max-width: 12ch; }
+  .cover h1 { max-width: 14ch; font-size: clamp(3rem, 7vw, 6.2rem); }
   .cover .lead { font-size: clamp(1.05rem, 1.8vw, 1.35rem); }
   .cover-meta {
     display: flex;
@@ -319,6 +319,25 @@
   }
 
   .lesson-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
+  .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 30px; }
+  .timeline-item {
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--gold);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .035);
+  }
+  .timeline-item .year {
+    display: block;
+    color: var(--gold);
+    font-family: var(--serif);
+    font-size: 2.2rem;
+    line-height: 1;
+    letter-spacing: -.03em;
+    margin-bottom: 10px;
+  }
+  .timeline-item h3 { margin: 0 0 7px; }
+  .timeline-item p { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.5; }
   .lesson { padding: 22px; position: relative; }
   .lesson .idx { color: var(--gold); font-family: var(--serif); font-size: .95rem; letter-spacing: .08em; }
   .lesson h3 { margin-top: 10px; }
@@ -396,7 +415,7 @@
     .split, .chart-grid, .effort-grid { grid-template-columns: 1fr; }
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .slot-grid { grid-template-columns: 1fr; }
-    .lesson-grid, .thanks-grid { grid-template-columns: 1fr; }
+    .lesson-grid, .thanks-grid, .timeline { grid-template-columns: 1fr; }
     .cover h1 { max-width: 14ch; }
     .donut { width: min(300px, 70vw); }
   }
@@ -439,7 +458,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter" aria-live="polite">01 / 12</span>
+    <span id="counter" class="counter" aria-live="polite">01 / 13</span>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
   </div>
 </header>
@@ -449,10 +468,11 @@
   <section class="slide cover active" data-title="Portada" aria-label="Portada">
     <div class="wrap">
       <p class="eyebrow">Instituto Secundario Salsipuedes · Jornada ESI</p>
-      <h1>La primera vez que <span class="accent">abrimos la puerta.</span></h1>
-      <p class="lead">Una jornada hecha con pocos días, muchas manos y la convicción de que hablar de ESI también es cuidar. Esto es lo que quedó: los números, las conversaciones y lo que aprendimos.</p>
+      <h1>Una historia que <span class="accent">empezó en 2010.</span></h1>
+      <p class="lead">La ESI en el ISS no empezó hoy: hace más de 15 años, alrededor de 2010, la escuela sostiene charlas de ESI. Esta es la primera jornada con este formato, pero es la continuidad de una práctica que sigue viva.</p>
       <div class="cover-meta">
         <span>4 de noviembre de 2026</span>
+        <span>Desde 2010</span>
         <span>30 charlas</span>
         <span>12 cursos</span>
         <span>Una comunidad</span>
@@ -466,12 +486,12 @@
       <div>
         <p class="eyebrow">Lo que pasó</p>
         <p class="quote">No empezó con una planilla. Empezó con la decisión de hablar de lo que <em>importa.</em></p>
-        <p class="lead" style="margin-top: 28px;">En menos de dos semanas armamos una jornada con 30 charlas, 12 cursos y una comunidad entera poniéndose de acuerdo. Hubo pruebas, errores y aprendizaje. Pero sobre todo hubo personas dispuestas a encontrarse.</p>
+        <p class="lead" style="margin-top: 28px;">En menos de dos semanas armamos esta jornada con 30 charlas, 12 cursos y una comunidad entera poniéndose de acuerdo. No fue la primera vez que hablamos de ESI: fue una nueva forma de encontrarnos. Hubo pruebas, errores y aprendizaje. Pero sobre todo hubo personas dispuestas a encontrarse.</p>
       </div>
       <div class="mini-grid">
         <div class="mini glass">
-          <div class="big">1ª vez</div>
-          <div class="tiny">Que el colegio abre la puerta a una jornada ESI</div>
+          <div class="big">Desde 2010</div>
+          <div class="tiny">Más de 15 años de charlas de ESI en el ISS</div>
         </div>
         <div class="mini glass">
           <div class="big">30 charlas</div>
@@ -480,6 +500,31 @@
         <div class="mini glass">
           <div class="big">Menos de 2 semanas</div>
           <div class="tiny">Para pensarlo, armarlo y hacerlo posible</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Una historia que viene de lejos" aria-label="Una historia que viene de lejos">
+    <div class="wrap">
+      <p class="eyebrow">Una historia que viene de lejos</p>
+      <h2>La ESI en el ISS no empezó hoy. <span class="accent">Empezó hace más de 15 años.</span></h2>
+      <p class="lead" style="max-width: 76ch;">Alrededor de 2010, el ISS empezó a sostener charlas de ESI. Desde entonces, la práctica siguió viva, cambió de formas y se fue reinventando. Esta jornada es la primera con este formato, pero no es el primer paso: es la continuidad de una historia que la comunidad sostuvo durante más de quince años.</p>
+      <div class="timeline">
+        <div class="timeline-item">
+          <span class="year">2010</span>
+          <h3>Empezaron las charlas</h3>
+          <p>La ESI encontró un espacio en el ISS y empezó a hacerse escuchar.</p>
+        </div>
+        <div class="timeline-item">
+          <span class="year">2026</span>
+          <h3>La primera jornada</h3>
+          <p>Un nuevo formato para seguir hablando de lo que importa, con toda la escuela.</p>
+        </div>
+        <div class="timeline-item">
+          <span class="year">Hoy</span>
+          <h3>La práctica sigue viva</h3>
+          <p>Porque cuidar también es sostener lo que ya veníamos haciendo entre todos.</p>
         </div>
       </div>
     </div>
@@ -692,7 +737,7 @@
     <button class="nav-btn" type="button" data-next aria-label="Diapositiva siguiente">→</button>
   </div>
   <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <div class="counter" id="navCounter">01 / 12</div>
+  <div class="counter" id="navCounter">01 / 13</div>
 </nav>
 <div class="progress" id="progress" aria-hidden="true"></div>
 
