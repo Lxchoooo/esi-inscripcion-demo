@@ -169,7 +169,173 @@ cuenta institucional.
 
 ---
 
-## 4. Para seguir sumando
+## 4. Cómo nos gustaría que se vea
+
+Metas de producto y diseño (no son compromisos: son el norte para el que
+retome esto el año que viene).
+
+**Sensación general**
+- Que parezca una app, no un formulario: tres pantallas claras (entrar,
+  elegir, listo) y una sola acción principal por pantalla.
+- Que cargue rápido y no haga esperar: nada de pantallas en blanco ni botones
+  que no reaccionan. Si algo tarda, que se vea que está trabajando.
+- Que el alumno pueda resolverlo solo, sin explicación previa, en menos de dos
+  minutos y desde el celular.
+- Tono rioplatense, cercano y claro; textos cortos, sin jerga administrativa.
+
+**Metas medibles**
+- LCP < 2,5 s en 4G y p95 de las acciones del server < 300 ms.
+- 0 inscripciones cruzadas, 0 sobrecupo, 0 alumnos con franjas vacías al
+  cerrar la inscripción.
+- > 95% de la asistencia marcada durante el evento (hoy quedó mucha "sin
+  marcar").
+- Mails encolados y enviados en menos de 5 minutos.
+- 0 caídas por credenciales vencidas.
+
+**Detalles de interfaz**
+- Mobile-first real: 320 px como piso, botones de 44 px, sin scroll
+  horizontal.
+- Modo claro y oscuro; contraste AA; foco visible; textos alternativos.
+- Errores en línea debajo del campo, con lenguaje humano ("Ese mail no parece
+  del colegio", no "invalid_email").
+- Estados vacíos que explican qué hacer, y skeletons en lugar de spinners
+  eternos.
+- Sin animaciones infinitas; las transiciones cortas y con propósito.
+- PWA instalable y con la última pantalla cacheada: el día del evento la red
+  del colegio no siempre acompaña.
+- Listas de asistencia imprimibles y legibles en pantalla (nadie quiere
+  imprimir una tabla de 8 columnas).
+- Panel de admin ordenado por tareas (inscriptos, asistencia, mails, reportes),
+  no por tablas de la planilla.
+
+---
+
+## 5. Referencias para robar ideas
+
+Sitios y productos que resuelven problemas parecidos. La idea no es copiar,
+sino mirar cómo lo hacen.
+
+**Elegir una actividad por franja (nuestro caso exacto)**
+- **Sched** (<https://sched.com>) y **Whova**: grillas por horario, cupos y
+  "elegí una por bloque". Buen ejemplo de cómo mostrar franjas sin marear.
+- **Luma** (<https://lu.ma>): página de evento limpísima, una sola llamada a
+  la acción, y agregar al calendario con un toque.
+- **Eventbrite**: flujo de inscripción y tipos de entrada; sirve para ver cómo
+  se manejan cupos y confirmaciones.
+
+**Reservar un turno**
+- **Calendly**: selección de horario con disponibilidad en vivo y confirmación
+  inmediata.
+- **Rallly** (<https://rallly.co>): organización simple de horarios con poca
+  fricción.
+
+**Formularios con buena conversión**
+- **Tally** y **Typeform**: una pregunta por pantalla, validación al instante,
+  progreso visible. (Lo contrario de un Google Form largo.)
+- **GOV.UK Design System** (<https://design-system.service.gov.uk>): el mejor
+  ejemplo de formularios accesibles, mensajes de error claros y lenguaje
+  llano. Muy aplicable a una institución educativa.
+
+**Administración y velocidad percibida**
+- **Stripe Checkout**: transmite confianza y reduce pasos.
+- **Linear** y **Vercel**: paneles densos pero rápidos, con estados de carga
+  bien resueltos.
+- **shadcn/ui** y **Radix**: patrones de componentes accesibles para copiar
+  comportamiento (no estilo).
+
+**Cupos y entradas**
+- **Pretix** (<https://pretix.eu>) y **Hi.events**: open source, con manejo de
+  capacidad, listas de espera y check-in por QR. Buen material para la
+  asistencia del día.
+
+**Qué NO copiar**
+- Formularios de 20 campos (Google Forms) para una inscripción de 2 minutos.
+- Tablas de planilla como interfaz principal.
+- Modales que tapan el error en lugar de marcarlo en el campo.
+- Pop-ups, cookies y avisos que interrumpen.
+
+---
+
+## 6. Cambiar de base: opciones y trade-offs
+
+Hoy: **Apps Script + Google Sheets**, servido como web app, con un robot de
+mails aparte. Ventajas reales: cero infraestructura, cuenta institucional,
+planilla que cualquiera entiende, permisos de Google. Límites que ya nos
+pegaron: latencia variable, cuotas, `LockService` para concurrencia, 6 minutos
+por ejecución, deploy por versiones, y cero tipado/entorno de pruebas.
+
+| Opción | A favor | En contra | Cuándo conviene |
+|---|---|---|---|
+| **Seguir en Apps Script** (pulido) | Nada que mantener, Sheets como panel de respaldo, cero costo, ya funciona | Latencia y cuotas, deploy incómodo, difícil de testear | Si el equipo sigue siendo 1-2 personas y el volumen es < 1.000 alumnos |
+| **Cloudflare Pages + Workers + D1/KV** | Muy rápido, gratis o casi, sin cold start, lindo para el front | Hay que escribir el backend, auth y mails a mano; menos gente lo conoce | Si lo más importante es velocidad y costo, y hay quien lo mantenga |
+| **Supabase (Postgres + Auth + Edge)** | Base relacional de verdad, auth integrada, realtime, panel SQL | Costo si crece, lock-in moderado, permisos que hay que diseñar bien | Si querés datos serios, reportes y varias apps sobre lo mismo |
+| **Vercel/Netlify + Postgres (Neon)** | Front moderno, deploy por PR, ecosistema enorme | Dos servicios, costos, más piezas para que se rompan | Si hay alguien con experiencia en JS/TS full-stack |
+| **Firebase** | Auth, DB y hosting en uno, buena integración con Google | Modelo NoSQL incómodo para reportes relacionales, costos por uso | Si ya se usa Google en todo y el equipo es chico |
+| **Google Cloud Run + Firestore/SQL** | Escala y sigue en el ecosistema Google | Más infra que mantener, no es "sin servidor" de verdad para un colegio | Si el colegio ya tiene soporte de IT en GCP |
+
+**Recomendación**: si hay que migrar, el camino más barato de mantener es
+**Cloudflare Pages (front) + Workers + D1 (datos) + Resend/Postmark (mails)**
+o el híbrido **front estático + Supabase**. En los dos casos, mantener una
+**exportación a Google Sheets** para preceptores y dirección: es la herramienta
+que todos saben usar y no conviene quitarla.
+
+**Qué llevarse sí o sí en una migración**
+- Los conceptos del modelo: `Slots` (franjas), `Talks` (charlas con cupo),
+  `Signups` (una fila por alumno y por charla), `Entrada`, `Sesiones`,
+  `MailQueue`.
+- Las reglas de negocio ya probadas: una charla por franja, ciclo correcto,
+  cupo, un alumno por mail, mail institucional válido, DNI de 8 dígitos.
+- Los tests (388 casos) como red de seguridad: se pueden portar aunque cambie
+  la implementación.
+- Los QR y shortlinks actuales: si cambia la URL, hay que redirigir desde la
+  vieja o reimprimir todo.
+
+**Riesgos de migrar**: perder el histórico de la planilla, romper los links
+impresos, subestimar la autenticación con Google del colegio (los alumnos ya
+tienen cuenta institucional: conviene usarla) y quedar con dos sistemas
+vivos a la vez.
+
+---
+
+## 7. Hoja de ruta (ideas, sin compromiso)
+
+**2027: pulir lo que hay**
+- Cerrar los pendientes de §2 (cupo atómico, catálogo congelado, HTML en la
+  cola, rebotes, asistencia por QR, ejecutable de API).
+- Medir de verdad: latencia, tiempo de inscripción, mails demorados.
+- Escribir el "manual de operación" del evento (quién hace qué y cuándo).
+
+**2028: decidir la base**
+- Probar un prototipo chico en Cloudflare o Supabase con el mismo modelo de
+  datos y los tests portados.
+- Comparar con la experiencia real de un curso (no con benchmarks).
+- Migrar solo si el prototipo es claramente mejor en velocidad y en
+  mantenimiento; si no, quedarse y seguir puliendo.
+
+**Criterios para decidir**
+- ¿Cuánto duele hoy? (si el dolor es deploy y mails, se arregla sin migrar).
+- ¿Quién lo va a mantener en febrero?
+- ¿Cuánto cuesta por año?
+- ¿Se puede volver atrás en una tarde?
+
+---
+
+## 8. Lo que le pediría al próximo agente
+
+- Leer esto y `AGENTS.md` antes de tocar nada; el modelo de datos y las reglas
+  de negocio no son negociables sin hablarlo.
+- No romper los QR ni las URLs ya impresas.
+- No mandar mails masivos sin una prueba a una casilla propia y sin mirar la
+  cola.
+- Probar en un dispositivo real, no solo en el emulador.
+- Antes de un deploy grande, verificar la versión anterior y cómo volver.
+- Nunca commitear datos de alumnos, tokens ni capturas con datos.
+- Si algo se rompe el día del evento: primero el panel (inscripción y
+  asistencia), después los mails. Los mails se recuperan; la lista del día no.
+
+---
+
+## 9. Para seguir sumando
 
 Este documento se amplía con lo que vaya apareciendo. Si surge un problema
 nuevo, se agrega en la sección que corresponda con: qué pasó, cómo se resolvió
