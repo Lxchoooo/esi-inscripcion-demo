@@ -835,16 +835,17 @@
   <section class="slide" data-title="Las charlas" aria-label="Las charlas">
     <div class="wrap chart-grid">
       <div>
-        <div class="donut-wrap" id="talksDonut" role="img" aria-label="Gráfico de charlas: 934 presentes, 165 ausentes, 74 sin marcar"></div>
+        <div class="donut-wrap" id="talksDonut" role="img" aria-label="Gráfico de charlas: 934 presencias, 165 ausencias, 74 sin marcar"></div>
         <div class="legend" id="talksLegend"></div>
       </div>
       <div>
         <p class="eyebrow">Las charlas</p>
         <h2>934 presencias, <span class="accent">934 historias.</span></h2>
-        <p class="lead">1.173 reservas, 934 presentes, 165 ausentes y 74 sin marcar. El 85% de las asistencias registradas dijo presente. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor, para que la próxima jornada sea más justa con cada historia. Y lo que sí se registró dejó algo que ninguna planilla alcanza a mostrar: preguntas, silencios que se animaron a romperse y conversaciones que siguieron cuando la videollamada ya se había cerrado.</p>
+        <p class="lead">1.173 reservas, 934 presencias en charlas, 165 ausencias y 74 sin marcar. Cada alumno reservó casi tres charlas (una por franja), así que 934 no son 934 alumnos: son asistencias. En cada franja hubo alrededor de 311 alumnos de los 393. El 85% de las presencias registradas dijo presente. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor, para que la próxima jornada sea más justa con cada historia. Y lo que sí se registró dejó algo que ninguna planilla alcanza a mostrar: preguntas, silencios que se animaron a romperse y conversaciones que siguieron cuando la videollamada ya se había cerrado.</p>
         <div class="stat-row">
-          <div class="stat-chip"><strong>79,6%</strong><span>Presentes sobre reservas</span></div>
-          <div class="stat-chip"><strong>85,0%</strong><span>Presentes sobre marcadas</span></div>
+          <div class="stat-chip"><strong>79,6%</strong><span>Presencias sobre reservas</span></div>
+          <div class="stat-chip"><strong>85,0%</strong><span>Presencias sobre marcadas</span></div>
+          <div class="stat-chip"><strong>311</strong><span>Promedio por franja</span></div>
           <div class="stat-chip"><strong>74</strong><span>Sin marcar en charlas</span></div>
         </div>
       </div>
@@ -857,7 +858,7 @@
       <h2>Los temas que <span class="accent">movieron la jornada.</span></h2>
       <p class="lead" style="max-width: 72ch;">Los consumos, la salud mental, el deporte y las ITS convocaron a más de cien personas cada uno. También hubo temas que abrieron preguntas incómodas: masculinidades, violencia de género, ciberbullying. Todos tenían algo para decir, y cada conversación dejó una puerta abierta para seguir pensando. Ninguno de esos temas empezó dando respuestas: empezó preguntando, y las preguntas fueron tan variadas como quienes las hicieron.</p>
       <div class="bars" id="topicsChart"></div>
-      <p class="note">Presentes por temática, sumando las tres franjas. El porcentaje es sobre las reservas de ese tema.</p>
+      <p class="note">Presencias por temática, sumando las tres franjas. El porcentaje es sobre las reservas de ese tema.</p>
     </div>
   </section>
 
@@ -1315,7 +1316,7 @@ function init() {
   renderDonut(
     document.getElementById('talksDonut'),
     [
-      { label: 'Presentes', value: DATA.summary.present, color: COLORS.gold },
+      { label: 'Presencias', value: DATA.summary.present, color: COLORS.gold },
       { label: 'Ausentes', value: DATA.summary.absent, color: COLORS.coral },
       { label: 'Sin marcar', value: DATA.summary.unmarked, color: COLORS.muted }
     ],
@@ -1323,7 +1324,7 @@ function init() {
     'presencias'
   );
   renderLegend(document.getElementById('talksLegend'), [
-    { label: 'Presentes', value: DATA.summary.present, color: COLORS.gold },
+    { label: 'Presencias', value: DATA.summary.present, color: COLORS.gold },
     { label: 'Ausentes', value: DATA.summary.absent, color: COLORS.coral },
     { label: 'Sin marcar', value: DATA.summary.unmarked, color: COLORS.muted }
   ]);
