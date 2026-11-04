@@ -331,16 +331,16 @@ async function main() {
   await deskPage.evaluate(() => { window.__scrollStart = performance.now(); });
   const slideH = await deskPage.evaluate(() => Math.round(document.querySelector('section.slide').getBoundingClientRect().height));
 
-  // Un gesto fuerte de touchpad (varios eventos seguidos) no debe saltarse diapositivas.
+  // Un gesto de rueda de 900 px debe caer en la diapositiva siguiente.
   await deskPage.evaluate(() => window.scrollTo(0, 0));
   await wait(300);
-  for (let i = 0; i < 12; i += 1) {
-    await deskPage.mouse.wheel(0, 150);
+  for (let i = 0; i < 3; i += 1) {
+    await deskPage.mouse.wheel(0, 300);
     await wait(20);
   }
   await wait(1200);
   const strongWheel = await deskPage.evaluate(() => window.scrollY);
-  check('un gesto fuerte no salta más de una diapositiva',
+  check('un gesto de rueda avanza una diapositiva',
     strongWheel > slideH * 0.5 && strongWheel < slideH * 1.6,
     'scrollY ' + strongWheel + ' con diapositiva de ' + slideH + ' px');
 
@@ -366,6 +366,11 @@ async function main() {
   check('AvPág avanza una diapositiva',
     pageDown > slideH * 0.5 && pageDown < slideH * 1.6,
     'scrollY ' + pageDown + ' con diapositiva de ' + slideH + ' px');
+
+  await deskPage.keyboard.press('PageUp');
+  await wait(900);
+  const pageUp = await deskPage.evaluate(() => window.scrollY);
+  check('RePág vuelve a la diapositiva anterior', pageUp <= 4, 'scrollY ' + pageUp);
 
   await deskPage.evaluate(() => window.scrollTo(0, 0));
   await wait(300);
