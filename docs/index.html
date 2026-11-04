@@ -536,6 +536,7 @@
       overflow-y: auto;
       overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y pinch-zoom;
     }
     .slide {
       position: relative;
@@ -603,9 +604,9 @@
     }
     .cover::before, .promo::before, .promo-speech::before, .farewell::before {
       inset: -6%;
-      background-size: 92vmin;
+      background-size: 78vmin;
       opacity: .3;
-      filter: blur(6px);
+      filter: blur(4px);
       animation: none;
     }
     .cover::after, .promo::after, .promo-speech::after, .farewell::after {
@@ -614,7 +615,7 @@
       right: -22vmin;
       bottom: -20vmin;
       opacity: .16;
-      filter: blur(8px);
+      filter: blur(6px);
       animation: none;
     }
   }
@@ -1249,12 +1250,14 @@ function bindNavigation() {
         }
       } finally {
         document.body.classList.remove('dragging');
+        g.deck.removeEventListener('touchmove', blockTouchScroll);
         [from, g.neighbor].forEach((slide) => {
           slide.style.transition = '';
           slide.style.filter = '';
           slide.style.display = '';
           slide.style.position = '';
           slide.style.inset = '';
+          slide.style.willChange = '';
         });
         g.neighbor.style.opacity = '';
         g.neighbor.style.transform = '';
@@ -1276,14 +1279,21 @@ function bindNavigation() {
     }, 420);
   }
 
+  function blockTouchScroll(event) {
+    if (gesture && !gesture.closing) event.preventDefault();
+  }
+
   function lockGesture(axis, dir, timeStamp) {
     if (current + dir < 0 || current + dir >= slides.length) return false;
-    gesture = { axis: axis, dir: dir, from: current, neighbor: slides[current + dir], dx: 0, dy: 0, vel: 0, lastD: 0, lastT: timeStamp, closing: false };
+    gesture = { axis: axis, dir: dir, from: current, neighbor: slides[current + dir], deck: slides[current].parentElement, dx: 0, dy: 0, vel: 0, lastD: 0, lastT: timeStamp, closing: false };
     if (axis === 'x') {
       gesture.neighbor.style.position = 'absolute';
       gesture.neighbor.style.inset = '0';
     }
     gesture.neighbor.style.display = 'flex';
+    gesture.neighbor.style.willChange = 'transform, filter';
+    slides[gesture.from].style.willChange = 'transform, filter';
+    gesture.deck.addEventListener('touchmove', blockTouchScroll, { passive: false });
     document.body.classList.add('dragging');
     dragFrame();
     return true;
@@ -1324,8 +1334,7 @@ function bindNavigation() {
     gesture.dy = dy;
     trackGesture(gesture.axis === 'x' ? dx : dy, event.timeStamp);
     dragFrame();
-    event.preventDefault();
-  }, { passive: false });
+  }, { passive: true });
 
   document.addEventListener('touchend', (event) => {
     if (gesture && event.changedTouches.length) {
