@@ -108,10 +108,19 @@ async function main() {
   const heights = await page.evaluate(() =>
     Array.from(document.querySelectorAll('section.slide')).map((slide) => Math.round(slide.getBoundingClientRect().height))
   );
-  const tall = heights.map((height, i) => ({ height: height, index: i + 1 })).filter((item) => item.height > 900);
+  const huge = heights.map((height, i) => ({ height: height, index: i + 1 })).filter((item) => item.height > 844 * 2);
   console.log('\naltos en 390x844: ' + heights.join(', '));
-  check('casi todas las diapositivas entran en una pantalla', tall.length <= 4,
-    tall.map((item) => '#' + item.index + '=' + item.height).join(', ') || 'todas');
+  check('ninguna diapositiva pasa de dos pantallas', huge.length === 0,
+    huge.map((item) => '#' + item.index + '=' + item.height).join(', ') || 'max ' + Math.max.apply(null, heights) + ' px');
+
+  const initial = await page.evaluate(() => {
+    const slide = document.querySelectorAll('section.slide')[15];
+    const el = slide.querySelector('h2, h1, .lead, .eyebrow');
+    const cs = getComputedStyle(el);
+    return { filter: cs.filter, opacity: cs.opacity };
+  });
+  check('el contenido arranca oculto y borroso', initial.opacity === '0' && /blur\(6px\)/.test(initial.filter),
+    'opacity ' + initial.opacity + ', filter ' + initial.filter);
 
   // 2. Todas las diapositivas alcanzables y reveladas.
   const unreachable = [];
@@ -146,12 +155,22 @@ async function main() {
   await page.evaluate(() => {
     document.querySelectorAll('section.slide')[3].scrollIntoView({ block: 'start' });
   });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(2200);
   const counters = await page.evaluate(() =>
     Array.from(document.querySelectorAll('section.slide')[3].querySelectorAll('[data-count]')).map((el) => el.textContent.trim())
   );
   check('los contadores llegan al valor final',
     counters.join('|') === '393|1.173|30|90,9%', counters.join(' | '));
+
+  const settled = await page.evaluate(() => {
+    const slide = document.querySelectorAll('section.slide')[3];
+    const el = slide.querySelector('.kpi');
+    const cs = getComputedStyle(el);
+    return { filter: cs.filter, opacity: cs.opacity, will: el.style.willChange };
+  });
+  check('el contenido queda nítido y visible', settled.filter === 'none' && settled.opacity === '1',
+    'opacity ' + settled.opacity + ', filter ' + settled.filter);
+  check('will-change se limpia al terminar', settled.will === '', settled.will || 'vacío');
 
   const charts = await page.evaluate(() => {
     const matrix = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform);

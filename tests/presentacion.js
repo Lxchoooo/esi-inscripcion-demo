@@ -39,10 +39,13 @@ check('respeta prefers-reduced-motion', /prefers-reduced-motion/.test(HTML));
 check('sin backdrop-filter', !/backdrop-filter/.test(HTML));
 check('sin animaciones infinitas de fondo', !/@keyframes aurora/.test(HTML) && !/@keyframes logo-drift/.test(HTML));
 check('barras animan transform (no width)',
-  /\.slide\.in-view \.bar-fill \{ transform: scaleX/.test(HTML) && !/\.bar-fill[^}]*transition: width/.test(HTML));
+  /\.slide\.charts-in \.bar-fill \{ transform: scaleX/.test(HTML) && !/\.bar-fill[^}]*transition: width/.test(HTML));
 check('columnas animan transform (no height)',
-  /\.slide\.in-view \.course-bar \{ transform: scaleY/.test(HTML) && !/\.course-bar[^}]*transition: height/.test(HTML));
-check('stack anima transform (no width)', /\.slide\.in-view \.stack \.seg \{ transform: scaleX/.test(HTML));
+  /\.slide\.charts-in \.course-bar \{ transform: scaleY/.test(HTML) && !/\.course-bar[^}]*transition: height/.test(HTML));
+check('stack anima transform (no width)', /\.slide\.charts-in \.stack \.seg \{ transform: scaleX/.test(HTML));
+check('entrada con fade y blur en el contenido', /filter:\s*blur\(12px\)/.test(HTML) && /filter:\s*none/.test(HTML));
+check('blur movil reducido a 6px', /filter:\s*blur\(6px\)/.test(HTML));
+check('los graficos arrancan despues de la entrada', /charts-in/.test(HTML) && /classList\.add\(\s*['"]charts-in['"]\s*\)/.test(HTML));
 check('la barra de progreso anima transform', /\.progress \{[^}]*transform: scaleX\(0\)/.test(HTML));
 check('los graficos no animan layout',
   !/transition:\s*(width|height)\b/.test(HTML));

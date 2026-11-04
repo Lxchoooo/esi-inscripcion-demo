@@ -32,3 +32,6 @@ node_modules/
 build/index.min.html
 
 build/loadtest.log
+
+# Artefactos locales de TestSprite
+.testsprite/
