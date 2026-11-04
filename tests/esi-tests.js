@@ -359,9 +359,9 @@ t('suggestInstitutionalEmail reordena apellido y nombre sin tocar mails ajenos',
   assertEq(u.email, 'gomezana2029@secundariosalsipuedes.edu.ar', 'nombre y apellido al reves');
 
   const l = Core.suggestInstitutionalEmail(
-    'alumnantonioperez2029@secundariosalsipuedes.edu.ar',
+    'juanantonioperez2029@secundariosalsipuedes.edu.ar',
     'Juan Antonio', 'Pérez', '4°A', []);
-  assertEq(l.email, 'perezalumnantonio2029@secundariosalsipuedes.edu.ar', 'nombre extra');
+  assertEq(l.email, 'perezjuanantonio2029@secundariosalsipuedes.edu.ar', 'nombre extra');
 
   const ok = Core.suggestInstitutionalEmail(
     'perezjuan2029@secundariosalsipuedes.edu.ar', 'Juan Pérez', 'Pérez', '2°A', []);
