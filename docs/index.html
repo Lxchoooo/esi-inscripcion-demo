@@ -346,6 +346,19 @@
   .thanks h2 { font-size: clamp(3.4rem, 9vw, 7rem); margin-bottom: 24px; }
   .thanks .lead { max-width: 58ch; }
   .thanks-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .farewell { text-align: center; }
+  .farewell .eyebrow { justify-content: center; }
+  .farewell .lead { margin-left: auto; margin-right: auto; }
+  .farewell h2 { margin-bottom: 14px; }
+  .farewell-quote {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4.8vw, 4.2rem);
+    line-height: 1.04;
+    letter-spacing: -.035em;
+    margin: 30px auto 26px;
+    max-width: 18ch;
+  }
+  .farewell-quote .accent { font-style: italic; }
   .thanks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
   .thanks-card { padding: 22px; }
   .thanks-card h3 {
@@ -458,7 +471,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter" aria-live="polite">01 / 13</span>
+    <span id="counter" class="counter" aria-live="polite">01 / 14</span>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
   </div>
 </header>
@@ -729,6 +742,20 @@
     </div>
   </section>
 
+  <section class="slide farewell" data-title="Hecho con el corazón" aria-label="Hecho con el corazón">
+    <div class="wrap narrow">
+      <p class="eyebrow">Con el corazón</p>
+      <h2>Hecho con el corazón <span class="accent">❤️</span></h2>
+      <p class="lead">Por <strong>Luciano Arias</strong> y <strong>Promo 26 Turismo</strong> 🎓</p>
+      <p class="farewell-quote">No es un adiós.<br>Es un <span class="accent">hasta pronto.</span> ✨</p>
+      <p class="lead">Gracias, ISS, por estos años. 🫶</p>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="0">Volver al inicio</button>
+      </div>
+      <p class="note">Promo 26 Turismo · 2026</p>
+    </div>
+  </section>
+
 </main>
 
 <nav class="nav" aria-label="Navegación de la presentación">
@@ -737,7 +764,7 @@
     <button class="nav-btn" type="button" data-next aria-label="Diapositiva siguiente">→</button>
   </div>
   <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <div class="counter" id="navCounter">01 / 13</div>
+  <div class="counter" id="navCounter">01 / 14</div>
 </nav>
 <div class="progress" id="progress" aria-hidden="true"></div>
 
