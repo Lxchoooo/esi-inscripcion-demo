@@ -148,6 +148,12 @@
   .slide.active .thanks-grid > *:nth-child(4), .slide.active .timeline > *:nth-child(4) { animation-delay: .36s; }
   .slide.active .thanks-grid > *:nth-child(5), .slide.active .timeline > *:nth-child(5) { animation-delay: .48s; }
   .slide.active .thanks-grid > *:nth-child(6) { animation-delay: .6s; }
+  .slide.gesture-in .wrap > *, .slide.gesture-in .mini-grid > *,
+  .slide.gesture-in .kpi-grid > *, .slide.gesture-in .lesson-grid > *,
+  .slide.gesture-in .thanks-grid > *, .slide.gesture-in .timeline > *,
+  .slide.gesture-in .thanks-card {
+    animation: none;
+  }
   @keyframes content-in {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1224,7 +1230,7 @@ function bindNavigation() {
     const d = g.axis === 'x' ? g.dx : g.dy;
     const size = Math.max(160, g.axis === 'x' ? window.innerWidth : window.innerHeight);
     const commit = force === undefined
-      ? (Math.abs(d) > size * .32 || (Math.abs(g.vel) > .85 && (g.dir > 0 ? g.vel < 0 : g.vel > 0) && g.dir * d < 0 && Math.abs(d) > 90))
+      ? (Math.abs(d) > size * .26 || (Math.abs(g.vel) > .75 && (g.dir > 0 ? g.vel < 0 : g.vel > 0) && g.dir * d < 0 && Math.abs(d) > 70))
       : !!force;
     const from = slides[g.from];
     const ease = 'transform .38s cubic-bezier(.22, .61, .36, 1), filter .38s ease, opacity .38s ease';
