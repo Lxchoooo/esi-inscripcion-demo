@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b1f17">
 <link rel="icon" href="assets/logo-iss-round.png" type="image/png">
 <meta name="description" content="Jornada ESI 2026: los números, los temas y lo que aprendimos. Estadísticas agregadas, sin datos personales.">
-<title>Jornada ESI 2026 · Una historia que empezó en 2010</title>
+<title>Jornada ESI 2026 · Una historia que no se detuvo</title>
 <style>
   :root {
     --ink: #0b1f17;
@@ -129,10 +129,26 @@
   .slide.active .wrap > *:nth-child(4) { animation-delay: .18s; }
   .slide.active .wrap > *:nth-child(5) { animation-delay: .24s; }
   .slide.active .wrap > *:nth-child(6) { animation-delay: .3s; }
+  .slide.active .mini-grid > *, .slide.active .kpi-grid > *,
+  .slide.active .lesson-grid > *, .slide.active .thanks-grid > *,
+  .slide.active .timeline > *, .slide.active .thanks-card {
+    animation: content-in .6s cubic-bezier(.2, .8, .2, 1) both;
+  }
+  .slide.active .mini-grid > *:nth-child(2), .slide.active .kpi-grid > *:nth-child(2),
+  .slide.active .lesson-grid > *:nth-child(2), .slide.active .thanks-grid > *:nth-child(2),
+  .slide.active .timeline > *:nth-child(2) { animation-delay: .1s; }
+  .slide.active .mini-grid > *:nth-child(3), .slide.active .kpi-grid > *:nth-child(3),
+  .slide.active .lesson-grid > *:nth-child(3), .slide.active .thanks-grid > *:nth-child(3),
+  .slide.active .timeline > *:nth-child(3) { animation-delay: .2s; }
+  .slide.active .kpi-grid > *:nth-child(4), .slide.active .lesson-grid > *:nth-child(4),
+  .slide.active .thanks-grid > *:nth-child(4), .slide.active .timeline > *:nth-child(4) { animation-delay: .3s; }
+  .slide.active .thanks-grid > *:nth-child(5), .slide.active .thanks-grid > *:nth-child(6) { animation-delay: .4s; }
   @keyframes content-in {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  h1, h2 { text-wrap: balance; }
+  .lead, .big-quote, .farewell-quote { text-wrap: pretty; }
   .wrap { width: min(1180px, 100%); }
   .narrow { width: min(900px, 100%); }
 
@@ -264,6 +280,7 @@
     stroke-width: 18;
     stroke-dasharray: 0 999;
     transition: stroke-dasharray 1.15s cubic-bezier(.2, .8, .2, 1);
+    transition-delay: calc(var(--i, 0) * 120ms);
   }
   .slide.active .donut .seg { stroke-dasharray: var(--dash); }
   .donut-center { position: absolute; text-align: center; pointer-events: none; }
@@ -329,7 +346,7 @@
   .slot-label { font-family: var(--serif); font-size: 1.5rem; line-height: 1; }
   .slot-time { color: var(--faint); font-size: .68rem; letter-spacing: .08em; text-align: right; }
   .stack { display: flex; height: 13px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, .07); }
-  .stack .seg { height: 100%; width: 0; transition: width 1.05s cubic-bezier(.2, .8, .2, 1); }
+  .stack .seg { height: 100%; width: 0; transition: width 1.05s cubic-bezier(.2, .8, .2, 1); transition-delay: calc(var(--i, 0) * 140ms); }
   .slide.active .stack .seg { width: var(--w); }
   .stack .present { background: var(--gold); }
   .stack .absent { background: var(--coral); }
@@ -555,7 +572,18 @@
       display: none;
     }
     .slide.active { display: flex; }
-    .slide.active .wrap > * { animation-duration: .55s; }
+    .slide.active .wrap > *, .slide.active .mini-grid > *, .slide.active .kpi-grid > *,
+    .slide.active .lesson-grid > *, .slide.active .thanks-grid > *, .slide.active .timeline > * {
+      animation-duration: .55s;
+    }
+    .slide.promo-speech, .slide.promo, .slide.farewell, .slide.thanks {
+      align-items: center;
+      text-align: center;
+    }
+    .slide.promo-speech .wrap, .slide.promo .wrap, .slide.farewell .wrap, .slide.thanks .wrap {
+      margin: 0 auto;
+    }
+    .slide.promo-speech .eyebrow { margin-left: auto; margin-right: auto; }
     .topbar {
       padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
       background: linear-gradient(180deg, rgba(8, 20, 15, .96), rgba(8, 20, 15, .55) 60%, transparent);
@@ -640,8 +668,8 @@
   <section class="slide cover active" data-title="Portada" aria-label="Portada">
     <div class="wrap">
       <p class="eyebrow">Instituto Secundario Salsipuedes · Jornada ESI</p>
-      <h1>Una historia que <span class="accent">empezó en 2010.</span></h1>
-      <p class="lead">La ESI en el ISS no empezó hoy: hace más de 15 años que la escuela sostiene estas charlas. Esta es la primera jornada en formato virtual, y también la continuidad de una práctica que nunca se detuvo. Lo que pasó en este día es parte de una historia más larga, hecha de preguntas, de escucha y de personas que eligieron hablar de lo que importa.</p>
+      <h1>Una historia que <span class="accent">no se detuvo.</span></h1>
+      <p class="lead">La escuela sostiene charlas de ESI desde hace más de 15 años: cambiaron las formas, pasaron de las aulas a las pantallas, pero la conversación siguió. Esta es la primera en formato virtual, la primera que se armó distinto, y también la prueba de que el tema nunca dejó de importar. Lo que pasó en este día se suma a una historia más larga, hecha de preguntas, de escucha y de personas que eligieron hablar de lo que hay que hablar.</p>
       <div class="cover-meta">
         <span>4 de noviembre de 2026</span>
         <span>Más de 15 años</span>
@@ -659,7 +687,7 @@
       <div>
         <p class="eyebrow">Lo que pasó</p>
         <p class="quote">No empezó con una planilla. Empezó con la decisión de hablar de lo que <em>importa.</em></p>
-        <p class="lead" style="margin-top: 28px;">En menos de dos semanas armamos esta jornada con 30 charlas, 12 cursos y una comunidad entera poniéndose de acuerdo. No fue la primera vez que hablamos de ESI: fue una nueva forma de encontrarnos, esta vez conectados desde cada aula y cada casa. Hubo pruebas, errores y aprendizaje. Pero sobre todo hubo personas dispuestas a encontrarse, a escuchar y a hacer que valiera la pena.</p>
+        <p class="lead" style="margin-top: 28px;">En menos de dos semanas armamos esta jornada con 30 charlas, 12 cursos y una comunidad entera poniéndose de acuerdo. No fue la primera vez que hablamos de ESI: fue una nueva forma de encontrarnos, esta vez conectados desde cada aula y cada casa. Hubo días en que la única certeza era la fecha del 4 de noviembre; aun así, se llegó. Hubo pruebas, errores y aprendizaje. Pero sobre todo hubo personas dispuestas a encontrarse, a escuchar y a hacer que valiera la pena.</p>
       </div>
       <div class="mini-grid">
         <div class="mini glass">
@@ -671,7 +699,7 @@
           <div class="tiny">10 temas, tres franjas, un mismo día</div>
         </div>
         <div class="mini glass">
-          <div class="big">1ª jornada así</div>
+          <div class="big">1ª jornada distinta</div>
           <div class="tiny">Con charlas virtuales y toda la escuela</div>
         </div>
       </div>
@@ -680,18 +708,18 @@
 
   <section class="slide" data-title="Una historia que viene de lejos" aria-label="Una historia que viene de lejos">
     <div class="wrap">
-      <p class="eyebrow">Una historia que viene de lejos</p>
+      <p class="eyebrow">De dónde sale esta jornada</p>
       <h2>Esta jornada no nació de cero. <span class="accent">Viene de hace más de quince años.</span></h2>
-      <p class="lead" style="max-width: 76ch;">Mucho antes de estas videollamadas, en el ISS ya se hablaba de ESI. Desde entonces la práctica siguió viva, cambió de formas y se fue reinventando con cada grupo, con cada pregunta y con cada docente que se animó. Cambió el formato, no la intención: hablar de lo que importa, aunque ahora sea a través de una pantalla.</p>
+      <p class="lead" style="max-width: 76ch;">No se improvisó sobre el aire y tampoco apareció de la nada: viene de mucho tiempo de práctica. Mucho antes de estas videollamadas, en el ISS ya se hablaba de ESI. Desde entonces la práctica siguió viva, cambió de formas y se fue reinventando con cada grupo, con cada pregunta y con cada docente que se animó. Cambió el formato, no la intención: hablar de lo que importa, aunque ahora sea a través de una pantalla.</p>
       <div class="timeline">
         <div class="timeline-item">
           <span class="year">2010</span>
           <h3>Empezaron las charlas</h3>
-          <p>La ESI encontró un espacio en el ISS y empezó a hacerse escuchar. Desde ahí, la conversación no se detuvo.</p>
+          <p>La ESI encontró un espacio en el ISS y empezó a hacerse escuchar. Fue el primero de varios pasos, aunque en ese momento nadie lo sabía.</p>
         </div>
         <div class="timeline-item">
           <span class="year">2026</span>
-          <h3>La primera jornada así</h3>
+          <h3>La primera jornada distinta</h3>
           <p>Primera jornada en formato virtual: toda la escuela conectada para seguir hablando de lo que importa.</p>
         </div>
         <div class="timeline-item">
@@ -707,7 +735,7 @@
     <div class="wrap">
       <p class="eyebrow">Los números de la jornada</p>
       <h2>Cada número es una persona que <span class="accent">eligió estar.</span></h2>
-      <p class="lead" style="max-width: 78ch;">Detrás de cada cifra hay una decisión, una presencia y una historia. Estos son los números de una jornada que se armó con tiempo, con ganas y con la convicción de que hablar de ESI también es cuidar.</p>
+      <p class="lead" style="max-width: 78ch;">Detrás de cada cifra hay una decisión, una presencia y una historia. Cada inscripción fue alguien que eligió un tema entre diez, marcó un día en su semana y apareció (o no) en una silla. Cuando todas esas decisiones se juntan, la foto deja de ser un número y pasa a ser una escuela entera diciendo presente. Estos son los números de una jornada que se armó con tiempo, con ganas y con la convicción de que hablar de ESI también es cuidar.</p>
       <div class="kpi-grid">
         <div class="kpi glass">
           <div class="num" data-count="393">0</div>
@@ -743,7 +771,7 @@
       <div>
         <p class="eyebrow">La entrada</p>
         <h2>357 personas <span class="accent">cruzaron la puerta.</span></h2>
-        <p class="lead">De 393 alumnos, 357 llegaron. 33 no pudieron venir y 3 quedaron sin marcar. No es una planilla perfecta: es una foto real de un día que empezó con movimiento en los pasillos, con nervios, con saludos y con las ganas de que todo saliera bien.</p>
+        <p class="lead">De 393 alumnos, 357 llegaron. 33 no pudieron venir y 3 quedaron sin marcar. No es una planilla perfecta: es una foto real de un día que empezó con movimiento en los pasillos, con nervios, con saludos y con las ganas de que todo saliera bien. Ninguna lista queda perfecta cuando mide personas, y aun así, de cada diez que estaban anotadas, nueve cruzaron la puerta: la entrada marcó el tono de la jornada.</p>
         <div class="stat-row">
           <div class="stat-chip"><strong>90,8%</strong><span>Llegada sobre el total</span></div>
           <div class="stat-chip"><strong>33</strong><span>Ausentes en la entrada</span></div>
@@ -762,7 +790,7 @@
       <div>
         <p class="eyebrow">Las charlas</p>
         <h2>934 presencias, <span class="accent">934 historias.</span></h2>
-        <p class="lead">1.173 reservas, 934 presentes, 165 ausentes y 74 sin marcar. El 85% de las asistencias registradas dijo presente. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor, para que la próxima jornada sea más justa con cada historia.</p>
+        <p class="lead">1.173 reservas, 934 presentes, 165 ausentes y 74 sin marcar. El 85% de las asistencias registradas dijo presente. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor, para que la próxima jornada sea más justa con cada historia. Y lo que sí se registró dejó algo que ninguna planilla alcanza a mostrar: preguntas, silencios que se animaron a romperse y conversaciones que siguieron cuando la videollamada ya se había cerrado.</p>
         <div class="stat-row">
           <div class="stat-chip"><strong>79,6%</strong><span>Presentes sobre reservas</span></div>
           <div class="stat-chip"><strong>85,0%</strong><span>Presentes sobre marcadas</span></div>
@@ -776,7 +804,7 @@
     <div class="wrap">
       <p class="eyebrow">Cada tema, una conversación</p>
       <h2>Los temas que <span class="accent">movieron la jornada.</span></h2>
-      <p class="lead" style="max-width: 72ch;">Los consumos, la salud mental, el deporte y las ITS convocaron a más de cien personas cada uno. También hubo temas que abrieron preguntas incómodas: masculinidades, violencia de género, ciberbullying. Todos tenían algo para decir, y cada conversación dejó una puerta abierta para seguir pensando.</p>
+      <p class="lead" style="max-width: 72ch;">Los consumos, la salud mental, el deporte y las ITS convocaron a más de cien personas cada uno. También hubo temas que abrieron preguntas incómodas: masculinidades, violencia de género, ciberbullying. Todos tenían algo para decir, y cada conversación dejó una puerta abierta para seguir pensando. Ninguno de esos temas empezó dando respuestas: empezó preguntando, y las preguntas fueron tan variadas como quienes las hicieron.</p>
       <div class="bars" id="topicsChart"></div>
       <p class="note">Presentes por temática, sumando las tres franjas. El porcentaje es sobre las reservas de ese tema.</p>
     </div>
@@ -786,7 +814,7 @@
     <div class="wrap">
       <p class="eyebrow">La jornada, curso por curso</p>
       <h2>No hubo un curso perfecto. <span class="accent">Hubo una escuela entera.</span></h2>
-      <p class="lead" style="max-width: 72ch;">Cada curso llegó a su manera. Hubo grupos que entraron casi completos y otros donde faltó más. La jornada no fue de un curso: fue de todos, con sus ritmos, sus ausencias y sus ganas de estar.</p>
+      <p class="lead" style="max-width: 72ch;">Cada curso llegó a su manera. Hubo grupos que entraron casi completos y otros donde faltó más. La jornada no fue de un curso: fue de todos, con sus ritmos, sus ausencias y sus ganas de estar. Y cuando se miran todas las barras juntas, se ve lo otro: las diferencias entre cursos importan menos que el total de la escuela sumada.</p>
       <div class="course-chart" id="courseChart" aria-label="Gráfico de asistencia y entrada por curso"></div>
       <div class="chart-legend">
         <span><i style="background: var(--gold)"></i>Asistencia a charlas</span>
@@ -800,7 +828,7 @@
     <div class="wrap">
       <p class="eyebrow">Tres horarios, un mismo movimiento</p>
       <h2>La jornada tuvo <span class="accent">tres respiraciones.</span></h2>
-      <p class="lead" style="max-width: 72ch;">La primera y la tercera franja sostuvieron más presencias. En la segunda aparecieron más ausencias y más registros sin marcar: el mediodía se hizo sentir. Aun así, la rueda no se detuvo y la jornada siguió su curso, con los que estaban y con los que volvían.</p>
+      <p class="lead" style="max-width: 72ch;">La primera y la tercera franja sostuvieron más presencias. En la segunda aparecieron más ausencias y más registros sin marcar: el mediodía se hizo sentir. Aun así, la rueda no se detuvo y la jornada siguió su curso, con los que estaban y con los que volvían. Cada franja tuvo su clima, y en ninguna dejó de haber gente eligiendo estar, aunque fuera desde el celular de la cocina de su casa.</p>
       <div class="slot-grid" id="slotChart"></div>
       <p class="note">Cada barra muestra presentes, ausentes y sin marcar sobre las reservas de esa franja.</p>
     </div>
@@ -810,7 +838,7 @@
     <div class="wrap effort-grid">
       <div>
         <p class="eyebrow">Lo que costó</p>
-        <p class="big-quote">Esta primera jornada con este formato no se trata de hacerlo perfecto. Se trata de <em>hacerlo posible.</em></p>
+        <p class="big-quote">Esta primera jornada distinta no se trata de hacerlo perfecto. Se trata de <em>hacerlo posible.</em></p>
       </div>
       <div class="effort-copy">
         <p class="lead">Hacer esto en menos de dos semanas fue un acto de fe. Hubo mails que rebotaron, aulas que se cruzaron, listas que no cerraban y marcas que quedaron sin registrar. Nada de eso borra lo que pasó: la jornada se hizo igual, con las manos que había y con las ganas de que saliera bien.</p>
@@ -830,7 +858,7 @@
     <div class="wrap">
       <p class="eyebrow">Lo que aprendimos</p>
       <h2>La base ya está. <span class="accent">Ahora se puede mejorar.</span></h2>
-      <p class="lead" style="max-width: 76ch;">La jornada dejó datos, pero también preguntas. Estas son las cosas que nos llevamos y que queremos mejorar para la próxima.</p>
+      <p class="lead" style="max-width: 76ch;">La jornada dejó datos, pero también preguntas: dónde hicimos bien, dónde nos quedó corto y dónde hay que volver a intentar. Estas son las cosas que nos llevamos y que queremos mejorar de acá en adelante, para no volver a aprender lo mismo de nuevo.</p>
       <div class="lesson-grid">
         <div class="lesson glass">
           <div class="idx">01</div>
@@ -872,7 +900,7 @@
         </div>
         <div class="thanks-card glass">
           <h3>Equipo directivo</h3>
-          <p>Por abrir la puerta y confiar en que esta primera jornada con este formato era posible.</p>
+          <p>Por abrir la puerta y confiar en que se podía, aunque nadie hubiera hecho nada igual antes.</p>
         </div>
         <div class="thanks-card glass">
           <h3>Maestranza y administrativos</h3>
@@ -894,8 +922,8 @@
     <div class="wrap narrow">
       <p class="eyebrow">Gracias</p>
       <h2>Gracias.</h2>
-      <p class="lead">A los profes, preceptores, equipo directivo, maestranza y administrativos, familias y a toda la comunidad del ISS. A quienes se animaron a hablar de ESI. A quienes escucharon. A quienes organizaron, corrigieron, insistieron y sostuvieron. A los que vinieron y a los que no pudieron venir, pero estuvieron de alguna manera.</p>
-      <p class="lead">La ESI no termina en una jornada. Esto recién empieza, y ojalá que lo que hablamos acá siga creciendo en cada aula, en cada recreo y en cada casa.</p>
+      <p class="lead">A los profes, preceptores, equipo directivo, maestranza y administrativos, familias y a toda la comunidad del ISS. A quienes se animaron a hablar de ESI. A quienes escucharon. A quienes organizaron, corrigieron, insistieron y sostuvieron. A los que vinieron y a los que no pudieron venir, pero estuvieron de alguna manera. A los que van a seguir esta conversación el año que viene, aunque hoy todavía no lo sepan.</p>
+      <p class="lead">La ESI no termina en una jornada. Esto recién empieza, y ojalá que lo que hablamos acá siga creciendo en cada aula, en cada recreo y en cada casa, incluso en las charlas que no llevan título ni sala: esas pequeñas que se hacen al pasar.</p>
       <div class="thanks-actions">
         <button class="ghost-btn" type="button" data-go="13">Palabras para la promo →</button>
         <button class="ghost-btn" type="button" data-prev>← Diapositiva anterior</button>
@@ -910,7 +938,7 @@
       <h2>Cinco años no se resumen en una diapositiva. <span class="accent">Se llevan en la memoria.</span></h2>
       <p class="lead">Hoy termina una etapa que empezó sin que supiéramos todo lo que íbamos a vivir. Nos conocimos en aulas que después fueron nuestras, compartimos recreos, risas, enojos, canciones, trabajos y días que parecían eternos. Aprendimos a bancarnos, a discutir y a volver a elegirnos.</p>
       <p class="lead">No a todos nos vamos a cruzar a diario. Cada uno con su ritmo, con sus tiempos y con sus sueños. Pero lo que vivimos en estos cinco años no se borra: queda en las anécdotas, en las fotos y en las cosas que todavía nos hacen reír.</p>
-      <p class="lead">Gracias, promo, por haber sido casa, grupo y equipo. Ojalá que donde vaya cada uno se lleve un pedazo de todo esto. Y que las puertas queden siempre abiertas para reencontrarnos.</p>
+      <p class="lead">Gracias, promo, por haber sido casa, grupo y equipo. Ojalá que donde vaya cada uno se lleve un pedazo de todo esto, que nada se esfume en las fotos de un grupo de WhatsApp y que las puertas queden siempre abiertas para reencontrarnos. Como en los actos de fin de ciclo: los mejores deseos para todos, y la promesa de que esto no termina acá, sino en lo que viene.</p>
       <div class="thanks-actions" style="justify-content: center;">
         <button class="ghost-btn" type="button" data-go="14">Seguir →</button>
       </div>
@@ -1063,7 +1091,7 @@ function renderDonut(el, segments, centerValue, centerLabel) {
   const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   group.setAttribute('transform', 'rotate(-90 100 100)');
   let offset = 0;
-  segments.forEach((seg) => {
+  segments.forEach((seg, segIndex) => {
     const length = (seg.value / total) * circumference;
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', '100');
@@ -1076,6 +1104,7 @@ function renderDonut(el, segments, centerValue, centerLabel) {
     circle.setAttribute('class', 'seg');
     circle.style.strokeDashoffset = String(-offset);
     circle.style.setProperty('--dash', length.toFixed(2) + ' ' + (circumference - length).toFixed(2));
+    circle.style.setProperty('--i', String(segIndex));
     group.appendChild(circle);
     offset += length;
   });
@@ -1124,9 +1153,9 @@ function renderSlots() {
     return '<div class="slot-card glass">' +
       '<div class="slot-head"><span class="slot-label">' + esc(slot.label) + '</span><span class="slot-time">' + esc(slot.time) + '</span></div>' +
       '<div class="stack" aria-hidden="true">' +
-        '<span class="seg present" style="--w:' + present.toFixed(1) + '%"></span>' +
-        '<span class="seg absent" style="--w:' + absent.toFixed(1) + '%"></span>' +
-        '<span class="seg unmarked" style="--w:' + unmarked.toFixed(1) + '%"></span>' +
+        '<span class="seg present" style="--w:' + present.toFixed(1) + '%;--i:0"></span>' +
+        '<span class="seg absent" style="--w:' + absent.toFixed(1) + '%;--i:1"></span>' +
+        '<span class="seg unmarked" style="--w:' + unmarked.toFixed(1) + '%;--i:2"></span>' +
       '</div>' +
       '<div class="slot-nums">' +
         '<span><strong>' + slot.present + '</strong> presentes</span>' +
