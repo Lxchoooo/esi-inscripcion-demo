@@ -1189,13 +1189,11 @@ function bindNavigation() {
   const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   function slideEdges() {
-    const slide = slides[current];
-    const deckRect = slide.parentElement.getBoundingClientRect();
-    const rect = slide.getBoundingClientRect();
+    const deck = slides[current].parentElement;
     return {
-      scrollable: slide.scrollHeight > slide.clientHeight + 4,
-      atTop: rect.top >= deckRect.top - 2,
-      atBottom: rect.bottom <= deckRect.bottom + 2,
+      scrollable: deck.scrollHeight > deck.clientHeight + 4,
+      atTop: deck.scrollTop <= 2,
+      atBottom: deck.scrollTop + deck.clientHeight >= deck.scrollHeight - 4,
     };
   }
 
@@ -1244,33 +1242,48 @@ function bindNavigation() {
       g.neighbor.style.opacity = commit ? '1' : '0.16';
     });
     setTimeout(() => {
-      if (commit && current === g.from) {
-        g.neighbor.classList.add('gesture-in');
-        go(g.from + g.dir);
+      try {
+        if (commit && current === g.from) {
+          g.neighbor.classList.add('gesture-in');
+          go(g.from + g.dir);
+        }
+      } finally {
+        document.body.classList.remove('dragging');
+        [from, g.neighbor].forEach((slide) => {
+          slide.style.transition = '';
+          slide.style.filter = '';
+          slide.style.display = '';
+          slide.style.position = '';
+          slide.style.inset = '';
+        });
+        g.neighbor.style.opacity = '';
+        g.neighbor.style.transform = '';
+        if (finePointer) {
+          from.style.opacity = '0';
+          setTimeout(() => { from.style.opacity = ''; from.style.transform = ''; }, 720);
+        } else {
+          from.style.opacity = '';
+          from.style.transform = '';
+        }
+        slides.forEach((slide) => {
+          if (slide === slides[current] || (finePointer && slide === from)) return;
+          if (slide.style.display) slide.style.display = '';
+          if (slide.style.transform) slide.style.transform = '';
+          if (slide.style.filter) slide.style.filter = '';
+        });
+        gesture = null;
       }
-      document.body.classList.remove('dragging');
-      [from, g.neighbor].forEach((slide) => {
-        slide.style.transition = '';
-        slide.style.filter = '';
-        slide.style.display = '';
-      });
-      g.neighbor.style.opacity = '';
-      g.neighbor.style.transform = '';
-      if (finePointer) {
-        from.style.opacity = '0';
-        setTimeout(() => { from.style.opacity = ''; from.style.transform = ''; }, 720);
-      } else {
-        from.style.opacity = '';
-        from.style.transform = '';
-      }
-      gesture = null;
     }, 420);
   }
 
   function lockGesture(axis, dir, timeStamp) {
     if (current + dir < 0 || current + dir >= slides.length) return false;
     gesture = { axis: axis, dir: dir, from: current, neighbor: slides[current + dir], dx: 0, dy: 0, vel: 0, lastD: 0, lastT: timeStamp, closing: false };
-    if (axis === 'y') gesture.neighbor.style.display = 'flex';
+    if (axis === 'x') {
+      gesture.neighbor.style.position = 'absolute';
+      gesture.neighbor.style.inset = '0';
+    }
+    gesture.neighbor.style.display = 'flex';
     document.body.classList.add('dragging');
     dragFrame();
     return true;
