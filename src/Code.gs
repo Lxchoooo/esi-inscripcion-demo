@@ -1730,6 +1730,36 @@ function runCycleFixCampaign_() {
   return finishCycleFixCampaign_(c);
 }
 
+// Respuesta puntual a la consulta de Abril Ayala por sus datos. Es una accion
+// de una sola vez: la propiedad evita que el endpoint publico mande de nuevo
+// el mismo mail si alguien lo vuelve a abrir.
+function apiReplyAyala() {
+  var props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('AYALA_REPLY_DONE') || '') === '1') {
+    return { ok: true, already: true };
+  }
+  var to = 'ayalaaguirreluisana2030@secundariosalsipuedes.edu.ar';
+  var subject = 'Re: consulta por tus datos - Jornada ESI 2026';
+  var body = [
+    'Hola:',
+    '',
+    'Gracias por escribirnos y por revisar tus datos. Están bien: tu inscripción a la ' + EVENT_TITLE_ + ' quedó correcta y tus tres charlas son las que te corresponden.',
+    '',
+    'Lo que viste fue un error interno del sistema: había un registro duplicado con tus datos. Ya está solucionado y no tenés que hacer nada.',
+    '',
+    'Perdón por la preocupación y muchas gracias por avisarnos.',
+    '',
+    'Si querés ver tus charlas, entrá al panel:',
+    PANEL_LINK,
+    '',
+    'Nos vemos el miércoles.',
+    'Equipo ESI · Instituto Secundario Salsipuedes'
+  ].join('\n');
+  var ok = queueCycleMail_(to, 'respuesta_ayala', subject, body);
+  if (ok) props.setProperty('AYALA_REPLY_DONE', '1');
+  return { ok: ok };
+}
+
 // Diagnostico publico de la campaña: solo agregados, sin mails ni nombres.
 // Con args=["iniciar"] fuerza una vuelta (idempotente) y repone el trigger
 // del watchdog si falta; sirve cuando el planificador de Google se atrasa.
@@ -2573,6 +2603,7 @@ var API_FN_MAP_ = {
   apiDrillCleanup: apiDrillCleanup,
   apiMailDiag: apiMailDiag,
   apiCicloDiag: apiCicloDiag,
+  apiReplyAyala: apiReplyAyala,
   apiCuposDiag: apiCuposDiag,
   apiEnvioDiag: apiEnvioDiag,
   apiDriveDiag: apiDriveDiag,
