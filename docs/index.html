@@ -1258,7 +1258,7 @@ function bindNavigation() {
         });
         g.neighbor.style.opacity = '';
         g.neighbor.style.transform = '';
-        if (finePointer) {
+        if (finePointer && commit) {
           from.style.opacity = '0';
           setTimeout(() => { from.style.opacity = ''; from.style.transform = ''; }, 720);
         } else {
