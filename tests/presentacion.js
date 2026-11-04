@@ -30,6 +30,7 @@ check('no hay listener de wheel', !/addEventListener\(\s*['"]wheel['"]/.test(HTM
 check('ningun handler cancela el scroll', !/preventDefault/.test(HTML));
 check('el JS no mueve el scroll en cada cambio', !/scrollTop\s*=/.test(HTML));
 check('los botones navegan con scrollIntoView', /scrollIntoView\(\s*\{/.test(HTML));
+check('las flechas izquierda/derecha cambian de diapositiva', /ArrowRight/.test(HTML) && /ArrowLeft/.test(HTML));
 check('el revelado usa IntersectionObserver', /IntersectionObserver/.test(HTML));
 check('cada diapositiva se revela una sola vez', /classList\.contains\(\s*['"]in-view['"]\s*\)/.test(HTML));
 check('respeta prefers-reduced-motion', /prefers-reduced-motion/.test(HTML));

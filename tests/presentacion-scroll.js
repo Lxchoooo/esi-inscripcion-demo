@@ -211,7 +211,22 @@ async function main() {
     check('el final de la diapositiva larga es alcanzable', true, 'sin diapositivas > 900 px');
   }
 
-  // 5. Fluidez: frames largos durante scroll touch, rueda y teclado.
+  // 5. Flechas de presentación (sin tocar el scroll vertical nativo).
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(250);
+  const beforeArrow = await page.evaluate(() => window.scrollY);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(1000);
+  const afterArrow = await page.evaluate(() => window.scrollY);
+  check('la flecha derecha avanza una diapositiva', afterArrow - beforeArrow > 500,
+    'scrollY ' + afterArrow);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(1000);
+  const backArrow = await page.evaluate(() => window.scrollY);
+  check('la flecha izquierda vuelve a la anterior', Math.abs(backArrow - beforeArrow) < 24,
+    'scrollY ' + backArrow);
+
+  // 6. Fluidez: frames largos durante scroll touch, rueda y teclado.
   const cdp = await context.newCDPSession(page);
   await page.evaluate(() => { window.scrollTo(0, 0); window.__long = { task: [], frame: [] }; });
   await page.waitForTimeout(300);

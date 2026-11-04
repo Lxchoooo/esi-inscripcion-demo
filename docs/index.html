@@ -1172,6 +1172,14 @@ function bindNavigation() {
   document.querySelectorAll('[data-prev]').forEach((btn) => btn.addEventListener('click', () => goTo(current - 1)));
   document.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => goTo(parseInt(btn.dataset.go, 10))));
 
+  // Flechas horizontales de presentación. El scroll vertical (↑ ↓, PageUp/Down,
+  // espacio, Home/End) sigue siendo nativo: acá no se cancela ningún evento.
+  window.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === 'ArrowRight') goTo(current + 1);
+    else if (event.key === 'ArrowLeft') goTo(current - 1);
+  });
+
   const fullscreenBtn = document.getElementById('fullscreen');
   fullscreenBtn.addEventListener('click', async () => {
     try {
