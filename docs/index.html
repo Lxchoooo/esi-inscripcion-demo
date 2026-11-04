@@ -142,7 +142,8 @@
   .slide.active .timeline > *:nth-child(3) { animation-delay: .2s; }
   .slide.active .kpi-grid > *:nth-child(4), .slide.active .lesson-grid > *:nth-child(4),
   .slide.active .thanks-grid > *:nth-child(4), .slide.active .timeline > *:nth-child(4) { animation-delay: .3s; }
-  .slide.active .thanks-grid > *:nth-child(5), .slide.active .thanks-grid > *:nth-child(6) { animation-delay: .4s; }
+  .slide.active .thanks-grid > *:nth-child(5), .slide.active .timeline > *:nth-child(5) { animation-delay: .4s; }
+  .slide.active .thanks-grid > *:nth-child(6) { animation-delay: .5s; }
   @keyframes content-in {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -381,7 +382,7 @@
   }
 
   .lesson-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
-  .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 30px; }
+  .timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 30px; }
   .timeline-item {
     padding: 22px;
     border: 1px solid var(--line);
@@ -691,8 +692,8 @@
       </div>
       <div class="mini-grid">
         <div class="mini glass">
-          <div class="big">Más de 15 años</div>
-          <div class="tiny">De charlas de ESI en el ISS</div>
+          <div class="big">40 años del ISS</div>
+          <div class="tiny">Más de 15 de charlas de ESI, desde su gente</div>
         </div>
         <div class="mini glass">
           <div class="big">30 charlas</div>
@@ -709,23 +710,33 @@
   <section class="slide" data-title="Una historia que viene de lejos" aria-label="Una historia que viene de lejos">
     <div class="wrap">
       <p class="eyebrow">De dónde sale esta jornada</p>
-      <h2>Esta jornada no nació de cero. <span class="accent">Viene de hace más de quince años.</span></h2>
-      <p class="lead" style="max-width: 76ch;">No se improvisó sobre el aire y tampoco apareció de la nada: viene de mucho tiempo de práctica. Mucho antes de estas videollamadas, en el ISS ya se hablaba de ESI. Desde entonces la práctica siguió viva, cambió de formas y se fue reinventando con cada grupo, con cada pregunta y con cada docente que se animó. Cambió el formato, no la intención: hablar de lo que importa, aunque ahora sea a través de una pantalla.</p>
+      <h2>Esta jornada no nació de cero. <span class="accent">Tiene historia de sobra.</span></h2>
+      <p class="lead" style="max-width: 76ch;">La escuela no nació sola: la hizo un puñado de vecinos y docentes que querían una secundaria a la vuelta de la esquina y salieron a conseguirla. Cuatro décadas después, buena parte de los profes que enseñan acá alguna vez se sentó en estos mismos bancos. Las charlas de ESI pertenecen a esa misma estirpe: una escuela que no espera a que le resuelvan las cosas y que hace del cuidado una práctica de todos los años.</p>
       <div class="timeline">
+        <div class="timeline-item">
+          <span class="year">1984</span>
+          <h3>Nace el ISS</h3>
+          <p>Vecinos y docentes se organizaron para tener la secundaria que faltaba. Arrancó chico y empujando entre todos.</p>
+        </div>
+        <div class="timeline-item">
+          <span class="year">2008</span>
+          <h3>Casa propia</h3>
+          <p>Se abrió el edificio propio en el centro de Salsipuedes, la casa por la que hoy pasa la escuela entera.</p>
+        </div>
         <div class="timeline-item">
           <span class="year">2010</span>
           <h3>Empezaron las charlas</h3>
           <p>La ESI encontró un espacio en el ISS y empezó a hacerse escuchar. Fue el primero de varios pasos, aunque en ese momento nadie lo sabía.</p>
         </div>
         <div class="timeline-item">
-          <span class="year">2026</span>
-          <h3>La primera jornada distinta</h3>
-          <p>Primera jornada en formato virtual: toda la escuela conectada para seguir hablando de lo que importa.</p>
+          <span class="year">2024</span>
+          <h3>Cuarenta años</h3>
+          <p>Se festejaron los primeros 40, con ex docentes y ex alumnos de la primera promoción de vuelta en el aula.</p>
         </div>
         <div class="timeline-item">
-          <span class="year">Hoy</span>
-          <h3>La práctica sigue viva</h3>
-          <p>Porque sostener esta conversación año tras año también es una forma de cuidar.</p>
+          <span class="year">2026</span>
+          <h3>La jornada distinta</h3>
+          <p>Primera jornada ESI en formato virtual: toda la escuela conectada para seguir hablando de lo que importa.</p>
         </div>
       </div>
     </div>
@@ -938,6 +949,7 @@
       <h2>Cinco años no se resumen en una diapositiva. <span class="accent">Se llevan en la memoria.</span></h2>
       <p class="lead">Hoy termina una etapa que empezó sin que supiéramos todo lo que íbamos a vivir. Nos conocimos en aulas que después fueron nuestras, compartimos recreos, risas, enojos, canciones, trabajos y días que parecían eternos. Aprendimos a bancarnos, a discutir y a volver a elegirnos.</p>
       <p class="lead">No a todos nos vamos a cruzar a diario. Cada uno con su ritmo, con sus tiempos y con sus sueños. Pero lo que vivimos en estos cinco años no se borra: queda en las anécdotas, en las fotos y en las cosas que todavía nos hacen reír.</p>
+      <p class="lead">Hay un dato que vale la pena dejar caer despacio: esta escuela que fundaron los vecinos tiene hoy profesores que una vez se sentaron en estos mismos bancos. Los de 1° te miran ahora igual que vos mirabas a los grandes. Con algunos años más, y el camino que cada uno elija, cualquiera de ustedes puede volver del otro lado del escritorio.</p>
       <p class="lead">Gracias, promo, por haber sido casa, grupo y equipo. Ojalá que donde vaya cada uno se lleve un pedazo de todo esto, que nada se esfume en las fotos de un grupo de WhatsApp y que las puertas queden siempre abiertas para reencontrarnos. Como en los actos de fin de ciclo: los mejores deseos para todos, y la promesa de que esto no termina acá, sino en lo que viene.</p>
       <div class="thanks-actions" style="justify-content: center;">
         <button class="ghost-btn" type="button" data-go="14">Seguir →</button>
