@@ -247,7 +247,8 @@ async function main() {
 
   // 6. Fluidez: frames largos durante scroll touch, rueda y teclado.
   const cdp = await context.newCDPSession(page);
-  await page.evaluate(() => { window.scrollTo(0, 0); window.__long = { task: [], frame: [] }; });
+  // No se resetea: se mide desde la carga, incluidas las entradas con blur.
+  await page.evaluate(() => { window.scrollTo(0, 0); });
   await page.waitForTimeout(300);
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -283,7 +284,7 @@ async function main() {
   await deskPage.addInitScript(observeLongTasks);
   await deskPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
   await deskPage.waitForTimeout(800);
-  await deskPage.evaluate(() => { window.scrollTo(0, 0); window.__long = { task: [], frame: [] }; });
+  await deskPage.evaluate(() => { window.scrollTo(0, 0); });
   for (let i = 0; i < 20; i += 1) {
     await deskPage.mouse.wheel(0, 700);
     await wait(60);
@@ -310,10 +311,10 @@ async function main() {
   console.log('\nlongtask: ' + perf.task.length + ' (max ' + maxTask + ' ms, >50 ms: ' + overTask.length + ')');
   console.log('long-animation-frame: ' + perf.frame.length + ' (max ' + maxFrame + ' ms, >50 ms: ' + overFrame.length + ')');
 
-  check('sin tareas largas (>50 ms) durante el scroll', overTask.length === 0, overTask.join(', ') + ' ms');
+  check('sin tareas largas (>50 ms) durante la carga y el scroll', overTask.length === 0, overTask.join(', ') + ' ms');
   // LoAF se informa siempre; en runners sin GPU puede haber frames lentos por
   // software rendering, así que solo falla si es claramente patológico.
-  check('sin frames patológicos (>120 ms) durante el scroll', maxFrame <= 120, 'max ' + maxFrame + ' ms');
+  check('sin frames patológicos (>120 ms) durante la carga y el scroll', maxFrame <= 120, 'max ' + maxFrame + ' ms');
   check('sin errores de página', pageErrors.length === 0, pageErrors.join(' | '));
 
   const failed = results.filter((r) => !r.ok);
