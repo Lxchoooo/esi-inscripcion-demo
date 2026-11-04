@@ -126,11 +126,13 @@
   .slide.active .wrap > * {
     animation: content-in .7s cubic-bezier(.2, .8, .2, 1) both;
   }
-  .slide.active .wrap > *:nth-child(2) { animation-delay: .06s; }
-  .slide.active .wrap > *:nth-child(3) { animation-delay: .12s; }
-  .slide.active .wrap > *:nth-child(4) { animation-delay: .18s; }
-  .slide.active .wrap > *:nth-child(5) { animation-delay: .24s; }
-  .slide.active .wrap > *:nth-child(6) { animation-delay: .3s; }
+  .slide.active .wrap > *:nth-child(2) { animation-delay: .1s; }
+  .slide.active .wrap > *:nth-child(3) { animation-delay: .2s; }
+  .slide.active .wrap > *:nth-child(4) { animation-delay: .3s; }
+  .slide.active .wrap > *:nth-child(5) { animation-delay: .4s; }
+  .slide.active .wrap > *:nth-child(6) { animation-delay: .5s; }
+  .slide.active .wrap > *:nth-child(7) { animation-delay: .6s; }
+  .slide.active .wrap > *:nth-child(8) { animation-delay: .7s; }
   .slide.active .mini-grid > *, .slide.active .kpi-grid > *,
   .slide.active .lesson-grid > *, .slide.active .thanks-grid > *,
   .slide.active .timeline > *, .slide.active .thanks-card {
@@ -138,16 +140,16 @@
   }
   .slide.active .mini-grid > *:nth-child(2), .slide.active .kpi-grid > *:nth-child(2),
   .slide.active .lesson-grid > *:nth-child(2), .slide.active .thanks-grid > *:nth-child(2),
-  .slide.active .timeline > *:nth-child(2) { animation-delay: .1s; }
+  .slide.active .timeline > *:nth-child(2) { animation-delay: .12s; }
   .slide.active .mini-grid > *:nth-child(3), .slide.active .kpi-grid > *:nth-child(3),
   .slide.active .lesson-grid > *:nth-child(3), .slide.active .thanks-grid > *:nth-child(3),
-  .slide.active .timeline > *:nth-child(3) { animation-delay: .2s; }
+  .slide.active .timeline > *:nth-child(3) { animation-delay: .24s; }
   .slide.active .kpi-grid > *:nth-child(4), .slide.active .lesson-grid > *:nth-child(4),
-  .slide.active .thanks-grid > *:nth-child(4), .slide.active .timeline > *:nth-child(4) { animation-delay: .3s; }
-  .slide.active .thanks-grid > *:nth-child(5), .slide.active .timeline > *:nth-child(5) { animation-delay: .4s; }
-  .slide.active .thanks-grid > *:nth-child(6) { animation-delay: .5s; }
+  .slide.active .thanks-grid > *:nth-child(4), .slide.active .timeline > *:nth-child(4) { animation-delay: .36s; }
+  .slide.active .thanks-grid > *:nth-child(5), .slide.active .timeline > *:nth-child(5) { animation-delay: .48s; }
+  .slide.active .thanks-grid > *:nth-child(6) { animation-delay: .6s; }
   @keyframes content-in {
-    from { opacity: 0; transform: translateY(14px); }
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
   h1, h2 { text-wrap: balance; }
@@ -562,9 +564,7 @@
     .slide.promo-speech .eyebrow { margin-left: auto; margin-right: auto; }
     .topbar {
       padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-      background: linear-gradient(180deg, rgba(8, 20, 15, .96), rgba(8, 20, 15, .55) 60%, transparent);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(8, 20, 15, .97), rgba(8, 20, 15, .72) 78%, transparent);
     }
     .brand-logo { width: 30px; height: 30px; }
     .brand-text { display: none; }
@@ -596,6 +596,11 @@
     .slot-grid { gap: 10px; }
     .lesson-grid, .thanks-grid, .timeline { gap: 10px; }
     .counter { min-width: auto; font-size: .62rem; letter-spacing: .1em; }
+    .glass {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: linear-gradient(145deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .04));
+    }
     .cover::before, .promo::before, .promo-speech::before, .farewell::before {
       inset: -6%;
       background-size: 92vmin;
@@ -1239,7 +1244,10 @@ function bindNavigation() {
       g.neighbor.style.opacity = commit ? '1' : '0.16';
     });
     setTimeout(() => {
-      if (commit && current === g.from) go(g.from + g.dir);
+      if (commit && current === g.from) {
+        g.neighbor.classList.add('gesture-in');
+        go(g.from + g.dir);
+      }
       document.body.classList.remove('dragging');
       [from, g.neighbor].forEach((slide) => {
         slide.style.transition = '';
