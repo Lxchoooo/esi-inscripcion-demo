@@ -202,7 +202,7 @@ assert(hintMail.textContent.indexOf('año de egreso') >= 0, 'avisa que falta el 
 inputMail.value = 'alumna';
 ui.sLookup();
 assert(hintMail.textContent.indexOf('completo') >= 0, 'avisa mail incompleto sin arroba');
-inputMail.value = 'alumna2029@hotmail.com';
+inputMail.value = 'alumna2029@example.com';
 ui.sLookup();
 assert(hintMail.textContent.indexOf('Usá tu mail') >= 0, 'dominio ajeno: mensaje de dominio');
 inputMail.value = 'alumna@secundariosalsipuedes.ec';

@@ -364,7 +364,7 @@ t('suggestInstitutionalEmail reordena apellido y nombre sin tocar mails ajenos',
   assertEq(l.email, 'perezalumnantonio2029@secundariosalsipuedes.edu.ar', 'nombre extra');
 
   const ok = Core.suggestInstitutionalEmail(
-    'perezjuan2029@secundariosalsipuedes.edu.ar', 'Juan Pérez', 'Díaz', '2°A', []);
+    'perezjuan2029@secundariosalsipuedes.edu.ar', 'Juan Pérez', 'Pérez', '2°A', []);
   assertEq(ok, null, 'un mail que ya coincide no se toca');
 
   const ajeno = Core.suggestInstitutionalEmail(

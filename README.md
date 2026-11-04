@@ -20,3 +20,7 @@ hojas compartidas son `Sessions`, `Signups`, `Entrada` y `Mails`. La pestaña
 la asistencia de cada charla.Documentos del evento: [el dia](docs/EVENTO.md), [tarjeta del equipo](docs/EQUIPO.md) ([para imprimir](docs/equipo.html)) y [textos para copiar](docs/COMUNICACION.md).
 
 
+
+## Presentación de la jornada
+
+La presentación pública con estadísticas agregadas está en `docs/index.html` y se publica con GitHub Pages desde la carpeta `docs/`.

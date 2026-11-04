@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1f17">
+<meta name="description" content="Jornada ESI 2026: los números, los temas y lo que aprendimos. Estadísticas agregadas, sin datos personales.">
+<title>Jornada ESI 2026 · La primera vez que abrimos la puerta</title>
+<style>
+  :root {
+    --ink: #0b1f17;
+    --ink-2: #102a20;
+    --cream: #f5f1e8;
+    --muted: rgba(245, 241, 232, .66);
+    --faint: rgba(245, 241, 232, .38);
+    --gold: #e6b85c;
+    --coral: #e07a5f;
+    --sage: #9bc4a8;
+    --teal: #4f9d8a;
+    --line: rgba(245, 241, 232, .14);
+    --glass: rgba(255, 255, 255, .055);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(1100px 700px at 15% -10%, rgba(79, 157, 138, .20), transparent 60%),
+      radial-gradient(900px 600px at 100% 0%, rgba(230, 184, 92, .12), transparent 55%),
+      radial-gradient(900px 700px at 50% 115%, rgba(224, 122, 95, .10), transparent 60%),
+      var(--ink);
+    color: var(--cream);
+    font-family: var(--sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .28;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+    z-index: 1;
+  }
+
+  button { font: inherit; color: inherit; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px clamp(18px, 4vw, 48px);
+    font-size: .68rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 5px rgba(230, 184, 92, .12);
+  }
+  .top-actions { display: flex; align-items: center; gap: 14px; }
+  .icon-btn {
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, .04);
+    border-radius: 999px;
+    padding: 7px 12px;
+    cursor: pointer;
+    color: var(--muted);
+    letter-spacing: .12em;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .icon-btn:hover { background: rgba(255, 255, 255, .09); color: var(--cream); border-color: rgba(245, 241, 232, .3); }
+
+  .deck { position: relative; height: 100vh; height: 100dvh; z-index: 2; }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(70px, 8vh, 110px) clamp(20px, 6vw, 90px) clamp(90px, 12vh, 130px);
+    opacity: 0;
+    transform: translateY(18px) scale(.992);
+    pointer-events: none;
+    transition: opacity .65s ease, transform .65s ease;
+  }
+  .slide.active { opacity: 1; transform: none; pointer-events: auto; }
+  .wrap { width: min(1180px, 100%); }
+  .narrow { width: min(900px, 100%); }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    color: var(--gold);
+    font-size: .7rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+  .eyebrow::before { content: ""; width: 28px; height: 1px; background: currentColor; opacity: .7; }
+  h1, h2, h3, p { margin-top: 0; }
+  h1, h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    line-height: .96;
+    letter-spacing: -.035em;
+    text-wrap: balance;
+  }
+  h1 { font-size: clamp(3.2rem, 9vw, 7.8rem); margin-bottom: 24px; }
+  h2 { font-size: clamp(2.3rem, 5.3vw, 4.8rem); margin-bottom: 22px; }
+  h3 { font-size: 1rem; font-weight: 600; letter-spacing: -.01em; margin-bottom: 8px; }
+  .accent { color: var(--gold); }
+  .coral { color: var(--coral); }
+  .sage { color: var(--sage); }
+  .lead {
+    max-width: 64ch;
+    color: var(--muted);
+    font-size: clamp(1rem, 1.45vw, 1.22rem);
+    line-height: 1.62;
+  }
+  .lead strong { color: var(--cream); font-weight: 600; }
+  .small { font-size: .82rem; line-height: 1.5; color: var(--faint); }
+  .note { margin-top: 22px; font-size: .76rem; line-height: 1.5; color: var(--faint); }
+
+  .glass {
+    background: linear-gradient(145deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .025));
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .cover .wrap { max-width: 1080px; }
+  .cover h1 { max-width: 12ch; }
+  .cover .lead { font-size: clamp(1.05rem, 1.8vw, 1.35rem); }
+  .cover-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 22px;
+    margin-top: 34px;
+    color: var(--faint);
+    font-size: .78rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .cover-meta span { display: inline-flex; align-items: center; gap: 8px; }
+  .cover-meta span::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+  .start {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 36px;
+    padding: 13px 20px;
+    border: 1px solid rgba(230, 184, 92, .45);
+    border-radius: 999px;
+    background: rgba(230, 184, 92, .08);
+    color: var(--cream);
+    cursor: pointer;
+    font-size: .84rem;
+    letter-spacing: .04em;
+    transition: background .2s, transform .2s, border-color .2s;
+  }
+  .start:hover { background: rgba(230, 184, 92, .16); border-color: var(--gold); transform: translateY(-1px); }
+  .start span { color: var(--gold); font-size: 1.1rem; }
+
+  .split { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(28px, 5vw, 70px); align-items: center; }
+  .quote {
+    font-family: var(--serif);
+    font-size: clamp(1.7rem, 3.6vw, 3.35rem);
+    line-height: 1.12;
+    letter-spacing: -.025em;
+    text-wrap: balance;
+  }
+  .quote em { color: var(--gold); font-style: italic; }
+  .mini-grid { display: grid; gap: 12px; }
+  .mini { padding: 20px 22px; }
+  .mini .big { font-family: var(--serif); font-size: clamp(1.5rem, 2.6vw, 2.2rem); line-height: 1; margin-bottom: 5px; }
+  .mini .tiny { color: var(--faint); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 32px; }
+  .kpi { padding: 24px 22px 20px; position: relative; overflow: hidden; }
+  .kpi::after {
+    content: "";
+    position: absolute; right: -18px; bottom: -26px;
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(230, 184, 92, .13), transparent 68%);
+  }
+  .kpi .num {
+    font-family: var(--serif);
+    font-size: clamp(2.4rem, 4.6vw, 4.2rem);
+    line-height: .92;
+    letter-spacing: -.04em;
+    margin-bottom: 8px;
+  }
+  .kpi .label { color: var(--faint); font-size: .72rem; letter-spacing: .13em; text-transform: uppercase; line-height: 1.35; }
+  .kpi .sub { margin-top: 12px; color: var(--muted); font-size: .78rem; line-height: 1.35; }
+
+  .chart-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(28px, 5vw, 72px); align-items: center; }
+  .donut-wrap { position: relative; display: grid; place-items: center; width: 100%; }
+  .donut { width: min(360px, 76vw); height: auto; display: block; overflow: visible; }
+  .donut .seg {
+    fill: none;
+    stroke-width: 18;
+    stroke-dasharray: 0 999;
+    transition: stroke-dasharray 1.15s cubic-bezier(.2, .8, .2, 1);
+  }
+  .slide.active .donut .seg { stroke-dasharray: var(--dash); }
+  .donut-center { position: absolute; text-align: center; pointer-events: none; }
+  .donut-center strong {
+    display: block;
+    font-family: var(--serif);
+    font-size: clamp(2.7rem, 5vw, 4.5rem);
+    line-height: .9;
+    letter-spacing: -.04em;
+  }
+  .donut-center span { display: block; margin-top: 7px; color: var(--faint); font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 18px; }
+  .legend-item { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .8rem; }
+  .legend-item i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .legend-item strong { color: var(--cream); font-weight: 600; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 26px; }
+  .stat-chip { padding: 14px 15px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255, 255, 255, .03); }
+  .stat-chip strong { display: block; font-family: var(--serif); font-size: 1.45rem; line-height: 1; margin-bottom: 5px; }
+  .stat-chip span { color: var(--faint); font-size: .7rem; line-height: 1.35; display: block; }
+
+  .bars { display: grid; gap: 9px; margin-top: 18px; }
+  .bar-row { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(120px, 2fr) 74px; gap: 14px; align-items: center; }
+  .bar-label { font-size: .8rem; line-height: 1.25; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { height: 9px; border-radius: 99px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+  .bar-fill {
+    height: 100%; width: 0; border-radius: inherit;
+    background: linear-gradient(90deg, var(--gold), var(--coral));
+    transition: width 1.05s cubic-bezier(.2, .8, .2, 1);
+  }
+  .slide.active .bar-fill { width: var(--w); }
+  .bar-value { font-size: .82rem; color: var(--cream); text-align: right; white-space: nowrap; }
+  .bar-value small { color: var(--faint); font-size: .7rem; }
+
+  .course-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(8px, 1.4vw, 16px);
+    height: 260px;
+    padding: 14px 4px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+  .course { min-width: 54px; display: flex; flex-direction: column; align-items: center; gap: 7px; flex: 1 0 54px; }
+  .course-bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 205px; width: 100%; border-bottom: 1px solid var(--line); }
+  .course-bar {
+    width: 13px; height: 0; border-radius: 5px 5px 0 0;
+    transition: height 1s cubic-bezier(.2, .8, .2, 1);
+  }
+  .slide.active .course-bar { height: calc(var(--v) * 1%); }
+  .course-bar.present { background: linear-gradient(180deg, var(--gold), rgba(230, 184, 92, .55)); }
+  .course-bar.entry { background: linear-gradient(180deg, var(--sage), rgba(155, 196, 168, .45)); }
+  .course-label { color: var(--faint); font-size: .64rem; letter-spacing: .06em; text-transform: uppercase; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-top: 14px; color: var(--muted); font-size: .76rem; }
+  .chart-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .chart-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 26px; }
+  .slot-card { padding: 20px 18px; }
+  .slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .slot-label { font-family: var(--serif); font-size: 1.5rem; line-height: 1; }
+  .slot-time { color: var(--faint); font-size: .68rem; letter-spacing: .08em; text-align: right; }
+  .stack { display: flex; height: 13px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, .07); }
+  .stack .seg { height: 100%; width: 0; transition: width 1.05s cubic-bezier(.2, .8, .2, 1); }
+  .slide.active .stack .seg { width: var(--w); }
+  .stack .present { background: var(--gold); }
+  .stack .absent { background: var(--coral); }
+  .stack .unmarked { background: rgba(245, 241, 232, .28); }
+  .slot-nums { display: grid; gap: 5px; margin-top: 14px; color: var(--muted); font-size: .74rem; }
+  .slot-nums strong { color: var(--cream); font-weight: 600; }
+  .slot-pct { margin-top: 14px; color: var(--gold); font-size: .76rem; letter-spacing: .04em; }
+
+  .big-quote {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4.8vw, 4.4rem);
+    line-height: 1.04;
+    letter-spacing: -.035em;
+    max-width: 16ch;
+    text-wrap: balance;
+  }
+  .big-quote em { color: var(--gold); font-style: italic; }
+  .effort-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(28px, 5vw, 70px); align-items: center; }
+  .effort-copy p { margin-bottom: 16px; }
+  .tape {
+    display: inline-flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 20px;
+  }
+  .tape span {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 11px;
+    color: var(--faint);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  .lesson-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
+  .lesson { padding: 22px; position: relative; }
+  .lesson .idx { color: var(--gold); font-family: var(--serif); font-size: .95rem; letter-spacing: .08em; }
+  .lesson h3 { margin-top: 10px; }
+  .lesson p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.55; }
+
+  .thanks h2 { font-size: clamp(3.4rem, 9vw, 7rem); margin-bottom: 24px; }
+  .thanks .lead { max-width: 58ch; }
+  .thanks-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .ghost-btn {
+    border: 1px solid var(--line);
+    background: transparent;
+    border-radius: 999px;
+    padding: 11px 17px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .8rem;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .ghost-btn:hover { background: rgba(255, 255, 255, .07); color: var(--cream); border-color: rgba(245, 241, 232, .3); }
+
+  .nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px clamp(18px, 4vw, 48px);
+    background: linear-gradient(0deg, rgba(8, 20, 15, .92), rgba(8, 20, 15, .55) 55%, transparent);
+  }
+  .nav-group { display: flex; align-items: center; gap: 8px; }
+  .nav-btn {
+    width: 42px; height: 42px;
+    display: grid; place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .04);
+    color: var(--cream);
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .2s;
+  }
+  .nav-btn:hover { background: rgba(255, 255, 255, .1); border-color: rgba(245, 241, 232, .3); transform: translateY(-1px); }
+  .nav-btn:disabled { opacity: .28; cursor: default; transform: none; }
+  .dots { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
+  .dot {
+    width: 7px; height: 7px; padding: 0;
+    border: 0; border-radius: 50%;
+    background: rgba(245, 241, 232, .24);
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  .dot.active { background: var(--gold); transform: scale(1.45); }
+  .progress {
+    position: fixed; left: 0; bottom: 0;
+    height: 3px; width: 0;
+    z-index: 50;
+    background: linear-gradient(90deg, var(--gold), var(--coral));
+    transition: width .45s ease;
+  }
+  .counter { min-width: 82px; text-align: right; color: var(--faint); font-size: .7rem; letter-spacing: .12em; }
+
+  @media (max-width: 980px) {
+    .split, .chart-grid, .effort-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .slot-grid { grid-template-columns: 1fr; }
+    .lesson-grid { grid-template-columns: 1fr; }
+    .cover h1 { max-width: 14ch; }
+    .donut { width: min(300px, 70vw); }
+  }
+  @media (max-width: 700px) {
+    body { overflow: auto; }
+    .deck { height: auto; min-height: 100dvh; }
+    .slide {
+      position: relative;
+      min-height: 100dvh;
+      inset: auto;
+      padding: 84px 20px 108px;
+      align-items: flex-start;
+      overflow-y: auto;
+      display: none;
+    }
+    .slide.active { display: flex; }
+    .topbar { background: linear-gradient(180deg, rgba(8, 20, 15, .92), transparent); }
+    .brand-text { display: none; }
+    .bar-row { grid-template-columns: 1fr 64px; gap: 5px 10px; }
+    .bar-label { grid-column: 1 / -1; white-space: normal; }
+    .bar-track { grid-column: 1; }
+    .bar-value { grid-column: 2; }
+    .stat-row { grid-template-columns: 1fr; }
+    .course-chart { height: 230px; }
+    .course-bars { height: 180px; }
+    .nav { padding: 12px 16px; }
+    .nav-btn { width: 38px; height: 38px; }
+    .counter { min-width: 66px; font-size: .64rem; }
+    .dots { max-width: 190px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
+  </div>
+  <div class="top-actions">
+    <span id="counter" class="counter" aria-live="polite">01 / 11</span>
+    <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
+  </div>
+</header>
+
+<main class="deck" id="deck">
+
+  <section class="slide cover active" data-title="Portada" aria-label="Portada">
+    <div class="wrap">
+      <p class="eyebrow">Instituto Secundario Salsipuedes · Jornada ESI</p>
+      <h1>La primera vez que <span class="accent">abrimos la puerta.</span></h1>
+      <p class="lead">Una jornada hecha con pocos días, muchas manos y la convicción de que hablar de ESI también es cuidar. Esto es lo que quedó: los números, las conversaciones y lo que aprendimos.</p>
+      <div class="cover-meta">
+        <span>4 de noviembre de 2026</span>
+        <span>30 charlas</span>
+        <span>12 cursos</span>
+        <span>Una comunidad</span>
+      </div>
+      <button class="start" type="button" data-go="1">Recorrer la jornada <span aria-hidden="true">→</span></button>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Una idea que se hizo jornada" aria-label="Una idea que se hizo jornada">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Lo que pasó</p>
+        <p class="quote">No empezó con una planilla. Empezó con la decisión de hablar de lo que <em>importa.</em></p>
+        <p class="lead" style="margin-top: 28px;">En menos de dos semanas armamos una jornada con 30 charlas, 12 cursos y una comunidad entera poniéndose de acuerdo. Hubo pruebas, errores y aprendizaje. Pero sobre todo hubo personas dispuestas a encontrarse.</p>
+      </div>
+      <div class="mini-grid">
+        <div class="mini glass">
+          <div class="big">1ª vez</div>
+          <div class="tiny">Que el colegio abre la puerta a una jornada ESI</div>
+        </div>
+        <div class="mini glass">
+          <div class="big">30 charlas</div>
+          <div class="tiny">10 temas, tres franjas, un mismo día</div>
+        </div>
+        <div class="mini glass">
+          <div class="big">Menos de 2 semanas</div>
+          <div class="tiny">Para pensarlo, armarlo y hacerlo posible</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Los números de la jornada" aria-label="Los números de la jornada">
+    <div class="wrap">
+      <p class="eyebrow">Los números de la jornada</p>
+      <h2>Cada número es una persona que <span class="accent">eligió estar.</span></h2>
+      <div class="kpi-grid">
+        <div class="kpi glass">
+          <div class="num" data-count="393">0</div>
+          <div class="label">Alumnos únicos</div>
+          <div class="sub">Toda la escuela, de 1° a 6°.</div>
+        </div>
+        <div class="kpi glass">
+          <div class="num" data-count="1173">0</div>
+          <div class="label">Reservas a charlas</div>
+          <div class="sub">Casi tres charlas por alumno.</div>
+        </div>
+        <div class="kpi glass">
+          <div class="num" data-count="30">0</div>
+          <div class="label">Charlas realizadas</div>
+          <div class="sub">10 temas en tres franjas.</div>
+        </div>
+        <div class="kpi glass">
+          <div class="num" data-count="90.9" data-decimals="1" data-suffix="%">0</div>
+          <div class="label">Ocupación de lugares</div>
+          <div class="sub">1.290 lugares disponibles.</div>
+        </div>
+      </div>
+      <p class="note">Datos agregados de la jornada. Esta presentación no incluye nombres, mails ni DNI.</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="La entrada" aria-label="La entrada">
+    <div class="wrap chart-grid">
+      <div>
+        <div class="donut-wrap" id="entryDonut" role="img" aria-label="Gráfico de entrada: 357 llegaron, 33 ausentes, 3 sin marcar"></div>
+        <div class="legend" id="entryLegend"></div>
+      </div>
+      <div>
+        <p class="eyebrow">La entrada</p>
+        <h2>357 personas <span class="accent">cruzaron la puerta.</span></h2>
+        <p class="lead">De 393 alumnos, 357 llegaron. 33 no pudieron venir y 3 quedaron sin marcar. No es una planilla perfecta: es una foto real de un día que empezó con movimiento en los pasillos.</p>
+        <div class="stat-row">
+          <div class="stat-chip"><strong>90,8%</strong><span>Llegada sobre el total</span></div>
+          <div class="stat-chip"><strong>33</strong><span>Ausentes en la entrada</span></div>
+          <div class="stat-chip"><strong>3</strong><span>Sin marcar en la entrada</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Las charlas" aria-label="Las charlas">
+    <div class="wrap chart-grid">
+      <div>
+        <div class="donut-wrap" id="talksDonut" role="img" aria-label="Gráfico de charlas: 934 presentes, 165 ausentes, 74 sin marcar"></div>
+        <div class="legend" id="talksLegend"></div>
+      </div>
+      <div>
+        <p class="eyebrow">Las charlas</p>
+        <h2>934 presencias, <span class="accent">934 historias.</span></h2>
+        <p class="lead">1.173 reservas, 934 presentes, 165 ausentes y 74 sin marcar. El 85% de las asistencias registradas dijo presente. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor.</p>
+        <div class="stat-row">
+          <div class="stat-chip"><strong>79,6%</strong><span>Presentes sobre reservas</span></div>
+          <div class="stat-chip"><strong>85,0%</strong><span>Presentes sobre marcadas</span></div>
+          <div class="stat-chip"><strong>74</strong><span>Sin marcar en charlas</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Cada tema, una conversación" aria-label="Cada tema, una conversación">
+    <div class="wrap">
+      <p class="eyebrow">Cada tema, una conversación</p>
+      <h2>Los temas que <span class="accent">movieron la jornada.</span></h2>
+      <p class="lead" style="max-width: 72ch;">Los consumos, la salud mental, el deporte y las ITS convocaron a más de cien personas cada uno. También hubo temas que abrieron preguntas incómodas: masculinidades, violencia de género, ciberbullying. Todos tenían algo para decir.</p>
+      <div class="bars" id="topicsChart"></div>
+      <p class="note">Presentes por temática, sumando las tres franjas. El porcentaje es sobre las reservas de ese tema.</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="La jornada, curso por curso" aria-label="La jornada, curso por curso">
+    <div class="wrap">
+      <p class="eyebrow">La jornada, curso por curso</p>
+      <h2>No hubo un curso perfecto. <span class="accent">Hubo una escuela entera.</span></h2>
+      <p class="lead" style="max-width: 72ch;">Cada curso llegó a su manera. Hubo grupos que entraron casi completos y otros donde faltó más. La jornada no fue de un curso: fue de todos.</p>
+      <div class="course-chart" id="courseChart" aria-label="Gráfico de asistencia y entrada por curso"></div>
+      <div class="chart-legend">
+        <span><i style="background: var(--gold)"></i>Asistencia a charlas</span>
+        <span><i style="background: var(--sage)"></i>Llegada a la entrada</span>
+      </div>
+      <p class="note">1°A llegó al 100%. 6°Economía fue el curso con menor llegada: 77,4%. Cada barra es un porcentaje del total de su curso.</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Tres horarios, un mismo movimiento" aria-label="Tres horarios, un mismo movimiento">
+    <div class="wrap">
+      <p class="eyebrow">Tres horarios, un mismo movimiento</p>
+      <h2>La jornada tuvo <span class="accent">tres respiraciones.</span></h2>
+      <p class="lead" style="max-width: 72ch;">La primera y la tercera franja sostuvieron más presencias. En la segunda aparecieron más ausencias y más registros sin marcar: el mediodía se hizo sentir. Aun así, la rueda no se detuvo.</p>
+      <div class="slot-grid" id="slotChart"></div>
+      <p class="note">Cada barra muestra presentes, ausentes y sin marcar sobre las reservas de esa franja.</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Lo que costó" aria-label="Lo que costó">
+    <div class="wrap effort-grid">
+      <div>
+        <p class="eyebrow">Lo que costó</p>
+        <p class="big-quote">La primera vez no se trata de hacerlo perfecto. Se trata de <em>hacerlo posible.</em></p>
+      </div>
+      <div class="effort-copy">
+        <p class="lead">Hacer esto en menos de dos semanas fue un acto de fe. Hubo mails que rebotaron, aulas que se cruzaron, listas que no cerraban y marcas que quedaron sin registrar. Nada de eso borra lo que pasó.</p>
+        <p class="lead">Los errores no fueron el centro de la jornada: fueron el precio de animarse a hacer algo por primera vez. Y cada uno dejó una pista para la próxima.</p>
+        <div class="tape">
+          <span>Mails rebotados</span>
+          <span>Aulas cruzadas</span>
+          <span>Listas incompletas</span>
+          <span>Marcas sin registrar</span>
+          <span>Y muchas ganas</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Lo que aprendimos" aria-label="Lo que aprendimos">
+    <div class="wrap">
+      <p class="eyebrow">Lo que aprendimos</p>
+      <h2>La base ya está. <span class="accent">Ahora se puede mejorar.</span></h2>
+      <div class="lesson-grid">
+        <div class="lesson glass">
+          <div class="idx">01</div>
+          <h3>La base queda</h3>
+          <p>La planilla, el panel y el circuito ya existen. El año que viene no empezamos de cero: empezamos desde acá.</p>
+        </div>
+        <div class="lesson glass">
+          <div class="idx">02</div>
+          <h3>Los datos también son personas</h3>
+          <p>Cada marca es alguien que entró o que no pudo. Cuidar los datos es parte de cuidar la jornada.</p>
+        </div>
+        <div class="lesson glass">
+          <div class="idx">03</div>
+          <h3>Los errores son información</h3>
+          <p>Los mails rebotados, las aulas cruzadas y las listas incompletas nos dicen exactamente dónde mejorar.</p>
+        </div>
+        <div class="lesson glass">
+          <div class="idx">04</div>
+          <h3>Esto se hace entre muchos</h3>
+          <p>Preceptores, profes, alumnos y equipos directivos. La jornada fue una suma de voluntades.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide thanks" data-title="Gracias" aria-label="Gracias">
+    <div class="wrap narrow">
+      <p class="eyebrow">Gracias</p>
+      <h2>Gracias.</h2>
+      <p class="lead">A quienes se animaron a hablar de ESI. A quienes escucharon. A quienes organizaron, corrigieron, insistieron y sostuvieron. A los que vinieron y a los que no pudieron venir.</p>
+      <p class="lead">La ESI no termina en una jornada. Esto recién empieza.</p>
+      <div class="thanks-actions">
+        <button class="ghost-btn" type="button" data-go="0">Volver al inicio</button>
+        <button class="ghost-btn" type="button" data-prev>← Diapositiva anterior</button>
+      </div>
+      <p class="note">Presentación hecha con datos agregados de la Jornada ESI 2026. Sin nombres, mails ni DNI. Hecha con el panel de inscripción ESI.</p>
+    </div>
+  </section>
+
+</main>
+
+<nav class="nav" aria-label="Navegación de la presentación">
+  <div class="nav-group">
+    <button class="nav-btn" type="button" data-prev aria-label="Diapositiva anterior">←</button>
+    <button class="nav-btn" type="button" data-next aria-label="Diapositiva siguiente">→</button>
+  </div>
+  <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
+  <div class="counter" id="navCounter">01 / 11</div>
+</nav>
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<noscript>
+  <p style="position:fixed;inset:auto 20px 20px;z-index:100;background:#102a20;padding:16px;border-radius:12px;">Esta presentación necesita JavaScript para navegar y ver los gráficos.</p>
+</noscript>
+
+<script>
+const DATA = {"summary":{"students":393,"reservations":1173,"present":934,"absent":165,"unmarked":74,"entry":357,"entryAbsent":33,"entryUnmarked":3,"talks":30,"capacity":1290,"occupancy":90.9,"entryRate":90.8,"presentRate":79.6,"markedRate":85,"avgTalks":2.98},"courses":[{"cycle":"Básico","course":"1°A","short":"1A","students":36,"reservations":108,"present":90,"absent":5,"unmarked":13,"presentRate":83.3,"entry":36,"entryAbsent":0,"entryUnmarked":0,"entryRate":100},{"cycle":"Básico","course":"1°B","short":"1B","students":33,"reservations":99,"present":86,"absent":8,"unmarked":5,"presentRate":86.9,"entry":31,"entryAbsent":2,"entryUnmarked":0,"entryRate":93.9},{"cycle":"Básico","course":"2°A","short":"2A","students":32,"reservations":96,"present":78,"absent":16,"unmarked":2,"presentRate":81.3,"entry":28,"entryAbsent":4,"entryUnmarked":0,"entryRate":87.5},{"cycle":"Básico","course":"2°B","short":"2B","students":37,"reservations":110,"present":81,"absent":22,"unmarked":7,"presentRate":73.6,"entry":33,"entryAbsent":4,"entryUnmarked":0,"entryRate":89.2},{"cycle":"Básico","course":"3°A","short":"3A","students":37,"reservations":111,"present":92,"absent":14,"unmarked":5,"presentRate":82.9,"entry":33,"entryAbsent":4,"entryUnmarked":0,"entryRate":89.2},{"cycle":"Básico","course":"3°B","short":"3B","students":35,"reservations":105,"present":91,"absent":13,"unmarked":1,"presentRate":86.7,"entry":30,"entryAbsent":5,"entryUnmarked":0,"entryRate":85.7},{"cycle":"Orientado","course":"4°Economía","short":"4E","students":31,"reservations":93,"present":72,"absent":13,"unmarked":8,"presentRate":77.4,"entry":30,"entryAbsent":1,"entryUnmarked":0,"entryRate":96.8},{"cycle":"Orientado","course":"4°Turismo","short":"4T","students":33,"reservations":99,"present":84,"absent":10,"unmarked":5,"presentRate":84.8,"entry":30,"entryAbsent":3,"entryUnmarked":0,"entryRate":90.9},{"cycle":"Orientado","course":"5°Economía","short":"5E","students":28,"reservations":82,"present":62,"absent":12,"unmarked":8,"presentRate":75.6,"entry":24,"entryAbsent":4,"entryUnmarked":0,"entryRate":85.7},{"cycle":"Orientado","course":"5°Turismo","short":"5T","students":32,"reservations":94,"present":84,"absent":9,"unmarked":1,"presentRate":89.4,"entry":31,"entryAbsent":1,"entryUnmarked":0,"entryRate":96.9},{"cycle":"Orientado","course":"6°Economía","short":"6E","students":31,"reservations":92,"present":62,"absent":24,"unmarked":6,"presentRate":67.4,"entry":24,"entryAbsent":4,"entryUnmarked":3,"entryRate":77.4},{"cycle":"Orientado","course":"6°Turismo","short":"6T","students":28,"reservations":84,"present":52,"absent":19,"unmarked":13,"presentRate":61.9,"entry":27,"entryAbsent":1,"entryUnmarked":0,"entryRate":96.4}],"slots":[{"slot":"1ra · 10:30 a 11:20","label":"1ra","time":"10:30 a 11:20","reservations":392,"students":392,"talks":10,"present":322,"absent":64,"unmarked":6,"presentRate":82.1},{"slot":"2da · 11:30 a 12:20","label":"2da","time":"11:30 a 12:20","reservations":389,"students":389,"talks":10,"present":291,"absent":40,"unmarked":58,"presentRate":74.8},{"slot":"3ra · 12:30 a 13:30","label":"3ra","time":"12:30 a 13:30","reservations":392,"students":392,"talks":10,"present":321,"absent":61,"unmarked":10,"presentRate":81.9}],"topics":[{"topic":"Consumos problemáticos: alcohol y vapeo","capacity":129,"reserved":128,"present":114,"absent":12,"unmarked":2,"presentRate":0.8906},{"topic":"Salud mental: educación emocional. Aprender a mirar con los ojos del otro","capacity":129,"reserved":129,"present":113,"absent":16,"unmarked":0,"presentRate":0.876},{"topic":"Deportes y alimentación saludable","capacity":129,"reserved":129,"present":110,"absent":19,"unmarked":0,"presentRate":0.8527},{"topic":"ITS · Ciclo Orientado","capacity":129,"reserved":127,"present":106,"absent":7,"unmarked":14,"presentRate":0.8346},{"topic":"ITS · Ciclo Básico","capacity":129,"reserved":115,"present":101,"absent":13,"unmarked":1,"presentRate":0.8783},{"topic":"Consumos problemáticos: juegos en línea","capacity":129,"reserved":124,"present":100,"absent":18,"unmarked":6,"presentRate":0.8065},{"topic":"Claves para habitar nuestro cuerpo: el humor, estados de ánimo y procesos creativos","capacity":129,"reserved":129,"present":92,"absent":14,"unmarked":23,"presentRate":0.7132},{"topic":"Ciberbullying y grooming","capacity":129,"reserved":119,"present":86,"absent":31,"unmarked":2,"presentRate":0.7227},{"topic":"Violencia de género: repensando lo aprendido","capacity":129,"reserved":104,"present":64,"absent":15,"unmarked":25,"presentRate":0.6154},{"topic":"Masculinidades","capacity":129,"reserved":69,"present":48,"absent":20,"unmarked":1,"presentRate":0.6957}]};
+
+const COLORS = {
+  gold: '#e6b85c',
+  coral: '#e07a5f',
+  sage: '#9bc4a8',
+  muted: 'rgba(245, 241, 232, .28)'
+};
+
+const slides = Array.from(document.querySelectorAll('.slide'));
+const dotsEl = document.getElementById('dots');
+const progressEl = document.getElementById('progress');
+const counterEl = document.getElementById('counter');
+const navCounterEl = document.getElementById('navCounter');
+const fmt = new Intl.NumberFormat('es-AR');
+let current = -1;
+
+function esc(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function numberText(value, decimals) {
+  if (decimals) return Number(value).toFixed(decimals).replace('.', ',');
+  return fmt.format(Math.round(value));
+}
+
+function animateCounters(slide) {
+  slide.querySelectorAll('[data-count]').forEach((el) => {
+    if (el.dataset.done === '1') return;
+    const target = parseFloat(el.dataset.count);
+    const decimals = parseInt(el.dataset.decimals || '0', 10);
+    const suffix = el.dataset.suffix || '';
+    const prefix = el.dataset.prefix || '';
+    const duration = 1050;
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = prefix + numberText(target * eased, decimals) + suffix;
+      if (t < 1) requestAnimationFrame(tick);
+      else {
+        el.dataset.done = '1';
+        el.textContent = prefix + numberText(target, decimals) + suffix;
+      }
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function go(index, updateHash = true) {
+  const n = Math.max(0, Math.min(slides.length - 1, index));
+  if (n === current) return;
+  if (current >= 0) slides[current].classList.remove('active');
+  slides[n].classList.add('active');
+  current = n;
+  Array.from(dotsEl.children).forEach((dot, i) => {
+    dot.classList.toggle('active', i === n);
+    dot.setAttribute('aria-current', i === n ? 'true' : 'false');
+  });
+  const label = String(n + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+  counterEl.textContent = label;
+  navCounterEl.textContent = label;
+  progressEl.style.width = (((n + 1) / slides.length) * 100) + '%';
+  animateCounters(slides[n]);
+  slides[n].scrollTop = 0;
+  if (updateHash) {
+    try { history.replaceState(null, '', '#slide-' + (n + 1)); } catch (e) {}
+  }
+}
+
+function renderLegend(el, items) {
+  el.innerHTML = items.map((item) =>
+    '<span class="legend-item"><i style="background:' + item.color + '"></i>' +
+    esc(item.label) + ' <strong>' + fmt.format(item.value) + '</strong></span>'
+  ).join('');
+}
+
+function renderDonut(el, segments, centerValue, centerLabel) {
+  el.innerHTML = '';
+  const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
+  const radius = 70;
+  const circumference = 2 * Math.PI * radius;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 200 200');
+  svg.setAttribute('class', 'donut');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', centerValue + ' ' + centerLabel);
+
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  bg.setAttribute('cx', '100');
+  bg.setAttribute('cy', '100');
+  bg.setAttribute('r', String(radius));
+  bg.setAttribute('fill', 'none');
+  bg.setAttribute('stroke', 'rgba(245, 241, 232, .09)');
+  bg.setAttribute('stroke-width', '18');
+  svg.appendChild(bg);
+
+  const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  group.setAttribute('transform', 'rotate(-90 100 100)');
+  let offset = 0;
+  segments.forEach((seg) => {
+    const length = (seg.value / total) * circumference;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', '100');
+    circle.setAttribute('cy', '100');
+    circle.setAttribute('r', String(radius));
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', seg.color);
+    circle.setAttribute('stroke-width', '18');
+    circle.setAttribute('stroke-linecap', 'butt');
+    circle.setAttribute('class', 'seg');
+    circle.style.strokeDashoffset = String(-offset);
+    circle.style.setProperty('--dash', length.toFixed(2) + ' ' + (circumference - length).toFixed(2));
+    group.appendChild(circle);
+    offset += length;
+  });
+  svg.appendChild(group);
+  el.appendChild(svg);
+
+  const center = document.createElement('div');
+  center.className = 'donut-center';
+  center.innerHTML = '<strong>' + fmt.format(centerValue) + '</strong><span>' + esc(centerLabel) + '</span>';
+  el.appendChild(center);
+}
+
+function renderTopics() {
+  const el = document.getElementById('topicsChart');
+  const max = Math.max.apply(null, DATA.topics.map((topic) => topic.present));
+  el.innerHTML = DATA.topics.map((topic) => {
+    const width = (topic.present / max) * 100;
+    const pct = Math.round(topic.presentRate * 100);
+    return '<div class="bar-row" title="' + esc(topic.topic) + ': ' + topic.present + ' presentes de ' + topic.reserved + ' reservas">' +
+      '<div class="bar-label">' + esc(topic.topic) + '</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="--w:' + width.toFixed(1) + '%"></div></div>' +
+      '<div class="bar-value">' + topic.present + ' <small>· ' + pct + '%</small></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderCourses() {
+  const el = document.getElementById('courseChart');
+  el.innerHTML = DATA.courses.map((course) =>
+    '<div class="course" title="' + esc(course.course) + ': ' + course.presentRate + '% de asistencia, ' + course.entryRate + '% de entrada">' +
+      '<div class="course-bars">' +
+        '<span class="course-bar present" style="--v:' + course.presentRate + '"></span>' +
+        '<span class="course-bar entry" style="--v:' + course.entryRate + '"></span>' +
+      '</div>' +
+      '<div class="course-label">' + esc(course.short) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function renderSlots() {
+  const el = document.getElementById('slotChart');
+  el.innerHTML = DATA.slots.map((slot) => {
+    const present = (slot.present / slot.reservations) * 100;
+    const absent = (slot.absent / slot.reservations) * 100;
+    const unmarked = (slot.unmarked / slot.reservations) * 100;
+    return '<div class="slot-card glass">' +
+      '<div class="slot-head"><span class="slot-label">' + esc(slot.label) + '</span><span class="slot-time">' + esc(slot.time) + '</span></div>' +
+      '<div class="stack" aria-hidden="true">' +
+        '<span class="seg present" style="--w:' + present.toFixed(1) + '%"></span>' +
+        '<span class="seg absent" style="--w:' + absent.toFixed(1) + '%"></span>' +
+        '<span class="seg unmarked" style="--w:' + unmarked.toFixed(1) + '%"></span>' +
+      '</div>' +
+      '<div class="slot-nums">' +
+        '<span><strong>' + slot.present + '</strong> presentes</span>' +
+        '<span><strong>' + slot.absent + '</strong> ausentes</span>' +
+        '<span><strong>' + slot.unmarked + '</strong> sin marcar</span>' +
+      '</div>' +
+      '<div class="slot-pct">' + slot.presentRate + '% de asistencia</div>' +
+    '</div>';
+  }).join('');
+}
+
+function buildDots() {
+  slides.forEach((slide, i) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'dot';
+    dot.setAttribute('aria-label', 'Ir a ' + (slide.dataset.title || ('diapositiva ' + (i + 1))));
+    dot.addEventListener('click', () => go(i));
+    dotsEl.appendChild(dot);
+  });
+}
+
+function bindNavigation() {
+  document.querySelectorAll('[data-next]').forEach((btn) => btn.addEventListener('click', () => go(current + 1)));
+  document.querySelectorAll('[data-prev]').forEach((btn) => btn.addEventListener('click', () => go(current - 1)));
+  document.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => go(parseInt(btn.dataset.go, 10))));
+
+  window.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented) return;
+    const key = event.key;
+    if (key === 'ArrowRight' || key === 'PageDown' || key === ' ') {
+      event.preventDefault();
+      go(current + 1);
+    } else if (key === 'ArrowLeft' || key === 'PageUp') {
+      event.preventDefault();
+      go(current - 1);
+    } else if (key === 'Home') {
+      event.preventDefault();
+      go(0);
+    } else if (key === 'End') {
+      event.preventDefault();
+      go(slides.length - 1);
+    }
+  });
+
+  let touchX = 0;
+  let touchY = 0;
+  document.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) return;
+    touchX = event.touches[0].clientX;
+    touchY = event.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', (event) => {
+    if (!touchX || !event.changedTouches.length) return;
+    const dx = event.changedTouches[0].clientX - touchX;
+    const dy = event.changedTouches[0].clientY - touchY;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3) go(current + (dx < 0 ? 1 : -1));
+    touchX = 0;
+    touchY = 0;
+  }, { passive: true });
+
+  const fullscreenBtn = document.getElementById('fullscreen');
+  fullscreenBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (e) {
+      fullscreenBtn.textContent = 'Pantalla completa';
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    fullscreenBtn.textContent = document.fullscreenElement ? 'Salir' : 'Pantalla completa';
+  });
+}
+
+function init() {
+  buildDots();
+  bindNavigation();
+  renderDonut(
+    document.getElementById('entryDonut'),
+    [
+      { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
+      { label: 'Ausentes', value: DATA.summary.entryAbsent, color: COLORS.coral },
+      { label: 'Sin marcar', value: DATA.summary.entryUnmarked, color: COLORS.muted }
+    ],
+    DATA.summary.entry,
+    'llegaron'
+  );
+  renderLegend(document.getElementById('entryLegend'), [
+    { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
+    { label: 'Ausentes', value: DATA.summary.entryAbsent, color: COLORS.coral },
+    { label: 'Sin marcar', value: DATA.summary.entryUnmarked, color: COLORS.muted }
+  ]);
+  renderDonut(
+    document.getElementById('talksDonut'),
+    [
+      { label: 'Presentes', value: DATA.summary.present, color: COLORS.gold },
+      { label: 'Ausentes', value: DATA.summary.absent, color: COLORS.coral },
+      { label: 'Sin marcar', value: DATA.summary.unmarked, color: COLORS.muted }
+    ],
+    DATA.summary.present,
+    'presencias'
+  );
+  renderLegend(document.getElementById('talksLegend'), [
+    { label: 'Presentes', value: DATA.summary.present, color: COLORS.gold },
+    { label: 'Ausentes', value: DATA.summary.absent, color: COLORS.coral },
+    { label: 'Sin marcar', value: DATA.summary.unmarked, color: COLORS.muted }
+  ]);
+  renderTopics();
+  renderCourses();
+  renderSlots();
+
+  const match = location.hash.match(/slide-(\d+)/);
+  go(match ? parseInt(match[1], 10) - 1 : 0, false);
+}
+
+init();
+</script>
+</body>
+</html>
