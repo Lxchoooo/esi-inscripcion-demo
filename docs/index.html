@@ -538,7 +538,6 @@
       -webkit-overflow-scrolling: touch;
       touch-action: pan-y pinch-zoom;
       overflow-anchor: none;
-      contain: paint;
     }
     .slide {
       position: relative;
@@ -1288,10 +1287,12 @@ function bindNavigation() {
   function lockGesture(axis, dir, timeStamp) {
     if (current + dir < 0 || current + dir >= slides.length) return false;
     gesture = { axis: axis, dir: dir, from: current, neighbor: slides[current + dir], deck: slides[current].parentElement, dx: 0, dy: 0, vel: 0, lastD: 0, lastT: timeStamp, closing: false };
-    if (axis === 'x') {
+    if (window.matchMedia('(max-width: 700px)').matches) {
+      gesture.neighbor.style.position = 'fixed';
+    } else {
       gesture.neighbor.style.position = 'absolute';
-      gesture.neighbor.style.inset = '0';
     }
+    gesture.neighbor.style.inset = '0';
     gesture.neighbor.style.display = 'flex';
     gesture.neighbor.style.willChange = 'transform, filter';
     slides[gesture.from].style.willChange = 'transform, filter';
