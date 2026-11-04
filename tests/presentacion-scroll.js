@@ -301,6 +301,22 @@ async function main() {
   const deskPerf = await deskPage.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame, start: window.__scrollStart || 0 }));
   await desktop.close();
 
+  // Movimiento reducido: sin blur, sin desplazamiento y contenido visible.
+  const rmContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  const rmPage = await rmContext.newPage();
+  await rmPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await rmPage.waitForTimeout(400);
+  const reduced = await rmPage.evaluate(() => {
+    const slide = document.querySelectorAll('section.slide')[0];
+    const el = slide.querySelector('h2, h1, .lead, .eyebrow');
+    const cs = getComputedStyle(el);
+    return { filter: cs.filter, opacity: cs.opacity, transform: cs.transform };
+  });
+  check('movimiento reducido: sin blur, sin desplazamiento y visible',
+    reduced.filter === 'none' && reduced.opacity === '1' && reduced.transform === 'none',
+    'opacity ' + reduced.opacity + ', filter ' + reduced.filter + ', transform ' + reduced.transform);
+  await rmContext.close();
+
   const mobilePerf = await page.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame, start: window.__scrollStart || 0 }));
   const perf = {
     task: mobilePerf.task.concat(deskPerf.task),
