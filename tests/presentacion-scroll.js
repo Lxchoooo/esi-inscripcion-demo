@@ -163,6 +163,46 @@ async function main() {
   check('franjas animadas', charts.stack > 0.5, 'scaleX ' + charts.stack.toFixed(2));
   check('donas dibujadas', !/^0px[, ]+999px$/.test(charts.donut.trim()), charts.donut);
 
+  // 4b. Una diapositiva larga se puede leer hasta el final (el snap no la traba).
+  const longSlide = await page.evaluate(() => {
+    const slides = Array.from(document.querySelectorAll('section.slide'));
+    let best = 0;
+    let max = 0;
+    slides.forEach((slide, i) => {
+      const height = slide.getBoundingClientRect().height;
+      if (height > max) { max = height; best = i; }
+    });
+    return { index: best, height: Math.round(max) };
+  });
+  if (longSlide.height > 900) {
+    await page.evaluate((index) => {
+      document.querySelectorAll('section.slide')[index].scrollIntoView({ block: 'start' });
+    }, longSlide.index);
+    await page.waitForTimeout(350);
+    const before = await page.evaluate(() => window.scrollY);
+    await page.evaluate(() => window.scrollBy(0, 600));
+    await page.waitForTimeout(900);
+    const after = await page.evaluate(() => window.scrollY);
+    check('una diapositiva larga se scrollea sin que el snap la devuelva',
+      after - before >= 450, 'alto ' + longSlide.height + ' px, avance ' + (after - before) + ' px');
+
+    await page.evaluate((data) => {
+      window.scrollTo(0, data.start + data.height - window.innerHeight);
+    }, { start: before, height: longSlide.height });
+    await page.waitForTimeout(500);
+    const end = await page.evaluate((index) => {
+      const slide = document.querySelectorAll('section.slide')[index];
+      const last = slide.lastElementChild || slide;
+      const rect = last.getBoundingClientRect();
+      return { bottom: Math.round(rect.bottom), viewport: window.innerHeight, scrollY: Math.round(window.scrollY) };
+    }, longSlide.index);
+    check('el final de la diapositiva larga es alcanzable',
+      end.bottom <= end.viewport + 2, 'bottom ' + end.bottom + ' / ' + end.viewport);
+  } else {
+    check('una diapositiva larga se scrollea sin que el snap la devuelva', true, 'sin diapositivas > 900 px');
+    check('el final de la diapositiva larga es alcanzable', true, 'sin diapositivas > 900 px');
+  }
+
   // 5. Fluidez: frames largos durante scroll touch, rueda y teclado.
   const cdp = await context.newCDPSession(page);
   await page.evaluate(() => { window.scrollTo(0, 0); window.__long = { task: [], frame: [] }; });
