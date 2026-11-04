@@ -33,11 +33,8 @@ var CIERRE_EQUIPO_ = [
   { email: 'direccioniss@secundariosalsipuedes.edu.ar', nombre: 'directivos' }
 ];
 
-function cierreCuerpo_(nombre) {
-  var saludo = nombre ? 'Hola ' + nombre + ':' : 'Hola:';
+function cierreParrafos_() {
   return [
-    saludo,
-    '',
     'Ya terminó la Jornada ESI 2026 y queríamos escribirte para agradecerte por haber sido parte.',
     '',
     'Gracias por anotarte, por elegir tus charlas, por venir y por sostener los horarios. Gracias también a quienes preguntaron, contaron algo propio o se animaron a escuchar temas que no siempre son fáciles de poner en palabras. Una jornada así no se hace sola: se hace con cada curso que entra al aula dispuesto a escuchar y a respetar lo que cuenta el otro.',
@@ -52,8 +49,57 @@ function cierreCuerpo_(nombre) {
     '',
     'Luciano Arias',
     'Coordinación Jornada ESI · Instituto Secundario Salsipuedes'
-  ].join('\n');
+  ];
 }
+
+function cierreSaludo_(nombre) {
+  return nombre ? 'Hola ' + nombre + ':' : 'Hola:';
+}
+
+function cierreCuerpo_(nombre) {
+  return [cierreSaludo_(nombre)].concat(cierreParrafos_()).join('\n');
+}
+
+function cierreEsc_(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
+ * Versión HTML del mismo texto: párrafos reales en lugar de una línea larga,
+ * así la app de Gmail (y cualquier otro cliente) no reacomoda el texto y se ve
+ * igual en todos lados. Estilos en línea: los clientes de mail ignoran <style>.
+ */
+function cierreHtml_(nombre) {
+  var parrafos = cierreParrafos_();
+  var firma = parrafos.slice(parrafos.length - 2);
+  var cuerpo = parrafos.slice(0, parrafos.length - 2);
+  var partes = [];
+  var buffer = [];
+  for (var i = 0; i < cuerpo.length; i++) {
+    if (cuerpo[i] === '') {
+      if (buffer.length) {
+        partes.push(buffer.join(' '));
+        buffer = [];
+      }
+      continue;
+    }
+    buffer.push(cuerpo[i]);
+  }
+  if (buffer.length) partes.push(buffer.join(' '));
+  var est = 'font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#222222';
+  var html = ['<div style="' + est + ';max-width:600px">'];
+  html.push('<p style="margin:0 0 16px">' + cierreEsc_(cierreSaludo_(nombre)) + '</p>');
+  for (var j = 0; j < partes.length; j++) {
+    html.push('<p style="margin:0 0 16px">' + cierreEsc_(partes[j]) + '</p>');
+  }
+  html.push('<p style="margin:28px 0 0">' + cierreEsc_(firma[0]) + '<br>' + cierreEsc_(firma[1]) + '</p>');
+  html.push('</div>');
+  return html.join('\n');
+}
+
 
 /** "abril" -> "Abril"; no corrige tildes ni inventa nada. */
 function cierreNombre_(v) {
@@ -259,6 +305,21 @@ function encolarCierrePrueba() {
   var r = cierreEncolar_({ destinatarios: destinos, etiqueta: 'prueba' });
   Logger.log('cierre prueba: ' + JSON.stringify(r));
   return r;
+}
+
+/**
+ * Manda el mismo texto en HTML, directo (sin pasar por la cola), para ver cómo
+ * lo renderiza el cliente. Correr desde el editor con la cuenta esi@: sin
+ * argumento va a la propia casilla; `enviarPruebaHtml('otro@mail')` a otra.
+ */
+function enviarPruebaHtml(destino) {
+  var to = String(destino || Session.getActiveUser().getEmail() || '').trim();
+  var texto = cierreCuerpo_('Luciano');
+  var html = cierreHtml_('Luciano');
+  GmailApp.sendEmail(to, CIERRE_ASUNTO_, texto, { htmlBody: html, name: SENDER_NAME });
+  var out = { ok: true, para: to, asunto: CIERRE_ASUNTO_, html_bytes: html.length };
+  Logger.log('cierre prueba html: ' + JSON.stringify(out));
+  return out;
 }
 
 /** Estado de la campaña, sin mandar ni encolar nada. */
