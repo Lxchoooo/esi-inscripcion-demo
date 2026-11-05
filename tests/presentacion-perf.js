@@ -223,7 +223,10 @@ async function main() {
     console.error(incompletas.join('\n'));
   }
 
-  // Pasada con Fast 3G: recarga y recorrida otra vez
+  // Pasada con Fast 3G: recarga y recorrida otra vez.
+  // El registro xfer es acumulativo de toda la sesion: se congela el puntero
+  // aca para que el metrico sea solo lo transferido durante la pasada 3G.
+  const antes3G = { bytes: xfer.bytes, images: xfer.images, imageBytes: xfer.imageBytes, requests: xfer.requests };
   await cdp.send('Network.emulateNetworkConditions', {
     offline: false,
     latency: 150,
@@ -252,7 +255,12 @@ async function main() {
     if (bad.length) inc3G.push(`slide ${i + 1}: ${bad.join(', ')}`);
     peorEspera3G = Math.max(peorEspera3G, Math.ceil((Date.now() - t0) / 100) * 100);
   }
-  const total3G = { ...xfer };
+  const total3G = {
+    bytes: xfer.bytes - antes3G.bytes,
+    images: xfer.images - antes3G.images,
+    imageBytes: xfer.imageBytes - antes3G.imageBytes,
+    requests: xfer.requests - antes3G.requests
+  };
   const post3G = await page.evaluate(() => JSON.parse(JSON.stringify(window.__perf)));
 
   const kb = (n) => Math.round(n / 1024);
