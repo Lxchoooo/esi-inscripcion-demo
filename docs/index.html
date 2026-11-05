@@ -1616,6 +1616,11 @@ init();
     const salir = () => {
       if (raiz.classList.contains('carga-listo')) return;
       raiz.classList.add('carga-listo'); /* el CSS hace el fade de salida */
+      /* Decodificacion de la cola solo en tiempo realMENTE libre (sin timeout
+         que la fuerce a mitad del scrolleo) y ya con el loader fuera. */      if ('requestIdleCallback' in window) requestIdleCallback(arrancarse);
+      else setTimeout(arrancarse, 200);
+      /* Red de seguridad: si nunca hay idle, la cola igual se decodifica. */
+      setTimeout(() => { if (frames.some((x) => !x.classList.contains('ok'))) arrancarse(); }, 3500);
     };
 
     Promise.all(primeras.map(revelar)).then(() => { setTimeout(salir, 150); });
@@ -1628,8 +1633,6 @@ init();
       const pendientes = frames.filter((x) => !x.classList.contains('ok'));
       Promise.all(pendientes.map(revelar)).catch(() => {});
     };
-    if ('requestIdleCallback' in window) requestIdleCallback(arrancarse, { timeout: 1800 });
-    else setTimeout(arrancarse, 120);
   })();
 </script>
 </body>
