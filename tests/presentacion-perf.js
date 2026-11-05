@@ -166,34 +166,44 @@ async function main() {
     + ', .mini-grid > *, .kpi-grid > *, .lesson-grid > *'
     + ', .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card'
     + ') { filter: none !important; transform: none !important; transition: none !important; }';
+  const SIN_SNAP = 'html { scroll-snap-type: none !important; }';
   const medirEntrada = () => page.evaluate(() => (async () => {
     const lista = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
     const textoDe = (s) => s.querySelector('h2, h1, .lead, .eyebrow, .kpi, p');
     const filas = [];
+    const y = () => (window.scrollY || document.documentElement.scrollTop || 0);
     for (let i = 1; i < lista.length; i += 1) {
       const slide = lista[i];
       const txt = textoDe(slide);
       if (!txt) { continue; }
-      lista[Math.max(0, i - 2)].scrollIntoView({ block: 'start', behavior: 'instant' });
-      await new Promise((r) => setTimeout(r, 800));
+      const top = slide.getBoundingClientRect().top + y();
+      window.scrollTo(0, Math.max(0, top - window.innerHeight - 2));
+      await new Promise((r) => setTimeout(r, 500));
       const ms = await new Promise((ok2) => {
         let entro = false;
         let tEnter = 0;
         const t0 = performance.now();
         const paso = () => {
           window.scrollBy(0, 12);
-          const rect = slide.getBoundingClientRect();
-          if (!entro && rect.top < window.innerHeight) { entro = true; tEnter = performance.now(); }
+          if (!entro && slide.getBoundingClientRect().top < window.innerHeight) { entro = true; tEnter = performance.now(); }
           if (entro && parseFloat(getComputedStyle(txt).opacity) > 0.5) {
             ok2(performance.now() - tEnter);
             return;
           }
-          if (performance.now() - t0 > 4500) { ok2(entro ? performance.now() - tEnter : -1); return; }
+          if (performance.now() - t0 > 4000) {
+            ok2(entro ? performance.now() - tEnter : -1);
+            return;
+          }
           requestAnimationFrame(paso);
         };
         requestAnimationFrame(paso);
       });
-      filas.push({ n: i + 1, ms: Math.max(0, Math.round(ms)) });
+      filas.push({
+        n: i + 1,
+        ms: Math.max(0, Math.round(ms)),
+        inView: slide.classList.contains('in-view'),
+        settled: slide.classList.contains('settled')
+      });
     }
     const arr = filas.map((f) => f.ms).sort((a, b) => a - b);
     return { mediana: arr[Math.floor(arr.length / 2)], peor: arr[arr.length - 1], filas };
@@ -201,10 +211,12 @@ async function main() {
 
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForTimeout(600);
+  await page.addStyleTag({ content: SIN_SNAP });
   const entradaAnim = await medirEntrada();
   await page.addStyleTag({ content: SIN_ANIM });
   await page.waitForTimeout(400);
   const entradaSin = await medirEntrada();
+  console.log('ENTRADA ' + JSON.stringify({ con_anim: entradaAnim, sin_anim: entradaSin }));
 
   if (incompletas.length) {
     console.error('FALLA: imágenes incompletas a velocidad normal');
