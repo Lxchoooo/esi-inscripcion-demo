@@ -127,7 +127,7 @@ async function main() {
     const cs = getComputedStyle(el);
     return { filter: cs.filter, opacity: cs.opacity };
   });
-  check('el contenido arranca oculto y borroso', initial.opacity === '0' && /blur\(8px\)/.test(initial.filter),
+  check('el contenido arranca escondido en celu (sin blur, solo fade+subida)', initial.opacity === '0' && initial.filter === 'none',
     'opacity ' + initial.opacity + ', filter ' + initial.filter);
 
   // 2. Todas las diapositivas alcanzables y reveladas.
@@ -540,7 +540,7 @@ async function main() {
     return getComputedStyle(el).filter;
   });
   await fadePage.keyboard.press('PageDown');
-  await wait(300);
+  await wait(120);
   const midBlur = await filterOf();
   check('el blur está en juego durante la entrada', /blur\(/.test(midBlur) && midBlur !== 'none', midBlur);
   await wait(2600);
@@ -572,7 +572,7 @@ async function main() {
     const el = document.querySelector('section.slide .wrap').firstElementChild;
     return getComputedStyle(el).filter;
   });
-  check('al volver atrás el efecto se repite', /blur\(/.test(reBlur) && reBlur !== 'none', reBlur);
+  check('al volver atrás el contenido sigue visible', reBlur === 'none', reBlur);
   await wait(2600);
   const reEnd = await fadePage.evaluate(() => {
     const el = document.querySelector('section.slide .wrap').firstElementChild;

@@ -137,13 +137,18 @@
     .thanks-card
   ) {
     opacity: 0;
-    filter: blur(14px);
-    transform: translateY(24px);
+    filter: blur(4px);
+    transform: translateY(12px);
     transition:
-      opacity .9s cubic-bezier(.22, 1, .36, 1),
-      filter .9s cubic-bezier(.22, 1, .36, 1),
-      transform .9s cubic-bezier(.22, 1, .36, 1);
+      opacity .4s cubic-bezier(.22, 1, .36, 1),
+      filter .4s cubic-bezier(.22, 1, .36, 1),
+      transform .4s cubic-bezier(.22, 1, .36, 1);
   }
+  /* Preparo de composicion solo en la diapositiva que esta por entrar (la
+     asigna JS al vecino del slide revelado) y en su vecino; al settled se
+     descarta. */
+  .js .slide.prox { will-change: opacity, transform; }
+  .js .slide.settled.prox { will-change: auto; }
   /* Las fotos nunca llevan blur: el raster es caro en gama baja. Las figuras
      con img entran solo con opacity y transform; el blur queda para textos y
      paneles. will-change solo mientras dura la animacion. */
@@ -152,13 +157,6 @@
     will-change: opacity, transform;
   }
   .js .slide.settled .promo-frames > * { will-change: auto; }
-  /* Reset instantaneo: al salir de pantalla la diapositiva vuelve al estado
-     inicial sin animacion, para que el efecto sea de llegada y no de despedida. */
-  .js .slide.instant :is(
-    .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
-    .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ) { transition-duration: 0s !important; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *,
     .split > div > *,
@@ -181,37 +179,37 @@
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(2) { transition-delay: .09s; }
+  ):nth-child(2) { transition-delay: .035s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(3) { transition-delay: .18s; }
+  ):nth-child(3) { transition-delay: .07s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(4) { transition-delay: .27s; }
+  ):nth-child(4) { transition-delay: .105s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(5) { transition-delay: .36s; }
+  ):nth-child(5) { transition-delay: .14s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(6) { transition-delay: .45s; }
+  ):nth-child(6) { transition-delay: .175s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(7) { transition-delay: .54s; }
+  ):nth-child(7) { transition-delay: .175s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
     .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
-  ):nth-child(8) { transition-delay: .63s; }
+  ):nth-child(8) { transition-delay: .175s; }
   h1, h2 { text-wrap: balance; }
   .lead, .big-quote, .farewell-quote { text-wrap: pretty; }
   .wrap { width: min(1180px, 100%); }
@@ -761,16 +759,16 @@
     }
     .cover::before, .promo::before, .promo-speech::before, .farewell::before { opacity: .22; }
     .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
-    /* Menos blur y más corto: en un celular modesto conviene nitidez antes que efecto. */
+    /* Celu: solo fade + subida corta, mismo tiempos que escritorio. El blur
+       de la entrada vive solo en el raster de textos de gama alta. */
     .js .slide:not(.settled) :is(
       .wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid):not(.promo-frames),
       .split > div > *, .chart-grid > div > *, .effort-grid > *,
       .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
       .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
     ) {
-      filter: blur(8px);
-      transform: translateY(16px);
-      transition-duration: .7s, .7s, .7s;
+      transform: translateY(12px);
+      transition-duration: .4s, .4s, .4s;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1409,36 +1407,31 @@ function renderSlots() {
 const REVEAL_ITEMS = '.wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid):not(.promo-frames), .split > div > *, .chart-grid > div > *, .effort-grid > *, .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *, .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card';
 
 function revealSlide(slide) {
-  // El efecto se repite en cada llegada: al reentrar, la diapositiva vuelve al
-  // estado borroso y anima de nuevo. Los contadores reinician su conteo.
+  // Una sola vez: revelado temprano y queda revelada; al volver no se
+  // re-oculta ni re-anima. Los vecinos se preparan con .prox para que la
+  // composicion este lista cuando el usuario los alcance.
+  if (slide.classList.contains('in-view')) return;
+  const idx = slides.indexOf(slide);
+  if (slides[idx + 1]) slides[idx + 1].classList.add('prox');
+  if (idx > 0 && slides[idx - 1]) slides[idx - 1].classList.add('prox');
   slide.querySelectorAll('[data-count]').forEach((el) => { el.dataset.done = ''; });
-  slide.classList.remove('instant');
   const items = slide.querySelectorAll(REVEAL_ITEMS);
   const run = () => {
     slide.classList.add('in-view');
-    items.forEach((el) => { el.style.willChange = 'opacity, filter, transform'; });
-    // Los contadores y los gráficos arrancan cuando el contenido ya terminó de aparecer.
-    const settled = reduceMotion.matches ? 0 : (window.matchMedia('(max-width: 768px)').matches ? 1400 : 1600);
+    items.forEach((el) => { el.style.willChange = 'opacity, transform'; });
+    // Los contadores y los graficos arrancan cuando la entrada ya termino:
+    // 0,4 s de transicion + 0,175 s de stagger, con margen.
+    const settled = window.matchMedia('(max-width: 768px)').matches ? 700 : 750;
     if (slide.__revealTimer) window.clearTimeout(slide.__revealTimer);
     slide.__revealTimer = window.setTimeout(() => {
       slide.__revealTimer = null;
       items.forEach((el) => { el.style.willChange = ''; });
-      slide.classList.add('settled');
-      slide.classList.add('charts-in');
+      slide.classList.remove('prox');
+      slide.classList.add('settled', 'charts-in');
       animateCounters(slide);
     }, settled);
   };
-  // Dos cuadros para que el reset instantáneo se asiente antes de animar.
-  requestAnimationFrame(() => requestAnimationFrame(run));
-}
-
-function hideSlide(slide) {
-  if (slide.__revealTimer) {
-    window.clearTimeout(slide.__revealTimer);
-    slide.__revealTimer = null;
-  }
-  slide.classList.remove('in-view', 'settled', 'charts-in');
-  slide.classList.add('instant');
+  requestAnimationFrame(run);
 }
 
 function syncCurrent() {
@@ -1487,16 +1480,14 @@ function bindNavigation() {
   // El efecto se dispara al cruzar ~45% de visibilidad y se repite en cada
   // llegada. La diapositiva vuelve al estado inicial solo cuando sale del todo
   // de pantalla (threshold 0): así no se apaga nada a media vista.
+  /* Disparo temprano: apenas asoma (1 px dentro del margen inferior -8%).
+     Antes esperaba a que fuera 45% visible: la diapositiva aparecia con el
+     fondo vacio mas de un segundo. Ahora se dispara afuera de pantalla y el
+     efecto no interrumpe lo que ya se ve. */
   const revealOn = new IntersectionObserver((entries) => {
     entries.forEach((entry) => { if (entry.isIntersecting) revealSlide(entry.target); });
-  }, { threshold: [0.45] });
-  const revealOff = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => { if (!entry.isIntersecting) hideSlide(entry.target); });
-  }, { threshold: [0] });
-  slides.forEach((slide) => {
-    revealOn.observe(slide);
-    revealOff.observe(slide);
-  });
+  }, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
+  slides.forEach((slide) => { revealOn.observe(slide); });
 
   let restTimer = 0;
   const restSync = () => {

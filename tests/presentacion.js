@@ -43,12 +43,17 @@ check('barras animan transform (no width)',
 check('columnas animan transform (no height)',
   /\.slide\.charts-in \.course-bar \{ transform: scaleY/.test(HTML) && !/\.course-bar[^}]*transition: height/.test(HTML));
 check('stack anima transform (no width)', /\.slide\.charts-in \.stack \.seg \{ transform: scaleX/.test(HTML));
-check('entrada con fade y blur marcado en el contenido', /filter:\s*blur\(14px\)/.test(HTML) && /filter:\s*none/.test(HTML));
-check('blur movil a 8px', /filter:\s*blur\(8px\)/.test(HTML));
-check('transicion anima filter 0,9s', /filter \.9s cubic/.test(HTML));
-check('reset instantaneo al salir de pantalla', /\.js \.slide\.instant/.test(HTML));
-check('disparo del efecto al 45 por ciento', /threshold:\s*\[0\.45\]/.test(HTML));
-check('los graficos arrancan despues de la entrada', /charts-in/.test(HTML) && /classList\.add\(\s*['"]charts-in['"]\s*\)/.test(HTML));
+check('entrada con fade y blur leve en el contenido', /filter:\s*blur\(4px\)/.test(HTML) && /filter:\s*none/.test(HTML));
+const inicioCelu = HTML.indexOf('/* Celu: solo fade');
+const finCelu = HTML.lastIndexOf('@media (prefers-reduced-motion: reduce) {');
+const bloqueCelu = HTML.slice(inicioCelu, finCelu === -1 ? HTML.length : finCelu);
+check('celu sin blur en la entrada', bloqueCelu.length > 200 && /transition-duration: \.4s/.test(bloqueCelu) && !/filter:\s*blur/.test(bloqueCelu));
+check('transicion anima filter 0,4s', /filter \.4s cubic/.test(HTML));
+check('estagger con tope de 175 ms', /transition-delay: \.175s/.test(HTML) && !/transition-delay: \.1[89]s/.test(HTML) && !/transition-delay: \.2[0-9]s/.test(HTML) && !/transition-delay: \.3/.test(HTML) && !/transition-delay: \.4/.test(HTML) && !/transition-delay: \.5/.test(HTML) && !/transition-delay: \.6/.test(HTML));
+check('sin reset al salir ni hideSlide', !/\.js \.slide\.instant/.test(HTML) && !/function hideSlide/.test(HTML));
+check('disparo temprano: threshold 0 con rootMargin -8%', /threshold: 0, rootMargin: '0px 0px -8% 0px'/.test(HTML));
+check('will-change en la diapositiva por entrar', /\.js \.slide\.prox \{ will-change: opacity, transform/.test(HTML));
+check('los graficos arrancan despues de la entrada', /charts-in/.test(HTML) && /classList\.add\('settled', 'charts-in'\)/.test(HTML));
 check('la barra de progreso anima transform', /\.progress \{[^}]*transform: scaleX\(0\)/.test(HTML));
 check('los graficos no animan layout',
   !/transition:\s*(width|height)\b/.test(HTML));
