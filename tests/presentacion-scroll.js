@@ -121,7 +121,7 @@ async function main() {
     const cs = getComputedStyle(el);
     return { filter: cs.filter, opacity: cs.opacity };
   });
-  check('el contenido arranca oculto y borroso', initial.opacity === '0' && /blur\(6px\)/.test(initial.filter),
+  check('el contenido arranca oculto y borroso', initial.opacity === '0' && /blur\(10px\)/.test(initial.filter),
     'opacity ' + initial.opacity + ', filter ' + initial.filter);
 
   // 2. Todas las diapositivas alcanzables y reveladas.
