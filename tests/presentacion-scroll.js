@@ -127,7 +127,7 @@ async function main() {
     const cs = getComputedStyle(el);
     return { filter: cs.filter, opacity: cs.opacity };
   });
-  check('el contenido arranca escondido en celu (sin blur, solo fade+subida)', initial.opacity === '0' && initial.filter === 'none',
+  check('el contenido arranca visible en celu (sin ninguna clase de entrada)', initial.opacity === '1' && initial.filter === 'none',
     'opacity ' + initial.opacity + ', filter ' + initial.filter);
 
   // 2. Todas las diapositivas alcanzables y reveladas.
@@ -142,13 +142,13 @@ async function main() {
     const state = await page.evaluate((index) => {
       const slide = document.querySelectorAll('section.slide')[index];
       const top = Math.round(slide.getBoundingClientRect().top);
-      return { top: top, inView: slide.classList.contains('in-view') };
+      return { top: top, charts: slide.classList.contains('charts-in') };
     }, i);
     if (Math.abs(state.top) > 2) unreachable.push(i + 1 + ' (top ' + state.top + ')');
-    if (!state.inView) notRevealed.push(i + 1);
+    if (!state.charts) notRevealed.push(i + 1);
   }
   check('todas las diapositivas llegan al tope', unreachable.length === 0, unreachable.join(', ') || totalSlides + '/' + totalSlides);
-  check('todas las diapositivas se revelan', notRevealed.length === 0, notRevealed.join(', ') || totalSlides + '/' + totalSlides);
+  check('todas las diapositivas disparan sus graficos y contadores', notRevealed.length === 0, notRevealed.join(', ') || totalSlides + '/' + totalSlides);
 
   // 3. Sin superposición entre diapositivas.
   const boxes = await rects(page);
@@ -182,7 +182,7 @@ async function main() {
   });
   check('el contenido queda nítido y visible', settled.filter === 'none' && settled.opacity === '1',
     'opacity ' + settled.opacity + ', filter ' + settled.filter);
-  check('will-change se limpia al terminar', settled.will === '', settled.will || 'vacío');
+  check('sin will-change en el contenido', settled.will === '', settled.will || 'vacío');
 
   // Con el efecto repetido, cada gráfico se anima cuando su diapositiva entra:
   // primero se llega a ella y después se espera la animación.
@@ -306,7 +306,7 @@ async function main() {
 
   // 6. Fluidez: frames largos durante scroll touch, rueda y teclado.
   const cdp = await context.newCDPSession(page);
-  // No se resetea: se mide desde la carga, incluidas las entradas con blur.
+  // Se mide desde la carga, incluido todo el recorrido.
   await page.evaluate(() => { window.scrollTo(0, 0); });
   await page.waitForTimeout(300);
 
@@ -530,7 +530,7 @@ async function main() {
     'scrollY ' + deepPos.y + ', tope de la 3 ' + deepPos.top3);
   await reloadCtx.close();
 
-  // El blur entra, se termina y se repite: timeline real de la transición.
+  // Sin efecto de entrada: el contenido ya esta nítido apenas entra.
   const fadeInCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const fadePage = await fadeInCtx.newPage();
   await fadePage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
@@ -542,7 +542,7 @@ async function main() {
   await fadePage.keyboard.press('PageDown');
   await wait(120);
   const midBlur = await filterOf();
-  check('el blur está en juego durante la entrada', /blur\(/.test(midBlur) && midBlur !== 'none', midBlur);
+  check('a mitad de entrada ya es nítido (sin estado oculto)', midBlur === 'none', midBlur);
   await wait(2600);
   const endBlur = await filterOf();
   check('el contenido queda nítido tras la entrada', endBlur === 'none', endBlur);
@@ -557,13 +557,13 @@ async function main() {
     return { filter: cs.filter, opacity: cs.opacity, cls: slide.className };
   });
   check('la diapositiva a media vista no queda oculta',
-    restState.opacity === '1' || /blur\(/.test(restState.filter),
+    restState.opacity === '1',
     JSON.stringify(restState));
   await wait(2600);
   const restEnd = await filterOf();
   check('la diapositiva a media vista termina nítida', restEnd === 'none', restEnd);
 
-  // Repetido: al volver del final, la portada vuelve a llegar con blur.
+  // Repetido: al volver del final, la portada sigue con el contenido visible.
   await fadePage.keyboard.press('End');
   await wait(1200);
   await fadePage.keyboard.press('Home');
