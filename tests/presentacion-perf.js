@@ -69,7 +69,7 @@ async function main() {
   const xfer = { bytes: 0, images: 0, imageBytes: 0, requests: 0, done: new Map() };
   cdp.on('Network.requestWillBeSent', (e) => {
     if (inFlight.has(e.requestId)) return;
-    inFlight.set(e.requestId, e.request.url);
+    inFlight.set(e.requestId, { url: e.request.url });
   });
   cdp.on('Network.responseReceived', (e) => {
     const id = e.requestId;
