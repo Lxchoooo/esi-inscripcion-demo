@@ -391,17 +391,27 @@ async function main() {
   await deskPage.keyboard.press('End');
   await wait(900);
   const endPos = await deskPage.evaluate(() => {
-    const slides = document.querySelectorAll('section.slide');
+    const slides = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
     const last = slides[slides.length - 1];
+    const tops = slides.slice(-3).map(function (s) {
+      return Math.round(s.getBoundingClientRect().top + window.scrollY);
+    });
+    const heights = slides.slice(-3).map(function (s) {
+      return Math.round(s.getBoundingClientRect().height);
+    });
     return {
       y: Math.round(window.scrollY),
       last: Math.round(last.getBoundingClientRect().top + window.scrollY),
-      max: Math.round(document.documentElement.scrollHeight - window.innerHeight)
+      max: Math.round(document.documentElement.scrollHeight - window.innerHeight),
+      tops: tops,
+      heights: heights,
+      sh: Math.round(document.documentElement.scrollHeight),
+      ih: window.innerHeight
     };
   });
   check('Fin llega a la última diapositiva',
     Math.abs(endPos.y - endPos.last) <= 4 || endPos.y >= endPos.max - 4,
-    'scrollY ' + endPos.y + ', última ' + endPos.last + ', tope ' + endPos.max);
+    JSON.stringify(endPos));
 
   await deskPage.keyboard.press('Home');
   await wait(900);
