@@ -19,6 +19,9 @@ de Apps Script.
 
 - El panel se publica como web app de Apps Script. La URL de producción termina
   en `/exec`.
+- Si `git push` falla con `remote: fatal error in commit_refs` (error interno
+  del servidor de GitHub, no de permisos), publicar con
+  `node scripts/push-api.js`; `scripts/push.sh` ya lo intenta solo.
 - El login se hace por `google.script.run` o POST; no usar `?api=` en enlaces
   para profes.
 - Antes de desplegar: `node tests/esi-tests.js src` y

@@ -11,7 +11,9 @@ y reportes.
 - **Guía técnica:** [AGENTS.md](AGENTS.md)
 
 La demo no necesita instalación: los datos quedan en el navegador. Para
-publicar, `scripts/push.sh`.
+publicar, `scripts/push.sh`. Si `git push` falla con `fatal error in
+commit_refs` (error del servidor de GitHub, no de permisos), `node
+scripts/push-api.js` publica los mismos commits por la API.
 
 Detalle técnico: el backend es Apps Script, se abre desde `/exec` y guarda en
 Google Sheets. El login de profes usa `google.script.run` (POST), no `?api=`; las

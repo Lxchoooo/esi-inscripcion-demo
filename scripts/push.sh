@@ -28,9 +28,15 @@ fi
 if command -v gh >/dev/null 2>&1; then
   GH_TOKEN="$(gh auth token)"
   export GH_TOKEN
-  git -c credential.helper='!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f' \
-    push origin HEAD:main
+  if ! git -c credential.helper='!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f' \
+    push origin HEAD:main; then
+    echo "AVISO: git push fallo; se intenta publicar por la API." >&2
+    node scripts/push-api.js
+  fi
 else
   echo "AVISO: sin gh en el sistema; se publica con las credenciales de git ya configuradas." >&2
-  git push origin HEAD:main
+  if ! git push origin HEAD:main; then
+    echo "AVISO: git push fallo; se intenta publicar por la API." >&2
+    node scripts/push-api.js
+  fi
 fi
