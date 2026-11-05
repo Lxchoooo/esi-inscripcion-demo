@@ -75,6 +75,10 @@ async function main() {
   const server = await serve();
   const port = server.address().port;
   const browser = await chromium.launch();
+  globalThis.__cleanup = async () => {
+    try { await browser.close(); } catch (e) { /* noop */ }
+    try { server.close(); } catch (e) { /* noop */ }
+  };
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
@@ -184,32 +188,52 @@ async function main() {
   // primero se llega a ella y después se espera la animación.
   const chartScales = await (async () => {
     const out = {};
-    const read = (index, selector) => page.waitForFunction((o) => {
-      const slide = document.querySelectorAll('section.slide')[o.index];
-      const el = slide && slide.querySelector(o.selector);
-      if (!el) return null;
-      const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
-      return { sx: m.a, sy: m.d };
-    }, { index, selector }, { timeout: 7000 });
-    const donut = (index) => page.waitForFunction((o) => {
-      const slide = document.querySelectorAll('section.slide')[o.index];
-      const el = slide && slide.querySelector('.donut .seg');
-      if (!el) return null;
-      return getComputedStyle(el).strokeDasharray;
-    }, { index }, { timeout: 7000 });
+    // Lecturas defensivas: un timeout de waitForFunction Rechaza (no devuelve
+    // null) y un NaN no serializable no debe tumbar el proceso.
+    const num = (value) => (typeof value === 'number' && isFinite(value) ? value : -1);
+    const scale = async (index, selector) => {
+      await got(index);
+      try {
+        const pair = await page.waitForFunction((o) => {
+          const slide = document.querySelectorAll('section.slide')[o.index];
+          const el = slide && slide.querySelector(o.selector);
+          if (!el) return [-1, -1];
+          const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+          return [isFinite(m.a) ? m.a : -1, isFinite(m.d) ? m.d : -1];
+        }, { index, selector }, { timeout: 7000 });
+        return { sx: num(pair[0]), sy: num(pair[1]) };
+      } catch (err) {
+        return { sx: -1, sy: -1, err: String(err && err.message || err) };
+      }
+    };
+    const donutText = async (index) => {
+      await got(index);
+      try {
+        return String(await page.waitForFunction((o) => {
+          const slide = document.querySelectorAll('section.slide')[o.index];
+          const el = slide && slide.querySelector('.donut .seg');
+          if (!el) return '';
+          const dash = getComputedStyle(el).strokeDasharray;
+          return /^0px[, ]+999px$/.test(dash.trim()) ? '' : dash;
+        }, { index }, { timeout: 7000 }) || '');
+      } catch (err) {
+        return '(timeout: ' + String(err && err.message || err) + ')';
+      }
+    };
     const got = (index) => page.evaluate((n) => {
       document.querySelectorAll('section.slide')[n].scrollIntoView({ block: 'start' });
     }, index);
-    await got(6); out.bar = await read(6, '.bar-fill') || { sx: 0, sy: 0 };
-    await got(7); out.course = await read(7, '.course-bar') || { sx: 0, sy: 0 };
-    await got(8); out.stack = await read(8, '.stack .seg') || { sx: 0, sy: 0 };
-    await got(4); out.donut = String(await donut(4) || '');
+    out.bar = await scale(6, '.bar-fill');
+    out.course = await scale(7, '.course-bar');
+    out.stack = await scale(8, '.stack .seg');
+    out.donut = await donutText(4);
     return out;
   })();
-  check('barras de temas animadas', chartScales.bar.sx > 0.2, 'scaleX ' + chartScales.bar.sx.toFixed(2));
-  check('columnas de cursos animadas', chartScales.course.sy > 0.2, 'scaleY ' + chartScales.course.sy.toFixed(2));
-  check('franjas animadas', chartScales.stack.sx > 0.5, 'scaleX ' + chartScales.stack.sx.toFixed(2));
-  check('donas dibujadas', !/^0px[, ]+999px$/.test(chartScales.donut.trim()), chartScales.donut);
+  const fmt = (value) => (typeof value === 'number' ? value.toFixed(2) : String(value));
+  check('barras de temas animadas', chartScales.bar.sx > 0.2, 'scaleX ' + fmt(chartScales.bar.sx));
+  check('columnas de cursos animadas', chartScales.course.sy > 0.2, 'scaleY ' + fmt(chartScales.course.sy));
+  check('franjas animadas', chartScales.stack.sx > 0.5, 'scaleX ' + fmt(chartScales.stack.sx));
+  check('donas dibujadas', !/^0px[, ]+999px$/.test(chartScales.donut.trim()) && chartScales.donut !== '', chartScales.donut);
 
   // 4b. Una diapositiva larga se puede leer hasta el final (el snap no la traba).
   const longSlide = await page.evaluate(() => {
@@ -594,7 +618,11 @@ async function main() {
   process.exitCode = failed.length ? 1 : 0;
 }
 
-main().catch((err) => {
-  console.error(err && err.stack ? err.stack : err);
+main().catch(async (err) => {
+  console.error('ERROR inesperado: ' + (err && err.stack ? err.stack : err));
   process.exitCode = 1;
+  if (globalThis.__cleanup) {
+    try { await globalThis.__cleanup(); } catch (e) { /* noop */ }
+  }
+  process.exit(1); // sin esto el Chromium y el servidor mantienen vivo el proceso
 });
