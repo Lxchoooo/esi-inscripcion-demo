@@ -178,23 +178,36 @@ async function main() {
     'opacity ' + settled.opacity + ', filter ' + settled.filter);
   check('will-change se limpia al terminar', settled.will === '', settled.will || 'vacío');
 
-  const charts = await page.evaluate(() => {
-    const matrix = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform);
-    const slide = (index) => document.querySelectorAll('section.slide')[index];
-    const bar = matrix(slide(6).querySelector('.bar-fill'));
-    const course = matrix(slide(7).querySelector('.course-bar'));
-    const stack = matrix(slide(8).querySelector('.stack .seg'));
-    return {
-      bar: bar.a,
-      course: course.d,
-      stack: stack.a,
-      donut: getComputedStyle(slide(4).querySelector('.donut .seg')).strokeDasharray
-    };
-  });
-  check('barras de temas animadas', charts.bar > 0.2, 'scaleX ' + charts.bar.toFixed(2));
-  check('columnas de cursos animadas', charts.course > 0.2, 'scaleY ' + charts.course.toFixed(2));
-  check('franjas animadas', charts.stack > 0.5, 'scaleX ' + charts.stack.toFixed(2));
-  check('donas dibujadas', !/^0px[, ]+999px$/.test(charts.donut.trim()), charts.donut);
+  // Con el efecto repetido, cada gráfico se anima cuando su diapositiva entra:
+  // primero se llega a ella y después se espera la animación.
+  const chartScales = await (async () => {
+    const out = {};
+    const read = (index, selector) => page.waitForFunction((o) => {
+      const slide = document.querySelectorAll('section.slide')[o.index];
+      const el = slide && slide.querySelector(o.selector);
+      if (!el) return null;
+      const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+      return { sx: m.a, sy: m.d };
+    }, { index, selector }, { timeout: 7000 });
+    const donut = (index) => page.waitForFunction((o) => {
+      const slide = document.querySelectorAll('section.slide')[o.index];
+      const el = slide && slide.querySelector('.donut .seg');
+      if (!el) return null;
+      return getComputedStyle(el).strokeDasharray;
+    }, { index }, { timeout: 7000 });
+    const got = (index) => page.evaluate((n) => {
+      document.querySelectorAll('section.slide')[n].scrollIntoView({ block: 'start' });
+    }, index);
+    await got(6); out.bar = await read(6, '.bar-fill') || { sx: 0, sy: 0 };
+    await got(7); out.course = await read(7, '.course-bar') || { sx: 0, sy: 0 };
+    await got(8); out.stack = await read(8, '.stack .seg') || { sx: 0, sy: 0 };
+    await got(4); out.donut = String(await donut(4) || '');
+    return out;
+  })();
+  check('barras de temas animadas', chartScales.bar.sx > 0.2, 'scaleX ' + chartScales.bar.sx.toFixed(2));
+  check('columnas de cursos animadas', chartScales.course.sy > 0.2, 'scaleY ' + chartScales.course.sy.toFixed(2));
+  check('franjas animadas', chartScales.stack.sx > 0.5, 'scaleX ' + chartScales.stack.sx.toFixed(2));
+  check('donas dibujadas', !/^0px[, ]+999px$/.test(chartScales.donut.trim()), chartScales.donut);
 
   // 4b. Una diapositiva larga se puede leer hasta el final (el snap no la traba).
   const longSlide = await page.evaluate(() => {
