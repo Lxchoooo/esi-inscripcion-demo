@@ -6,6 +6,18 @@
 <meta name="theme-color" content="#0b1f17">
 <link rel="icon" href="assets/logo-iss-round.webp" type="image/webp">
 <meta name="description" content="Jornada ESI 2026: los números, los temas y lo que aprendimos. Estadísticas agregadas, sin datos personales.">
+<link rel="canonical" href="https://lxchoooo.github.io/esi-inscripcion-demo/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Jornada ESI 2026">
+<meta property="og:locale" content="es_AR">
+<meta property="og:title" content="Jornada ESI 2026 · Una historia que no se detuvo">
+<meta property="og:description" content="Los números, los temas y lo que aprendimos de la primera jornada ESI virtual del ISS. Estadísticas agregadas, sin datos personales.">
+<meta property="og:url" content="https://lxchoooo.github.io/esi-inscripcion-demo/">
+<meta property="og:image" content="https://lxchoooo.github.io/esi-inscripcion-demo/assets/promo/pasillo-naranja-turquesa.webp">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="854">
+<meta property="og:image:alt" content="La Promo 26 Turismo en el pasillo el día de la murga, con remeras naranja y turquesa">
+<meta name="twitter:card" content="summary_large_image">
 <title>Jornada ESI 2026 · Una historia que no se detuvo</title>
 <script>document.documentElement.classList.add('js');</script>
 <style>
@@ -14,7 +26,7 @@
     --ink-2: #102a20;
     --cream: #f5f1e8;
     --muted: rgba(245, 241, 232, .66);
-    --faint: rgba(245, 241, 232, .38);
+    --faint: rgba(245, 241, 232, .5);
     --gold: #e6b85c;
     --coral: #e07a5f;
     --sage: #9bc4a8;
@@ -662,6 +674,7 @@
     .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
     .cover::before, .promo::before, .promo-speech::before, .farewell::before { filter: blur(4px); }
     .cover::after, .promo::after, .promo-speech::after, .farewell::after { filter: blur(5px); }
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
   }
@@ -679,7 +692,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter" aria-live="polite">01 / 23</span>
+    <span id="counter" class="counter">01 / 23</span>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
   </div>
 </header>
@@ -698,7 +711,7 @@
         <span>12 cursos</span>
         <span>Una comunidad</span>
       </div>
-      <button class="start" type="button" data-go="1">Recorrer la jornada <span aria-hidden="true">→</span></button>
+      <button class="start" type="button" data-go="Una idea que se hizo jornada">Recorrer la jornada <span aria-hidden="true">→</span></button>
       <p class="swipe-hint">Deslizá para seguir <span aria-hidden="true">↓</span></p>
     </div>
   </section>
@@ -957,7 +970,7 @@
       <p class="lead">A los profes, preceptores, equipo directivo, maestranza y administrativos, familias y a toda la comunidad del ISS. A quienes se animaron a hablar de ESI. A quienes escucharon. A quienes organizaron, corrigieron, insistieron y sostuvieron. A los que vinieron y a los que no pudieron venir, pero estuvieron de alguna manera. A los que van a seguir esta conversación el año que viene, aunque hoy todavía no lo sepan.</p>
       <p class="lead">La ESI no termina en una jornada. Esto recién empieza, y ojalá que lo que hablamos acá siga creciendo en cada aula, en cada recreo y en cada casa, incluso en las charlas que no llevan título ni sala: esas pequeñas que se hacen al pasar.</p>
       <div class="thanks-actions">
-        <button class="ghost-btn" type="button" data-go="13">Palabras para la promo →</button>
+        <button class="ghost-btn" type="button" data-go="Palabras para la promo">Palabras para la promo →</button>
         <button class="ghost-btn" type="button" data-prev>← Diapositiva anterior</button>
       </div>
       <p class="note">Presentación hecha con datos agregados de la Jornada ESI 2026. Sin nombres, mails ni DNI. Hecha con el panel de inscripción ESI.</p>
@@ -973,7 +986,7 @@
       <p class="lead">Hay un dato que vale la pena dejar caer despacio: esta escuela que fundaron los vecinos tiene hoy profesores que una vez se sentaron en estos mismos bancos. Los de 1° te miran ahora igual que vos mirabas a los grandes. Con algunos años más, y el camino que cada uno elija, cualquiera de ustedes puede volver del otro lado del escritorio.</p>
       <p class="lead">Gracias, promo, por haber sido casa, grupo y equipo. Ojalá que donde vaya cada uno se lleve un pedazo de todo esto, que nada se esfume en las fotos de un grupo de WhatsApp y que las puertas queden siempre abiertas para reencontrarnos. Ya falta poco: el 13 de diciembre es nuestro egreso y el 18 de diciembre, la colación de fin de año. Como en los actos de fin de ciclo: los mejores deseos para todos, y la promesa de que esto no termina acá, sino en lo que viene.</p>
       <div class="thanks-actions" style="justify-content: center;">
-        <button class="ghost-btn" type="button" data-go="14">Seguir →</button>
+        <button class="ghost-btn" type="button" data-go="Cinco años, un solo nombre">Seguir →</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
@@ -1022,8 +1035,8 @@
       <h2>Cuando salimos <span class="accent">a escena.</span></h2>
       <p class="lead">El día de la murga: naranja, turquesa y pintura blanca. No importó quién era tímido y quién no: estuvimos todos, con las manos arriba. Yo soy porque nosotros somos.</p>
       <div class="promo-frames promo-duo">
-        <figure><img src="assets/promo/pasillo-naranja-turquesa.webp?v=2" srcset="assets/promo/pasillo-naranja-turquesa-800.webp?v=2 800w, assets/promo/pasillo-naranja-turquesa.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso alineado en el pasillo el día de la murga, con remeras naranja y turquesa y pintura blanca" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></figure>
-        <figure><img src="assets/promo/naranja-turquesa-patio.webp?v=2" srcset="assets/promo/naranja-turquesa-patio-800.webp?v=2 800w, assets/promo/naranja-turquesa-patio.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso el día de la murga en el patio, con las remeras naranja y turquesa y las manos arriba" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/pasillo-naranja-turquesa.webp?v=2" srcset="assets/promo/pasillo-naranja-turquesa-800.webp?v=2 800w, assets/promo/pasillo-naranja-turquesa.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso alineado en el pasillo el día de la murga, con remeras naranja y turquesa y pintura blanca" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/naranja-turquesa-patio.webp?v=2" srcset="assets/promo/naranja-turquesa-patio-800.webp?v=2 800w, assets/promo/naranja-turquesa-patio.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso el día de la murga en el patio, con las remeras naranja y turquesa y las manos arriba" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></figure>
       </div>
     </div>
   </section>
@@ -1034,8 +1047,8 @@
       <h2>Lo que se aprende <span class="accent">afuera del aula.</span></h2>
       <p class="lead">La caminata con los buzos del viaje por los hoteles de Salsipuedes, el Wayna Lodge de Sierras y el Orfeo Suites; después, el primer restaurante armado por nosotros dentro de la escuela, con la cocina y el menú a cargo y el estreno del SUM. Turismo es salir a conocer lugares, pero lo que más conocimos fue a nosotros.</p>
       <div class="promo-frames promo-duo">
-        <figure><img src="assets/promo/escalera-buzos.webp?v=2" srcset="assets/promo/escalera-buzos-800.webp?v=2 800w, assets/promo/escalera-buzos.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso con los buzos del viaje en la escalera, durante la caminata por el Wayna Lodge de Sierras y el Orfeo Suites de Salsipuedes" width="1280" height="960" decoding="async" style="--pos: 50% 45%"></figure>
-        <figure><img src="assets/promo/patio-certificado.webp?v=2" srcset="assets/promo/patio-certificado-800.webp?v=2 800w, assets/promo/patio-certificado.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el patio al sol el día del primer restaurante de la escuela, con el menú de los platos que cocinaron para estrenar el SUM" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/escalera-buzos.webp?v=2" srcset="assets/promo/escalera-buzos-800.webp?v=2 800w, assets/promo/escalera-buzos.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso con los buzos del viaje en la escalera, durante la caminata por el Wayna Lodge de Sierras y el Orfeo Suites de Salsipuedes" width="1280" height="960" decoding="async" style="--pos: 50% 45%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/patio-certificado.webp?v=2" srcset="assets/promo/patio-certificado-800.webp?v=2 800w, assets/promo/patio-certificado.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el patio al sol el día del primer restaurante de la escuela, con el menú de los platos que cocinaron para estrenar el SUM" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></figure>
       </div>
     </div>
   </section>
@@ -1047,7 +1060,7 @@
       <p class="lead">Un baby shower que armamos en el aula para Lola, esperando a Enzo: la torta, el cartel de colores y el curso entero apretado en la foto. Los mejores recuerdos casi nunca son los grandes.</p>
       <!-- Confirmado con la promo: baby shower de Lola, esperando a Enzo. Con nombres pedidos por la promo. -->
       <div class="promo-frames promo-solo">
-        <figure><img src="assets/promo/festejo-torta.webp?v=2" srcset="assets/promo/festejo-torta-800.webp?v=2 800w, assets/promo/festejo-torta.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 880px" alt="La torta y el cartel del baby shower de Lola en el aula, con el curso entero apretado en la foto esperando a Enzo" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/festejo-torta.webp?v=2" srcset="assets/promo/festejo-torta-800.webp?v=2 800w, assets/promo/festejo-torta.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 880px" alt="La torta y el cartel del baby shower de Lola en el aula, con el curso entero apretado en la foto esperando a Enzo" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></figure>
       </div>
     </div>
   </section>
@@ -1058,11 +1071,11 @@
       <h2>Todavía queda <span class="accent">un último abrazo.</span></h2>
       <p class="lead">Manos arriba, espuma en el aire y la sensación de que esto va a durar para siempre, aunque ya sepamos que no. Falta poco para el egreso y la colación. Mientras tanto, una foto más.</p>
       <div class="promo-frames promo-bn">
-        <figure><img src="assets/promo/manos-arriba-bn.webp?v=2" srcset="assets/promo/manos-arriba-bn-800.webp?v=2 800w, assets/promo/manos-arriba-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del cierre de la presentación de buzos, con las manos arriba y espuma en el aire" width="1280" height="854" decoding="async" style="--pos: 50% 42%"></figure>
-        <figure><img src="assets/promo/pasto-bn.webp?v=2" srcset="assets/promo/pasto-bn-800.webp?v=2 800w, assets/promo/pasto-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del book de fotos de la promo en la estancia El Rosal de Agua de Oro, sobre el pasto con las manos arriba" width="720" height="1280" decoding="async" style="--pos: 50% 62%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/manos-arriba-bn.webp?v=2" srcset="assets/promo/manos-arriba-bn-800.webp?v=2 800w, assets/promo/manos-arriba-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del cierre de la presentación de buzos, con las manos arriba y espuma en el aire" width="1280" height="854" decoding="async" style="--pos: 50% 42%"></figure>
+        <figure><img fetchpriority="low" src="assets/promo/pasto-bn.webp?v=2" srcset="assets/promo/pasto-bn-800.webp?v=2 800w, assets/promo/pasto-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del book de fotos de la promo en la estancia El Rosal de Agua de Oro, sobre el pasto con las manos arriba" width="720" height="1280" decoding="async" style="--pos: 50% 62%"></figure>
       </div>
       <div class="thanks-actions" style="justify-content: center;">
-        <button class="ghost-btn" type="button" data-go="21">Seguir →</button>
+        <button class="ghost-btn" type="button" data-go="Cinco años">Seguir →</button>
       </div>
     </div>
   </section>
@@ -1079,7 +1092,7 @@
         <span>Colación de fin de año · 18 de diciembre</span>
       </div>
       <div class="thanks-actions" style="justify-content: center;">
-        <button class="ghost-btn" type="button" data-go="22">Último mensaje →</button>
+        <button class="ghost-btn" type="button" data-go="Hecho con el corazón">Último mensaje →</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
@@ -1093,7 +1106,7 @@
       <p class="farewell-quote">No es un adiós.<br>Es un <span class="accent">hasta pronto.</span> ✨</p>
       <p class="lead">Gracias, ISS, por estos años. Por la gente que nos tocó conocer acá y por todo lo que nos llevamos. 🫶</p>
       <div class="thanks-actions" style="justify-content: center;">
-        <button class="ghost-btn" type="button" data-go="0">Volver al inicio</button>
+        <button class="ghost-btn" type="button" data-go="Portada">Volver al inicio</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
@@ -1178,6 +1191,13 @@ function goTo(index) {
   slides[n].scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
 }
 
+/* Los botones apuntan a la diapositiva por su data-title: si se agrega o se
+   mueve una diapositiva, el salto sigue siendo el correcto sin tocar indices. */
+function slideIndexFor(value) {
+  if (/^\d+$/.test(value)) return parseInt(value, 10);
+  return slides.findIndex((slide) => slide.dataset.title === value);
+}
+
 function renderLegend(el, items) {
   el.innerHTML = items.map((item) =>
     '<span class="legend-item"><i style="background:' + item.color + '"></i>' +
@@ -1187,14 +1207,15 @@ function renderLegend(el, items) {
 
 function renderDonut(el, segments, centerValue, centerLabel) {
   el.innerHTML = '';
+  el.setAttribute('role', 'img');
+  el.setAttribute('aria-label', segments.map((seg) => esc(seg.label) + ': ' + fmt.format(seg.value)).join(', '));
   const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
   const radius = 70;
   const circumference = 2 * Math.PI * radius;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 200 200');
   svg.setAttribute('class', 'donut');
-  svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', centerValue + ' ' + centerLabel);
+  svg.setAttribute('aria-hidden', 'true');
 
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   bg.setAttribute('cx', '100');
@@ -1310,7 +1331,10 @@ function syncCurrent() {
 function bindNavigation() {
   document.querySelectorAll('[data-next]').forEach((btn) => btn.addEventListener('click', () => goTo(current + 1)));
   document.querySelectorAll('[data-prev]').forEach((btn) => btn.addEventListener('click', () => goTo(current - 1)));
-  document.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => goTo(parseInt(btn.dataset.go, 10))));
+  document.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => {
+    const index = slideIndexFor(btn.dataset.go);
+    if (index >= 0) goTo(index);
+  }));
 
   // Flechas horizontales de presentación. El scroll vertical (↑ ↓, PageUp/Down,
   // espacio, Home/End) sigue siendo nativo: acá no se cancela ningún evento.
@@ -1364,36 +1388,30 @@ function bindNavigation() {
 
 function init() {
   bindNavigation();
-  renderDonut(
-    document.getElementById('entryDonut'),
-    [
-      { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
-      { label: 'Ausentes', value: DATA.summary.entryAbsent, color: COLORS.coral },
-      { label: 'Sin marcar', value: DATA.summary.entryUnmarked, color: COLORS.muted }
-    ],
-    DATA.summary.entry,
-    'llegaron'
-  );
-  renderLegend(document.getElementById('entryLegend'), [
+  const entrySegments = [
     { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
     { label: 'Ausentes', value: DATA.summary.entryAbsent, color: COLORS.coral },
     { label: 'Sin marcar', value: DATA.summary.entryUnmarked, color: COLORS.muted }
-  ]);
-  renderDonut(
-    document.getElementById('talksDonut'),
-    [
-      { label: 'Presencias', value: DATA.summary.present, color: COLORS.gold },
-      { label: 'Ausentes', value: DATA.summary.absent, color: COLORS.coral },
-      { label: 'Sin marcar', value: DATA.summary.unmarked, color: COLORS.muted }
-    ],
-    DATA.summary.present,
-    'presencias'
-  );
-  renderLegend(document.getElementById('talksLegend'), [
+  ];
+  const talksSegments = [
     { label: 'Presencias', value: DATA.summary.present, color: COLORS.gold },
     { label: 'Ausentes', value: DATA.summary.absent, color: COLORS.coral },
     { label: 'Sin marcar', value: DATA.summary.unmarked, color: COLORS.muted }
-  ]);
+  ];
+  renderDonut(
+    document.getElementById('entryDonut'),
+    entrySegments,
+    DATA.summary.entry,
+    'llegaron'
+  );
+  renderLegend(document.getElementById('entryLegend'), entrySegments);
+  renderDonut(
+    document.getElementById('talksDonut'),
+    talksSegments,
+    DATA.summary.present,
+    'presencias'
+  );
+  renderLegend(document.getElementById('talksLegend'), talksSegments);
   renderTopics();
   renderCourses();
   renderSlots();
@@ -1452,9 +1470,7 @@ init();
     const pinta = () => {
       if (progreso) progreso.style.transform = 'scaleX(' + (listas / primeras.length + 0.02) + ')';
     };
-    primeras.forEach((im) => {
-      revelar(im).then(() => { listas += 1; pinta(); });
-    });
+    const pendientesPrimeras = primeras.map((im) => revelar(im).then(() => { listas += 1; pinta(); }));
     /* Las demas se decodifican en el pase de tiempo libre (abajo): todas las
        peticiones ya salieron (sin lazy, en orden del DOM), asi al decodificar
        van a aparecer en cuanto su decodificacion resuelva, sin picos de
@@ -1463,14 +1479,15 @@ init();
     const salir = () => {
       if (raiz.classList.contains('carga-listo')) return;
       raiz.classList.add('carga-listo'); /* el CSS hace el fade de salida */
-      /* Decodificacion de la cola solo en tiempo realMENTE libre (sin timeout
-         que la fuerce a mitad del scrolleo) y ya con el loader fuera. */      if ('requestIdleCallback' in window) requestIdleCallback(arrancarse);
+      /* Decodificacion de la cola solo en tiempo realmente libre (sin timeout
+         que la fuerce a mitad del scrolleo) y ya con el loader fuera. */
+      if ('requestIdleCallback' in window) requestIdleCallback(arrancarse);
       else setTimeout(arrancarse, 200);
       /* Red de seguridad: si nunca hay idle, la cola igual se decodifica. */
       setTimeout(() => { if (frames.some((x) => !x.classList.contains('ok'))) arrancarse(); }, 3500);
     };
 
-    Promise.all(primeras.map(revelar)).then(() => { setTimeout(salir, 150); });
+    Promise.all(pendientesPrimeras).then(() => { setTimeout(salir, 150); });
     setTimeout(salir, 2500); /* techo: la presentacion se muestra igual */
 
     /* Techo vencido o fotos sueltas: pase en tiempo libre del hilo que

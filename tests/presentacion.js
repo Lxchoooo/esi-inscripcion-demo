@@ -65,6 +65,24 @@ check('sizes por grupo de galeria', (HTML.match(/sizes="\(max-width: 768px\) 88v
 check('logos en webp y sin png/jpg grandes', /assets\/logo-iss-round\.webp/.test(HTML) && /assets\/logo-aes-round\.webp/.test(HTML) && !/logo-iss-round\.png/.test(HTML) && !/logo-aes-round\.png/.test(HTML));
 check('logo del header con fetchpriority high', /class="brand-logo"[^>]*fetchpriority="high"/.test(HTML));
 
+check('el CSS cierra todas las llaves', (() => {
+  const css = HTML.split('<style>')[1].split('</style>')[0];
+  return (css.match(/\{/g) || []).length === (css.match(/\}/g) || []).length;
+})());
+check('prefers-reduced-motion no queda anidado en otro @media', (() => {
+  const css = HTML.split('<style>')[1].split('</style>')[0];
+  const at = css.indexOf('@media (prefers-reduced-motion: reduce)');
+  if (at < 0) return false;
+  const before = css.slice(0, at);
+  return (before.match(/\{/g) || []).length === (before.match(/\}/g) || []).length;
+})());
+check('preview al compartir (Open Graph y Twitter Card)',
+  /property="og:title"/.test(HTML) && /property="og:image"/.test(HTML) && /name="twitter:card"/.test(HTML));
+check('los botones navegan por data-title, no por indice',
+  (HTML.match(/data-go="/g) || []).length >= 6 && !/data-go="\d+"/.test(HTML));
+check('un solo role=img por grafico',
+  /el\.setAttribute\('aria-label'/.test(HTML) && /svg\.setAttribute\('aria-hidden', 'true'\)/.test(HTML));
+
 check('contador inicial 01 / 23', /01 \/ 23</.test(HTML));
 check('contadores con data-count', (HTML.match(/data-count=/g) || []).length >= 4);
 check('graficos de entrada y charlas', /id="entryDonut"/.test(HTML) && /id="talksDonut"/.test(HTML));
