@@ -431,6 +431,29 @@ async function main() {
   const deskPerf = await deskPage.evaluate(() => ({ task: window.__long.task, frame: window.__long.frame, start: window.__scrollStart || 0 }));
   await desktop.close();
 
+  // Recarga: siempre arranca en la primera diapositiva; el enlace #slide-N solo en visita nueva.
+  const reloadCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+  const reloadPage = await reloadCtx.newPage();
+  await reloadPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await reloadPage.waitForTimeout(500);
+  await reloadPage.evaluate(() => window.scrollTo(0, 99999));
+  await wait(800);
+  await reloadPage.reload({ waitUntil: 'load' });
+  await wait(500);
+  const reloadPos = await reloadPage.evaluate(() => Math.round(window.scrollY));
+  check('la recarga vuelve a la primera diapositiva', reloadPos <= 8, 'scrollY ' + reloadPos);
+
+  const deepPage = await reloadCtx.newPage();
+  await deepPage.goto('http://127.0.0.1:' + port + '/#slide-3', { waitUntil: 'load' });
+  await wait(800);
+  const deepPos = await deepPage.evaluate(() => ({
+    y: Math.round(window.scrollY),
+    top3: Math.round(document.querySelectorAll('section.slide')[2].getBoundingClientRect().top + window.scrollY)
+  }));
+  check('el enlace #slide-3 abre en esa diapositiva', Math.abs(deepPos.y - deepPos.top3) <= 4,
+    'scrollY ' + deepPos.y + ', tope de la 3 ' + deepPos.top3);
+  await reloadCtx.close();
+
   // Movimiento reducido: sin blur, sin desplazamiento y contenido visible.
   const rmContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const rmPage = await rmContext.newPage();

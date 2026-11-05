@@ -1332,10 +1332,25 @@ function init() {
   renderCourses();
   renderSlots();
 
-  const match = location.hash.match(/slide-(\d+)/);
-  if (match) {
-    const target = slides[parseInt(match[1], 10) - 1];
-    if (target) target.scrollIntoView({ block: 'start' });
+  // Recarga: vuelve a la primera diapositiva sí o sí. El navegador guarda el
+  // scroll de la sesión anterior; se anula con scrollRestoration 'manual' y se
+  // fuerzo el tope. Los enlaces con #slide-N solo se respetan en visitas
+  // nuevas, no en recargas.
+  try {
+    const nav = performance.getEntriesByType('navigation')[0];
+    const isReload = !nav || nav.type === 'reload';
+    if (history.scrollRestoration) history.scrollRestoration = 'manual';
+    if (isReload) {
+      window.scrollTo(0, 0);
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    } else {
+      const target = location.hash.match(/slide-(\d+)/);
+      if (target && slides[parseInt(target[1], 10) - 1]) {
+        slides[parseInt(target[1], 10) - 1].scrollIntoView({ block: 'start' });
+      }
+    }
+  } catch (err) {
+    window.scrollTo(0, 0);
   }
   syncCurrent();
 }
