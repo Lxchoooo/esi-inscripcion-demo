@@ -493,14 +493,6 @@
   .promo .lead { margin-left: auto; margin-right: auto; }
   .promo .farewell-quote { max-width: 20ch; }
 
-  /* Ahorro de layout: las diapositivas fuera de pantalla no calculan su
-     render mientras no se acercan. La estimacion intrinseca es 100dvh y el
-     navegador recuerda el tamanio real despues del primer pintado.
-     Si genera saltos con scroll-snap en el test, se revierte. */
-  @supports (content-visibility: auto) {
-    .js .slide { content-visibility: auto; contain-intrinsic-size: auto 100dvh; }
-  }
-
   /* Promo: galerias de fotos de la promo 26 Turismo. Cada figura anima su
      propia entrada (fade + blur + subida); el contenedor esta en la lista de
      exclusiones del efecto. El recorte de verticales se hace con --pos. */
