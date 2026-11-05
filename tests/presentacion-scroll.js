@@ -483,8 +483,15 @@ async function main() {
     JSON.stringify(endPos));
 
   await deskPage.keyboard.press('Home');
-  await wait(900);
-  const homePos = await deskPage.evaluate(() => window.scrollY);
+  // Igual que con Fin: el principio importa, no el reloj del constructor.
+  let homeY = -1, iguales = 0;
+  const t0H = Date.now();
+  while (iguales < 3 && Date.now() - t0H < 2500) {
+    await wait(80);
+    const y = await deskPage.evaluate(() => Math.round(window.scrollY));
+    if (y === homeY) { iguales += 1; } else { iguales = 0; homeY = y; }
+  }
+  const homePos = homeY;
   check('Inicio vuelve al principio', homePos <= 4, 'scrollY ' + homePos);
 
   // Rueda sostenida: recorre todo el documento.
