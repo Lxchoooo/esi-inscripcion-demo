@@ -197,13 +197,16 @@ async function main() {
         const pair = await page.waitForFunction((o) => {
           const slide = document.querySelectorAll('section.slide')[o.index];
           const el = slide && slide.querySelector(o.selector);
-          if (!el) return [-1, -1];
-          const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
-          return [isFinite(m.a) ? m.a : -1, isFinite(m.d) ? m.d : -1];
+          if (!el) return null;
+          const t = getComputedStyle(el).transform;
+          if (!t || t === 'none') return null; // charts-in todavia no llego: seguir esperando
+          const m = new DOMMatrixReadOnly(t);
+          if (!isFinite(m.a) || !isFinite(m.d)) return null;
+          return [m.a, m.d];
         }, { index, selector }, { timeout: 7000 });
         return { sx: num(pair[0]), sy: num(pair[1]) };
       } catch (err) {
-        return { sx: -1, sy: -1, err: String(err && err.message || err) };
+        return { sx: -1, sy: -1, err: String((err && err.message) || err).slice(0, 120) };
       }
     };
     const donutText = async (index) => {
@@ -230,9 +233,11 @@ async function main() {
     return out;
   })();
   const fmt = (value) => (typeof value === 'number' ? value.toFixed(2) : String(value));
-  check('barras de temas animadas', chartScales.bar.sx > 0.2, 'scaleX ' + fmt(chartScales.bar.sx));
-  check('columnas de cursos animadas', chartScales.course.sy > 0.2, 'scaleY ' + fmt(chartScales.course.sy));
-  check('franjas animadas', chartScales.stack.sx > 0.5, 'scaleX ' + fmt(chartScales.stack.sx));
+  const detail = (scale, label) =>
+    label + ' ' + fmt(scale.sx) + (scale.err ? ' (' + scale.err + ')' : '');
+  check('barras de temas animadas', chartScales.bar.sx > 0.2, detail(chartScales.bar, 'scaleX'));
+  check('columnas de cursos animadas', chartScales.course.sy > 0.2, detail(chartScales.course, 'scaleY'));
+  check('franjas animadas', chartScales.stack.sx > 0.5, detail(chartScales.stack, 'scaleX'));
   check('donas dibujadas', !/^0px[, ]+999px$/.test(chartScales.donut.trim()) && chartScales.donut !== '', chartScales.donut);
 
   // 4b. Una diapositiva larga se puede leer hasta el final (el snap no la traba).
