@@ -31,3 +31,5 @@ jobs:
         run: node tests/presentacion.js
       - name: Scroll real en viewport de celular
         run: node tests/presentacion-scroll.js
+      - name: Medición de rendimiento
+        run: node tests/presentacion-perf.js

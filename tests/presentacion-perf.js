@@ -1,0 +1,228 @@
+'use strict';
+
+/*
+ * Medición de rendimiento de la presentación (CI).
+ *
+ * - Viewport de celular 390x844 con DPR 2 (igual que presentacion-scroll.js).
+ * - Carga inicial: LCP, CLS, frames largos, bytes transferidos, pedidos y
+ *   cuántas imágenes (y cuántos kB) se descargan al tocar fondo.
+ * - Recorrido de las 23 diapositivas: imágenes incompletas al llegar.
+ * - Segunda pasada con Fast 3G emulado (1,6 Mbps / 150 ms de RTT): la
+ *   diapositiva en pantalla no puede quedar con fotos sin terminar.
+ *
+ *   node tests/presentacion-perf.js
+ *
+ * Salida: una línea "PERF {...}" para comparar antes y después.
+ * Requiere Playwright y su Chromium (se instalan en el workflow).
+ */
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { chromium } = require('playwright');
+
+const ROOT = path.join(__dirname, '..', 'docs');
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8'
+};
+
+function serve() {
+  const server = http.createServer((req, res) => {
+    const url = decodeURIComponent(String(req.url || '/').split('?')[0]);
+    let file = path.join(ROOT, url === '/' ? 'index.html' : url);
+    if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+      file = path.join(ROOT, 'index.html');
+    }
+    res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
+    fs.createReadStream(file).pipe(res);
+  });
+  return new Promise((ok) => server.listen(0, '127.0.0.1', () => ok(server)));
+}
+
+async function main() {
+  server = await serve();
+  const port = server.address().port;
+  const url = `http://127.0.0.1:${port}/`;
+
+  const browser = await chromium.launch({
+    args: ['--disable-dev-shm-usage', '--disable-gpu']
+  });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true
+  });
+  const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Page.enable');
+  await cdp.send('Network.enable');
+
+  // Registro de transferencia: requestId -> { url, resourceType, bytes }
+  const inFlight = new Map();
+  const xfer = { bytes: 0, images: 0, imageBytes: 0, requests: 0, done: new Map() };
+  cdp.on('Network.requestWillBeSent', (e) => {
+    if (inFlight.has(e.requestId)) return;
+    inFlight.set(e.requestId, e.request.url);
+  });
+  cdp.on('Network.responseReceived', (e) => {
+    const id = e.requestId;
+    if (!inFlight.has(id)) return;
+    inFlight.get(id).type = e.type;
+  });
+  cdp.on('Network.loadingFinished', (e) => {
+    const id = e.requestId;
+    if (!inFlight.has(id)) return;
+    const entry = inFlight.get(id);
+    inFlight.delete(id);
+    const bytes = e.encodedDataLength || 0;
+    xfer.bytes += bytes;
+    xfer.requests += 1;
+    if (entry.type === 'Image') {
+      xfer.images += 1;
+      xfer.imageBytes += bytes;
+    }
+    xfer.done.set(id, entry);
+  });
+  cdp.on('Network.loadingFailed', (e) => inFlight.delete(e.requestId));
+
+  // Métricas del renderer: LCP y CLS con PerformanceObserver
+  await page.addInitScript(() => {
+    window.__perf = { lcp: 0, cls: 0, longTasks: 0 };
+    try {
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries()) {
+          if (e.startTime > window.__perf.lcp) window.__perf.lcp = e.startTime;
+        }
+      }).observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch (_) { /* sin soporte */ }
+    try {
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries()) {
+          if (!e.hadRecentInput) window.__perf.cls += e.value;
+        }
+      }).observe({ type: 'layout-shift', buffered: true });
+    } catch (_) { /* sin soporte */ }
+    try {
+      new PerformanceObserver((l) => {
+        window.__perf.longTasks += l.getEntries().length;
+        window.__perf.longTaskMax = Math.max.call(
+          null, window.__perf.longTaskMax || 0,
+          ...l.getEntries().map((e) => e.duration)
+        );
+      }).observe({ type: 'longtask', buffered: true });
+    } catch (_) { /* sin soporte */ }
+  });
+
+  await page.goto(url, { waitUntil: 'load' });
+  // Meta de LCP: se sigue esperando hasta que el último candidato no cambie
+  await page.waitForTimeout(2500);
+
+  const atLoad = { ...JSON.parse(JSON.stringify(await page.evaluate(() => window.__perf))) };
+  const imgsLoad = await page.evaluate(() =>
+    Array.from(document.images).filter((i) => i.complete && i.naturalWidth > 0).length
+  );
+  const loadSnapshot = { ...xfer };
+  const pendingAtLoad = inFlight.size;
+
+  const gotoSlide = async (index) => {
+    await page.evaluate((n) => {
+      const s = document.querySelectorAll('.slide')[n];
+      if (s) s.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }, index);
+    await page.waitForTimeout(650);
+  };
+
+  // Recorrido completo 4G: nada puede quedar con imágenes sin terminar
+  const slides = await page.evaluate(() => document.querySelectorAll('.slide').length);
+  const incompletas = [];
+  for (let i = 0; i < slides; i += 1) {
+    await gotoSlide(i);
+    const bad = await page.evaluate((n) => {
+      const s = document.querySelectorAll('.slide')[n];
+      return Array.from(s.querySelectorAll('img'))
+        .filter((im) => !(im.complete && im.naturalWidth > 0))
+        .map((im) => im.getAttribute('src'));
+    }, i);
+    if (bad.length) incompletas.push(`slide ${i + 1}: ${bad.join(', ')}`);
+  }
+  const fullSnapshot = { ...xfer };
+  const post = await page.evaluate(() => JSON.parse(JSON.stringify(window.__perf)));
+
+  if (incompletas.length) {
+    console.error('FALLA: imágenes incompletas a velocidad normal');
+    console.error(incompletas.join('\n'));
+  }
+
+  // Pasada con Fast 3G: recarga y recorrida otra vez
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 150,
+    downloadThroughput: 1.6 * 125000,
+    uploadThroughput: 0.75 * 125000
+  });
+  await page.goto(url, { waitUntil: 'commit' });
+  await page.waitForTimeout(6000); // carga completa con red chata
+
+  const inc3G = [];
+  for (let i = 0; i < slides; i += 1) {
+    await gotoSlide(i);
+    const bad = await page.evaluate((n) => {
+      const s = document.querySelectorAll('.slide')[n];
+      return Array.from(s.querySelectorAll('img'))
+        .filter((im) => !(im.complete && im.naturalWidth > 0))
+        .map((im) => im.getAttribute('src'));
+    }, i);
+    if (bad.length) inc3G.push(`slide ${i + 1}: ${bad.join(', ')}`);
+  }
+  const total3G = { ...xfer };
+  const post3G = await page.evaluate(() => JSON.parse(JSON.stringify(window.__perf)));
+
+  const kb = (n) => Math.round(n / 1024);
+  console.log('PERF ' + JSON.stringify({
+    lcp_ms: Math.round(atLoad.lcp),
+    cls: Number(atLoad.cls.toFixed(3)),
+    long_tasks_carga: atLoad.longTasks,
+    long_task_max_ms: Math.round(atLoad.longTaskMax || 0),
+    kb_carga: kb(loadSnapshot.bytes),
+    kb_imagenes_carga: kb(loadSnapshot.imageBytes),
+    imgs_carga: imgsLoad,
+    pedidos_carga: loadSnapshot.requests,
+    pendientes_carga: pendingAtLoad,
+    kb_total: kb(fullSnapshot.bytes),
+    kb_imagenes_total: kb(fullSnapshot.imageBytes),
+    imgs_total: fullSnapshot.images,
+    pedidos_total: fullSnapshot.requests,
+    cls_recorrido: Number((post.cls - atLoad.cls).toFixed(3)),
+    g3_kb_total: kb(total3G.bytes),
+    g3_kb_imagenes: kb(total3G.imageBytes),
+    g3_imgs_total: total3G.images,
+    g3_cls: Number(post3G.cls.toFixed(3)),
+    incompletas_recorrido: incompletas.length,
+    incompletas_3G: inc3G.length
+  }));
+
+  if (inc3G.length) {
+    console.error('FALLA 3G: imágenes incompletas al llegar a la diapositiva');
+    console.error(inc3G.join('\n'));
+  }
+
+  await browser.close();
+  server.close();
+
+  const clean = incompletas.length === 0 && inc3G.length === 0;
+  process.exit(clean ? 0 : 1);
+}
+
+let server;
+main().catch((err) => {
+  console.error('FALLA del propio test:', err && err.message ? err.message : err);
+  if (server) server.close();
+  process.exit(1);
+});
