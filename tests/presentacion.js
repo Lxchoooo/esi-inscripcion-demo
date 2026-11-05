@@ -57,7 +57,9 @@ check('los graficos no animan layout',
 check('23 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 23);
 check('7 diapositivas de fotos de la promo', (HTML.match(/class="slide promo-foto"/g) || []).length === 7);
 check('14 fotos de la promo referenciadas', (HTML.match(/assets\/promo\//g) || []).length === 14);
-check('las fotos cargan lazy y async', /assets\/promo\/bandera-humo\.jpg"[^>]*loading="lazy"[^>]*decoding="async"/.test(HTML));
+check('las fotos cargan lazy y async', /src="assets\/promo\/bandera-humo\.webp"[\s\S]{0,300}?loading="lazy"[\s\S]{0,300}?decoding="async"/.test(HTML));
+check('las fotos van en webp', (HTML.match(/assets\/promo\/[a-z-]+\.webp/g) || []).length === 14 && !/assets\/promo\/[a-z-]+\.jpg/.test(HTML));
+
 check('contador inicial 01 / 23', /01 \/ 23</.test(HTML));
 check('contadores con data-count', (HTML.match(/data-count=/g) || []).length >= 4);
 check('graficos de entrada y charlas', /id="entryDonut"/.test(HTML) && /id="talksDonut"/.test(HTML));
