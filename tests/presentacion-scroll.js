@@ -4,7 +4,7 @@
  * Verificación real de la presentación en Chromium (CI).
  *
  * - Viewport de celular 390x844 con touch emulado.
- * - Recorre las 16 diapositivas y comprueba que todas son alcanzables,
+ * - Recorre las 23 diapositivas y comprueba que todas son alcanzables,
  *   que no se superponen y que los contadores y gráficos terminan de animarse.
  * - Mide frames largos durante el scroll (touch, rueda y teclado).
  *
@@ -93,7 +93,8 @@ async function main() {
 
   // 1. Estructura y navegación nativa.
   const total = await page.locator('section.slide').count();
-  check('16 diapositivas en el documento', total === 16, total + ' encontradas');
+  check('23 diapositivas en el documento', total === 23, total + ' encontradas');
+  const totalSlides = total;
 
   const snapAlign = await page.evaluate(() => {
     const slide = document.querySelector('section.slide');
@@ -116,7 +117,8 @@ async function main() {
     huge.map((item) => '#' + item.index + '=' + item.height).join(', ') || 'max ' + Math.max.apply(null, heights) + ' px');
 
   const initial = await page.evaluate(() => {
-    const slide = document.querySelectorAll('section.slide')[15];
+    const slidesAll = document.querySelectorAll('section.slide');
+    const slide = slidesAll[slidesAll.length - 1];
     const el = slide.querySelector('h2, h1, .lead, .eyebrow');
     const cs = getComputedStyle(el);
     return { filter: cs.filter, opacity: cs.opacity };
@@ -128,7 +130,7 @@ async function main() {
   await page.evaluate(() => { window.__scrollStart = performance.now(); });
   const unreachable = [];
   const notRevealed = [];
-  for (let i = 0; i < 16; i += 1) {
+  for (let i = 0; i < totalSlides; i += 1) {
     await page.evaluate((index) => {
       document.querySelectorAll('section.slide')[index].scrollIntoView({ block: 'start' });
     }, i);
@@ -141,8 +143,8 @@ async function main() {
     if (Math.abs(state.top) > 2) unreachable.push(i + 1 + ' (top ' + state.top + ')');
     if (!state.inView) notRevealed.push(i + 1);
   }
-  check('todas las diapositivas llegan al tope', unreachable.length === 0, unreachable.join(', ') || '16/16');
-  check('todas las diapositivas se revelan', notRevealed.length === 0, notRevealed.join(', ') || '16/16');
+  check('todas las diapositivas llegan al tope', unreachable.length === 0, unreachable.join(', ') || totalSlides + '/' + totalSlides);
+  check('todas las diapositivas se revelan', notRevealed.length === 0, notRevealed.join(', ') || totalSlides + '/' + totalSlides);
 
   // 3. Sin superposición entre diapositivas.
   const boxes = await rects(page);

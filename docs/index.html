@@ -123,7 +123,7 @@
      El blur se aplica a cada bloque de contenido, nunca a la diapositiva ni al
      contenedor de scroll. Sin JS (o con movimiento reducido) todo queda visible. */
   .js .slide:not(.settled) :is(
-    .wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid),
+    .wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid):not(.promo-frames),
     .split > div > *,
     .chart-grid > div > *,
     .effort-grid > *,
@@ -133,6 +133,7 @@
     .thanks-grid > *,
     .timeline > *,
     .slot-grid > *,
+    .promo-frames > *,
     .thanks-card
   ) {
     opacity: 0;
@@ -148,7 +149,7 @@
   .js .slide.instant :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ) { transition-duration: 0s !important; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *,
@@ -161,6 +162,7 @@
     .thanks-grid > *,
     .timeline > *,
     .slot-grid > *,
+    .promo-frames > *,
     .thanks-card
   ) {
     opacity: 1;
@@ -170,37 +172,37 @@
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(2) { transition-delay: .09s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(3) { transition-delay: .18s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(4) { transition-delay: .27s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(5) { transition-delay: .36s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(6) { transition-delay: .45s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(7) { transition-delay: .54s; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
     .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-    .timeline > *, .slot-grid > *, .thanks-card
+    .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
   ):nth-child(8) { transition-delay: .63s; }
   h1, h2 { text-wrap: balance; }
   .lead, .big-quote, .farewell-quote { text-wrap: pretty; }
@@ -491,6 +493,37 @@
   .promo .lead { margin-left: auto; margin-right: auto; }
   .promo .farewell-quote { max-width: 20ch; }
 
+  /* Promo: galerias de fotos de la promo 26 Turismo. Cada figura anima su
+     propia entrada (fade + blur + subida); el contenedor esta en la lista de
+     exclusiones del efecto. El recorte de verticales se hace con --pos. */
+  .promo-frames {
+    display: grid;
+    gap: clamp(10px, 1.6vw, 18px);
+    margin: clamp(18px, 3vh, 30px) auto 0;
+    width: 100%;
+    max-width: 1080px;
+  }
+  .promo-frames figure {
+    margin: 0;
+    aspect-ratio: var(--ar, 16/9);
+    border-radius: clamp(14px, 1.6vw, 20px);
+    overflow: hidden;
+    background: rgba(255, 255, 255, .045);
+    box-shadow: 0 12px 34px rgba(4, 12, 24, .38);
+  }
+  .promo-frames img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--pos, 50% 50%);
+  }
+  .promo-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .promo-trio { grid-template-columns: repeat(3, minmax(0, 1fr)); --ar: 4/3; }
+  .promo-solo { max-width: 880px; }
+  .promo-solo figure { margin-inline: auto; width: 100%; max-height: min(52vh, 480px); }
+  .promo-bn { --ar: 3/2; }
+
   .cover, .promo, .promo-speech, .farewell { position: relative; overflow-x: clip; }
   .cover::before, .promo::before, .promo-speech::before, .farewell::before {
     content: "";
@@ -662,6 +695,23 @@
     .thanks-actions { margin-top: 20px; }
   }
   @media (max-width: 768px) {
+    /* Promo en celu: duo y B/N apiladas a ancho completo, trio como carrusel. */
+    .promo-frames { gap: 10px; margin-top: 16px; }
+    .promo-duo { grid-template-columns: 1fr; }
+    .promo-trio {
+      grid-template-columns: none;
+      grid-auto-flow: column;
+      grid-auto-columns: min(78vw, 330px);
+      justify-content: start;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      padding-bottom: 8px;
+      --ar: 1/1;
+    }
+    .promo-trio figure { scroll-snap-align: center; }
+    .promo-solo { max-width: none; }
+    .promo-solo figure { max-height: min(46vh, 400px); }
+    .promo-bn { grid-template-columns: 1fr; --ar: 16/9; }
     /* En celulares de gama baja, blur y sombras grandes son lo primero que traba. */
     .glass { box-shadow: none; }
     .brand-logo { filter: none; }
@@ -673,10 +723,10 @@
     .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
     /* Menos blur y más corto: en un celular modesto conviene nitidez antes que efecto. */
     .js .slide:not(.settled) :is(
-      .wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid),
+      .wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid):not(.promo-frames),
       .split > div > *, .chart-grid > div > *, .effort-grid > *,
       .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-      .timeline > *, .slot-grid > *, .thanks-card
+      .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
     ) {
       filter: blur(8px);
       transform: translateY(16px);
@@ -689,7 +739,7 @@
     .js .slide:not(.settled) :is(
       .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
       .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
-      .timeline > *, .slot-grid > *, .thanks-card
+      .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
     ) {
       opacity: 1;
       filter: none;
@@ -706,7 +756,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter" aria-live="polite">01 / 16</span>
+    <span id="counter" class="counter" aria-live="polite">01 / 23</span>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
   </div>
 </header>
@@ -1006,6 +1056,94 @@
     </div>
   </section>
 
+  <section class="slide promo-foto" data-title="Cinco años, un solo nombre" aria-label="Cinco años, un solo nombre">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Cinco años, <span class="accent">un solo nombre.</span></h2>
+      <p class="lead">Una bandera, humo de colores y espuma por todos lados. Cada nombre escrito en esa tela es alguien que estuvo, que se rió, que se quejó y que volvió al otro día.</p>
+      <div class="promo-frames promo-duo">
+        <figure><img src="assets/promo/bandera-humo.jpg" alt="La bandera de Promo 26 Turismo con los nombres escritos, humo de colores y espuma en el patio techado" width="1200" height="1600" loading="lazy" decoding="async" style="--pos: 50% 82%"></figure>
+        <figure><img src="assets/promo/corazones-pared.jpg" alt="El curso con los buzos de la promo frente a la pared verde con corazones dibujados" width="1280" height="960" loading="lazy" decoding="async" style="--pos: 50% 60%"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-foto" data-title="El aula también era casa" aria-label="El aula también era casa">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>El aula también <span class="accent">era casa.</span></h2>
+      <p class="lead">Entre bancos rayados, pizarrones llenos y paredes verdes pasamos más horas de las que podemos contar. Hubo clases, apuntes, mates, retos y fotos de grupo que nunca salían a la primera. Gracias a los profes que están en esas fotos y en todo lo demás.</p>
+      <div class="promo-frames promo-duo">
+        <figure><img src="assets/promo/selfie-aula.jpg" alt="Selfie del curso sonriendo en el aula con la pared verde" width="1600" height="1200" loading="lazy" decoding="async" style="--pos: 50% 45%"></figure>
+        <figure><img src="assets/promo/aula-pizarron.jpg" alt="El curso junto al pizarrón del aula, con los buzos puestos" width="900" height="1600" loading="lazy" decoding="async" style="--pos: 50% 55%"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-foto" data-title="Los días en que fuimos otra cosa" aria-label="Los días en que fuimos otra cosa">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Los días en que <span class="accent">fuimos otra cosa.</span></h2>
+      <p class="lead">Vaqueros, cavernícolas, verano en pleno patio. Cada disfraz fue una excusa para dejar la vergüenza de lado y reírnos todos juntos. De la consigna no se acuerda nadie. De cómo nos reímos, todos.</p>
+      <div class="promo-frames promo-trio">
+        <figure><img src="assets/promo/vaqueros.jpg" alt="El grupo disfrazado de vaqueros, con sombrero y pañuelo, en el patio techado" width="900" height="1600" loading="lazy" decoding="async" style="--pos: 50% 82%"></figure>
+        <figure><img src="assets/promo/cavernicolas.jpg" alt="El grupo disfrazado de cavernícolas con el cartel del curso y el mural de fondo" width="1200" height="1600" loading="lazy" decoding="async" style="--pos: 50% 80%"></figure>
+        <figure><img src="assets/promo/verano.jpg" alt="El grupo con ropa clara de verano en el patio techado" width="900" height="1600" loading="lazy" decoding="async" style="--pos: 50% 72%"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-foto" data-title="Cuando salimos a escena" aria-label="Cuando salimos a escena">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Cuando salimos <span class="accent">a escena.</span></h2>
+      <p class="lead">Naranja, turquesa y pintura blanca. Ese día no importó quién era tímido y quién no: estuvimos todos, con las manos arriba.</p>
+      <div class="promo-frames promo-duo">
+        <figure><img src="assets/promo/pasillo-naranja-turquesa.jpg" alt="El curso alineado en el pasillo con remeras naranja y turquesa y pintura blanca en las manos" width="1600" height="1068" loading="lazy" decoding="async" style="--pos: 50% 50%"></figure>
+        <figure><img src="assets/promo/naranja-turquesa-patio.jpg" alt="El curso con remeras naranja y turquesa en el patio, con las manos arriba" width="1600" height="1068" loading="lazy" decoding="async" style="--pos: 50% 50%"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-foto" data-title="Lo que se aprende afuera del aula" aria-label="Lo que se aprende afuera del aula">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Lo que se aprende <span class="accent">afuera del aula.</span></h2>
+      <p class="lead">Los buzos del viaje, el patio al sol, un certificado y una sonrisa grande. Turismo es salir a conocer lugares, pero lo que más conocimos fue a nosotros.</p>
+      <div class="promo-frames promo-duo">
+        <figure><img src="assets/promo/escalera-buzos.jpg" alt="Los buzos del viaje en la escalera del colegio" width="1600" height="1200" loading="lazy" decoding="async" style="--pos: 50% 45%"></figure>
+        <figure><img src="assets/promo/patio-certificado.jpg" alt="El grupo en el patio al sol con un certificado en la mano" width="1600" height="1200" loading="lazy" decoding="async" style="--pos: 50% 55%"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-foto" data-title="Los festejos chiquitos" aria-label="Los festejos chiquitos">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Hasta los festejos <span class="accent">chiquitos cuentan.</span></h2>
+      <p class="lead">Una torta, un cartel de colores y el curso entero apretado en la foto. Los mejores recuerdos casi nunca son los grandes.</p>
+      <!-- TODO: confirmar de qué festejo se trata antes de publicar (en la foto se ve la torta y el cartel; verificar si es apta para publicación). -->
+      <div class="promo-frames promo-solo">
+        <figure><img src="assets/promo/festejo-torta.jpg" alt="La torta y el cartel de colores del festejo en el aula, con el curso apretado en la foto" width="1600" height="1200" loading="lazy" decoding="async" style="--pos: 50% 55%"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-foto" data-title="Todavía queda un último abrazo" aria-label="Todavía queda un último abrazo">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Todavía queda <span class="accent">un último abrazo.</span></h2>
+      <p class="lead">Manos arriba, espuma en el aire y la sensación de que esto va a durar para siempre, aunque ya sepamos que no. Falta poco para el egreso y la colación. Mientras tanto, una foto más.</p>
+      <div class="promo-frames promo-bn">
+        <figure><img src="assets/promo/manos-arriba-bn.jpg" alt="Foto en blanco y negro del curso con las manos arriba y espuma en el aire" width="1600" height="1068" loading="lazy" decoding="async" style="--pos: 50% 42%"></figure>
+        <figure><img src="assets/promo/pasto-bn.jpg" alt="Foto en blanco y negro del grupo sobre el pasto, con las manos arriba" width="900" height="1600" loading="lazy" decoding="async" style="--pos: 50% 62%"></figure>
+      </div>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="21">Seguir →</button>
+      </div>
+    </div>
+  </section>
+
   <section class="slide promo" data-title="Cinco años" aria-label="Cinco años">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
@@ -1018,7 +1156,7 @@
         <span>Colación de fin de año · 18 de diciembre</span>
       </div>
       <div class="thanks-actions" style="justify-content: center;">
-        <button class="ghost-btn" type="button" data-go="15">Último mensaje →</button>
+        <button class="ghost-btn" type="button" data-go="22">Último mensaje →</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
@@ -1223,7 +1361,7 @@ function renderSlots() {
   }).join('');
 }
 
-const REVEAL_ITEMS = '.wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid), .split > div > *, .chart-grid > div > *, .effort-grid > *, .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *, .timeline > *, .slot-grid > *, .thanks-card';
+const REVEAL_ITEMS = '.wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid):not(.promo-frames), .split > div > *, .chart-grid > div > *, .effort-grid > *, .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *, .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card';
 
 function revealSlide(slide) {
   // El efecto se repite en cada llegada: al reentrar, la diapositiva vuelve al
