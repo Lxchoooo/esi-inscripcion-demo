@@ -188,25 +188,26 @@ async function main() {
   // primero se llega a ella y después se espera la animación.
   const chartScales = await (async () => {
     const out = {};
-    // Lecturas defensivas: un timeout de waitForFunction Rechaza (no devuelve
-    // null) y un NaN no serializable no debe tumbar el proceso.
+    // Lecturas defensivas y transparentes: se espera el TEXTO del transform
+    // (sin DOMMatrix, que lanza con 'none') y el parseo es local.
     const num = (value) => (typeof value === 'number' && isFinite(value) ? value : -1);
     const scale = async (index, selector) => {
       await got(index);
       try {
-        const pair = await page.waitForFunction((o) => {
+        const text = await page.waitForFunction((o) => {
           const slide = document.querySelectorAll('section.slide')[o.index];
           const el = slide && slide.querySelector(o.selector);
-          if (!el) return null;
-          const t = getComputedStyle(el).transform;
-          if (!t || t === 'none') return null; // charts-in todavia no llego: seguir esperando
-          const m = new DOMMatrixReadOnly(t);
-          if (!isFinite(m.a) || !isFinite(m.d)) return null;
-          return [m.a, m.d];
-        }, { index, selector }, { timeout: 7000 });
-        return { sx: num(pair[0]), sy: num(pair[1]) };
+          return el ? getComputedStyle(el).transform : 'sin-elemento';
+        }, { index, selector }, { timeout: 7000, polling: 150 });
+        const m = /matrix\(([^)]+)\)/.exec(String(text || ''));
+        if (!m) {
+          return { sx: -1, sy: -1, err: 'transform=' + String(text).slice(0, 60) };
+        }
+        const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
+        if (Math.abs(parts[0]) <= 0.001 && parts[0] !== 0) return { sx: -1, sy: num(parts[3]), err: 'matrix=' + String(text).slice(0, 60) };
+        return { sx: num(parts[0]), sy: num(parts[3]), err: '' };
       } catch (err) {
-        return { sx: -1, sy: -1, err: String((err && err.message) || err).slice(0, 120) };
+        return { sx: -1, sy: -1, err: ('timeout: ' + String((err && err.message) || err)).slice(0, 120) };
       }
     };
     const donutText = async (index) => {
