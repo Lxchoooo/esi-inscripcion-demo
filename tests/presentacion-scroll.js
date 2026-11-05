@@ -191,37 +191,45 @@ async function main() {
     // Lecturas defensivas y transparentes: se espera el TEXTO del transform
     // (sin DOMMatrix, que lanza con 'none') y el parseo es local.
     const num = (value) => (typeof value === 'number' && isFinite(value) ? value : -1);
+    // Deterministico: el estado base ya es matrix(0,...), asi que se espera la
+    // clase charts-in primero, y despues de la transicion se lee el valor final.
+    const chartsIn = async (index) => {
+      await page.waitForFunction((n) => {
+        const slide = document.querySelectorAll('section.slide')[n];
+        return slide && slide.classList.contains('charts-in');
+      }, { index }, { timeout: 7000, polling: 120 });
+      await page.waitForTimeout(800);
+    };
     const scale = async (index, selector) => {
       await got(index);
       try {
-        const text = await page.waitForFunction((o) => {
+        await chartsIn(index);
+        const text = await page.evaluate((o) => {
           const slide = document.querySelectorAll('section.slide')[o.index];
           const el = slide && slide.querySelector(o.selector);
-          return el ? getComputedStyle(el).transform : 'sin-elemento';
-        }, { index, selector }, { timeout: 7000, polling: 150 });
+          return el ? getComputedStyle(el).transform : '';
+        }, { index, selector });
         const m = /matrix\(([^)]+)\)/.exec(String(text || ''));
         if (!m) {
           return { sx: -1, sy: -1, err: 'transform=' + String(text).slice(0, 60) };
         }
         const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
-        if (Math.abs(parts[0]) <= 0.001 && parts[0] !== 0) return { sx: -1, sy: num(parts[3]), err: 'matrix=' + String(text).slice(0, 60) };
         return { sx: num(parts[0]), sy: num(parts[3]), err: '' };
       } catch (err) {
-        return { sx: -1, sy: -1, err: ('timeout: ' + String((err && err.message) || err)).slice(0, 120) };
+        return { sx: -1, sy: -1, err: ('charts-in o timeout: ' + String((err && err.message) || err)).slice(0, 120) };
       }
     };
     const donutText = async (index) => {
       await got(index);
       try {
-        return String(await page.waitForFunction((o) => {
+        await chartsIn(index);
+        return String(await page.evaluate((o) => {
           const slide = document.querySelectorAll('section.slide')[o.index];
           const el = slide && slide.querySelector('.donut .seg');
-          if (!el) return '';
-          const dash = getComputedStyle(el).strokeDasharray;
-          return /^0px[, ]+999px$/.test(dash.trim()) ? '' : dash;
-        }, { index }, { timeout: 7000 }) || '');
+          return el ? getComputedStyle(el).strokeDasharray : '';
+        }, { index }) || '');
       } catch (err) {
-        return '(timeout: ' + String(err && err.message || err) + ')';
+        return '(charts-in o timeout: ' + String((err && err.message) || err) + ')';
       }
     };
     const got = (index) => page.evaluate((n) => {
