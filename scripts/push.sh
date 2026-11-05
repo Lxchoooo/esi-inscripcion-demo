@@ -3,11 +3,6 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-if ! command -v gh >/dev/null 2>&1; then
-  echo "Falta gh." >&2
-  exit 1
-fi
-
 if [ -n "$(git status --porcelain)" ]; then
   echo "Hay cambios sin commitear: se probaria una cosa y se publicaria otra." >&2
   exit 1
@@ -30,8 +25,12 @@ else
   echo "AVISO: SKIP_TESTS=1, no se corrieron tests ni se comparo index.html." >&2
 fi
 
-GH_TOKEN="$(gh auth token)"
-export GH_TOKEN
-
-git -c credential.helper='!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f' \
-  push origin HEAD:main
+if command -v gh >/dev/null 2>&1; then
+  GH_TOKEN="$(gh auth token)"
+  export GH_TOKEN
+  git -c credential.helper='!f() { echo username=x-access-token; echo password=$GH_TOKEN; }; f' \
+    push origin HEAD:main
+else
+  echo "AVISO: sin gh en el sistema; se publica con las credenciales de git ya configuradas." >&2
+  git push origin HEAD:main
+fi
