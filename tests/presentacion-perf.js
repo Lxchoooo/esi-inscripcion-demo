@@ -171,15 +171,23 @@ async function main() {
   await page.waitForTimeout(6000); // carga completa con red chata
 
   const inc3G = [];
+  let peorEspera3G = 0;
+  const getIncompletas = (n) => page.evaluate((i) => {
+    const s = document.querySelectorAll('.slide')[i];
+    return Array.from(s.querySelectorAll('img'))
+      .filter((im) => !(im.complete && im.naturalWidth > 0))
+      .map((im) => im.getAttribute('src'));
+  }, n);
   for (let i = 0; i < slides; i += 1) {
     await gotoSlide(i);
-    const bad = await page.evaluate((n) => {
-      const s = document.querySelectorAll('.slide')[n];
-      return Array.from(s.querySelectorAll('img'))
-        .filter((im) => !(im.complete && im.naturalWidth > 0))
-        .map((im) => im.getAttribute('src'));
-    }, i);
+    const t0 = Date.now();
+    let bad = await getIncompletas(i);
+    while (bad.length && Date.now() - t0 < 4000) {
+      await page.waitForTimeout(200);
+      bad = await getIncompletas(i);
+    }
     if (bad.length) inc3G.push(`slide ${i + 1}: ${bad.join(', ')}`);
+    peorEspera3G = Math.max(peorEspera3G, Math.ceil((Date.now() - t0) / 100) * 100);
   }
   const total3G = { ...xfer };
   const post3G = await page.evaluate(() => JSON.parse(JSON.stringify(window.__perf)));
@@ -205,18 +213,22 @@ async function main() {
     g3_imgs_total: total3G.images,
     g3_cls: Number(post3G.cls.toFixed(3)),
     incompletas_recorrido: incompletas.length,
-    incompletas_3G: inc3G.length
+    incompletas_3G: inc3G.length,
+    g3_peor_espera_ms: peorEspera3G
   }));
 
   if (inc3G.length) {
-    console.error('FALLA 3G: imágenes incompletas al llegar a la diapositiva');
+    console.error('FALLA 3G: fotos que siguen sin terminar despues de 4 s al llegar');
     console.error(inc3G.join('\n'));
+  }
+  if (peorEspera3G > 3500) {
+    console.error(`FALLA 3G: peor espera al llegar una foto ${peorEspera3G} ms (> 3500)`);
   }
 
   await browser.close();
   server.close();
 
-  const clean = incompletas.length === 0 && inc3G.length === 0;
+  const clean = incompletas.length === 0 && inc3G.length === 0 && peorEspera3G <= 3500;
   process.exit(clean ? 0 : 1);
 }
 
