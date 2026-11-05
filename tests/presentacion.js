@@ -52,7 +52,7 @@ check('transicion anima filter 0,4s', /filter \.4s cubic/.test(HTML));
 check('estagger con tope de 175 ms', /transition-delay: \.175s/.test(HTML) && !/transition-delay: \.1[89]s/.test(HTML) && !/transition-delay: \.2[0-9]s/.test(HTML) && !/transition-delay: \.3/.test(HTML) && !/transition-delay: \.4/.test(HTML) && !/transition-delay: \.5/.test(HTML) && !/transition-delay: \.6/.test(HTML));
 check('sin reset al salir ni hideSlide', !/\.js \.slide\.instant/.test(HTML) && !/function hideSlide/.test(HTML));
 check('disparo temprano: threshold 0 con rootMargin -8%', /threshold: 0, rootMargin: '0px 0px -8% 0px'/.test(HTML));
-check('will-change en la diapositiva por entrar', /\.js \.slide\.prox \{ will-change: opacity, transform/.test(HTML));
+check('will-change del efecto sin filter',/willChange = 'opacity, transform'/.test(HTML));
 check('los graficos arrancan despues de la entrada', /charts-in/.test(HTML) && /classList\.add\('settled', 'charts-in'\)/.test(HTML));
 check('la barra de progreso anima transform', /\.progress \{[^}]*transform: scaleX\(0\)/.test(HTML));
 check('los graficos no animan layout',

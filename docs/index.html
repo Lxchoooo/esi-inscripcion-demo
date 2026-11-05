@@ -144,11 +144,6 @@
       filter .4s cubic-bezier(.22, 1, .36, 1),
       transform .4s cubic-bezier(.22, 1, .36, 1);
   }
-  /* Preparo de composicion solo en la diapositiva que esta por entrar (la
-     asigna JS al vecino del slide revelado) y en su vecino; al settled se
-     descarta. */
-  .js .slide.prox { will-change: opacity, transform; }
-  .js .slide.settled.prox { will-change: auto; }
   /* Las fotos nunca llevan blur: el raster es caro en gama baja. Las figuras
      con img entran solo con opacity y transform; el blur queda para textos y
      paneles. will-change solo mientras dura la animacion. */
@@ -1412,9 +1407,6 @@ function revealSlide(slide) {
   // re-oculta ni re-anima. Los vecinos se preparan con .prox para que la
   // composicion este lista cuando el usuario los alcance.
   if (slide.classList.contains('in-view')) return;
-  const idx = slides.indexOf(slide);
-  if (slides[idx + 1]) slides[idx + 1].classList.add('prox');
-  if (idx > 0 && slides[idx - 1]) slides[idx - 1].classList.add('prox');
   slide.querySelectorAll('[data-count]').forEach((el) => { el.dataset.done = ''; });
   const items = slide.querySelectorAll(REVEAL_ITEMS);
   const run = () => {
@@ -1427,7 +1419,6 @@ function revealSlide(slide) {
     slide.__revealTimer = window.setTimeout(() => {
       slide.__revealTimer = null;
       items.forEach((el) => { el.style.willChange = ''; });
-      slide.classList.remove('prox');
       slide.classList.add('settled', 'charts-in');
       animateCounters(slide);
     }, settled);
