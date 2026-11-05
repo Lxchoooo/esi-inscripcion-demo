@@ -155,6 +155,57 @@ async function main() {
   const fullSnapshot = { ...xfer };
   const post = await page.evaluate(() => JSON.parse(JSON.stringify(window.__perf)));
 
+  // === Medición de la entrada: tiempo desde que la diapositiva asoma por el
+  // borde inferior hasta que su primer texto supera opacity .5. Se re-carga la
+  // página (estado inicial limpio) y se recorre con rAF a ~720 px/s. La
+  // segunda pasada desactiva la animacion con un estilo inyectado para aislar
+  // la latencia del disparo del observer. ===
+  const SIN_ANIM = '.js .slide:not(.settled) :is('
+    + ' .wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid):not(.promo-frames)'
+    + ', .split > div > *, .chart-grid > div > *, .effort-grid > *'
+    + ', .mini-grid > *, .kpi-grid > *, .lesson-grid > *'
+    + ', .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card'
+    + ') { filter: none !important; transform: none !important; transition: none !important; }';
+  const medirEntrada = () => page.evaluate(() => (async () => {
+    const lista = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
+    const textoDe = (s) => s.querySelector('h2, h1, .lead, .eyebrow, .kpi, p');
+    const filas = [];
+    for (let i = 1; i < lista.length; i += 1) {
+      const slide = lista[i];
+      const txt = textoDe(slide);
+      if (!txt) { continue; }
+      lista[Math.max(0, i - 2)].scrollIntoView({ block: 'start', behavior: 'instant' });
+      await new Promise((r) => setTimeout(r, 800));
+      const ms = await new Promise((ok2) => {
+        let entro = false;
+        let tEnter = 0;
+        const t0 = performance.now();
+        const paso = () => {
+          window.scrollBy(0, 12);
+          const rect = slide.getBoundingClientRect();
+          if (!entro && rect.top < window.innerHeight) { entro = true; tEnter = performance.now(); }
+          if (entro && parseFloat(getComputedStyle(txt).opacity) > 0.5) {
+            ok2(performance.now() - tEnter);
+            return;
+          }
+          if (performance.now() - t0 > 4500) { ok2(entro ? performance.now() - tEnter : -1); return; }
+          requestAnimationFrame(paso);
+        };
+        requestAnimationFrame(paso);
+      });
+      filas.push({ n: i + 1, ms: Math.max(0, Math.round(ms)) });
+    }
+    const arr = filas.map((f) => f.ms).sort((a, b) => a - b);
+    return { mediana: arr[Math.floor(arr.length / 2)], peor: arr[arr.length - 1], filas };
+  })(), undefined);
+
+  await page.goto(url, { waitUntil: 'load' });
+  await page.waitForTimeout(600);
+  const entradaAnim = await medirEntrada();
+  await page.addStyleTag({ content: SIN_ANIM });
+  await page.waitForTimeout(400);
+  const entradaSin = await medirEntrada();
+
   if (incompletas.length) {
     console.error('FALLA: imágenes incompletas a velocidad normal');
     console.error(incompletas.join('\n'));
@@ -214,7 +265,11 @@ async function main() {
     g3_cls: Number(post3G.cls.toFixed(3)),
     incompletas_recorrido: incompletas.length,
     incompletas_3G: inc3G.length,
-    g3_peor_espera_ms: peorEspera3G
+    g3_peor_espera_ms: peorEspera3G,
+    entrada_mediana_ms: entradaAnim.mediana,
+    entrada_peor_ms: entradaAnim.peor,
+    trigger_mediana_ms: entradaSin.mediana,
+    trigger_peor_ms: entradaSin.peor
   }));
 
   if (inc3G.length) {
