@@ -121,7 +121,7 @@ async function main() {
     const cs = getComputedStyle(el);
     return { filter: cs.filter, opacity: cs.opacity };
   });
-  check('el contenido arranca oculto y borroso', initial.opacity === '0' && /blur\(10px\)/.test(initial.filter),
+  check('el contenido arranca oculto y borroso', initial.opacity === '0' && /blur\(8px\)/.test(initial.filter),
     'opacity ' + initial.opacity + ', filter ' + initial.filter);
 
   // 2. Todas las diapositivas alcanzables y reveladas.
@@ -158,7 +158,10 @@ async function main() {
   await page.evaluate(() => {
     document.querySelectorAll('section.slide')[3].scrollIntoView({ block: 'start' });
   });
-  await page.waitForTimeout(2200);
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll('section.slide')[3].querySelectorAll('[data-count]'))
+      .map((el) => el.textContent.trim()).join('|') === '393|1.173|30|90,9%',
+    { timeout: 7000 });
   const counters = await page.evaluate(() =>
     Array.from(document.querySelectorAll('section.slide')[3].querySelectorAll('[data-count]')).map((el) => el.textContent.trim())
   );
@@ -453,6 +456,57 @@ async function main() {
   check('el enlace #slide-3 abre en esa diapositiva', Math.abs(deepPos.y - deepPos.top3) <= 4,
     'scrollY ' + deepPos.y + ', tope de la 3 ' + deepPos.top3);
   await reloadCtx.close();
+
+  // El blur entra, se termina y se repite: timeline real de la transición.
+  const fadeInCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+  const fadePage = await fadeInCtx.newPage();
+  await fadePage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  const filterOf = () => fadePage.evaluate(() => {
+    const slide = document.querySelectorAll('section.slide')[1];
+    const el = slide.querySelector('.wrap > *') || slide.querySelector('.wrap');
+    return getComputedStyle(el).filter;
+  });
+  await fadePage.keyboard.press('PageDown');
+  await wait(300);
+  const midBlur = await filterOf();
+  check('el blur está en juego durante la entrada', /blur\(/.test(midBlur) && midBlur !== 'none', midBlur);
+  await wait(2600);
+  const endBlur = await filterOf();
+  check('el contenido queda nítido tras la entrada', endBlur === 'none', endBlur);
+
+  // Reposo sin cruzar el 45%: la diapositiva igual se revela (red de seguridad).
+  await fadePage.evaluate(() => window.scrollTo(0, Math.round(window.innerHeight * 0.7)));
+  await wait(500);
+  const restState = await fadePage.evaluate(() => {
+    const slide = document.querySelectorAll('section.slide')[1];
+    const el = slide.querySelector('.wrap > *') || slide.querySelector('.wrap');
+    const cs = getComputedStyle(el);
+    return { filter: cs.filter, opacity: cs.opacity, cls: slide.className };
+  });
+  check('la diapositiva a media vista no queda oculta',
+    restState.opacity === '1' || /blur\(/.test(restState.filter),
+    JSON.stringify(restState));
+  await wait(2600);
+  const restEnd = await filterOf();
+  check('la diapositiva a media vista termina nítida', restEnd === 'none', restEnd);
+
+  // Repetido: al volver del final, la portada vuelve a llegar con blur.
+  await fadePage.keyboard.press('End');
+  await wait(1200);
+  await fadePage.keyboard.press('Home');
+  await wait(320);
+  const reBlur = await fadePage.evaluate(() => {
+    const el = document.querySelector('section.slide .wrap').firstElementChild;
+    return getComputedStyle(el).filter;
+  });
+  check('al volver atrás el efecto se repite', /blur\(/.test(reBlur) && reBlur !== 'none', reBlur);
+  await wait(2600);
+  const reEnd = await fadePage.evaluate(() => {
+    const el = document.querySelector('section.slide .wrap').firstElementChild;
+    return getComputedStyle(el).filter;
+  });
+  check('el repetido también termina nítido', reEnd === 'none', reEnd);
+  await fadeInCtx.close();
 
   // Movimiento reducido: sin blur, sin desplazamiento y contenido visible.
   const rmContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });

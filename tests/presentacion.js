@@ -43,8 +43,11 @@ check('barras animan transform (no width)',
 check('columnas animan transform (no height)',
   /\.slide\.charts-in \.course-bar \{ transform: scaleY/.test(HTML) && !/\.course-bar[^}]*transition: height/.test(HTML));
 check('stack anima transform (no width)', /\.slide\.charts-in \.stack \.seg \{ transform: scaleX/.test(HTML));
-check('entrada con fade y blur marcado en el contenido', /filter:\s*blur\(20px\)/.test(HTML) && /filter:\s*none/.test(HTML));
-check('blur movil reducido a 10px', /filter:\s*blur\(10px\)/.test(HTML));
+check('entrada con fade y blur marcado en el contenido', /filter:\s*blur\(14px\)/.test(HTML) && /filter:\s*none/.test(HTML));
+check('blur movil a 8px', /filter:\s*blur\(8px\)/.test(HTML));
+check('transicion anima filter 0,9s', /filter \.9s cubic/.test(HTML));
+check('reset instantaneo al salir de pantalla', /\.js \.slide\.instant/.test(HTML));
+check('disparo del efecto al 45 por ciento', /threshold:\s*\[0\.45\]/.test(HTML));
 check('los graficos arrancan despues de la entrada', /charts-in/.test(HTML) && /classList\.add\(\s*['"]charts-in['"]\s*\)/.test(HTML));
 check('la barra de progreso anima transform', /\.progress \{[^}]*transform: scaleX\(0\)/.test(HTML));
 check('los graficos no animan layout',

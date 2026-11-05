@@ -136,13 +136,20 @@
     .thanks-card
   ) {
     opacity: 0;
-    filter: blur(20px);
-    transform: translateY(30px) scale(.985);
+    filter: blur(14px);
+    transform: translateY(24px);
     transition:
-      opacity 1s cubic-bezier(.22, 1, .36, 1),
-      filter 1s cubic-bezier(.22, 1, .36, 1),
-      transform 1s cubic-bezier(.22, 1, .36, 1);
+      opacity .9s cubic-bezier(.22, 1, .36, 1),
+      filter .9s cubic-bezier(.22, 1, .36, 1),
+      transform .9s cubic-bezier(.22, 1, .36, 1);
   }
+  /* Reset instantaneo: al salir de pantalla la diapositiva vuelve al estado
+     inicial sin animacion, para que el efecto sea de llegada y no de despedida. */
+  .js .slide.instant :is(
+    .wrap > *, .split > div > *, .chart-grid > div > *, .effort-grid > *,
+    .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
+    .timeline > *, .slot-grid > *, .thanks-card
+  ) { transition-duration: 0s !important; }
   .js .slide.in-view:not(.settled) :is(
     .wrap > *,
     .split > div > *,
@@ -671,9 +678,9 @@
       .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
       .timeline > *, .slot-grid > *, .thanks-card
     ) {
-      filter: blur(10px);
-      transform: translateY(20px) scale(.99);
-      transition-duration: .65s, .65s, .65s;
+      filter: blur(8px);
+      transform: translateY(16px);
+      transition-duration: .7s, .7s, .7s;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1219,18 +1226,36 @@ function renderSlots() {
 const REVEAL_ITEMS = '.wrap > *:not(.mini-grid):not(.kpi-grid):not(.lesson-grid):not(.thanks-grid):not(.timeline):not(.slot-grid):not(.chart-grid):not(.split):not(.effort-grid), .split > div > *, .chart-grid > div > *, .effort-grid > *, .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *, .timeline > *, .slot-grid > *, .thanks-card';
 
 function revealSlide(slide) {
-  if (slide.classList.contains('in-view')) return;
-  slide.classList.add('in-view');
+  // El efecto se repite en cada llegada: al reentrar, la diapositiva vuelve al
+  // estado borroso y anima de nuevo. Los contadores reinician su conteo.
+  slide.querySelectorAll('[data-count]').forEach((el) => { el.dataset.done = ''; });
+  slide.classList.remove('instant');
   const items = slide.querySelectorAll(REVEAL_ITEMS);
-  items.forEach((el) => { el.style.willChange = 'opacity, filter, transform'; });
-  // Los contadores y los gráficos arrancan cuando el contenido ya terminó de aparecer.
-  const settled = reduceMotion.matches ? 0 : (window.matchMedia('(max-width: 768px)').matches ? 1400 : 1750);
-  window.setTimeout(() => {
-    items.forEach((el) => { el.style.willChange = ''; });
-    slide.classList.add('settled');
-    slide.classList.add('charts-in');
-    animateCounters(slide);
-  }, settled);
+  const run = () => {
+    slide.classList.add('in-view');
+    items.forEach((el) => { el.style.willChange = 'opacity, filter, transform'; });
+    // Los contadores y los gráficos arrancan cuando el contenido ya terminó de aparecer.
+    const settled = reduceMotion.matches ? 0 : (window.matchMedia('(max-width: 768px)').matches ? 1400 : 1600);
+    if (slide.__revealTimer) window.clearTimeout(slide.__revealTimer);
+    slide.__revealTimer = window.setTimeout(() => {
+      slide.__revealTimer = null;
+      items.forEach((el) => { el.style.willChange = ''; });
+      slide.classList.add('settled');
+      slide.classList.add('charts-in');
+      animateCounters(slide);
+    }, settled);
+  };
+  // Dos cuadros para que el reset instantáneo se asiente antes de animar.
+  requestAnimationFrame(() => requestAnimationFrame(run));
+}
+
+function hideSlide(slide) {
+  if (slide.__revealTimer) {
+    window.clearTimeout(slide.__revealTimer);
+    slide.__revealTimer = null;
+  }
+  slide.classList.remove('in-view', 'settled', 'charts-in');
+  slide.classList.add('instant');
 }
 
 function syncCurrent() {
@@ -1276,23 +1301,34 @@ function bindNavigation() {
 
   // El scroll lo maneja el navegador (rueda, touch y teclado). El JS solo
   // revela cada diapositiva al entrar y actualiza el contador cuando el scroll reposa.
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      revealSlide(entry.target);
-      revealObserver.unobserve(entry.target);
-    });
-  }, { rootMargin: '0px 0px -10% 0px', threshold: 0 });
-  slides.forEach((slide) => revealObserver.observe(slide));
+  // El efecto se dispara al cruzar ~45% de visibilidad y se repite en cada
+  // llegada. La diapositiva vuelve al estado inicial solo cuando sale del todo
+  // de pantalla (threshold 0): así no se apaga nada a media vista.
+  const revealOn = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => { if (entry.isIntersecting) revealSlide(entry.target); });
+  }, { threshold: [0.45] });
+  const revealOff = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => { if (!entry.isIntersecting) hideSlide(entry.target); });
+  }, { threshold: [0] });
+  slides.forEach((slide) => {
+    revealOn.observe(slide);
+    revealOff.observe(slide);
+  });
 
   let restTimer = 0;
+  const restSync = () => {
+    syncCurrent();
+    // Si el snap te deja a mitad de diapositiva sin cruzar el 45%, se revela igual.
+    const cur = slides[current];
+    if (cur && !cur.classList.contains('in-view')) revealSlide(cur);
+  };
   document.addEventListener('scrollend', () => {
     window.clearTimeout(restTimer);
-    syncCurrent();
+    restSync();
   });
   window.addEventListener('scroll', () => {
     window.clearTimeout(restTimer);
-    restTimer = window.setTimeout(syncCurrent, 160);
+    restTimer = window.setTimeout(restSync, 160);
   }, { passive: true });
 }
 
