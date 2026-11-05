@@ -194,8 +194,8 @@ async function main() {
     // Deterministico: el estado base ya es matrix(0,...), asi que se espera la
     // clase charts-in primero, y despues de la transicion se lee el valor final.
     const chartsIn = async (index) => {
-      await page.waitForFunction((n) => {
-        const slide = document.querySelectorAll('section.slide')[n];
+      await page.waitForFunction((o) => {
+        const slide = document.querySelectorAll('section.slide')[o.index];
         return slide && slide.classList.contains('charts-in');
       }, { index }, { timeout: 7000, polling: 120 });
       await page.waitForTimeout(800);
