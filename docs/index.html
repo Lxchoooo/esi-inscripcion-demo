@@ -477,6 +477,7 @@
     background:
       radial-gradient(circle at 30% 30%, rgba(79, 157, 138, .18), transparent 62%),
       url("assets/logo-iss-round.webp") center / 64vmin no-repeat;
+    filter: blur(8px);
     opacity: .38;
     transform: rotate(-8deg) scale(1.06);
   }
@@ -490,6 +491,7 @@
     z-index: 0;
     pointer-events: none;
     background: url("assets/logo-aes-round.webp") center / contain no-repeat;
+    filter: blur(10px);
     opacity: .22;
     transform: rotate(10deg);
   }
@@ -658,6 +660,8 @@
     .brand-logo { filter: none; }
     .cover::before, .promo::before, .promo-speech::before, .farewell::before { opacity: .22; }
     .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
+    .cover::before, .promo::before, .promo-speech::before, .farewell::before { filter: blur(4px); }
+    .cover::after, .promo::after, .promo-speech::after, .farewell::after { filter: blur(5px); }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
   }

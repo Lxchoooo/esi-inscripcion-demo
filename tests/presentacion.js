@@ -43,7 +43,7 @@ check('columnas animan transform (no height)',
   /\.slide\.charts-in \.course-bar \{ transform: scaleY/.test(HTML) && !/\.course-bar[^}]*transition: height/.test(HTML));
 check('stack anima transform (no width)', /\.slide\.charts-in \.stack \.seg \{ transform: scaleX/.test(HTML));
 check('sin estados ocultos de entrada (nada depende de clases)', !/\.slide:not\(\.settled\)/.test(HTML) && !/\.slide\.in-view/.test(HTML) && !/\.slide\.instant/.test(HTML));
-check('sin blur ni backdrop-filter en la hoja', !/blur\(/.test(HTML) && !/backdrop-filter/.test(HTML));
+check('blur solo en los logos de fondo decorativos (4 reglas, nada mas)', (HTML.match(/filter:\s*blur\(/g) || []).length === 4 && !/backdrop-filter/.test(HTML) && /filter:\s*blur\(8\px\);/.test(HTML) && /filter:\s*blur\(10\px\);/.test(HTML));
 check('sin stagger del efecto', !/transition-delay: \.\d/.test(HTML));
 check('sin will-change', !/will-change|willChange/.test(HTML));
 check('el IO solo dispara contadores y graficos, sin clase de visibilidad',
