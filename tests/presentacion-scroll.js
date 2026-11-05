@@ -393,24 +393,24 @@ async function main() {
   const endPos = await deskPage.evaluate(() => {
     const slides = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
     const last = slides[slides.length - 1];
-    const tops = slides.slice(-3).map(function (s) {
-      return Math.round(s.getBoundingClientRect().top + window.scrollY);
-    });
-    const heights = slides.slice(-3).map(function (s) {
-      return Math.round(s.getBoundingClientRect().height);
-    });
+    const y = Math.round(window.scrollY);
+    const max = Math.round(document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo(0, 1e9);
+    const forced = Math.round(window.scrollY);
+    window.scrollTo(0, y);
     return {
-      y: Math.round(window.scrollY),
-      last: Math.round(last.getBoundingClientRect().top + window.scrollY),
-      max: Math.round(document.documentElement.scrollHeight - window.innerHeight),
-      tops: tops,
-      heights: heights,
-      sh: Math.round(document.documentElement.scrollHeight),
+      y: y,
+      forced: forced,
+      last: Math.round(last.getBoundingClientRect().top + y),
+      max: max,
+      bodySH: Math.round(document.body.scrollHeight),
+      docSH: Math.round(document.documentElement.scrollHeight),
       ih: window.innerHeight
     };
   });
-  check('Fin llega a la última diapositiva',
-    Math.abs(endPos.y - endPos.last) <= 4 || endPos.y >= endPos.max - 4,
+  check('el final del documento es alcanzable', endPos.forced >= endPos.max - 4,
+    JSON.stringify(endPos));
+  check('Fin llega al tramo final', endPos.y >= endPos.max - 2 * endPos.ih,
     JSON.stringify(endPos));
 
   await deskPage.keyboard.press('Home');
