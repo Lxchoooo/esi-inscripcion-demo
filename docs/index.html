@@ -1608,9 +1608,10 @@ init();
     primeras.forEach((im) => {
       revelar(im).then(() => { listas += 1; pinta(); });
     });
-    /* Las demas tambien se revelan apenas decodifican (van llegando en orden
-       natural del fetch, bandera primero por fetchpriority high). */
-    frames.slice(7).forEach((im) => revelar(im));
+    /* Las demas se decodifican en el pase de tiempo libre (abajo): todas las
+       peticiones ya salieron (sin lazy, en orden del DOM), asi al decodificar
+       van a aparecer en cuanto su decodificacion resuelva, sin picos de
+       trabajo en el hilo durante la entrada. */
 
     const salir = () => {
       if (raiz.classList.contains('carga-listo')) return;
@@ -1620,16 +1621,13 @@ init();
     Promise.all(primeras.map(revelar)).then(() => { setTimeout(salir, 150); });
     setTimeout(salir, 2500); /* techo: la presentacion se muestra igual */
 
-    /* Red de seguridad + segunda oportunidad en segundo plano: cada foto que
-       sigue sin decodificar se reintenta de a una en requestIdleCallback,
-       tambien cubre el caso de una foto que fallo en el primer intento. */
-    const reintenta = () => {
-      const im = frames.find((x) => !x.classList.contains('ok'));
-      if (!im) return;
-      if (im.complete && im.naturalWidth > 0) { im.classList.add('ok'); return reintenta(); }
-      im.decode ? im.decode().then(reintenta, reintenta) : reintenta();
+    /* Techo vencido o fotos sueltas: pase en tiempo libre del hilo que
+       decodifica todo lo que falte, en paralelo, sin bloquear el scroll.
+       Cubre tambien el caso de una foto que fallo en el primer intento. */
+    const arrancarse = () => {
+      const pendientes = frames.filter((x) => !x.classList.contains('ok'));
+      Promise.all(pendientes.map(revelar)).catch(() => {});
     };
-    const arrancarse = () => reintenta();
     if ('requestIdleCallback' in window) requestIdleCallback(arrancarse, { timeout: 1800 });
     else setTimeout(arrancarse, 120);
   })();

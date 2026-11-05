@@ -445,7 +445,19 @@ async function main() {
   check('la flecha abajo scrollea', arrowDown > 0, 'scrollY ' + arrowDown);
 
   await deskPage.keyboard.press('End');
-  await wait(900);
+  // El final importa, no el reloj: esperamos a que scrollY se estabilice
+  // (3 lecturas iguales seguidas) con techo de 2,5 s.
+  const settledEnd = async () => {
+    let last = -1, same = 0;
+    const t0 = Date.now();
+    while (same < 3 && Date.now() - t0 < 2500) {
+      await wait(80);
+      const y = await deskPage.evaluate(() => Math.round(window.scrollY));
+      if (y === last) { same += 1; } else { same = 0; last = y; }
+    }
+    return last;
+  };
+  await settledEnd();
   const endPos = await deskPage.evaluate(() => {
     const slides = Array.prototype.slice.call(document.querySelectorAll('section.slide'));
     const last = slides[slides.length - 1];
@@ -461,7 +473,8 @@ async function main() {
       max: max,
       bodySH: Math.round(document.body.scrollHeight),
       docSH: Math.round(document.documentElement.scrollHeight),
-      ih: window.innerHeight
+      ih: window.innerHeight,
+      tops: slides.slice(-4).map((s) => Math.round(s.getBoundingClientRect().top + y))
     };
   });
   check('el final del documento es alcanzable', endPos.forced >= endPos.max - 4,
