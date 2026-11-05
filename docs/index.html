@@ -767,6 +767,7 @@
       .mini-grid > *, .kpi-grid > *, .lesson-grid > *, .thanks-grid > *,
       .timeline > *, .slot-grid > *, .promo-frames > *, .thanks-card
     ) {
+      filter: none;
       transform: translateY(12px);
       transition-duration: .4s, .4s, .4s;
     }
@@ -1421,7 +1422,7 @@ function revealSlide(slide) {
     items.forEach((el) => { el.style.willChange = 'opacity, transform'; });
     // Los contadores y los graficos arrancan cuando la entrada ya termino:
     // 0,4 s de transicion + 0,175 s de stagger, con margen.
-    const settled = window.matchMedia('(max-width: 768px)').matches ? 700 : 750;
+    const settled = reduceMotion.matches ? 60 : (window.matchMedia('(max-width: 768px)').matches ? 700 : 750);
     if (slide.__revealTimer) window.clearTimeout(slide.__revealTimer);
     slide.__revealTimer = window.setTimeout(() => {
       slide.__revealTimer = null;
