@@ -57,8 +57,10 @@ check('los graficos no animan layout',
 check('23 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 23);
 check('7 diapositivas de fotos de la promo', (HTML.match(/class="slide promo-foto"/g) || []).length === 7);
 check('14 fotos referenciadas como src', (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
-check('las fotos cargan lazy y async', /src="assets\/promo\/bandera-humo\.webp"[\s\S]{0,700}?loading="lazy"[\s\S]{0,300}?decoding="async"/.test(HTML));
-check('las fotos van en webp con srcset 800w/1280w', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp"/g) || []).length === 14 && (HTML.match(/-800\.webp 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp 1280w"/g) || []).length === 14 && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
+check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/decoding="async"/g) || []).length === 14);
+check('las fotos van en webp con srcset 800w/1280w', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp[?]v=2"/g) || []).length === 14 && (HTML.match(/-800\.webp[?]v=2 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp[?]v=2 1280w"/g) || []).length === 14 && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
+check('pantalla de carga con techo de 2,5 s', /id="carga"/.test(HTML) && /2500/.test(HTML) && /carga-listo/.test(HTML));
+check('fetchpriority solo en el logo del loader, el header y la primera foto', (HTML.match(/fetchpriority="high"/g) || []).length === 3 && /fetchpriority="high"[^>]*src="assets\/promo\/bandera-humo\.webp[?]v=2"/.test(HTML));
 check('sizes por grupo de galeria', (HTML.match(/sizes="\(max-width: 768px\) 88vw, 532px"/g) || []).length === 8 && (HTML.match(/sizes="\(max-width: 768px\) 88vw, 349px"/g) || []).length === 3 && (HTML.match(/sizes="\(max-width: 768px\) 88vw, 880px"/g) || []).length === 1 && (HTML.match(/sizes="\(max-width: 768px\) 88vw, 1080px"/g) || []).length === 2);
 check('logos en webp y sin png/jpg grandes', /assets\/logo-iss-round\.webp/.test(HTML) && /assets\/logo-aes-round\.webp/.test(HTML) && !/logo-iss-round\.png/.test(HTML) && !/logo-aes-round\.png/.test(HTML));
 check('logo del header con fetchpriority high', /class="brand-logo"[^>]*fetchpriority="high"/.test(HTML));

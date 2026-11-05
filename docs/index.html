@@ -144,6 +144,14 @@
       filter .9s cubic-bezier(.22, 1, .36, 1),
       transform .9s cubic-bezier(.22, 1, .36, 1);
   }
+  /* Las fotos nunca llevan blur: el raster es caro en gama baja. Las figuras
+     con img entran solo con opacity y transform; el blur queda para textos y
+     paneles. will-change solo mientras dura la animacion. */
+  .js .slide:not(.settled) .promo-frames > * {
+    filter: none;
+    will-change: opacity, transform;
+  }
+  .js .slide.settled .promo-frames > * { will-change: auto; }
   /* Reset instantaneo: al salir de pantalla la diapositiva vuelve al estado
      inicial sin animacion, para que el efecto sea de llegada y no de despedida. */
   .js .slide.instant :is(
@@ -493,6 +501,32 @@
   .promo .lead { margin-left: auto; margin-right: auto; }
   .promo .farewell-quote { max-width: 20ch; }
 
+  /* Pantalla de carga liviana: logo + barra. Solo se muestra con JS y se va
+     cuando decodifican las fotos de las 3 primeras diapositivas con foto
+     (2+2+3) o a los 2,5 s como techo, lo que pase primero. */
+  .carga { display: none; }
+  html.js .carga {
+    display: grid;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    place-content: center;
+    gap: 18px;
+    justify-items: center;
+    background: var(--ink);
+    pointer-events: none;
+  }
+  .carga img { width: clamp(72px, 12vmin, 110px); height: auto; animation: carga-pulso 1.4s ease-in-out infinite; }
+  .carga-barra { width: min(46vw, 220px); height: 3px; border-radius: 3px; background: rgba(245, 241, 232, .14); overflow: hidden; }
+  .carga-barra span { display: block; height: 100%; width: 100%; border-radius: 3px; background: var(--gold); transform: scaleX(0); transform-origin: left center; transition: transform .25s ease; }
+  @keyframes carga-pulso { 50% { opacity: .5; } }
+  html.carga-listo .carga {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .45s ease, visibility 0s .45s;
+  }
+  @media (prefers-reduced-motion: reduce) { .carga img { animation: none; } }
+
   /* Promo: galerias de fotos de la promo 26 Turismo. Cada figura anima su
      propia entrada (fade + blur + subida); el contenedor esta en la lista de
      exclusiones del efecto. El recorte de verticales se hace con --pos. */
@@ -714,10 +748,7 @@
     .promo-trio figure { scroll-snap-align: center; }
     /* En gama baja el raster de img con blur grande es lo que traba: 6px como
        maximo para las fotos y sombras livianas en lugar de las de escritorio. */
-    .js .slide:not(.settled) .promo-frames figure {
-      filter: blur(6px);
-      box-shadow: 0 8px 18px rgba(4, 12, 24, .28);
-    }
+    .js .slide:not(.settled) .promo-frames figure { filter: none; box-shadow: 0 8px 18px rgba(4, 12, 24, .28); }
     .promo-solo { max-width: none; }
     .promo-solo figure { max-height: min(46vh, 400px); }
     .promo-bn { grid-template-columns: 1fr; --ar: 16/9; }
@@ -759,6 +790,11 @@
 </style>
 </head>
 <body>
+  <div class="carga" id="carga" aria-hidden="true">
+    <img src="assets/logo-iss-round.webp" alt="" width="128" height="128" fetchpriority="high">
+    <div class="carga-barra"><span id="carga-progreso"></span></div>
+  </div>
+
 <header class="topbar">
   <div class="brand">
     <img class="brand-logo" src="assets/logo-iss-round.webp" alt="" fetchpriority="high">
@@ -1071,8 +1107,8 @@
       <h2>Cinco años, <span class="accent">un solo nombre.</span></h2>
       <p class="lead">La presentación de los buzos, apenas arrancado el año: la bandera, el humo de colores y espuma por todos lados. Cada nombre escrito en esa tela es alguien que estuvo, que se rió, que se quejó y que volvió al otro día.</p>
       <div class="promo-frames promo-duo">
-        <figure><img src="assets/promo/bandera-humo.webp" srcset="assets/promo/bandera-humo-800.webp 800w, assets/promo/bandera-humo.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="La bandera de Promo 26 Turismo con los nombres de todos, en la presentación de los buzos, con humo de colores y espuma en el patio techado" width="960" height="1280" loading="lazy" decoding="async" style="--pos: 50% 82%"></figure>
-        <figure><img src="assets/promo/corazones-pared.webp" srcset="assets/promo/corazones-pared-800.webp 800w, assets/promo/corazones-pared.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="Foto grupal con los buzos nuevos en la presentación, frente a la pared verde del patio" width="1280" height="960" loading="lazy" decoding="async" style="--pos: 50% 60%"></figure>
+        <figure><img fetchpriority="high" src="assets/promo/bandera-humo.webp?v=2" srcset="assets/promo/bandera-humo-800.webp?v=2 800w, assets/promo/bandera-humo.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="La bandera de Promo 26 Turismo con los nombres de todos, en la presentación de los buzos, con humo de colores y espuma en el patio techado" width="960" height="1280" decoding="async" style="--pos: 50% 82%"></figure>
+        <figure><img src="assets/promo/corazones-pared.webp?v=2" srcset="assets/promo/corazones-pared-800.webp?v=2 800w, assets/promo/corazones-pared.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="Foto grupal con los buzos nuevos en la presentación, frente a la pared verde del patio" width="1280" height="960" decoding="async" style="--pos: 50% 60%"></figure>
       </div>
     </div>
   </section>
@@ -1083,8 +1119,8 @@
       <h2>El aula también <span class="accent">era casa.</span></h2>
       <p class="lead">Entre bancos rayados, pizarrones llenos y paredes verdes pasamos más horas de las que podemos contar. Hubo clases, apuntes, mates, retos y fotos de grupo que nunca salían a la primera. Gracias a los profes que están en esas fotos y en todo lo demás.</p>
       <div class="promo-frames promo-duo">
-        <figure><img src="assets/promo/selfie-aula.webp" srcset="assets/promo/selfie-aula-800.webp 800w, assets/promo/selfie-aula.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="Selfie del curso en el aula, con la pared verde de fondo" width="1280" height="960" loading="lazy" decoding="async" style="--pos: 50% 45%"></figure>
-        <figure><img src="assets/promo/aula-pizarron.webp" srcset="assets/promo/aula-pizarron-800.webp 800w, assets/promo/aula-pizarron.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el aula junto al pizarrón lleno, con los buzos puestos" width="720" height="1280" loading="lazy" decoding="async" style="--pos: 50% 55%"></figure>
+        <figure><img src="assets/promo/selfie-aula.webp?v=2" srcset="assets/promo/selfie-aula-800.webp?v=2 800w, assets/promo/selfie-aula.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="Selfie del curso en el aula, con la pared verde de fondo" width="1280" height="960" decoding="async" style="--pos: 50% 45%"></figure>
+        <figure><img src="assets/promo/aula-pizarron.webp?v=2" srcset="assets/promo/aula-pizarron-800.webp?v=2 800w, assets/promo/aula-pizarron.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el aula junto al pizarrón lleno, con los buzos puestos" width="720" height="1280" decoding="async" style="--pos: 50% 55%"></figure>
       </div>
     </div>
   </section>
@@ -1095,9 +1131,9 @@
       <h2>Los días en que <span class="accent">fuimos otra cosa.</span></h2>
       <p class="lead">Vaqueros, cavernícolas, verano en pleno patio. Cada disfraz fue una excusa para dejar la vergüenza de lado y reírnos todos juntos. De la consigna no se acuerda nadie. De cómo nos reímos, todos.</p>
       <div class="promo-frames promo-trio">
-        <figure><img src="assets/promo/vaqueros.webp" srcset="assets/promo/vaqueros-800.webp 800w, assets/promo/vaqueros.webp 1280w" sizes="(max-width: 768px) 88vw, 349px" alt="El grupo disfrazado de vaqueros por una de las temáticas de la semana de la primavera, en el patio techado" width="720" height="1280" loading="lazy" decoding="async" style="--pos: 50% 82%"></figure>
-        <figure><img src="assets/promo/cavernicolas.webp" srcset="assets/promo/cavernicolas-800.webp 800w, assets/promo/cavernicolas.webp 1280w" sizes="(max-width: 768px) 88vw, 349px" alt="El grupo disfrazado de cavernícolas por la semana de la primavera, junto al cartel del curso y el mural" width="960" height="1280" loading="lazy" decoding="async" style="--pos: 50% 80%"></figure>
-        <figure><img src="assets/promo/verano.webp" srcset="assets/promo/verano-800.webp 800w, assets/promo/verano.webp 1280w" sizes="(max-width: 768px) 88vw, 349px" alt="El grupo con ropa de verano por la temática de la semana de la primavera, en el patio techado" width="720" height="1280" loading="lazy" decoding="async" style="--pos: 50% 72%"></figure>
+        <figure><img src="assets/promo/vaqueros.webp?v=2" srcset="assets/promo/vaqueros-800.webp?v=2 800w, assets/promo/vaqueros.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 349px" alt="El grupo disfrazado de vaqueros por una de las temáticas de la semana de la primavera, en el patio techado" width="720" height="1280" decoding="async" style="--pos: 50% 82%"></figure>
+        <figure><img src="assets/promo/cavernicolas.webp?v=2" srcset="assets/promo/cavernicolas-800.webp?v=2 800w, assets/promo/cavernicolas.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 349px" alt="El grupo disfrazado de cavernícolas por la semana de la primavera, junto al cartel del curso y el mural" width="960" height="1280" decoding="async" style="--pos: 50% 80%"></figure>
+        <figure><img src="assets/promo/verano.webp?v=2" srcset="assets/promo/verano-800.webp?v=2 800w, assets/promo/verano.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 349px" alt="El grupo con ropa de verano por la temática de la semana de la primavera, en el patio techado" width="720" height="1280" decoding="async" style="--pos: 50% 72%"></figure>
       </div>
     </div>
   </section>
@@ -1108,8 +1144,8 @@
       <h2>Cuando salimos <span class="accent">a escena.</span></h2>
       <p class="lead">El día de la murga: naranja, turquesa y pintura blanca. No importó quién era tímido y quién no: estuvimos todos, con las manos arriba. Yo soy porque nosotros somos.</p>
       <div class="promo-frames promo-duo">
-        <figure><img src="assets/promo/pasillo-naranja-turquesa.webp" srcset="assets/promo/pasillo-naranja-turquesa-800.webp 800w, assets/promo/pasillo-naranja-turquesa.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso alineado en el pasillo el día de la murga, con remeras naranja y turquesa y pintura blanca" width="1280" height="854" loading="lazy" decoding="async" style="--pos: 50% 50%"></figure>
-        <figure><img src="assets/promo/naranja-turquesa-patio.webp" srcset="assets/promo/naranja-turquesa-patio-800.webp 800w, assets/promo/naranja-turquesa-patio.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso el día de la murga en el patio, con las remeras naranja y turquesa y las manos arriba" width="1280" height="854" loading="lazy" decoding="async" style="--pos: 50% 50%"></figure>
+        <figure><img src="assets/promo/pasillo-naranja-turquesa.webp?v=2" srcset="assets/promo/pasillo-naranja-turquesa-800.webp?v=2 800w, assets/promo/pasillo-naranja-turquesa.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso alineado en el pasillo el día de la murga, con remeras naranja y turquesa y pintura blanca" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></figure>
+        <figure><img src="assets/promo/naranja-turquesa-patio.webp?v=2" srcset="assets/promo/naranja-turquesa-patio-800.webp?v=2 800w, assets/promo/naranja-turquesa-patio.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso el día de la murga en el patio, con las remeras naranja y turquesa y las manos arriba" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></figure>
       </div>
     </div>
   </section>
@@ -1120,8 +1156,8 @@
       <h2>Lo que se aprende <span class="accent">afuera del aula.</span></h2>
       <p class="lead">La caminata con los buzos del viaje por los hoteles de Salsipuedes, el Wayna Lodge de Sierras y el Orfeo Suites; después, el primer restaurante armado por nosotros dentro de la escuela, con la cocina y el menú a cargo y el estreno del SUM. Turismo es salir a conocer lugares, pero lo que más conocimos fue a nosotros.</p>
       <div class="promo-frames promo-duo">
-        <figure><img src="assets/promo/escalera-buzos.webp" srcset="assets/promo/escalera-buzos-800.webp 800w, assets/promo/escalera-buzos.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso con los buzos del viaje en la escalera, durante la caminata por el Wayna Lodge de Sierras y el Orfeo Suites de Salsipuedes" width="1280" height="960" loading="lazy" decoding="async" style="--pos: 50% 45%"></figure>
-        <figure><img src="assets/promo/patio-certificado.webp" srcset="assets/promo/patio-certificado-800.webp 800w, assets/promo/patio-certificado.webp 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el patio al sol el día del primer restaurante de la escuela, con el menú de los platos que cocinaron para estrenar el SUM" width="1280" height="960" loading="lazy" decoding="async" style="--pos: 50% 55%"></figure>
+        <figure><img src="assets/promo/escalera-buzos.webp?v=2" srcset="assets/promo/escalera-buzos-800.webp?v=2 800w, assets/promo/escalera-buzos.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso con los buzos del viaje en la escalera, durante la caminata por el Wayna Lodge de Sierras y el Orfeo Suites de Salsipuedes" width="1280" height="960" decoding="async" style="--pos: 50% 45%"></figure>
+        <figure><img src="assets/promo/patio-certificado.webp?v=2" srcset="assets/promo/patio-certificado-800.webp?v=2 800w, assets/promo/patio-certificado.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el patio al sol el día del primer restaurante de la escuela, con el menú de los platos que cocinaron para estrenar el SUM" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></figure>
       </div>
     </div>
   </section>
@@ -1133,7 +1169,7 @@
       <p class="lead">Un baby shower que armamos en el aula para Lola, esperando a Enzo: la torta, el cartel de colores y el curso entero apretado en la foto. Los mejores recuerdos casi nunca son los grandes.</p>
       <!-- Confirmado con la promo: baby shower de Lola, esperando a Enzo. Con nombres pedidos por la promo. -->
       <div class="promo-frames promo-solo">
-        <figure><img src="assets/promo/festejo-torta.webp" srcset="assets/promo/festejo-torta-800.webp 800w, assets/promo/festejo-torta.webp 1280w" sizes="(max-width: 768px) 88vw, 880px" alt="La torta y el cartel del baby shower de Lola en el aula, con el curso entero apretado en la foto esperando a Enzo" width="1280" height="960" loading="lazy" decoding="async" style="--pos: 50% 55%"></figure>
+        <figure><img src="assets/promo/festejo-torta.webp?v=2" srcset="assets/promo/festejo-torta-800.webp?v=2 800w, assets/promo/festejo-torta.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 880px" alt="La torta y el cartel del baby shower de Lola en el aula, con el curso entero apretado en la foto esperando a Enzo" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></figure>
       </div>
     </div>
   </section>
@@ -1144,8 +1180,8 @@
       <h2>Todavía queda <span class="accent">un último abrazo.</span></h2>
       <p class="lead">Manos arriba, espuma en el aire y la sensación de que esto va a durar para siempre, aunque ya sepamos que no. Falta poco para el egreso y la colación. Mientras tanto, una foto más.</p>
       <div class="promo-frames promo-bn">
-        <figure><img src="assets/promo/manos-arriba-bn.webp" srcset="assets/promo/manos-arriba-bn-800.webp 800w, assets/promo/manos-arriba-bn.webp 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del cierre de la presentación de buzos, con las manos arriba y espuma en el aire" width="1280" height="854" loading="lazy" decoding="async" style="--pos: 50% 42%"></figure>
-        <figure><img src="assets/promo/pasto-bn.webp" srcset="assets/promo/pasto-bn-800.webp 800w, assets/promo/pasto-bn.webp 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del book de fotos de la promo en la estancia El Rosal de Agua de Oro, sobre el pasto con las manos arriba" width="720" height="1280" loading="lazy" decoding="async" style="--pos: 50% 62%"></figure>
+        <figure><img src="assets/promo/manos-arriba-bn.webp?v=2" srcset="assets/promo/manos-arriba-bn-800.webp?v=2 800w, assets/promo/manos-arriba-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del cierre de la presentación de buzos, con las manos arriba y espuma en el aire" width="1280" height="854" decoding="async" style="--pos: 50% 42%"></figure>
+        <figure><img src="assets/promo/pasto-bn.webp?v=2" srcset="assets/promo/pasto-bn-800.webp?v=2 800w, assets/promo/pasto-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del book de fotos de la promo en la estancia El Rosal de Agua de Oro, sobre el pasto con las manos arriba" width="720" height="1280" decoding="async" style="--pos: 50% 62%"></figure>
       </div>
       <div class="thanks-actions" style="justify-content: center;">
         <button class="ghost-btn" type="button" data-go="21">Seguir →</button>
@@ -1540,36 +1576,62 @@ function init() {
 
 init();
 
-  /* Precarga de fotos vecinas y revelado suave. Bloque aislado: no toca
-     scroll, snap ni la lógica de entrada (fade+blur). Cuando una diapositiva
-     queda a 100% de viewport de distancia, sus imgs pasan a loading="eager";
-     cada foto se agrega la clase .ok al terminar de decodificar para que
-     aparezca con un fade corto de .28s y no de golpe. */
+  /* Pantalla de carga: logo + barra. El DOM tiene todo el contenido desde el
+     arranque (sin lazy): el loader cubre hasta que decodifican las fotos de
+     las 3 primeras diapositivas con foto (2+2+3 = 7) o 2,5 s de techo. Las
+     fotos se revelan con fade solo cuando ya estan decodificadas, asi ninguna
+     aparece de golpe. Despues, un pase en tiempo libre del hilo re-intenta
+     la decodificacion de las que falten, de a una, sin bloquear el scroll. */
   (function () {
     const frames = Array.from(document.querySelectorAll('.promo-frames img'));
     if (!frames.length) return;
+    const raiz = document.documentElement;
+    const carga = document.getElementById('carga');
+    const progreso = document.getElementById('carga-progreso');
+    const primeras = frames.slice(0, 7);
+
     const revelar = (im) => {
-      if (im.classList.contains('ok')) return;
-      if (im.complete && im.naturalWidth > 0) { im.classList.add('ok'); return; }
-      im.addEventListener('load', () => im.classList.add('ok'), { once: true });
-      im.addEventListener('error', () => im.classList.add('ok'), { once: true });
-    };
-    if (!('IntersectionObserver' in window)) {
-      frames.forEach(revelar);
-      return;
-    }
-    const io = new IntersectionObserver((entradas) => {
-      entradas.forEach((e) => {
-        if (!e.isIntersecting) return;
-        e.target.querySelectorAll('img').forEach((im) => {
-          if (im.getAttribute('loading') === 'lazy') im.setAttribute('loading', 'eager');
-          revelar(im);
-        });
-        io.unobserve(e.target);
+      if (im.classList.contains('ok')) return Promise.resolve();
+      const listo = () => { if (!im.classList.contains('ok')) im.classList.add('ok'); return Promise.resolve(); };
+      if (im.complete && im.naturalWidth > 0) return listo();
+      if (typeof im.decode === 'function') return im.decode().then(listo, listo);
+      return new Promise((ok) => {
+        im.addEventListener('load', listo, { once: true });
+        im.addEventListener('error', listo, { once: true });
       });
-    }, { rootMargin: '100% 0px 100% 0px' });
-    document.querySelectorAll('.slide').forEach((s) => io.observe(s));
-    frames.forEach(revelar);
+    };
+
+    let listas = 0;
+    const pinta = () => {
+      if (progreso) progreso.style.transform = 'scaleX(' + (listas / primeras.length + 0.02) + ')';
+    };
+    primeras.forEach((im) => {
+      revelar(im).then(() => { listas += 1; pinta(); });
+    });
+    /* Las demas tambien se revelan apenas decodifican (van llegando en orden
+       natural del fetch, bandera primero por fetchpriority high). */
+    frames.slice(7).forEach((im) => revelar(im));
+
+    const salir = () => {
+      if (raiz.classList.contains('carga-listo')) return;
+      raiz.classList.add('carga-listo'); /* el CSS hace el fade de salida */
+    };
+
+    Promise.all(primeras.map(revelar)).then(() => { setTimeout(salir, 150); });
+    setTimeout(salir, 2500); /* techo: la presentacion se muestra igual */
+
+    /* Red de seguridad + segunda oportunidad en segundo plano: cada foto que
+       sigue sin decodificar se reintenta de a una en requestIdleCallback,
+       tambien cubre el caso de una foto que fallo en el primer intento. */
+    const reintenta = () => {
+      const im = frames.find((x) => !x.classList.contains('ok'));
+      if (!im) return;
+      if (im.complete && im.naturalWidth > 0) { im.classList.add('ok'); return reintenta(); }
+      im.decode ? im.decode().then(reintenta, reintenta) : reintenta();
+    };
+    const arrancarse = () => reintenta();
+    if ('requestIdleCallback' in window) requestIdleCallback(arrancarse, { timeout: 1800 });
+    else setTimeout(arrancarse, 120);
   })();
 </script>
 </body>
