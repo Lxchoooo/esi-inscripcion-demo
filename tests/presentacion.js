@@ -144,7 +144,7 @@ check('el modo presentacion se oculta con prefers-reduced-motion y muestra pausa
   /transition: transform 8s linear/.test(HTML) &&
   /transform: scaleX\(1\)/.test(HTML));
 check('musica opcional: audio sin precarga, bucle y boton oculto hasta confirmar el archivo',
-  /<audio id="musica-audio" src="assets\/audio\/fondo\.mp3" loop preload="none"/.test(HTML) &&
+  /<audio id="musica-audio" src="assets\/audio\/fondo\.mp3(?:\?v=\d+)?" loop preload="none"/.test(HTML) &&
   !/<audio[^>]*autoplay/.test(HTML) &&
   /id="musica"[^>]*aria-pressed="false"[^>]*title="Activar música de fondo" hidden/.test(HTML) &&
   /method: 'HEAD'/.test(HTML) &&
