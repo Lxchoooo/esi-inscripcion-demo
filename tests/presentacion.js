@@ -239,7 +239,7 @@ check('musica: la mezcla existe, pesa menos de 7 MB y se precarga para uso offli
   /const audioSrc = audio && \(audio\.getAttribute\('src'\) \|\| audio\.currentSrc\)/.test(HTML) &&
   /urls\.add\(new URL\(audioSrc, location\.href\)\.href\)/.test(HTML) &&
   /type: 'PRECACHE'/.test(HTML) &&
-  /assets\/audio\/promo\.mp3\?v=3/.test(HTML) &&
+  /assets\/audio\/promo\.mp3\?v=4/.test(HTML) &&
   PRECACHE.indexOf('assets/audio') < 0);
 check('service worker relativo con scope del proyecto y precache liviano de HTML y logos',
   /register\('sw\.js'\)/.test(HTML) &&
