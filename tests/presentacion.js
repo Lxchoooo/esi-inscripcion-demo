@@ -123,6 +123,10 @@ check('el 85% se explica sobre las reservas marcadas',
   /De las reservas que quedaron marcadas, el 85%/.test(HTML));
 check('color-scheme oscuro para scrollbars y controles nativos',
   /color-scheme:\s*dark/.test(HTML));
+check('recorte horizontal con respaldo para navegadores sin overflow:clip',
+  /@supports not \(overflow: clip\)/.test(HTML) && /overflow-x: hidden/.test(HTML));
+check('un enlace #slide-N pegado con la pagina abierta tambien navega',
+  /addEventListener\('hashchange'/.test(HTML) && /location\.hash\.match\(\/slide-/.test(HTML));
 check('el texto tenue pasa WCAG AA sobre el fondo y sobre las tarjetas', (() => {
   const css = HTML.split('<style>')[1].split('</style>')[0];
   const raw = (css.match(/--faint:\s*rgba\(245,\s*241,\s*232,\s*([\d.]+)\)/) || [])[1];

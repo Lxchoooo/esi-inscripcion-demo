@@ -489,6 +489,10 @@
   .promo-bn { --ar: 3/2; }
 
   .cover, .promo, .promo-speech, .farewell { position: relative; overflow-x: clip; }
+  /* Navegadores sin overflow: clip (iOS 15 y anteriores) recortan igual. */
+  @supports not (overflow: clip) {
+    body, .cover, .promo, .promo-speech, .farewell { overflow-x: hidden; }
+  }
   .cover::before, .promo::before, .promo-speech::before, .farewell::before {
     content: "";
     position: absolute;
@@ -1364,6 +1368,16 @@ function bindNavigation() {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'ArrowRight') goTo(current + 1);
     else if (event.key === 'ArrowLeft') goTo(current - 1);
+  });
+
+  /* Si alguien pega un enlace #slide-N con la pagina ya abierta, el navegador
+     no encuentra ese id y no se mueve: lo resolvemos a mano. replaceState no
+     dispara hashchange, asi que esto no se pisa con la navegacion normal. */
+  window.addEventListener('hashchange', () => {
+    const target = location.hash.match(/slide-(\d+)/);
+    if (!target) return;
+    const index = parseInt(target[1], 10) - 1;
+    if (slides[index]) goTo(index);
   });
 
   const fullscreenBtn = document.getElementById('fullscreen');
