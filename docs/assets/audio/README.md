@@ -2,11 +2,9 @@
 
 ## `fondo.mp3`
 
-**Contemplation**, de Joth.
+Pista de fondo provista por el responsable del proyecto.
 
-- Fuente: https://opengameart.org/content/contemplation-0
-- Licencia: CC0 1.0 (dominio público).
-- Editado: fundido de entrada y salida y recodificado a 128 kbps para usarlo como música de fondo general.
+- Editado: recodificado a 96 kbps estéreo y 44,1 kHz para reducir el peso del archivo.
 
 ## `palabras.mp3`
 
