@@ -755,7 +755,13 @@ async function main() {
   check('al volver más arriba de Palabras la canción se pausa',
     palArriba.paused && palArriba.pressed === 'false', JSON.stringify(palArriba));
   await palPage.locator('[data-go="Palabras para la promo"]').click();
-  await wait(1400);
+  await wait(1600);
+  const palVuelve = await palPage.evaluate(() => ({
+    paused: document.getElementById('musica-audio').paused,
+    pressed: document.getElementById('palabras-musica').getAttribute('aria-pressed')
+  }));
+  check('al volver a bajar a Palabras la canción arranca sola otra vez',
+    !palVuelve.paused && palVuelve.pressed === 'true', JSON.stringify(palVuelve));
   await palPage.locator('#palabras-musica').click();
   await wait(900);
   const palOff = await palPage.evaluate(() => ({

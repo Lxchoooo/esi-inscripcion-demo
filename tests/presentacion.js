@@ -172,9 +172,12 @@ check('musica: una sola cancion propia, sin precarga, en bucle y con boton ocult
 check('musica: arranca en Palabras y sigue hasta el final, con volumen 0,4 y fades de 600 ms',
   /const MUSICA_VOLUMEN = 0\.4/.test(HTML) &&
   /const MUSICA_FADE_MS = 600/.test(HTML) &&
-  /const MUSICA_DESDE = Math\.max\(0, slides\.findIndex\(\(s\) => s\.dataset\.title === 'Palabras para la promo'\)\);/.test(HTML) &&
-  /if \(n >= MUSICA_DESDE\) \{\n    if \(!sonandoMusica && !musicaBloqueada\) encenderMusica\(false\);/.test(HTML) &&
-  /else if \(sonandoMusica && !musicaManual\) \{\n    apagarMusica\(false\);/.test(HTML) &&
+  /const i = slides\.findIndex\(\(s\) => s\.dataset\.title === 'Palabras para la promo'\);\n  return i < 0 \? slides\.length : i;/.test(HTML) &&
+  /if \(n >= MUSICA_DESDE\) \{\n    reintentarMusica\(\);/.test(HTML) &&
+  /function reintentarMusica\(\) \{\n  if \(sonandoMusica \|\| musicaBloqueada \|\| !musicaAudio \|\| !musicaDisponible\) return;\n  if \(current < MUSICA_DESDE\) return;\n  encenderMusica\(false\);/.test(HTML) &&
+  /if \(sonandoMusica && !musicaManual\) \{\n      apagarMusica\(false\);/.test(HTML) &&
+  /function precargarMusica\(\)/.test(HTML) &&
+  /if \(n >= MUSICA_DESDE - 3\) precargarMusica\(\);/.test(HTML) &&
   /addEventListener\('click', alternarMusica\)/.test(HTML) &&
   /fadeMusica\(MUSICA_VOLUMEN, MUSICA_FADE_MS\)/.test(HTML) &&
   /if \(!musicaAudio\.paused\) musicaAudio\.pause\(\)/.test(HTML));
@@ -186,8 +189,10 @@ check('musica: el boton de Palabras controla la misma cancion y respeta el silen
   /let musicaBloqueada = false;/.test(HTML) &&
   /if \(manual\) \{ musicaManual = false; musicaBloqueada = true; \}/.test(HTML) &&
   !/localStorage\.getItem\('esi-musica'\)/.test(HTML));
-const PRIMAR_MUSICA = (HTML.match(/function primarMusica\(\)[\s\S]*?\n\}/) || [''])[0];
+const PRIMAR_MUSICA = (HTML.match(/function primarMusica\(evento\)[\s\S]*?\n\}/) || [''])[0];
 check('musica: se prima en silencio con el gesto para sonar sola al deslizar hasta Palabras',
+  /closest\('#musica, #palabras-musica'\)/.test(PRIMAR_MUSICA) &&
+  /let musicaDisponible = true;/.test(HTML) &&
   /musicaAudio\.volume = 0;/.test(PRIMAR_MUSICA) &&
   /musicaAudio\.play\(\)/.test(PRIMAR_MUSICA) &&
   /musicaPrimadaTimer/.test(PRIMAR_MUSICA) &&
@@ -195,7 +200,10 @@ check('musica: se prima en silencio con el gesto para sonar sola al deslizar has
   /const MUSICA_PRIMADA_MS = 4000/.test(HTML) &&
   /addEventListener\('touchstart', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
   /addEventListener\('pointerdown', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
-  /addEventListener\('keydown', primarMusica, true\)/.test(HTML));
+  /addEventListener\('touchend', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
+  /addEventListener\('pointerup', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
+  /addEventListener\('keydown', primarMusica, true\)/.test(HTML) &&
+  /addEventListener\('keyup', primarMusica, true\)/.test(HTML));
 check('musica: el mp3 existe, pesa menos de 3 MB y no viaja en el precache',
   fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3')) &&
   fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3')).size < 3145728 &&

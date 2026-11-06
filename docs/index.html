@@ -1372,7 +1372,10 @@ const slides = Array.from(document.querySelectorAll('.slide'));
 /* La canción de la presentación arranca en esta diapositiva y sigue hasta el
    final; antes de ella la presentación va en silencio salvo que se active a
    mano con el botón de música. */
-const MUSICA_DESDE = Math.max(0, slides.findIndex((s) => s.dataset.title === 'Palabras para la promo'));
+const MUSICA_DESDE = (() => {
+  const i = slides.findIndex((s) => s.dataset.title === 'Palabras para la promo');
+  return i < 0 ? slides.length : i; /* sin la diapositiva, la música no arranca sola */
+})();
 const progressEl = document.getElementById('progress');
 const counterEl = document.getElementById('counter');
 const lightbox = document.getElementById('lightbox');
@@ -1441,16 +1444,19 @@ function setActive(index) {
   /* La canción suena desde "Palabras para la promo" hasta el final. Si se
      vuelve más arriba se pausa, salvo que se haya activado a mano. */
   if (n >= MUSICA_DESDE) {
-    if (!sonandoMusica && !musicaBloqueada) encenderMusica(false);
-  } else if (sonandoMusica && !musicaManual) {
-    apagarMusica(false);
-  } else if (!sonandoMusica && musicaPrimada) {
-    window.clearTimeout(musicaPrimadaTimer);
-    musicaPrimada = false;
-    window.clearInterval(fadeMusicaTimer);
-    musicaAudio.pause();
-    musicaAudio.currentTime = 0;
-    musicaAudio.volume = MUSICA_VOLUMEN;
+    reintentarMusica();
+  } else {
+    if (n >= MUSICA_DESDE - 3) precargarMusica();
+    if (sonandoMusica && !musicaManual) {
+      apagarMusica(false);
+    } else if (!sonandoMusica && musicaPrimada) {
+      window.clearTimeout(musicaPrimadaTimer);
+      musicaPrimada = false;
+      window.clearInterval(fadeMusicaTimer);
+      musicaAudio.pause();
+      musicaAudio.currentTime = 0;
+      musicaAudio.volume = MUSICA_VOLUMEN;
+    }
   }
 }
 
@@ -1853,13 +1859,14 @@ const MUSICA_VOLUMEN = 0.4;
 const MUSICA_FADE_MS = 600;
 /* Cuánto puede quedar primada en silencio antes de llegar a la diapositiva. */
 const MUSICA_PRIMADA_MS = 4000;
-let musicaDisponible = false;
+let musicaDisponible = true; /* optimista: el HEAD solo decide si se muestra el botón */
 let musicaManual = false;   /* la activó el usuario: suena en toda la presentación */
 let musicaBloqueada = false; /* la silenció el usuario: no vuelve sola al deslizar */
 let sonandoMusica = false;
 let fadeMusicaTimer = 0;
 let musicaPrimada = false;
 let musicaPrimadaTimer = 0;
+let musicaPrecargada = false;
 
 function pintarMusica() {
   musicaBtn.setAttribute('aria-pressed', sonandoMusica ? 'true' : 'false');
@@ -1926,7 +1933,11 @@ function alternarMusica() {
    Por eso la canción se "prima" en silencio apenas se toca o se teclea algo:
    si el desplazamiento termina en "Palabras para la promo" (o más abajo) ya
    está sonando y solo hay que subirle el volumen; si no, se apaga sola. */
-function primarMusica() {
+function primarMusica(evento) {
+  /* Un toque sobre los botones de música lo resuelve su propio click: si se
+     primara acá, el click encontraría la canción ya sonando y la pausaría. */
+  const t = evento && evento.target;
+  if (t && t.closest && t.closest('#musica, #palabras-musica')) return;
   if (!musicaAudio || !musicaDisponible || sonandoMusica || musicaBloqueada) return;
   if (current >= MUSICA_DESDE) {
     encenderMusica(false);
@@ -1955,6 +1966,26 @@ function primarMusica() {
   promesa.then(alAndar).catch(() => { musicaPrimada = false; });
 }
 
+/* Cuando falta poco para "Palabras" se empieza a bajar la canción: así, al
+   llegar, ya está lista y arranca sin esperar la descarga. */
+function precargarMusica() {
+  if (musicaPrecargada || !musicaAudio || sonandoMusica || !musicaAudio.paused) return;
+  musicaPrecargada = true;
+  try {
+    musicaAudio.preload = 'auto';
+    musicaAudio.load();
+  } catch (e) { /* sin audio o modo restringido */ }
+}
+
+/* Vuelve a intentar el arranque cuando la presentación ya está en la zona con
+   música. Si el navegador bloquea el audio, el próximo gesto o el próximo
+   reposo del scroll lo reintentan. */
+function reintentarMusica() {
+  if (sonandoMusica || musicaBloqueada || !musicaAudio || !musicaDisponible) return;
+  if (current < MUSICA_DESDE) return;
+  encenderMusica(false);
+}
+
 function esperarServiceWorker() {
   return new Promise((ok) => {
     if (!('serviceWorker' in navigator)) { ok(false); return; }
@@ -1980,18 +2011,21 @@ function comprobarMusica() {
   /* El HEAD pasa por el service worker: si el MP3 no existe, responde 204
      sin un 404 en la consola. Sin service worker no se muestra el botón. */
   esperarServiceWorker()
-    .then((listo) => {
-      if (!listo) return null;
+    .then(() => {
+      /* Si el service worker todavía no tomó control, el HEAD va directo al
+         servidor: igual responde 200 cuando el archivo existe. */
       return fetch(musicaAudio.getAttribute('src'), { method: 'HEAD', cache: 'no-store' });
     })
     .then((respuesta) => {
       if (!respuesta || respuesta.status !== 200) {
+        musicaDisponible = false;
         if (palabrasBtn) palabrasBtn.hidden = true;
         return;
       }
       musicaDisponible = true;
       musicaBtn.hidden = false;
       pintarMusica();
+      reintentarMusica();
     })
     .catch(() => { /* sin archivo o sin red: el botón no aparece */ });
 }
@@ -2001,6 +2035,7 @@ function bindMusica() {
   musicaBtn.addEventListener('click', alternarMusica);
   if (palabrasBtn) palabrasBtn.addEventListener('click', alternarMusica);
   musicaAudio.addEventListener('error', () => {
+    musicaDisponible = false;
     musicaBtn.hidden = true;
     if (palabrasBtn) palabrasBtn.hidden = true;
   });
@@ -2008,11 +2043,14 @@ function bindMusica() {
 
   document.addEventListener('touchstart', primarMusica, { passive: true, capture: true });
   document.addEventListener('pointerdown', primarMusica, { passive: true, capture: true });
+  document.addEventListener('touchend', primarMusica, { passive: true, capture: true });
+  document.addEventListener('pointerup', primarMusica, { passive: true, capture: true });
   document.addEventListener('keydown', primarMusica, true);
+  document.addEventListener('keyup', primarMusica, true);
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      if (current >= MUSICA_DESDE && !sonandoMusica && !musicaBloqueada) encenderMusica(false);
+      reintentarMusica();
       return;
     }
     window.clearTimeout(musicaPrimadaTimer);
@@ -2093,6 +2131,9 @@ function bindNavigation() {
   let restTimer = 0;
   const restSync = () => {
     syncCurrent();
+    /* Al reposar el scroll se reintenta el arranque: si el navegador había
+       bloqueado el audio por falta de gesto, ya hay activación de sobra. */
+    reintentarMusica();
     // Red de seguridad: si el snap deja la diapositiva a mitad de vista sin
     // cruzar el 45%, sus graficos y contadores arrancan igual al reposar.
     const cur = slides[current];
