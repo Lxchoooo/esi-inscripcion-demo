@@ -88,8 +88,20 @@ check('los graficos no animan layout',
   !/transition:\s*(width|height)\b/.test(HTML));
 
 // Contenido.
-check('23 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 23);
+check('28 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 28);
 check('7 diapositivas de fotos de la promo', (HTML.match(/class="slide promo-foto"/g) || []).length === 7);
+check('5 diapositivas nuevas de texto de la promo', (HTML.match(/class="slide promo-mensaje"/g) || []).length === 5);
+check('las 5 de texto van en orden entre el ultimo abrazo y Cinco anos', (() => {
+  const pos = (name) => HTML.indexOf('data-title="' + name + '"');
+  return pos('Todavía queda un último abrazo') < pos('Lo que no sale en las fotos') &&
+    pos('Lo que no sale en las fotos') < pos('Carta al chico de primer año') &&
+    pos('Carta al chico de primer año') < pos('A nuestras familias') &&
+    pos('A nuestras familias') < pos('A los que nos enseñaron') &&
+    pos('A los que nos enseñaron') < pos('Cuando pasen los años') &&
+    pos('Cuando pasen los años') < pos('Cinco años');
+})());
+check('las 5 de texto van sin fotos, centradas y etiquetadas como la promo', !/promo-mensaje[^>]*>[\s\S]*?<img/.test(HTML.slice(HTML.indexOf('data-title="Lo que no sale en las fotos"'), HTML.indexOf('data-title="Cinco años"'))) &&
+  /<p class="eyebrow">Promo 26 Turismo<\/p>\s*<h2>Lo que no sale/.test(HTML));
 check('14 fotos referenciadas como src', (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
 check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/<img [^>]*src="assets\/promo\/[^>]*decoding="async"/g) || []).length === 14);
 check('las fotos van en webp con srcset 800w/1280w', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp[?]v=(2|3)"/g) || []).length === 14 && (HTML.match(/-800\.webp[?]v=(2|3) 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp[?]v=(2|3) 1280w"/g) || []).length === 14 && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
@@ -120,10 +132,13 @@ check('el visor solo anima opacity 150 ms y pasa fotos de la misma diapositiva',
   /const slide = foto\.closest\('\.slide'\)/.test(HTML) &&
   /fotoLightbox = \(fotoLightbox \+ delta \+ fotosLightbox\.length\) % fotosLightbox\.length/.test(HTML) &&
   /moverFotoLightbox\(dx < 0 \? 1 : -1\)/.test(HTML));
-check('modo presentacion: boton play/pausa, 8 s por diapositiva y fin en la ultima',
+check('modo presentacion: 8 s por diapositiva y tiempo proporcional (8 a 18 s) en las de texto',
   /id="autoplay"[^>]*aria-pressed="false"/.test(HTML) &&
   /const AUTOPLAY_MS = 8000/.test(HTML) &&
-  /let autoplayOn = false/.test(HTML) &&
+  /const AUTOPLAY_MS_MAX = 18000/.test(HTML) &&
+  /function duracionAutoplay\(\)/.test(HTML) &&
+  /promo-mensaje'\)\) return AUTOPLAY_MS/.test(HTML) &&
+  /empezarBarraAutoplay\(ms\)/.test(HTML) &&
   /goTo\(siguiente\)/.test(HTML) &&
   /if \(current >= slides\.length - 1\) pausarAutoplay\(\)/.test(HTML) &&
   /scrollIntoView/.test(HTML));
@@ -289,7 +304,7 @@ check('los botones navegan por data-title, no por indice',
 check('un solo role=img por grafico',
   /el\.setAttribute\('aria-label'/.test(HTML) && /svg\.setAttribute\('aria-hidden', 'true'\)/.test(HTML));
 
-check('contador inicial 01 / 23', /01 \/ 23</.test(HTML));
+check('contador inicial 01 / 28', /01 \/ 28</.test(HTML));
 check('contadores con data-count', (HTML.match(/data-count=/g) || []).length >= 4);
 check('graficos de entrada y charlas', /id="entryDonut"/.test(HTML) && /id="talksDonut"/.test(HTML));
 check('graficos de temas, cursos y franjas',

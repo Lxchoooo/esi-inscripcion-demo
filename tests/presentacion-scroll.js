@@ -4,7 +4,7 @@
  * Verificación real de la presentación en Chromium (CI).
  *
  * - Viewport de celular 390x844 con touch emulado.
- * - Recorre las 23 diapositivas y comprueba que todas son alcanzables,
+ * - Recorre las 28 diapositivas y comprueba que todas son alcanzables,
  *   que no se superponen y que los contadores y gráficos terminan de animarse.
  * - Mide frames largos durante el scroll (touch, rueda y teclado).
  *
@@ -102,7 +102,7 @@ async function main() {
 
   // 1. Estructura y navegación nativa.
   const total = await page.locator('section.slide').count();
-  check('23 diapositivas en el documento', total === 23, total + ' encontradas');
+  check('28 diapositivas en el documento', total === 28, total + ' encontradas');
   const totalSlides = total;
 
   const snapAlign = await page.evaluate(() => {

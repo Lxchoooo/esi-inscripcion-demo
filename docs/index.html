@@ -444,6 +444,19 @@
   .promo .eyebrow { justify-content: center; }
   .promo .lead { margin-left: auto; margin-right: auto; }
   .promo .farewell-quote { max-width: 20ch; }
+  /* Diapositivas nuevas de solo texto entre las fotos y el cierre. */
+  .promo-mensaje { text-align: center; }
+  .promo-mensaje .eyebrow { justify-content: center; margin-left: auto; margin-right: auto; }
+  .promo-mensaje h2 { font-size: clamp(2.1rem, 4.4vw, 3.6rem); margin-bottom: 26px; }
+  .promo-mensaje .lead {
+    max-width: 60ch;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: clamp(.98rem, 1.38vw, 1.18rem);
+    line-height: 1.62;
+  }
+  .promo-mensaje .lead + .lead { margin-top: 14px; }
+  .promo-mensaje .thanks-actions { margin-top: 26px; }
 
   /* Pantalla de carga liviana: logo + barra. Solo se muestra con JS y se va
      cuando decodifican las fotos de las 3 primeras diapositivas con foto
@@ -594,12 +607,12 @@
     .lightbox-next { right: calc(50% - 64px); }
   }
 
-  .cover, .promo, .promo-speech, .farewell { position: relative; overflow-x: clip; }
+  .cover, .promo, .promo-speech, .promo-mensaje, .farewell { position: relative; overflow-x: clip; }
   /* Navegadores sin overflow: clip (iOS 15 y anteriores) recortan igual. */
   @supports not (overflow: clip) {
-    body, .cover, .promo, .promo-speech, .farewell { overflow-x: hidden; }
+    body, .cover, .promo, .promo-speech, .promo-mensaje, .farewell { overflow-x: hidden; }
   }
-  .cover::before, .promo::before, .promo-speech::before, .farewell::before {
+  .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before {
     content: "";
     position: absolute;
     inset: -18%;
@@ -612,7 +625,7 @@
     opacity: .38;
     transform: rotate(-8deg) scale(1.06);
   }
-  .cover::after, .promo::after, .promo-speech::after, .farewell::after {
+  .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after {
     content: "";
     position: absolute;
     right: -14vmin;
@@ -626,11 +639,11 @@
     opacity: .22;
     transform: rotate(10deg);
   }
-  .cover .wrap, .promo .wrap, .promo-speech .wrap, .farewell .wrap { position: relative; z-index: 1; }
+  .cover .wrap, .promo .wrap, .promo-speech .wrap, .promo-mensaje .wrap, .farewell .wrap { position: relative; z-index: 1; }
   .promo-speech h2 { font-size: clamp(2.2rem, 4.4vw, 4rem); max-width: 22ch; }
   .promo-speech .lead { max-width: 68ch; }
   @media (min-width: 701px) {
-    .cover, .promo, .promo-speech, .farewell { overflow: clip; }
+    .cover, .promo, .promo-speech, .promo-mensaje, .farewell { overflow: clip; }
   }
 
   .thanks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
@@ -715,7 +728,7 @@
     .slide {
       padding: 78px 18px calc(44px + env(safe-area-inset-bottom));
     }
-    .slide.promo-speech, .slide.promo, .slide.farewell, .slide.thanks {
+    .slide.promo-speech, .slide.promo, .slide.promo-mensaje, .slide.farewell, .slide.thanks {
       text-align: center;
     }
     .slide.promo-speech .eyebrow { margin-left: auto; margin-right: auto; }
@@ -756,13 +769,13 @@
     .glass {
       background: linear-gradient(145deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .04));
     }
-    .cover::before, .promo::before, .promo-speech::before, .farewell::before {
+    .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before {
       inset: -6%;
       background-size: 78vmin;
       opacity: .3;
       animation: none;
     }
-    .cover::after, .promo::after, .promo-speech::after, .farewell::after {
+    .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after {
       width: 70vmin;
       height: 70vmin;
       right: -22vmin;
@@ -813,10 +826,10 @@
     /* En celulares de gama baja, sombras grandes son lo primero que traba. */
     .glass { box-shadow: none; }
     .brand-logo { filter: none; }
-    .cover::before, .promo::before, .promo-speech::before, .farewell::before { opacity: .22; }
-    .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
-    .cover::before, .promo::before, .promo-speech::before, .farewell::before { filter: blur(4px); }
-    .cover::after, .promo::after, .promo-speech::after, .farewell::after { filter: blur(5px); }
+    .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before { opacity: .22; }
+    .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after { opacity: .12; }
+    .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before { filter: blur(4px); }
+    .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after { filter: blur(5px); }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
@@ -835,7 +848,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter">01 / 23</span>
+    <span id="counter" class="counter">01 / 28</span>
     <button id="autoplay" class="icon-btn control-icono" type="button" aria-label="Reproducir presentación" aria-pressed="false" title="Reproducir presentación (P)">
       <svg class="icono-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
       <svg class="icono-pausa" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -1226,6 +1239,66 @@
         <figure><picture><source type="image/avif" srcset="assets/promo/manos-arriba-bn-800.avif?v=2 800w, assets/promo/manos-arriba-bn.avif?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px"><img fetchpriority="low" src="assets/promo/manos-arriba-bn.webp?v=2" srcset="assets/promo/manos-arriba-bn-800.webp?v=2 800w, assets/promo/manos-arriba-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del cierre de la presentación de buzos, con las manos arriba y espuma en el aire" width="1280" height="854" decoding="async" style="--pos: 50% 42%"></picture></figure>
         <figure><picture><source type="image/avif" srcset="assets/promo/pasto-bn-800.avif?v=2 800w, assets/promo/pasto-bn.avif?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px"><img fetchpriority="low" src="assets/promo/pasto-bn.webp?v=2" srcset="assets/promo/pasto-bn-800.webp?v=2 800w, assets/promo/pasto-bn.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 1080px" alt="Foto en blanco y negro del book de fotos de la promo en la estancia El Rosal de Agua de Oro, sobre el pasto con las manos arriba" width="720" height="1280" decoding="async" style="--pos: 50% 62%"></picture></figure>
       </div>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="Lo que no sale en las fotos">Seguir →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-mensaje" data-title="Lo que no sale en las fotos" aria-label="Lo que no sale en las fotos">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Lo que no sale <span class="accent">en las fotos.</span></h2>
+      <p class="lead">Las fotos no guardan el nudo en el estómago antes de una prueba, ni el silencio de después. No guardan al que te prestó la carpeta sin que se la pidieras, ni al que se quedó esperándote en la puerta.</p>
+      <p class="lead">Ni las veces que alguien dijo «tranqui, yo te cubro» y de verdad te cubrió. Eso quedó en nosotros, y de ahí no se saca.</p>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="Carta al chico de primer año">Seguir →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-mensaje" data-title="Carta al chico de primer año" aria-label="Carta al chico de primer año">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Carta <span class="accent">al chico de primer año.</span></h2>
+      <p class="lead">Si pudiéramos hablarle al que entró por primera vez con el uniforme grande y el miedo chico, le diríamos: tranquilo, vas a encontrar tu lugar. Vas a hacer amigos que no esperabas, vas a llorar de risa en el peor momento y vas a llorar de verdad más de una vez.</p>
+      <p class="lead">Vas a tropezar y alguien te va a levantar. Y cuando llegue el final, vas a querer volver a empezar.</p>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="A nuestras familias">Seguir →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-mensaje" data-title="A nuestras familias" aria-label="A nuestras familias">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>A <span class="accent">nuestras familias.</span></h2>
+      <p class="lead">A los que madrugaron para dejarnos en la puerta, a los que esperaron despiertos, a los que se preocuparon más que nosotros por cada nota. A quienes nos aguantaron los nervios, los malos días y los silencios.</p>
+      <p class="lead">Detrás de cada foto de esta promo hay una casa donde alguien creyó en nosotros antes de que nosotros lo hiciéramos. Esto también es de ustedes.</p>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="A los que nos enseñaron">Seguir →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-mensaje" data-title="A los que nos enseñaron" aria-label="A los que nos enseñaron">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>A los que <span class="accent">nos enseñaron.</span></h2>
+      <p class="lead">A los profes que nos retaron cuando hacía falta y nos esperaron cuando no llegábamos. A los que nos hicieron creer que podíamos y a los que nos hicieron pensar.</p>
+      <p class="lead">Algunos nos enseñaron una materia; otros, algo mucho más difícil de explicar: cómo se escucha a una persona. Aunque no lo sepan, se van a quedar en cada cosa que hagamos de ahora en adelante.</p>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="Cuando pasen los años">Seguir →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide promo-mensaje" data-title="Cuando pasen los años" aria-label="Cuando pasen los años">
+    <div class="wrap narrow">
+      <p class="eyebrow">Promo 26 Turismo</p>
+      <h2>Cuando <span class="accent">pasen los años.</span></h2>
+      <p class="lead">Dentro de diez años, alguien va a decir «¿te acordás de aquel día?». Y vamos a reírnos, aunque cada uno esté en otra ciudad, con otra vida, con otro nombre en la puerta de casa.</p>
+      <p class="lead">Vamos a recordar el patio, los buzos, la espuma, los bancos rayados. Y vamos a entender que este lugar nos hizo mejores. Ojalá que ese día todavía nos salga una lágrima. Pero de las lindas.</p>
       <div class="thanks-actions" style="justify-content: center;">
         <button class="ghost-btn" type="button" data-go="Cinco años">Seguir →</button>
       </div>
@@ -1645,9 +1718,32 @@ function syncCurrent() {
 }
 
 const AUTOPLAY_MS = 8000;
+const AUTOPLAY_MS_MAX = 18000;
 let autoplayOn = false;
 let autoplayTimer = 0;
 let autoScrollHasta = 0;
+
+/* Las diapositivas nuevas de texto de la promo dejan que se lea con calma:
+   el tiempo por diapositiva es proporcional al largo del texto, con un
+   mínimo de 8 s (el standard de la presentación) y un máximo de 18 s. */
+function largoTextoDiapositiva(slide) {
+  let largo = 0;
+  slide.querySelectorAll('h2, p').forEach((el) => { largo += (el.textContent || '').trim().length; });
+  return largo;
+}
+
+function duracionAutoplay() {
+  const slide = slides[current];
+  if (!slide || !slide.classList.contains('promo-mensaje')) return AUTOPLAY_MS;
+  const largos = slides
+    .filter((s) => s.classList.contains('promo-mensaje'))
+    .map((s) => largoTextoDiapositiva(s));
+  const min = Math.min.apply(null, largos);
+  const max = Math.max.apply(null, largos);
+  if (!(max > min)) return AUTOPLAY_MS;
+  const t = Math.max(0, Math.min(1, (largoTextoDiapositiva(slide) - min) / (max - min)));
+  return AUTOPLAY_MS + Math.round(t * (AUTOPLAY_MS_MAX - AUTOPLAY_MS));
+}
 
 function pintarAutoplay() {
   autoplayBtn.setAttribute('aria-pressed', autoplayOn ? 'true' : 'false');
@@ -1657,8 +1753,9 @@ function pintarAutoplay() {
   autoplayPausa.hidden = !autoplayOn;
 }
 
-function empezarBarraAutoplay() {
+function empezarBarraAutoplay(ms) {
   autoplayBarra.hidden = false;
+  autoplayBarra.querySelector('span').style.transitionDuration = Math.round(ms / 1000) + 's';
   autoplayBarra.classList.remove('activo');
   void autoplayBarra.offsetWidth;
   autoplayBarra.classList.add('activo');
@@ -1673,7 +1770,8 @@ function programarAutoplay() {
   window.clearTimeout(autoplayTimer);
   if (!autoplayOn) return;
   if (current >= slides.length - 1) { pausarAutoplay(); return; }
-  empezarBarraAutoplay();
+  const ms = duracionAutoplay();
+  empezarBarraAutoplay(ms);
   autoplayTimer = window.setTimeout(() => {
     if (!autoplayOn) return;
     const siguiente = current + 1;
@@ -1684,7 +1782,7 @@ function programarAutoplay() {
     goTo(siguiente);
     if (current >= slides.length - 1) pausarAutoplay();
     else programarAutoplay();
-  }, AUTOPLAY_MS);
+  }, ms);
 }
 
 function activarAutoplay() {
