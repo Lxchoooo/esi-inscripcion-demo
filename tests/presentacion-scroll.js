@@ -700,6 +700,66 @@ async function main() {
     JSON.stringify(offline));
   await apCtx.close();
 
+  // Música propia de "Palabras para la promo": entra con la diapositiva,
+  // se puede pausar/reanudar y se apaga al salir.
+  const palCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const palPage = await palCtx.newPage();
+  const palErrors = [];
+  palPage.on('pageerror', (err) => palErrors.push(String(err)));
+  palPage.on('console', (msg) => { if (msg.type() === 'error') palErrors.push(msg.text()); });
+  await palPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await palPage.waitForFunction(() => document.documentElement.classList.contains('carga-listo'));
+  await wait(500);
+  const palIndex = await palPage.evaluate(() => {
+    const all = Array.from(document.querySelectorAll('section.slide'));
+    return {
+      gracias: all.findIndex((s) => s.dataset.title === 'Gracias') + 1,
+      palabras: all.findIndex((s) => s.dataset.title === 'Palabras para la promo') + 1
+    };
+  });
+  await palPage.evaluate((n) => { location.hash = '#slide-' + n; }, palIndex.gracias);
+  await wait(900);
+  await palPage.locator('[data-go="Palabras para la promo"]').click();
+  await wait(1400);
+  const palOn = await palPage.evaluate(() => {
+    const audio = document.getElementById('palabras-audio');
+    return {
+      paused: audio.paused,
+      volume: audio.volume,
+      pressed: document.getElementById('palabras-musica').getAttribute('aria-pressed'),
+      time: audio.currentTime
+    };
+  });
+  check('al entrar a Palabras se reproduce su música',
+    !palOn.paused && Math.abs(palOn.volume - 0.35) < 0.03 && palOn.pressed === 'true' && palOn.time > 0,
+    JSON.stringify(palOn));
+  await palPage.locator('#palabras-musica').click();
+  await wait(900);
+  const palOff = await palPage.evaluate(() => ({
+    paused: document.getElementById('palabras-audio').paused,
+    pressed: document.getElementById('palabras-musica').getAttribute('aria-pressed')
+  }));
+  check('el botón de Palabras pausa su música', palOff.paused && palOff.pressed === 'false',
+    JSON.stringify(palOff));
+  await palPage.locator('#palabras-musica').click();
+  await wait(900);
+  const palAgain = await palPage.evaluate(() => ({
+    paused: document.getElementById('palabras-audio').paused,
+    pressed: document.getElementById('palabras-musica').getAttribute('aria-pressed')
+  }));
+  check('el botón de Palabras vuelve a reproducirla', !palAgain.paused && palAgain.pressed === 'true',
+    JSON.stringify(palAgain));
+  await palPage.locator('[data-go="Cinco años, un solo nombre"]').click();
+  await wait(1000);
+  const palLeave = await palPage.evaluate(() => ({
+    paused: document.getElementById('palabras-audio').paused,
+    pressed: document.getElementById('palabras-musica').getAttribute('aria-pressed')
+  }));
+  check('al salir de Palabras su música se pausa', palLeave.paused && palLeave.pressed === 'false',
+    JSON.stringify(palLeave));
+  check('sin errores en la diapositiva de Palabras', palErrors.length === 0, palErrors.join(' | '));
+  await palCtx.close();
+
   // Sin efecto de entrada: el contenido ya esta nítido apenas entra.
   const fadeInCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const fadePage = await fadeInCtx.newPage();

@@ -1137,6 +1137,7 @@
       <p class="lead">Hay un dato que vale la pena dejar caer despacio: esta escuela que fundaron los vecinos tiene hoy profesores que una vez se sentaron en estos mismos bancos. Los de 1° te miran ahora igual que vos mirabas a los grandes. Con algunos años más, y el camino que cada uno elija, cualquiera de ustedes puede volver del otro lado del escritorio.</p>
       <p class="lead">Gracias, promo, por haber sido casa, grupo y equipo. Ojalá que donde vaya cada uno se lleve un pedazo de todo esto, que nada se esfume en las fotos de un grupo de WhatsApp y que las puertas queden siempre abiertas para reencontrarnos. Ya falta poco: el 13 de diciembre es nuestro egreso y el 18 de diciembre, la colación de fin de año. Como en los actos de fin de ciclo: los mejores deseos para todos, y la promesa de que esto no termina acá, sino en lo que viene.</p>
       <div class="thanks-actions" style="justify-content: center;">
+        <button id="palabras-musica" class="ghost-btn" type="button" aria-pressed="false" title="Escuchar la música de esta página">♪ Escuchar música</button>
         <button class="ghost-btn" type="button" data-go="Cinco años, un solo nombre">Seguir →</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
@@ -1278,6 +1279,8 @@
 <div class="autoplay-barra" id="autoplay-barra" aria-hidden="true" hidden><span></span></div>
 <!-- Música opcional: "Contemplation" de Joth (CC0), OpenGameArt. -->
   <audio id="musica-audio" src="assets/audio/fondo.mp3?v=1" loop preload="none" aria-hidden="true"></audio>
+  <!-- Música de "Palabras para la promo": "Regret" de Wolfgang_ (CC0), OpenGameArt. -->
+  <audio id="palabras-audio" src="assets/audio/palabras.mp3?v=1" loop preload="none" aria-hidden="true"></audio>
 
 <noscript>
   <p style="position:fixed;inset:auto 20px 20px;z-index:100;background:#102a20;padding:16px;border-radius:12px;">Esta presentación necesita JavaScript para navegar y ver los gráficos.</p>
@@ -1309,6 +1312,8 @@ const musicaBtn = document.getElementById('musica');
 const musicaAudio = document.getElementById('musica-audio');
 const musicaOn = musicaBtn.querySelector('.icono-musica');
 const musicaOff = musicaBtn.querySelector('.icono-silencio');
+const palabrasAudio = document.getElementById('palabras-audio');
+const palabrasBtn = document.getElementById('palabras-musica');
 const fmt = new Intl.NumberFormat('es-AR');
 let current = -1;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1358,6 +1363,12 @@ function setActive(index) {
   counterEl.textContent = label;
   progressEl.style.transform = 'scaleX(' + ((n + 1) / slides.length).toFixed(4) + ')';
   try { history.replaceState(null, '', '#slide-' + (n + 1)); } catch (e) {}
+  /* La música de "Palabras para la promo" vive solo en esa diapositiva. */
+  if (slides[n].classList.contains('promo-speech')) activarPalabras(false);
+  else {
+    detenerPalabras(PALABRAS_FADE_MS);
+    reanudarMusicaDeFondo();
+  }
 }
 
 function goTo(index) {
@@ -1734,6 +1745,14 @@ let musicaDisponible = false;
 let prefMusica = false;
 let sonandoMusica = false;
 let fadeMusicaTimer = 0;
+let musicaSonabaAntesPalabras = false;
+
+/* Música propia de la diapositiva "Palabras para la promo". */
+const PALABRAS_VOLUMEN = 0.35;
+const PALABRAS_FADE_MS = 700;
+let palabrasSonando = false;
+let palabrasPausaUsuario = false;
+let palabrasFadeTimer = 0;
 
 function pintarMusica() {
   musicaBtn.setAttribute('aria-pressed', prefMusica ? 'true' : 'false');
@@ -1760,40 +1779,56 @@ function fadeMusica(destino, ms, alTerminar) {
   }, 30);
 }
 
-function alternarMusica() {
-  if (!musicaDisponible) return;
-  if (sonandoMusica) {
-    sonandoMusica = false;
-    prefMusica = false;
-    guardarMusica();
-    pintarMusica();
-    fadeMusica(0, MUSICA_FADE_MS, () => {
-      if (!sonandoMusica) musicaAudio.pause();
-    });
-    return;
-  }
+function encenderMusica() {
+  if (sonandoMusica) return;
+  if (palabrasSonando) callarPalabras();
   window.clearInterval(fadeMusicaTimer);
   musicaAudio.volume = 0;
   const promesa = musicaAudio.play();
-  if (!promesa || typeof promesa.then !== 'function') {
+  const alAndar = () => {
     sonandoMusica = true;
     prefMusica = true;
     guardarMusica();
     pintarMusica();
     fadeMusica(MUSICA_VOLUMEN, MUSICA_FADE_MS);
-    return;
-  }
-  promesa.then(() => {
-    sonandoMusica = true;
-    prefMusica = true;
-    guardarMusica();
-    pintarMusica();
-    fadeMusica(MUSICA_VOLUMEN, MUSICA_FADE_MS);
-  }).catch(() => {
+  };
+  if (!promesa || typeof promesa.then !== 'function') { alAndar(); return; }
+  promesa.then(alAndar).catch(() => {
+    /* Puede ser una política de autoplay, no un archivo faltante. */
     sonandoMusica = false;
-    musicaDisponible = false;
-    musicaBtn.hidden = true;
+    pintarMusica();
   });
+}
+
+function apagarMusica() {
+  sonandoMusica = false;
+  prefMusica = false;
+  guardarMusica();
+  pintarMusica();
+  fadeMusica(0, MUSICA_FADE_MS, () => {
+    if (!sonandoMusica) musicaAudio.pause();
+  });
+}
+
+function alternarMusica() {
+  if (!musicaDisponible) return;
+  if (sonandoMusica) apagarMusica();
+  else encenderMusica();
+}
+
+function pausarMusicaParaPalabras() {
+  if (!sonandoMusica) return;
+  musicaSonabaAntesPalabras = true;
+  window.clearInterval(fadeMusicaTimer);
+  musicaAudio.pause();
+  sonandoMusica = false;
+}
+
+function reanudarMusicaDeFondo() {
+  if (!musicaSonabaAntesPalabras) return;
+  musicaSonabaAntesPalabras = false;
+  if (!prefMusica || !musicaDisponible || sonandoMusica) return;
+  encenderMusica();
 }
 
 function esperarServiceWorker() {
@@ -1853,6 +1888,102 @@ function bindMusica() {
   };
   if (document.readyState === 'complete') comprobar();
   else window.addEventListener('load', comprobar, { once: true });
+}
+
+function pintarPalabras() {
+  if (!palabrasBtn) return;
+  palabrasBtn.setAttribute('aria-pressed', palabrasSonando ? 'true' : 'false');
+  palabrasBtn.textContent = palabrasSonando ? 'Pausar música' : '♪ Escuchar música';
+  palabrasBtn.title = palabrasSonando ? 'Pausar la música de esta página' : 'Escuchar la música de esta página';
+}
+
+function fadePalabras(destino, ms, alTerminar) {
+  window.clearInterval(palabrasFadeTimer);
+  const inicio = palabrasAudio.volume;
+  const t0 = performance.now();
+  palabrasFadeTimer = window.setInterval(() => {
+    const t = Math.min(1, (performance.now() - t0) / ms);
+    palabrasAudio.volume = Math.max(0, Math.min(1, inicio + (destino - inicio) * t));
+    if (t >= 1) {
+      window.clearInterval(palabrasFadeTimer);
+      if (alTerminar) alTerminar();
+    }
+  }, 30);
+}
+
+function detenerPalabras(ms) {
+  if (!palabrasSonando && palabrasAudio.paused) return;
+  palabrasSonando = false;
+  fadePalabras(0, ms === undefined ? PALABRAS_FADE_MS : ms, () => {
+    if (!palabrasSonando) palabrasAudio.pause();
+  });
+  pintarPalabras();
+}
+
+function callarPalabras() {
+  if (!palabrasSonando) return;
+  palabrasPausaUsuario = true;
+  detenerPalabras(350);
+}
+
+function activarPalabras(forzar) {
+  if (!palabrasAudio || !palabrasBtn) return;
+  if (palabrasPausaUsuario && !forzar) return;
+  if (palabrasSonando) { pausarMusicaParaPalabras(); return; }
+  pausarMusicaParaPalabras();
+  window.clearInterval(palabrasFadeTimer);
+  palabrasAudio.volume = 0;
+  const promesa = palabrasAudio.play();
+  const alAndar = () => {
+    /* Si se fue de la diapositiva mientras cargaba, no dejarla sonando. */
+    if (!slides[current] || !slides[current].classList.contains('promo-speech')) {
+      palabrasAudio.pause();
+      return;
+    }
+    palabrasSonando = true;
+    pintarPalabras();
+    fadePalabras(PALABRAS_VOLUMEN, PALABRAS_FADE_MS);
+  };
+  if (!promesa || typeof promesa.then !== 'function') { alAndar(); return; }
+  promesa.then(alAndar).catch(() => {
+    palabrasSonando = false;
+    pintarPalabras();
+    /* Si se pausó la música de fondo para esta diapositiva y el navegador
+       bloqueó el audio, devolverle el sonido al fondo. */
+    reanudarMusicaDeFondo();
+  });
+}
+
+function alternarPalabras() {
+  if (palabrasSonando) {
+    palabrasPausaUsuario = true;
+    detenerPalabras(400);
+    return;
+  }
+  palabrasPausaUsuario = false;
+  activarPalabras(true);
+}
+
+function bindPalabras() {
+  if (!palabrasAudio || !palabrasBtn) return;
+  palabrasAudio.volume = PALABRAS_VOLUMEN;
+  palabrasBtn.addEventListener('click', alternarPalabras);
+  palabrasAudio.addEventListener('error', () => { palabrasBtn.hidden = true; });
+  pintarPalabras();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (!palabrasSonando) return;
+      window.clearInterval(palabrasFadeTimer);
+      palabrasAudio.pause();
+      palabrasSonando = false;
+      pintarPalabras();
+      return;
+    }
+    if (slides[current] && slides[current].classList.contains('promo-speech') && !palabrasPausaUsuario) {
+      activarPalabras(true);
+    }
+  });
 }
 
 function bindNavigation() {
@@ -1941,6 +2072,7 @@ function init() {
   bindLightbox();
   bindAutoplay();
   bindMusica();
+  bindPalabras();
   const entrySegments = [
     { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
     { label: 'Ausentes', value: DATA.summary.entryAbsent, color: COLORS.coral },

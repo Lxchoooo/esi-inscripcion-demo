@@ -160,6 +160,28 @@ check('musica: volumen 0,4, fades de 600 ms y preferencia recordada sin autoplay
   /addEventListener\('click', alternarMusica\)/.test(HTML) &&
   /fadeMusica\(MUSICA_VOLUMEN, MUSICA_FADE_MS\)/.test(HTML) &&
   /if \(!musicaAudio\.paused\) musicaAudio\.pause\(\)/.test(HTML));
+check('palabras: audio propio, boton en la diapositiva y volumen con fade',
+  /<audio id="palabras-audio" src="assets\/audio\/palabras\.mp3(?:\?v=\d+)?" loop preload="none" aria-hidden="true">/.test(HTML) &&
+  !/<audio[^>]*autoplay/.test(HTML) &&
+  /id="palabras-musica"[^>]*aria-pressed="false"/.test(HTML) &&
+  /const PALABRAS_VOLUMEN = 0\.35/.test(HTML) &&
+  /const PALABRAS_FADE_MS = 700/.test(HTML) &&
+  /addEventListener\('click', alternarPalabras\)/.test(HTML) &&
+  /palabrasAudio\.play\(\)/.test(HTML) &&
+  /fadePalabras\(PALABRAS_VOLUMEN, PALABRAS_FADE_MS\)/.test(HTML) &&
+  /bindPalabras\(\)/.test(HTML) &&
+  /palabras\.mp3/.test(HTML) &&
+  !/palabras\.mp3/.test(PRECACHE));
+check('palabras: suena solo en su diapositiva y convive con la musica de fondo',
+  /slides\[n\]\.classList\.contains\('promo-speech'\)\) activarPalabras\(false\)/.test(HTML) &&
+  /detenerPalabras\(PALABRAS_FADE_MS\)/.test(HTML) &&
+  /reanudarMusicaDeFondo\(\)/.test(HTML) &&
+  /pausarMusicaParaPalabras\(\)/.test(HTML) &&
+  /palabrasPausaUsuario/.test(HTML));
+check('palabras: el audio existe, pesa menos de 1,2 MB y no viaja en el precache',
+  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'palabras.mp3')) &&
+  fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'palabras.mp3')).size < 1200000 &&
+  !/assets\/audio\/palabras\.mp3/.test(PRECACHE));
 check('service worker relativo con scope del proyecto y precache de HTML, logos y 56 fotos',
   /register\('sw\.js'\)/.test(HTML) &&
   !/register\('\/sw\.js'\)/.test(HTML) &&
