@@ -28,7 +28,8 @@ const TYPES = {
   '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
-  '.webmanifest': 'application/manifest+json'
+  '.webmanifest': 'application/manifest+json',
+  '.mp3': 'audio/mpeg'
 };
 
 function serve() {
@@ -595,6 +596,38 @@ async function main() {
   if (!fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3'))) {
     const musicaOculta = await apPage.evaluate(() => document.getElementById('musica').hidden);
     check('sin archivo de audio el boton de musica no aparece', musicaOculta);
+  } else {
+    await apPage.waitForFunction(
+      () => !document.getElementById('musica').hidden,
+      null,
+      { timeout: 20000 }
+    ).catch(() => {});
+    const musicaVisible = await apPage.evaluate(() => !document.getElementById('musica').hidden);
+    check('con archivo de audio el boton de musica aparece', musicaVisible);
+    if (musicaVisible) {
+      await apPage.locator('#musica').click();
+      await wait(700);
+      const musicaOn = await apPage.evaluate(() => {
+        const audio = document.getElementById('musica-audio');
+        return {
+          paused: audio.paused,
+          volume: audio.volume,
+          pressed: document.getElementById('musica').getAttribute('aria-pressed'),
+          time: audio.currentTime
+        };
+      });
+      check('la musica se reproduce con volumen 0,4',
+        !musicaOn.paused && Math.abs(musicaOn.volume - 0.4) < 0.01 &&
+        musicaOn.pressed === 'true' && musicaOn.time > 0, JSON.stringify(musicaOn));
+      await apPage.locator('#musica').click();
+      await wait(700);
+      const musicaOff = await apPage.evaluate(() => ({
+        paused: document.getElementById('musica-audio').paused,
+        pressed: document.getElementById('musica').getAttribute('aria-pressed')
+      }));
+      check('el boton de musica vuelve a apagar y pausar',
+        musicaOff.paused && musicaOff.pressed === 'false', JSON.stringify(musicaOff));
+    }
   }
   await apPage.locator('#autoplay').click();
   await wait(300);

@@ -158,7 +158,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method === 'HEAD' && url.pathname.indexOf('/assets/audio/') >= 0) {
     event.respondWith((async () => {
       try {
-        const respuesta = await fetch(request);
+        const respuesta = await fetch(request, { cache: 'no-store' });
         if (respuesta.ok) return new Response(null, { status: 200, headers: { 'X-ESI-Audio': '1' } });
       } catch (error) { /* sin red */ }
       return new Response(null, { status: 204, headers: { 'X-ESI-Audio': '0' } });
