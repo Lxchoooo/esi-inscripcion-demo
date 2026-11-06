@@ -6,7 +6,7 @@
  * - Viewport de celular 390x844 con DPR 2 (igual que presentacion-scroll.js).
  * - Carga inicial: LCP, CLS, frames largos, bytes transferidos, pedidos y
  *   cuántas imágenes (y cuántos kB) se descargan al tocar fondo.
- * - Recorrido de las 28 diapositivas: imágenes incompletas al llegar.
+ * - Recorrido de las 29 diapositivas: imágenes incompletas al llegar.
  * - Segunda pasada con Fast 3G emulado (1,6 Mbps / 150 ms de RTT): la
  *   diapositiva en pantalla no puede quedar con fotos sin terminar.
  *

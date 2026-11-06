@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1f17">
+<title>Pasar archivos · ESI</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #0b1f17;
+    --ink-2: #102a20;
+    --cream: #f5f1e8;
+    --muted: rgba(245, 241, 232, .68);
+    --faint: rgba(245, 241, 232, .48);
+    --gold: #e6b85c;
+    --coral: #e07a5f;
+    --sage: #9bc4a8;
+    --line: rgba(245, 241, 232, .14);
+    --glass: rgba(255, 255, 255, .055);
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: calc(22px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+    background:
+      radial-gradient(900px 600px at 10% -8%, rgba(79, 157, 138, .20), transparent 60%),
+      radial-gradient(800px 560px at 105% 0%, rgba(230, 184, 92, .11), transparent 58%),
+      var(--ink);
+    color: var(--cream);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { width: min(820px, 100%); margin: 0 auto; }
+  header { margin-bottom: 24px; }
+  .eyebrow {
+    margin: 0 0 8px;
+    color: var(--gold);
+    font-size: .68rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 0 0 10px;
+    font-family: var(--serif);
+    font-size: clamp(2.2rem, 8vw, 3.6rem);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -.035em;
+  }
+  .intro { margin: 0; color: var(--muted); line-height: 1.55; max-width: 62ch; }
+  .intro strong { color: var(--cream); font-weight: 600; }
+  .aviso {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 18px 0 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(155, 196, 168, .24);
+    border-radius: 12px;
+    background: rgba(155, 196, 168, .07);
+    color: var(--muted);
+    font-size: .82rem;
+    line-height: 1.45;
+  }
+  .aviso b { color: var(--sage); }
+  .drop {
+    margin-top: 20px;
+    padding: clamp(24px, 5vw, 42px) 20px;
+    border: 1.5px dashed rgba(230, 184, 92, .42);
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .025));
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .2s;
+  }
+  .drop:hover, .drop.over {
+    border-color: var(--gold);
+    background: linear-gradient(145deg, rgba(230, 184, 92, .13), rgba(255, 255, 255, .035));
+  }
+  .drop.over { transform: scale(.995); }
+  .drop .icono {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    border: 1px solid rgba(230, 184, 92, .34);
+    border-radius: 50%;
+    color: var(--gold);
+    font-size: 1.35rem;
+  }
+  .drop strong { display: block; font-size: 1.05rem; margin-bottom: 6px; }
+  .drop span { display: block; color: var(--faint); font-size: .8rem; line-height: 1.45; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 18px; }
+  .btn {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, .045);
+    color: var(--cream);
+    cursor: pointer;
+    font: inherit;
+    font-size: .82rem;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .btn:hover { background: rgba(255, 255, 255, .1); border-color: rgba(245, 241, 232, .32); }
+  .btn.principal { background: var(--gold); border-color: var(--gold); color: var(--ink); font-weight: 700; }
+  .btn.principal:hover { background: #f0c877; }
+  .btn.peligro { color: var(--coral); }
+  .btn.peligro:hover { border-color: rgba(224, 122, 95, .55); background: rgba(224, 122, 95, .1); }
+  .btn:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .barra-archivos { margin-top: 28px; }
+  .barra-archivos h2 {
+    margin: 0 0 10px;
+    color: var(--faint);
+    font-size: .68rem;
+    font-weight: 500;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .subidas { display: grid; gap: 8px; }
+  .subida {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--glass);
+  }
+  .subida .nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .84rem; }
+  .subida .pct { color: var(--faint); font-size: .72rem; font-variant-numeric: tabular-nums; }
+  .subida .barra { grid-column: 1 / -1; height: 3px; border-radius: 3px; background: rgba(245, 241, 232, .12); overflow: hidden; }
+  .subida .barra span { display: block; height: 100%; background: var(--gold); transform: scaleX(0); transform-origin: left center; transition: transform .2s linear; }
+  .subida.ok { border-color: rgba(155, 196, 168, .3); }
+  .subida.ok .barra span { background: var(--sage); }
+  .subida.error { border-color: rgba(224, 122, 95, .4); }
+  .subida.error .barra span { background: var(--coral); }
+  .subida.error .pct { color: var(--coral); }
+  .lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .archivo {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--glass);
+  }
+  .archivo .datos { min-width: 0; }
+  .archivo .nombre { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .87rem; }
+  .archivo .meta { display: block; margin-top: 3px; color: var(--faint); font-size: .7rem; }
+  .archivo .acciones-archivo { display: flex; flex-shrink: 0; gap: 6px; align-items: center; }
+  .archivo a, .archivo button {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 10px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: .72rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .archivo a:hover, .archivo button:hover { color: var(--cream); border-color: rgba(245, 241, 232, .3); background: rgba(255, 255, 255, .06); }
+  .archivo button:hover { color: var(--coral); border-color: rgba(224, 122, 95, .45); }
+  .vacio { padding: 20px 4px; color: var(--faint); font-size: .84rem; }
+  .pie {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 26px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+    font-size: .72rem;
+    line-height: 1.5;
+  }
+  .pie code { font-size: .68rem; color: var(--muted); word-break: break-all; }
+  .pie .acciones { justify-content: flex-start; margin: 0; }
+  #estado { min-height: 1.2em; margin: 10px 0 0; color: var(--faint); font-size: .76rem; text-align: center; }
+  @media (max-width: 560px) {
+    .archivo { align-items: flex-start; flex-direction: column; }
+    .archivo .acciones-archivo { align-self: stretch; justify-content: flex-end; }
+    .drop { padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header>
+    <p class="eyebrow">Herramienta local</p>
+    <h1>Pasar archivos</h1>
+    <p class="intro">Arrastrá, pegá o elegí cualquier archivo. Se guarda directo en este teléfono, <strong>sin subirlo a internet</strong>. Después lo puedo tomar desde acá para trabajar.</p>
+    <p class="aviso"><span aria-hidden="true">●</span><span><b>Privado y local.</b> El servidor escucha solo en 127.0.0.1. Los archivos quedan en <code id="ruta">.file-drop/uploads</code>.</span></p>
+  </header>
+
+  <section class="drop" id="drop" aria-label="Zona para subir archivos">
+    <div class="icono" aria-hidden="true">↑</div>
+    <strong>Soltá los archivos acá</strong>
+    <span>Cualquier tipo y tamaño · hasta <span id="max">4 GB</span> por archivo</span>
+    <div class="acciones">
+      <button class="btn principal" id="elegir" type="button">Elegir archivos</button>
+      <button class="btn" id="actualizar" type="button">Actualizar lista</button>
+    </div>
+    <input id="input" type="file" multiple hidden>
+  </section>
+  <p id="estado" role="status" aria-live="polite"></p>
+
+  <section class="barra-archivos" id="subidas-caja" hidden>
+    <h2>Subiendo</h2>
+    <div class="subidas" id="subidas"></div>
+  </section>
+
+  <section class="barra-archivos">
+    <h2>Archivos en el teléfono</h2>
+    <ul class="lista" id="lista"><li class="vacio">Cargando…</li></ul>
+  </section>
+
+  <footer class="pie">
+    <div>
+      <div><span id="total">0 B</span> en total · <span id="libre">espacio libre desconocido</span></div>
+      <div><code id="ruta-pie">.file-drop/uploads</code></div>
+    </div>
+    <div class="acciones">
+      <button class="btn" id="copiar" type="button">Copiar ruta</button>
+    </div>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const drop = $('drop');
+  const input = $('input');
+  const lista = $('lista');
+  const subidasCaja = $('subidas-caja');
+  const subidas = $('subidas');
+  const estado = $('estado');
+  const ruta = $('ruta');
+  const rutaPie = $('ruta-pie');
+  const max = $('max');
+  let subiendo = false;
+
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function bytes(n) {
+    if (!n && n !== 0) return '—';
+    if (n < 1024) return n + ' B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let value = n;
+    let i = -1;
+    do { value /= 1024; i += 1; } while (value >= 1024 && i < units.length - 1);
+    return value.toFixed(value < 10 ? 1 : 0).replace('.', ',') + ' ' + units[i];
+  }
+
+  function fecha(ms) {
+    try {
+      return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
+    } catch (error) {
+      return new Date(ms).toLocaleString();
+    }
+  }
+
+  function aviso(texto) {
+    estado.textContent = texto || '';
+    if (!texto) return;
+    window.clearTimeout(aviso.timer);
+    aviso.timer = window.setTimeout(() => { estado.textContent = ''; }, 5000);
+  }
+
+  async function cargar() {
+    try {
+      const respuesta = await fetch('/api/files', { cache: 'no-store' });
+      const data = await respuesta.json();
+      ruta.textContent = data.path;
+      rutaPie.textContent = data.path;
+      max.textContent = data.maxLabel || '4 GB';
+      $('total').textContent = bytes(data.total);
+      $('libre').textContent = data.free == null ? 'espacio libre desconocido' : bytes(data.free) + ' libres';
+      if (!data.files.length) {
+        lista.innerHTML = '<li class="vacio">Todavía no hay archivos. Subí el primero.</li>';
+        return;
+      }
+      lista.innerHTML = data.files.map((file) => {
+        const url = '/api/download?name=' + encodeURIComponent(file.name);
+        return '<li class="archivo">' +
+          '<div class="datos"><span class="nombre">' + esc(file.name) + '</span>' +
+          '<span class="meta">' + bytes(file.size) + ' · ' + esc(fecha(file.mtime)) + '</span></div>' +
+          '<div class="acciones-archivo">' +
+          '<a href="' + esc(url) + '" download="' + esc(file.name) + '">Descargar</a>' +
+          '<button type="button" class="peligro" data-borrar="' + esc(file.name) + '">Borrar</button>' +
+          '</div></li>';
+      }).join('');
+    } catch (error) {
+      lista.innerHTML = '<li class="vacio">No se pudo leer la lista. Probá de nuevo.</li>';
+    }
+  }
+
+  function subir(files) {
+    const cola = Array.from(files || []);
+    if (!cola.length || subiendo) return;
+    subiendo = true;
+    subidasCaja.hidden = false;
+    subidas.innerHTML = '';
+    let i = 0;
+
+    const siguiente = () => {
+      if (i >= cola.length) {
+        subiendo = false;
+        aviso('Listo. Los archivos quedaron guardados.');
+        cargar();
+        return;
+      }
+
+      const file = cola[i];
+      i += 1;
+      const fila = document.createElement('div');
+      fila.className = 'subida';
+      fila.innerHTML = '<span class="nombre">' + esc(file.name) + '</span>' +
+        '<span class="pct">0%</span>' +
+        '<span class="barra"><span></span></span>';
+      subidas.prepend(fila);
+      const barra = fila.querySelector('.barra span');
+      const pct = fila.querySelector('.pct');
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload');
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const p = event.total ? event.loaded / event.total : 0;
+        barra.style.transform = 'scaleX(' + p + ')';
+        pct.textContent = Math.round(p * 100) + '%';
+      };
+      xhr.onload = () => {
+        let data = null;
+        try { data = JSON.parse(xhr.responseText); } catch (error) { /* respuesta no JSON */ }
+        if (xhr.status >= 200 && xhr.status < 300 && data && data.ok) {
+          fila.classList.add('ok');
+          barra.style.transform = 'scaleX(1)';
+          pct.textContent = 'Listo';
+        } else {
+          fila.classList.add('error');
+          pct.textContent = (data && data.error) || 'Error ' + xhr.status;
+        }
+        siguiente();
+      };
+      xhr.onerror = () => {
+        fila.classList.add('error');
+        pct.textContent = 'Error de red';
+        siguiente();
+      };
+      xhr.onabort = () => {
+        fila.classList.add('error');
+        pct.textContent = 'Cancelado';
+        siguiente();
+      };
+      xhr.send(file);
+    };
+
+    aviso('Subiendo ' + cola.length + (cola.length === 1 ? ' archivo…' : ' archivos…'));
+    siguiente();
+  }
+
+  $('elegir').addEventListener('click', (event) => {
+    event.stopPropagation();
+    input.click();
+  });
+  drop.addEventListener('click', (event) => {
+    if (event.target.closest('button')) return;
+    input.click();
+  });
+  input.addEventListener('change', () => {
+    subir(input.files);
+    input.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach((name) => {
+    drop.addEventListener(name, (event) => {
+      event.preventDefault();
+      drop.classList.add('over');
+    });
+  });
+  ['dragleave', 'dragend'].forEach((name) => {
+    drop.addEventListener(name, () => drop.classList.remove('over'));
+  });
+  drop.addEventListener('drop', (event) => {
+    event.preventDefault();
+    drop.classList.remove('over');
+    subir(event.dataTransfer && event.dataTransfer.files);
+  });
+
+  document.addEventListener('paste', (event) => {
+    const files = event.clipboardData && event.clipboardData.files;
+    if (!files || !files.length) return;
+    event.preventDefault();
+    subir(files);
+  });
+
+  lista.addEventListener('click', async (event) => {
+    const boton = event.target.closest('[data-borrar]');
+    if (!boton) return;
+    const name = boton.getAttribute('data-borrar');
+    if (!window.confirm('¿Borrar “' + name + '”? No se puede deshacer.')) return;
+    try {
+      const respuesta = await fetch('/api/file?name=' + encodeURIComponent(name), { method: 'DELETE' });
+      if (respuesta.ok) { aviso('Archivo borrado.'); cargar(); }
+      else aviso('No se pudo borrar.');
+    } catch (error) {
+      aviso('No se pudo borrar.');
+    }
+  });
+
+  $('actualizar').addEventListener('click', (event) => {
+    event.stopPropagation();
+    cargar();
+    aviso('Lista actualizada.');
+  });
+
+  $('copiar').addEventListener('click', async () => {
+    const value = rutaPie.textContent;
+    try {
+      await navigator.clipboard.writeText(value);
+      aviso('Ruta copiada.');
+    } catch (error) {
+      window.prompt('Copiá la ruta:', value);
+    }
+  });
+
+  cargar();
+})();
+</script>
+</body>
+</html>

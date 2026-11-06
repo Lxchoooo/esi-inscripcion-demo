@@ -459,6 +459,211 @@
   .promo-mensaje .lead + .lead { margin-top: 14px; }
   .promo-mensaje .thanks-actions { margin-top: 26px; }
 
+  /* Detalles de la promo: iconos de linea, patron tenue y susurros. */
+  .slide-icono {
+    width: 46px;
+    height: 46px;
+    margin: 0 0 16px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(230, 184, 92, .3);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(230, 184, 92, .16), rgba(230, 184, 92, .02) 70%);
+    color: var(--gold);
+  }
+  .slide-icono svg { width: 22px; height: 22px; display: block; }
+  .promo .slide-icono, .promo-mensaje .slide-icono, .thanks .slide-icono {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .promo-speech .slide-icono, .promo-mapa .slide-icono { margin-left: 0; }
+
+  .wakay {
+    display: inline-block;
+    margin: 0 .08em;
+    padding: .18em .52em .14em;
+    border-radius: 999px;
+    background: var(--gold);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: .7em;
+    font-weight: 800;
+    letter-spacing: .16em;
+    line-height: 1;
+    vertical-align: .08em;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(230, 184, 92, .18);
+  }
+
+  .promo-mensaje::before, .promo-mapa::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .18;
+    background-image: radial-gradient(circle, rgba(230, 184, 92, .28) 1px, transparent 1.2px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 8%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, #000 8%, transparent 72%);
+  }
+
+  .susurro {
+    position: absolute;
+    z-index: 0;
+    left: var(--x, 4%);
+    top: var(--y, 18%);
+    width: max-content;
+    max-width: min(24ch, calc(100% - var(--x, 4%) - 4%));
+    transform: rotate(var(--r, -2deg));
+    color: rgba(245, 241, 232, .10);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(.72rem, 1.05vw, .95rem);
+    line-height: 1.4;
+    letter-spacing: .01em;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Mapa de viajes de Turismo: ruta vertical simple, sin imagenes ni JS. */
+  .promo-mapa h2 { font-size: clamp(2rem, 4.3vw, 3.5rem); max-width: 22ch; }
+  .promo-mapa .lead { max-width: 72ch; }
+  .mapa-kpis { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .mapa-kpis span {
+    padding: 5px 10px;
+    border: 1px solid rgba(230, 184, 92, .25);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .mapa-ruta { position: relative; display: grid; gap: 12px; margin-top: 24px; }
+  .mapa-ruta::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 18px;
+    bottom: 18px;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(230, 184, 92, .45), rgba(230, 184, 92, .14) 70%, rgba(224, 122, 95, .55));
+  }
+  .mapa-tramo {
+    position: relative;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+  .mapa-punto {
+    width: 13px;
+    height: 13px;
+    margin: 20px 0 0 8px;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 1px rgba(230, 184, 92, .5);
+  }
+  .mapa-tarjeta {
+    padding: 14px 16px 15px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .035);
+  }
+  .mapa-tarjeta h3 {
+    margin: 0 0 3px;
+    font-family: var(--serif);
+    font-size: 1.22rem;
+    font-weight: 400;
+    letter-spacing: -.01em;
+  }
+  .mapa-tarjeta p { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+  .mapa-anio {
+    display: inline-block;
+    margin-bottom: 7px;
+    color: var(--gold);
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+  }
+  .mapa-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; }
+  .mapa-chip {
+    padding: 4px 8px;
+    border: 1px solid rgba(245, 241, 232, .13);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: .68rem;
+    line-height: 1.2;
+  }
+  .mapa-km {
+    display: inline-block;
+    margin-top: 9px;
+    color: var(--faint);
+    font-size: .67rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .mapa-tramo.futuro .mapa-punto {
+    background: var(--coral);
+    box-shadow: 0 0 0 1px rgba(224, 122, 95, .55), 0 0 18px rgba(224, 122, 95, .28);
+  }
+  .mapa-tramo.futuro .mapa-tarjeta {
+    border-color: rgba(224, 122, 95, .42);
+    background: linear-gradient(145deg, rgba(224, 122, 95, .14), rgba(224, 122, 95, .035));
+  }
+  .mapa-tramo.futuro .mapa-anio, .mapa-tramo.futuro .mapa-km { color: var(--coral); }
+  .mapa-proxima {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--coral);
+    color: var(--ink);
+    font-size: .6rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    vertical-align: .15em;
+  }
+  .mapa-chip.destacado {
+    border-color: rgba(224, 122, 95, .55);
+    background: rgba(224, 122, 95, .15);
+    color: var(--cream);
+  }
+  .mapa-nota { margin: 12px 0 0; color: var(--faint); font-size: .7rem; line-height: 1.45; }
+
+  .creditos {
+    max-width: 760px;
+    margin: 24px auto 0;
+    padding-top: 16px;
+    border-top: 1px solid rgba(230, 184, 92, .2);
+    color: var(--faint);
+    font-size: .74rem;
+    line-height: 1.55;
+  }
+  .creditos p { margin: 0 0 4px; }
+  .creditos strong { color: var(--muted); font-weight: 600; }
+  .farewell .creditos { text-align: center; }
+
+  .aviso-compartir {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    z-index: 80;
+    padding: 10px 16px;
+    border: 1px solid rgba(230, 184, 92, .35);
+    border-radius: 999px;
+    background: rgba(11, 31, 23, .96);
+    color: var(--cream);
+    font-size: .78rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 10px);
+    transition: opacity .2s, transform .2s;
+  }
+  .aviso-compartir.visible { opacity: 1; transform: translate(-50%, 0); }
+
   /* Pantalla de carga: logo + barra. Solo se muestra con JS y se va cuando
      terminó la precarga de fotos y música (o cuando la persona elige entrar
      sin esperar). */
@@ -634,10 +839,10 @@
     .lightbox-next { right: calc(50% - 64px); }
   }
 
-  .cover, .promo, .promo-speech, .promo-mensaje, .farewell { position: relative; overflow-x: clip; }
+  .cover, .promo, .promo-speech, .promo-mensaje, .promo-mapa, .farewell { position: relative; overflow-x: clip; }
   /* Navegadores sin overflow: clip (iOS 15 y anteriores) recortan igual. */
   @supports not (overflow: clip) {
-    body, .cover, .promo, .promo-speech, .promo-mensaje, .farewell { overflow-x: hidden; }
+    body, .cover, .promo, .promo-speech, .promo-mensaje, .promo-mapa, .farewell { overflow-x: hidden; }
   }
   .cover::before, .promo::before, .promo-speech::before, .farewell::before {
     content: "";
@@ -666,11 +871,11 @@
     opacity: .22;
     transform: rotate(10deg);
   }
-  .cover .wrap, .promo .wrap, .promo-speech .wrap, .promo-mensaje .wrap, .farewell .wrap { position: relative; z-index: 1; }
+  .cover .wrap, .promo .wrap, .promo-speech .wrap, .promo-mensaje .wrap, .promo-mapa .wrap, .farewell .wrap { position: relative; z-index: 1; }
   .promo-speech h2 { font-size: clamp(2.2rem, 4.4vw, 4rem); max-width: 22ch; }
   .promo-speech .lead { max-width: 68ch; }
   @media (min-width: 701px) {
-    .cover, .promo, .promo-speech, .promo-mensaje, .farewell { overflow: clip; }
+    .cover, .promo, .promo-speech, .promo-mensaje, .promo-mapa, .farewell { overflow: clip; }
   }
 
   .thanks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 30px; }
@@ -829,6 +1034,31 @@
     .note { margin-top: 14px; }
     .stat-row { margin-top: 18px; }
     .thanks-actions { margin-top: 20px; }
+    .slide-icono { width: 40px; height: 40px; margin-bottom: 12px; }
+    .slide-icono svg { width: 19px; height: 19px; }
+    .promo-speech .slide-icono, .promo-mapa .slide-icono { margin-left: auto; margin-right: auto; }
+    .promo-mensaje::before, .promo-mapa::before { opacity: .12; background-size: 22px 22px; }
+    /* En el celular queda un solo susurro, abajo y bien tenue. */
+    .susurro {
+      left: 50%;
+      right: auto;
+      top: auto;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      width: min(78vw, 28ch);
+      max-width: none;
+      transform: translateX(-50%) rotate(-1deg);
+      color: rgba(245, 241, 232, .12);
+      font-size: .64rem;
+      text-align: center;
+    }
+    .susurro + .susurro { display: none; }
+    .promo-mapa h2 { font-size: clamp(1.9rem, 8.4vw, 2.7rem); }
+    .mapa-ruta { gap: 8px; margin-top: 18px; }
+    .mapa-tarjeta { padding: 12px 13px; }
+    .mapa-tarjeta h3 { font-size: 1.08rem; }
+    .mapa-tarjeta p { font-size: .78rem; }
+    .mapa-chip { font-size: .62rem; }
+    .mapa-kpis span { font-size: .6rem; }
   }
   @media (max-width: 768px) {
     /* Promo en celu: duo y B/N apiladas a ancho completo, trio como carrusel. */
@@ -877,7 +1107,7 @@
     <span class="brand-text">Jornada ESI 2026 · Salsipuedes</span>
   </div>
   <div class="top-actions">
-    <span id="counter" class="counter">01 / 28</span>
+    <span id="counter" class="counter">01 / 29</span>
     <button id="autoplay" class="icon-btn control-icono" type="button" aria-label="Reproducir presentación" aria-pressed="false" title="Reproducir presentación (P)">
       <svg class="icono-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
       <svg class="icono-pausa" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -885,6 +1115,9 @@
     <button id="musica" class="icon-btn control-icono" type="button" aria-label="Música de la presentación" aria-pressed="false" title="Activar la música" hidden>
       <svg class="icono-musica" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <svg class="icono-silencio" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button id="compartir" class="icon-btn control-icono" type="button" aria-label="Compartir la presentación" title="Compartir" data-compartir>
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3v11"/><path d="m8 7 4-4 4 4"/><path d="M5 13v6h14v-6"/></svg>
     </button>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa" aria-pressed="false">Pantalla completa</button>
   </div>
@@ -907,6 +1140,8 @@
       <button class="start" type="button" data-go="Una idea que se hizo jornada">Recorrer la jornada <span aria-hidden="true">→</span></button>
       <p class="swipe-hint">Deslizá para seguir <span aria-hidden="true">↓</span></p>
     </div>
+    <span class="susurro" data-susurro style="--x: 66%; --y: 16%; --r: 2deg;" aria-hidden="true"></span>
+    <span class="susurro" data-susurro style="--x: 5%; --y: 72%; --r: -3deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide" data-title="Una idea que se hizo jornada" aria-label="Una idea que se hizo jornada">
@@ -931,6 +1166,7 @@
         </div>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 78%; --y: 16%; --r: 2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide" data-title="Una historia que viene de lejos" aria-label="Una historia que viene de lejos">
@@ -1171,23 +1407,26 @@
   <section class="slide promo-speech" data-title="Palabras para la promo" aria-label="Palabras para la promo">
     <div class="wrap narrow">
       <p class="eyebrow">Palabras para la promo</p>
-      <h2>Cinco años no se resumen en una diapositiva. <span class="accent">Se llevan en la memoria.</span></h2>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a1 1 0 0 1-1-1V7a3 3 0 0 1 3-3h2v7Z"/><path d="M18 11h-4a1 1 0 0 1-1-1V7a3 3 0 0 1 3-3h2v7Z"/><path d="M9 11c0 4-2 6-5 7"/><path d="M18 11c0 4-2 6-5 7"/></svg></div>
+      <h2>Seis años no se resumen en una diapositiva. <span class="accent">Se llevan en la memoria.</span></h2>
       <p class="lead">Este año termina una etapa que empezó sin que supiéramos todo lo que íbamos a vivir. Nos conocimos en aulas que después fueron nuestras, compartimos recreos, risas, enojos, canciones, trabajos y días que parecían eternos. Aprendimos a bancarnos, a discutir y a volver a elegirnos.</p>
-      <p class="lead">No con todos nos vamos a cruzar a diario. Cada uno con su ritmo, con sus tiempos y con sus sueños. Pero lo que vivimos en estos cinco años no se borra: queda en las anécdotas, en las fotos y en las cosas que todavía nos hacen reír.</p>
-      <p class="lead">Hay un dato que vale la pena dejar caer despacio: esta escuela que fundaron los vecinos tiene hoy profesores que una vez se sentaron en estos mismos bancos. Los de 1° te miran ahora igual que vos mirabas a los grandes. Con algunos años más, y el camino que cada uno elija, cualquiera de ustedes puede volver del otro lado del escritorio.</p>
+      <p class="lead">No con todos nos vamos a cruzar a diario. Cada uno con su ritmo, con sus tiempos y con sus sueños. Pero lo que vivimos en estos seis años no se borra: queda en las anécdotas, en las fotos y en las cosas que todavía nos hacen reír.</p>
+      <p class="lead">Hay un dato que vale la pena contar despacio: esta escuela, que fundaron los vecinos, hoy tiene profesores que alguna vez se sentaron en estos mismos bancos. Algunos de esos profes también les dieron clase a nuestros papás, o los tuvieron como alumnos. Los chicos de primero los miran como ustedes miraban a los más grandes cuando entraron. Y con los años, a alguno de ustedes le puede pasar lo mismo: volver a esta escuela, pero del otro lado del escritorio.</p>
       <p class="lead">Gracias, promo, por haber sido casa, grupo y equipo. Ojalá que donde vaya cada uno se lleve un pedazo de todo esto, que nada se esfume en las fotos de un grupo de WhatsApp y que las puertas queden siempre abiertas para reencontrarnos. Ya falta poco: el 13 de diciembre es nuestro egreso y el 18 de diciembre, la colación de fin de año. Como en los actos de fin de ciclo: los mejores deseos para todos, y la promesa de que esto no termina acá, sino en lo que viene.</p>
       <div class="thanks-actions" style="justify-content: center;">
         <button id="palabras-musica" class="ghost-btn" type="button" aria-pressed="false" title="Escuchar la música">♪ Escuchar música</button>
-        <button class="ghost-btn" type="button" data-go="Cinco años, un solo nombre">Seguir →</button>
+        <button class="ghost-btn" type="button" data-go="Seis años, un solo nombre">Seguir →</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
+    <span class="susurro" data-susurro style="--x: 82%; --y: 20%; --r: 2deg;" aria-hidden="true"></span>
+    <span class="susurro" data-susurro style="--x: 6%; --y: 76%; --r: -2deg;" aria-hidden="true"></span>
   </section>
 
-  <section class="slide promo-foto" data-title="Cinco años, un solo nombre" aria-label="Cinco años, un solo nombre">
+  <section class="slide promo-foto" data-title="Seis años, un solo nombre" aria-label="Seis años, un solo nombre">
     <div class="wrap">
       <p class="eyebrow">Promo 26 Turismo</p>
-      <h2>Cinco años, <span class="accent">un solo nombre.</span></h2>
+      <h2>Seis años, <span class="accent">un solo nombre.</span></h2>
       <p class="lead">La presentación de los buzos, apenas arrancado el año: la bandera, el humo de colores y espuma por todos lados. Cada nombre escrito en esa tela es alguien que estuvo, que se rió, que se quejó y que volvió al otro día.</p>
       <div class="promo-frames promo-duo">
         <figure><picture><source type="image/avif" srcset="assets/promo/bandera-humo-800.avif?v=2 800w, assets/promo/bandera-humo.avif?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px"><img fetchpriority="high" src="assets/promo/bandera-humo.webp?v=2" srcset="assets/promo/bandera-humo-800.webp?v=2 800w, assets/promo/bandera-humo.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="La bandera de Promo 26 Turismo con los nombres de todos, en la presentación de los buzos, con humo de colores y espuma en el patio techado" width="960" height="1280" decoding="async" style="--pos: 50% 82%"></picture></figure>
@@ -1206,6 +1445,7 @@
         <figure><picture><source type="image/avif" srcset="assets/promo/aula-pizarron-800.avif?v=3 800w, assets/promo/aula-pizarron.avif?v=3 1280w" sizes="(max-width: 768px) 88vw, 532px"><img src="assets/promo/aula-pizarron.webp?v=3" srcset="assets/promo/aula-pizarron-800.webp?v=3 800w, assets/promo/aula-pizarron.webp?v=3 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el aula junto al pizarrón lleno, con los buzos puestos" width="1280" height="720" decoding="async" style="--pos: 50% 55%"></picture></figure>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 82%; --y: 18%; --r: 2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide promo-foto" data-title="Los días en que fuimos otra cosa" aria-label="Los días en que fuimos otra cosa">
@@ -1225,12 +1465,13 @@
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
       <h2>Cuando salimos <span class="accent">a escena.</span></h2>
-      <p class="lead">El día de la murga: naranja, turquesa y pintura blanca. No importó quién era tímido y quién no: estuvimos todos, con las manos arriba. Yo soy porque nosotros somos.</p>
+      <p class="lead">El día de la murga: naranja, turquesa y pintura blanca. No importó quién era tímido y quién no: estuvimos todos, con las manos arriba. La murga <span class="wakay">WAKAY</span> nos dejó una frase: «Yo soy porque nosotros somos».</p>
       <div class="promo-frames promo-duo">
         <figure><picture><source type="image/avif" srcset="assets/promo/pasillo-naranja-turquesa-800.avif?v=2 800w, assets/promo/pasillo-naranja-turquesa.avif?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px"><img fetchpriority="low" src="assets/promo/pasillo-naranja-turquesa.webp?v=2" srcset="assets/promo/pasillo-naranja-turquesa-800.webp?v=2 800w, assets/promo/pasillo-naranja-turquesa.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso alineado en el pasillo el día de la murga, con remeras naranja y turquesa y pintura blanca" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></picture></figure>
         <figure><picture><source type="image/avif" srcset="assets/promo/naranja-turquesa-patio-800.avif?v=2 800w, assets/promo/naranja-turquesa-patio.avif?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px"><img fetchpriority="low" src="assets/promo/naranja-turquesa-patio.webp?v=2" srcset="assets/promo/naranja-turquesa-patio-800.webp?v=2 800w, assets/promo/naranja-turquesa-patio.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso el día de la murga en el patio, con las remeras naranja y turquesa y las manos arriba" width="1280" height="854" decoding="async" style="--pos: 50% 50%"></picture></figure>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 6%; --y: 80%; --r: -2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide promo-foto" data-title="Lo que se aprende afuera del aula" aria-label="Lo que se aprende afuera del aula">
@@ -1243,6 +1484,84 @@
         <figure><picture><source type="image/avif" srcset="assets/promo/patio-certificado-800.avif?v=2 800w, assets/promo/patio-certificado.avif?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px"><img fetchpriority="low" src="assets/promo/patio-certificado.webp?v=2" srcset="assets/promo/patio-certificado-800.webp?v=2 800w, assets/promo/patio-certificado.webp?v=2 1280w" sizes="(max-width: 768px) 88vw, 532px" alt="El curso en el patio al sol el día del primer restaurante de la escuela, con el menú de los platos que cocinaron para estrenar el SUM" width="1280" height="960" decoding="async" style="--pos: 50% 55%"></picture></figure>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 82%; --y: 72%; --r: 2deg;" aria-hidden="true"></span>
+  </section>
+
+  <section class="slide promo-mapa" data-title="Los viajes de Turismo" aria-label="Los viajes de Turismo">
+    <div class="wrap">
+      <p class="eyebrow">Promo 26 Turismo · Salidas</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg></div>
+      <h2>Caminos que nos <span class="accent">enseñaron a mirar.</span></h2>
+      <p class="lead">Turismo también se aprende afuera: en una caminata, en un kayak, en una ruta larga con la música alta. Estos son los lugares que nos llevamos.</p>
+      <div class="mapa-kpis">
+        <span>~2.100 km recorridos</span>
+        <span>Mendoza: ~1.300 km más</span>
+      </div>
+      <div class="mapa-ruta">
+        <div class="mapa-tramo">
+          <span class="mapa-punto" aria-hidden="true"></span>
+          <article class="mapa-tarjeta">
+            <span class="mapa-anio">2024</span>
+            <h3>Pampa de Achala</h3>
+            <p>La primera salida: sierras, frío y aprendizaje de campamento. La aventura fue Achala.</p>
+            <div class="mapa-linea"><span class="mapa-chip">Pampa de Achala</span></div>
+            <span class="mapa-km">~240 km</span>
+          </article>
+        </div>
+        <div class="mapa-tramo">
+          <span class="mapa-punto" aria-hidden="true"></span>
+          <article class="mapa-tarjeta">
+            <span class="mapa-anio">2025</span>
+            <h3>La ruta larga</h3>
+            <p>La Estancita, la UNC y el viaje a La Rioja y San Juan. También las Tres Cascadas, Ascochinga y el kayak en el Dique La Quebrada.</p>
+            <div class="mapa-linea">
+              <span class="mapa-chip">La Estancita</span>
+              <span class="mapa-chip">UNC</span>
+              <span class="mapa-chip">Villa San Agustín</span>
+              <span class="mapa-chip">Chamical</span>
+              <span class="mapa-chip">Cruz del Eje</span>
+              <span class="mapa-chip">La Rioja</span>
+              <span class="mapa-chip">San Juan</span>
+              <span class="mapa-chip">Ischigualasto</span>
+              <span class="mapa-chip">Talampaya</span>
+              <span class="mapa-chip">Tres Cascadas</span>
+              <span class="mapa-chip">Ascochinga</span>
+              <span class="mapa-chip">Dique La Quebrada</span>
+            </div>
+            <span class="mapa-km">~1.800 km</span>
+          </article>
+        </div>
+        <div class="mapa-tramo">
+          <span class="mapa-punto" aria-hidden="true"></span>
+          <article class="mapa-tarjeta">
+            <span class="mapa-anio">2026</span>
+            <h3>Lo que aprendimos cerca</h3>
+            <p>La caminata por el Wayna Lodge de Sierras y el Orfeo Suites, y la universidad de Salsipuedes Nueva, cerca del Hogar de las Abejas.</p>
+            <div class="mapa-linea">
+              <span class="mapa-chip">Wayna Lodge</span>
+              <span class="mapa-chip">Orfeo Suites</span>
+              <span class="mapa-chip">Universidad de Salsipuedes Nueva</span>
+            </div>
+            <span class="mapa-km">~80 km</span>
+          </article>
+        </div>
+        <div class="mapa-tramo futuro">
+          <span class="mapa-punto" aria-hidden="true"></span>
+          <article class="mapa-tarjeta">
+            <span class="mapa-anio">2026 · Egreso <span class="mapa-proxima">Próxima parada</span></span>
+            <h3>Mendoza</h3>
+            <p>El viaje de egreso que todavía estamos esperando. La ruta sigue abierta y el mapa, también.</p>
+            <div class="mapa-linea"><span class="mapa-chip destacado">Mendoza</span></div>
+            <span class="mapa-km">~1.300 km más</span>
+          </article>
+        </div>
+      </div>
+      <p class="mapa-nota">Kilómetros aproximados, ida y vuelta cuando corresponde. Los nombres están puestos como los vivimos: sin orden de importancia.</p>
+      <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-go="Los festejos chiquitos">Seguir →</button>
+      </div>
+    </div>
+    <span class="susurro" data-susurro style="--x: 80%; --y: 16%; --r: 2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide promo-foto" data-title="Los festejos chiquitos" aria-label="Los festejos chiquitos">
@@ -1270,11 +1589,13 @@
         <button class="ghost-btn" type="button" data-go="Lo que no sale en las fotos">Seguir →</button>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 6%; --y: 16%; --r: -2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide promo-mensaje" data-title="Lo que no sale en las fotos" aria-label="Lo que no sale en las fotos">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.2"/><path d="m8 6 1.4-2h5.2L16 6"/></svg></div>
       <h2>Lo que no sale <span class="accent">en las fotos.</span></h2>
       <p class="lead">Las fotos no guardan el nudo en el estómago antes de una prueba, ni el silencio de después. No guardan al que te prestó la carpeta sin que se la pidieras, ni al que se quedó esperándote en la puerta.</p>
       <p class="lead">Ni las veces que alguien dijo «tranqui, yo te cubro» y de verdad te cubrió. Eso quedó en nosotros, y de ahí no se saca.</p>
@@ -1282,11 +1603,13 @@
         <button class="ghost-btn" type="button" data-go="Carta al chico de primer año">Seguir →</button>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 82%; --y: 20%; --r: 2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide promo-mensaje" data-title="Carta al chico de primer año" aria-label="Carta al chico de primer año">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
       <h2>Carta <span class="accent">al chico de primer año.</span></h2>
       <p class="lead">Si pudiéramos hablarle al que entró por primera vez con el uniforme grande y el miedo chico, le diríamos: tranquilo, vas a encontrar tu lugar. Vas a hacer amigos que no esperabas, vas a llorar de risa en el peor momento y vas a llorar de verdad más de una vez.</p>
       <p class="lead">Vas a tropezar y alguien te va a levantar. Y cuando llegue el final, vas a querer volver a empezar.</p>
@@ -1294,11 +1617,13 @@
         <button class="ghost-btn" type="button" data-go="A nuestras familias">Seguir →</button>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 6%; --y: 76%; --r: -2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide promo-mensaje" data-title="A nuestras familias" aria-label="A nuestras familias">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></div>
       <h2>A <span class="accent">nuestras familias.</span></h2>
       <p class="lead">A los que madrugaron para dejarnos en la puerta, a los que esperaron despiertos, a los que se preocuparon más que nosotros por cada nota. A quienes nos aguantaron los nervios, los malos días y los silencios.</p>
       <p class="lead">Detrás de cada foto de esta promo hay una casa donde alguien creyó en nosotros antes de que nosotros lo hiciéramos. Esto también es de ustedes.</p>
@@ -1311,6 +1636,7 @@
   <section class="slide promo-mensaje" data-title="A los que nos enseñaron" aria-label="A los que nos enseñaron">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg></div>
       <h2>A los que <span class="accent">nos enseñaron.</span></h2>
       <p class="lead">A los profes que nos retaron cuando hacía falta y nos esperaron cuando no llegábamos. A los que nos hicieron creer que podíamos y a los que nos hicieron pensar.</p>
       <p class="lead">Algunos nos enseñaron una materia; otros, algo mucho más difícil de explicar: cómo se escucha a una persona. Aunque no lo sepan, se van a quedar en cada cosa que hagamos de ahora en adelante.</p>
@@ -1323,20 +1649,23 @@
   <section class="slide promo-mensaje" data-title="Cuando pasen los años" aria-label="Cuando pasen los años">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8 3v4l4 4 4-4V3"/><path d="M8 21v-4l4-4 4 4v4"/></svg></div>
       <h2>Cuando <span class="accent">pasen los años.</span></h2>
       <p class="lead">Dentro de diez años, alguien va a decir «¿te acordás de aquel día?». Y vamos a reírnos, aunque cada uno esté en otra ciudad, con otra vida, con otro nombre en la puerta de casa.</p>
       <p class="lead">Vamos a recordar el patio, los buzos, la espuma, los bancos rayados. Y vamos a entender que este lugar nos hizo mejores. Capaz que ese día todavía nos salga una lágrima, pero de las lindas.</p>
       <div class="thanks-actions" style="justify-content: center;">
-        <button class="ghost-btn" type="button" data-go="Cinco años">Seguir →</button>
+        <button class="ghost-btn" type="button" data-go="Seis años">Seguir →</button>
       </div>
     </div>
+    <span class="susurro" data-susurro style="--x: 82%; --y: 74%; --r: 2deg;" aria-hidden="true"></span>
   </section>
 
-  <section class="slide promo" data-title="Cinco años" aria-label="Cinco años">
+  <section class="slide promo" data-title="Seis años" aria-label="Seis años">
     <div class="wrap narrow">
       <p class="eyebrow">Promo 26 Turismo</p>
-      <h2>Cinco años que <span class="accent">nos cambiaron.</span></h2>
-      <p class="lead">El salón se vacía, pero lo que se armó entre todos en estos cinco años pesa más que la distancia.</p>
+      <div class="slide-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg></div>
+      <h2>Seis años que <span class="accent">nos cambiaron.</span></h2>
+      <p class="lead">El salón se vacía, pero lo que se armó entre todos en estos seis años pesa más que la distancia.</p>
       <p class="farewell-quote">Cada uno sigue su camino.<br>Lo que vivimos, <span class="accent">nos sigue.</span> 💚</p>
       <p class="lead">Por este grupo, por bancarnos y por hacer que valga la pena: gracias, promo.</p>
       <div class="cover-meta">
@@ -1348,6 +1677,7 @@
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
+    <span class="susurro" data-susurro style="--x: 7%; --y: 18%; --r: -2deg;" aria-hidden="true"></span>
   </section>
 
   <section class="slide farewell" data-title="Hecho con el corazón" aria-label="Hecho con el corazón">
@@ -1359,11 +1689,17 @@
       <p class="farewell-quote">No es un adiós.<br>Es un <span class="accent">hasta pronto.</span> ✨</p>
       <p class="lead">Gracias, ISS, por estos años. Por los profes que nos bancaron, por los recreos que se hacían cortos, por la gente que nos tocó conocer acá y por todo lo que nos llevamos. Nos vamos con más de lo que vinimos a buscar. 🫶</p>
       <p class="lead">A la promo: que la vida nos cruce seguido y que nunca nos falte tema para hablar. 💛</p>
+      <div class="creditos">
+        <p><strong>Música:</strong> “No Me Olvides” de Abel Pintos · “Brindis” de Soledad · “Yo romperé tus fotos” de La Mosca.</p>
+        <p>Fotos y recuerdos: Promo 26 Turismo. Presentación: Luciano Arias.</p>
+      </div>
       <div class="thanks-actions" style="justify-content: center;">
+        <button class="ghost-btn" type="button" data-compartir>Compartir presentación</button>
         <button class="ghost-btn" type="button" data-go="Portada">Volver al inicio</button>
       </div>
       <p class="note">Promo 26 Turismo · 2026</p>
     </div>
+    <span class="susurro" data-susurro style="--x: 82%; --y: 22%; --r: 2deg;" aria-hidden="true"></span>
   </section>
 
 </main>
@@ -1377,6 +1713,7 @@
   <button class="lightbox-flecha lightbox-next" id="lightbox-next" type="button" aria-label="Foto siguiente" hidden>›</button>
 </div>
 
+<div class="aviso-compartir" id="aviso-compartir" role="status" aria-live="polite"></div>
 <div class="progress" id="progress" aria-hidden="true"></div>
 <div class="autoplay-barra" id="autoplay-barra" aria-hidden="true" hidden><span></span></div>
 <!-- Música de la presentación: suena desde "Palabras para la promo" al final. -->
@@ -1423,6 +1760,99 @@ const palabrasBtn = document.getElementById('palabras-musica');
 const fmt = new Intl.NumberFormat('es-AR');
 let current = -1;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const avisoCompartir = document.getElementById('aviso-compartir');
+
+/* Susurros: frases cortas, decorativas y distintas en cada visita. Se reparten
+   entre los huecos del texto; no son informacion ni se anuncian al lector. */
+const SUSURROS = [
+  'Esto no es una carga: es un viaje en el tiempo.',
+  'Buscando la foto donde salís bien.',
+  'Cargando el modo nostalgia.',
+  'Preparando la parte en la que todos lloran.',
+  'Lo que no entra en una foto.',
+  'El último timbre quedó en la memoria.',
+  'Un hasta pronto.',
+  'Lo que el tiempo no se lleva.',
+  'Guardando un recuerdo para cada uno.',
+  'Mirá quiénes éramos.',
+  'La escena post-créditos.',
+  'El ruido del recreo.',
+  'Esto no se aprueba ni se repite.',
+  'Un poquito de magia y mucho de nosotros.',
+  'El tiempo pasa un poquito más lento acá.',
+  'Lo que se va a extrañar.'
+];
+
+function repartirSusurros() {
+  const slots = Array.from(document.querySelectorAll('[data-susurro]'));
+  if (!slots.length) return;
+  const pool = SUSURROS.slice();
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const cambio = pool[i];
+    pool[i] = pool[j];
+    pool[j] = cambio;
+  }
+  slots.forEach((slot, index) => {
+    slot.textContent = pool[index % pool.length];
+  });
+}
+
+function mostrarAvisoCompartir(texto) {
+  if (!avisoCompartir) return;
+  avisoCompartir.textContent = texto;
+  avisoCompartir.classList.add('visible');
+  window.clearTimeout(mostrarAvisoCompartir.timer);
+  mostrarAvisoCompartir.timer = window.setTimeout(() => {
+    avisoCompartir.classList.remove('visible');
+  }, 2400);
+}
+
+async function copiarEnlace() {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    return true;
+  } catch (error) { /* sigue el respaldo */ }
+  try {
+    const area = document.createElement('textarea');
+    area.value = location.href;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const copiado = document.execCommand('copy');
+    area.remove();
+    return copiado;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function compartirPresentacion() {
+  const datos = {
+    title: document.title,
+    text: 'Una historia que no se detuvo · Promo 26 Turismo',
+    url: location.href
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(datos);
+      return;
+    }
+    const copiado = await copiarEnlace();
+    mostrarAvisoCompartir(copiado ? 'Enlace copiado' : 'No se pudo copiar el enlace');
+  } catch (error) {
+    if (error && error.name === 'AbortError') return;
+    mostrarAvisoCompartir('No se pudo compartir');
+  }
+}
+
+function bindCompartir() {
+  document.querySelectorAll('[data-compartir]').forEach((btn) => {
+    btn.addEventListener('click', compartirPresentacion);
+  });
+}
 
 function esc(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2445,9 +2875,11 @@ function bindNavigation() {
 }
 
 function init() {
+  repartirSusurros();
   bindNavigation();
   bindLightbox();
   bindAutoplay();
+  bindCompartir();
   bindMusica();
   const entrySegments = [
     { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
@@ -2532,7 +2964,7 @@ try {
     /* Un mensaje distinto en cada visita: la carga también puede sorprender. */
     const mensajesCarga = [
       'Preparando algo que no viste venir…',
-      'Acomodando cinco años en una pantalla…',
+      'Acomodando seis años en una pantalla…',
       'Cargando recuerdos que no sabías que te faltaban…',
       'Esto no es una carga: es un viaje en el tiempo…',
       'Guardando risas, abrazos y un poquito de magia…',
@@ -2540,7 +2972,7 @@ try {
       'Ordenando los abrazos por fecha…',
       'Preparando el plot twist de la promo…',
       'Cargando el modo nostalgia…',
-      'Guardando cinco años en modo avión…',
+      'Guardando seis años en modo avión…',
       'Afinando la música y los recuerdos…',
       'Preparando una máquina del tiempo sin instrucciones…',
       'Calculando cuántas veces dijimos “ya fue”…',
@@ -2555,7 +2987,7 @@ try {
       'Preparando el “¿te acordás cuando…?”…',
       'Haciendo que el Wi-Fi no arruine el momento…',
       'Cargando una sorpresa que se disfruta mejor acompañado…',
-      'Poniendo play a los últimos cinco años…',
+      'Poniendo play a los últimos seis años…',
       'Buscando el botón para volver el tiempo…',
       'Ordenando las fotos por nivel de nostalgia…',
       'Abriendo la cápsula del tiempo…',

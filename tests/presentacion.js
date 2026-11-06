@@ -94,20 +94,39 @@ check('los graficos no animan layout',
   !/transition:\s*(width|height)\b/.test(HTML));
 
 // Contenido.
-check('28 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 28);
+check('29 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 29);
 check('7 diapositivas de fotos de la promo', (HTML.match(/class="slide promo-foto"/g) || []).length === 7);
 check('5 diapositivas nuevas de texto de la promo', (HTML.match(/class="slide promo-mensaje"/g) || []).length === 5);
-check('las 5 de texto van en orden entre el ultimo abrazo y Cinco anos', (() => {
+check('las 5 de texto van en orden entre el ultimo abrazo y Seis anos', (() => {
   const pos = (name) => HTML.indexOf('data-title="' + name + '"');
   return pos('Todavía queda un último abrazo') < pos('Lo que no sale en las fotos') &&
     pos('Lo que no sale en las fotos') < pos('Carta al chico de primer año') &&
     pos('Carta al chico de primer año') < pos('A nuestras familias') &&
     pos('A nuestras familias') < pos('A los que nos enseñaron') &&
     pos('A los que nos enseñaron') < pos('Cuando pasen los años') &&
-    pos('Cuando pasen los años') < pos('Cinco años');
+    pos('Cuando pasen los años') < pos('Seis años');
 })());
-check('las 5 de texto van sin fotos, centradas y etiquetadas como la promo', !/promo-mensaje[^>]*>[\s\S]*?<img/.test(HTML.slice(HTML.indexOf('data-title="Lo que no sale en las fotos"'), HTML.indexOf('data-title="Cinco años"'))) &&
-  /<p class="eyebrow">Promo 26 Turismo<\/p>\s*<h2>Lo que no sale/.test(HTML));
+check('las 5 de texto van sin fotos, centradas y etiquetadas como la promo', !/promo-mensaje[^>]*>[\s\S]*?<img/.test(HTML.slice(HTML.indexOf('data-title="Lo que no sale en las fotos"'), HTML.indexOf('data-title="Seis años"'))) &&
+  /<p class="eyebrow">Promo 26 Turismo<\/p>\s*<div class="slide-icono"[\s\S]*?<\/div>\s*<h2>Lo que no sale/.test(HTML));
+const MAPA = HTML.slice(HTML.indexOf('data-title="Los viajes de Turismo"'), HTML.indexOf('data-title="Los festejos chiquitos"'));
+check('el mapa de viajes va despues de la salida y antes de los festejos',
+  HTML.indexOf('data-title="Lo que se aprende afuera del aula"') < HTML.indexOf('data-title="Los viajes de Turismo"') &&
+  HTML.indexOf('data-title="Los viajes de Turismo"') < HTML.indexOf('data-title="Los festejos chiquitos"'));
+check('el mapa incluye los lugares y destaca Mendoza como proxima parada',
+  ['Ischigualasto', 'Talampaya', 'Villa San Agustín', 'Chamical', 'Cruz del Eje', 'La Estancita', 'UNC', 'Tres Cascadas', 'Ascochinga', 'Dique La Quebrada', 'Wayna Lodge', 'Orfeo Suites', 'Universidad de Salsipuedes Nueva', 'Mendoza']
+    .every((name) => MAPA.indexOf(name) >= 0) &&
+  /mapa-tramo futuro[\s\S]*?Mendoza/.test(MAPA) && /Próxima parada/.test(MAPA) && !/Calamuchita/.test(HTML));
+check('15 susurros decorativos, aleatorios y sin informacion para lectores',
+  (HTML.match(/class="susurro"/g) || []).length === 15 &&
+  /function repartirSusurros\(\)/.test(HTML) &&
+  /querySelectorAll\('\[data-susurro\]'\)/.test(HTML) &&
+  /aria-hidden="true"><\/span>|aria-hidden="true" data-susurro/.test(HTML));
+check('boton de compartir y creditos de las tres canciones',
+  /data-compartir/.test(HTML) && /navigator\.share/.test(HTML) &&
+  /No Me Olvides/.test(HTML) && /Brindis/.test(HTML) && /Yo romperé tus fotos/.test(HTML));
+check('WAKAY queda destacada como nombre de la murga', /class="wakay">WAKAY</.test(HTML));
+check('la presentacion habla de seis anos y no de cinco',
+  /Seis años no se resumen en una diapositiva/.test(HTML) && !/cinco años/i.test(HTML));
 check('14 fotos referenciadas como src', (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
 check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/<img [^>]*src="assets\/promo\/[^>]*decoding="async"/g) || []).length === 14);
 check('las fotos van en webp con srcset 800w/1280w', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp[?]v=(2|3)"/g) || []).length === 14 && (HTML.match(/-800\.webp[?]v=(2|3) 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp[?]v=(2|3) 1280w"/g) || []).length === 14 && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
@@ -354,7 +373,7 @@ check('los botones navegan por data-title, no por indice',
 check('un solo role=img por grafico',
   /el\.setAttribute\('aria-label'/.test(HTML) && /svg\.setAttribute\('aria-hidden', 'true'\)/.test(HTML));
 
-check('contador inicial 01 / 28', /01 \/ 28</.test(HTML));
+check('contador inicial 01 / 29', /01 \/ 29</.test(HTML));
 check('contadores con data-count', (HTML.match(/data-count=/g) || []).length >= 4);
 check('graficos de entrada y charlas', /id="entryDonut"/.test(HTML) && /id="talksDonut"/.test(HTML));
 check('graficos de temas, cursos y franjas',

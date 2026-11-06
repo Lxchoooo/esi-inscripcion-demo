@@ -27,6 +27,8 @@ build/put*.json
 # Tooling
 .DS_Store
 node_modules/
+# Archivos subidos al servidor local de transferencia (no se versionan)
+.file-drop/
 
 # Build local (minificado)
 build/index.min.html
