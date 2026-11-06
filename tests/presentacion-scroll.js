@@ -451,11 +451,12 @@ async function main() {
 
   await deskPage.keyboard.press('End');
   // El final importa, no el reloj: esperamos a que scrollY se estabilice
-  // (3 lecturas iguales seguidas) con techo de 2,5 s.
+  // (3 lecturas iguales seguidas) con techo de 9 s, porque con más diapositivas
+  // el scroll liso de End tarda más en llegar.
   const settledEnd = async () => {
     let last = -1, same = 0;
     const t0 = Date.now();
-    while (same < 3 && Date.now() - t0 < 2500) {
+    while (same < 3 && Date.now() - t0 < 9000) {
       await wait(80);
       const y = await deskPage.evaluate(() => Math.round(window.scrollY));
       if (y === last) { same += 1; } else { same = 0; last = y; }
@@ -696,7 +697,7 @@ async function main() {
   }
   await apCtx.setOffline(false);
   check('la presentacion abre sin internet despues de la primera visita',
-    offline && offline.slides === 23 && /no se detuvo/.test(offline.titulo || ''),
+    offline && offline.slides === 28 && /no se detuvo/.test(offline.titulo || ''),
     JSON.stringify(offline));
   await apCtx.close();
 
