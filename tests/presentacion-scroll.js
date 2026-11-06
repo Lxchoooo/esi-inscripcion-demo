@@ -28,7 +28,8 @@ const TYPES = {
   '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
-  '.webmanifest': 'application/manifest+json'
+  '.webmanifest': 'application/manifest+json',
+  '.mp3': 'audio/mpeg'
 };
 
 function serve() {
