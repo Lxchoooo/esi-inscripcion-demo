@@ -201,7 +201,7 @@ check('musica: arranca en Palabras y sigue hasta el final, con volumen 0,4 y fad
   /const MUSICA_FADE_MS = 600/.test(HTML) &&
   /const i = slides\.findIndex\(\(s\) => s\.dataset\.title === 'Palabras para la promo'\);\n  return i < 0 \? slides\.length : i;/.test(HTML) &&
   /if \(n >= MUSICA_DESDE\) \{\n    reintentarMusica\(\);/.test(HTML) &&
-  /function reintentarMusica\(\) \{\n  if \(sonandoMusica \|\| musicaBloqueada \|\| !musicaAudio \|\| !musicaDisponible\) return;\n  if \(current < MUSICA_DESDE\) return;\n  encenderMusica\(false\);/.test(HTML) &&
+  /function reintentarMusica\(\) \{\n  if \(sonandoMusica \|\| musicaBloqueada \|\| !musicaAudio \|\| !musicaDisponible\) return;\n  [\s\S]*?if \(current < MUSICA_DESDE && !musicaManual\) return;\n  encenderMusica\(false\);/.test(HTML) &&
   /if \(sonandoMusica && !musicaManual\) \{\n      apagarMusica\(false\);/.test(HTML) &&
   /function precargarMusica\(\)/.test(HTML) &&
   /if \(n >= MUSICA_DESDE - 3\) precargarMusica\(\);/.test(HTML) &&

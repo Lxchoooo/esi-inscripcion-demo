@@ -2084,8 +2084,9 @@ function bindAutoplay() {
 }
 
 /* Música de la presentación: una mezcla de las dos canciones que proveyó el
-   proyecto. "No Me Olvides" suena hasta su tramo final y se cruza con
-   "Brindis", que suena completa; al terminar, la mezcla vuelve a empezar.
+   proyecto. "No Me Olvides" suena hasta el cambio de sección de los 2:52 y se
+   cruza con "Brindis", que suena completa; al terminar, la mezcla vuelve a
+   empezar.
    Suena desde "Palabras para la promo" hasta la última diapositiva. Si el
    archivo no existe, el HEAD devuelve 404 y el botón queda oculto, sin
    errores en consola. */
@@ -2236,7 +2237,9 @@ function precargarMusica() {
    reposo del scroll lo reintentan. */
 function reintentarMusica() {
   if (sonandoMusica || musicaBloqueada || !musicaAudio || !musicaDisponible) return;
-  if (current < MUSICA_DESDE) return;
+  /* Si la música la activó el usuario, tiene que seguir sonando aunque esté
+     antes de "Palabras" (por ejemplo, al volver de otra pestaña). */
+  if (current < MUSICA_DESDE && !musicaManual) return;
   encenderMusica(false);
 }
 
