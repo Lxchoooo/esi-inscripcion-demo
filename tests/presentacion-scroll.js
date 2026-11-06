@@ -530,6 +530,54 @@ async function main() {
     'scrollY ' + deepPos.y + ', tope de la 3 ' + deepPos.top3);
   await reloadCtx.close();
 
+  // Visor de fotos: abre la version de 1280, bloquea el scroll, pasa a la
+  // siguiente foto de la misma diapositiva y vuelve al mismo lugar.
+  const lbCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const lbPage = await lbCtx.newPage();
+  await lbPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await lbPage.waitForFunction(() => document.documentElement.classList.contains('carga-listo'));
+  await lbPage.evaluate(() => document.querySelector('section.slide.promo-foto').scrollIntoView({ block: 'start' }));
+  await wait(600);
+  const antesLightbox = await lbPage.evaluate(() => Math.round(window.scrollY));
+  await lbPage.locator('section.slide.promo-foto img').first().click();
+  await wait(250);
+  const abierto = await lbPage.evaluate(() => {
+    const caja = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    return {
+      visible: !caja.hidden,
+      modal: caja.getAttribute('role') === 'dialog' && caja.getAttribute('aria-modal') === 'true',
+      bloqueado: getComputedStyle(document.documentElement).overflow === 'hidden',
+      foco: document.activeElement && document.activeElement.id,
+      src: img.getAttribute('src') || '',
+      natural: img.naturalWidth,
+      siguienteVisible: !document.getElementById('lightbox-next').hidden
+    };
+  });
+  check('la foto se abre en un dialogo con el scroll bloqueado',
+    abierto.visible && abierto.modal && abierto.bloqueado && abierto.foco === 'lightbox-cerrar',
+    JSON.stringify(abierto));
+  check('el visor carga la version de 1280 px y ofrece pasar de foto',
+    /\.webp\?v=\d+$/.test(abierto.src) && !/-800\.webp/.test(abierto.src) && abierto.natural > 0 && abierto.siguienteVisible,
+    abierto.src);
+  const srcPrimera = abierto.src;
+  await lbPage.locator('#lightbox-next').click();
+  await wait(250);
+  const srcSegunda = await lbPage.evaluate(() => document.getElementById('lightbox-img').getAttribute('src'));
+  check('las flechas pasan a otra foto de la misma diapositiva', srcSegunda !== srcPrimera, srcSegunda);
+  await lbPage.keyboard.press('Escape');
+  await wait(300);
+  const cerrado = await lbPage.evaluate(() => ({
+    oculto: document.getElementById('lightbox').hidden,
+    y: Math.round(window.scrollY),
+    overflow: getComputedStyle(document.documentElement).overflow,
+    foco: document.activeElement && document.activeElement.tagName
+  }));
+  check('Escape cierra, vuelve la misma diapositiva y devuelve el foco',
+    cerrado.oculto && Math.abs(cerrado.y - antesLightbox) <= 4 && cerrado.overflow !== 'hidden' && cerrado.foco === 'IMG',
+    JSON.stringify(cerrado));
+  await lbCtx.close();
+
   // Sin efecto de entrada: el contenido ya esta nítido apenas entra.
   const fadeInCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const fadePage = await fadeInCtx.newPage();

@@ -89,12 +89,35 @@ check('los graficos no animan layout',
 check('23 diapositivas', (HTML.match(/<section class="slide/g) || []).length === 23);
 check('7 diapositivas de fotos de la promo', (HTML.match(/class="slide promo-foto"/g) || []).length === 7);
 check('14 fotos referenciadas como src', (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
-check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/decoding="async"/g) || []).length === 14);
+check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/<img [^>]*src="assets\/promo\/[^>]*decoding="async"/g) || []).length === 14);
 check('las fotos van en webp con srcset 800w/1280w', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp[?]v=(2|3)"/g) || []).length === 14 && (HTML.match(/-800\.webp[?]v=(2|3) 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp[?]v=(2|3) 1280w"/g) || []).length === 14 && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
 check('cada foto ofrece avif y webp de respaldo', (HTML.match(/<source type="image\/avif"/g) || []).length === 14 && (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
 check('todas las fotos referenciadas existen en disco', (HTML.match(/assets\/promo\/[a-z0-9-]+\.(?:webp|avif)(?:\?v=\d+)?/g) || [])
   .map((p) => p.replace(/\?.*$/, ''))
   .every((p) => fs.existsSync(path.join(__dirname, '..', 'docs', p))));
+check('visor de fotos en grande con dialogo accesible y cierre por X, afuera, Escape y swipe',
+  /id="lightbox"[^>]*role="dialog"[^>]*aria-modal="true"/.test(HTML) &&
+  /id="lightbox-cerrar"[^>]*aria-label="Cerrar foto"/.test(HTML) &&
+  /id="lightbox-prev"[^>]*aria-label="Foto anterior"/.test(HTML) &&
+  /id="lightbox-next"[^>]*aria-label="Foto siguiente"/.test(HTML) &&
+  /lightboxCerrar\.addEventListener\('click', cerrarLightbox\)/.test(HTML) &&
+  /event\.target === lightbox/.test(HTML) &&
+  /event\.key === 'Escape'/.test(HTML) &&
+  /Math\.abs\(dy\) > 70/.test(HTML) && /if \(dy > 0\) cerrarLightbox\(\)/.test(HTML));
+check('el visor usa la foto de 1280, bloquea solo el scroll y vuelve al mismo lugar',
+  /lightboxImg\.src = foto\.getAttribute\('src'\)/.test(HTML) &&
+  !/lightboxImg\.src = foto\.currentSrc/.test(HTML) &&
+  /html\.lightbox-abierto, html\.lightbox-abierto body \{ overflow: hidden; \}/.test(HTML) &&
+  /document\.documentElement\.classList\.add\('lightbox-abierto'\)/.test(HTML) &&
+  /scrollAnterior = window\.scrollY/.test(HTML) &&
+  /window\.scrollTo\(0, scrollAnterior\)/.test(HTML) &&
+  /lightboxCerrar\.focus\(\{ preventScroll: true \}\)/.test(HTML) &&
+  /focoAnterior\.focus\(\{ preventScroll: true \}\)/.test(HTML));
+check('el visor solo anima opacity 150 ms y pasa fotos de la misma diapositiva',
+  /transition: opacity \.15s ease/.test(HTML) &&
+  /const slide = foto\.closest\('\.slide'\)/.test(HTML) &&
+  /fotoLightbox = \(fotoLightbox \+ delta \+ fotosLightbox\.length\) % fotosLightbox\.length/.test(HTML) &&
+  /moverFotoLightbox\(dx < 0 \? 1 : -1\)/.test(HTML));
 check('la foto horizontal del aula va con version 3', /aula-pizarron\.webp[?]v=3/.test(HTML) && /aula-pizarron-800\.webp[?]v=3/.test(HTML) && /aula-pizarron\.webp[?]v=3 1280w/.test(HTML) && /width="1280" height="720" decoding="async" style="--pos: 50% 55%"/.test(HTML));
 check('pantalla de carga con techo de 2,5 s', /id="carga"/.test(HTML) && /2500/.test(HTML) && /carga-listo/.test(HTML));
 check('fetchpriority solo en el logo del loader, el header y la primera foto', (HTML.match(/fetchpriority="\high"/g) || []).length === 3 && /fetchpriority="\high"[^>]*src="assets\/promo\/bandera-humo\.webp[?]v=2"/.test(HTML));
