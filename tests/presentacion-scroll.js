@@ -583,6 +583,11 @@ async function main() {
   const apPage = await apCtx.newPage();
   await apPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
   await apPage.waitForFunction(() => document.documentElement.classList.contains('carga-listo'));
+  await wait(1200);
+  if (!fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3'))) {
+    const musicaOculta = await apPage.evaluate(() => document.getElementById('musica').hidden);
+    check('sin archivo de audio el boton de musica no aparece', musicaOculta);
+  }
   await apPage.locator('#autoplay').click();
   await wait(300);
   const apOn = await apPage.evaluate(() => ({

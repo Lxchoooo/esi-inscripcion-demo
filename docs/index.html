@@ -840,6 +840,10 @@
       <svg class="icono-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
       <svg class="icono-pausa" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
     </button>
+    <button id="musica" class="icon-btn control-icono" type="button" aria-label="Música de fondo" aria-pressed="false" title="Activar música de fondo" hidden>
+      <svg class="icono-musica" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="icono-silencio" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
     <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa" aria-pressed="false">Pantalla completa</button>
   </div>
 </header>
@@ -1272,6 +1276,7 @@
 
 <div class="progress" id="progress" aria-hidden="true"></div>
 <div class="autoplay-barra" id="autoplay-barra" aria-hidden="true" hidden><span></span></div>
+<audio id="musica-audio" src="assets/audio/fondo.mp3" loop preload="none" aria-hidden="true"></audio>
 
 <noscript>
   <p style="position:fixed;inset:auto 20px 20px;z-index:100;background:#102a20;padding:16px;border-radius:12px;">Esta presentación necesita JavaScript para navegar y ver los gráficos.</p>
@@ -1299,6 +1304,10 @@ const autoplayBtn = document.getElementById('autoplay');
 const autoplayBarra = document.getElementById('autoplay-barra');
 const autoplayPlay = autoplayBtn.querySelector('.icono-play');
 const autoplayPausa = autoplayBtn.querySelector('.icono-pausa');
+const musicaBtn = document.getElementById('musica');
+const musicaAudio = document.getElementById('musica-audio');
+const musicaOn = musicaBtn.querySelector('.icono-musica');
+const musicaOff = musicaBtn.querySelector('.icono-silencio');
 const fmt = new Intl.NumberFormat('es-AR');
 let current = -1;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1716,6 +1725,108 @@ function bindAutoplay() {
   pintarAutoplay();
 }
 
+/* Música opcional: el archivo no viaja en el repo. Si no existe, el HEAD
+   devuelve 404 y el botón queda oculto, sin errores en consola. */
+const MUSICA_VOLUMEN = 0.4;
+const MUSICA_FADE_MS = 600;
+let musicaDisponible = false;
+let prefMusica = false;
+let sonandoMusica = false;
+let fadeMusicaTimer = 0;
+
+function pintarMusica() {
+  musicaBtn.setAttribute('aria-pressed', prefMusica ? 'true' : 'false');
+  musicaBtn.title = prefMusica ? 'Música de fondo' : 'Activar música de fondo';
+  musicaOn.hidden = !prefMusica;
+  musicaOff.hidden = prefMusica;
+}
+
+function guardarMusica() {
+  try { localStorage.setItem('esi-musica', prefMusica ? '1' : '0'); } catch (e) { /* modo privado */ }
+}
+
+function fadeMusica(destino, ms, alTerminar) {
+  window.clearInterval(fadeMusicaTimer);
+  const inicio = musicaAudio.volume;
+  const t0 = performance.now();
+  fadeMusicaTimer = window.setInterval(() => {
+    const t = Math.min(1, (performance.now() - t0) / ms);
+    musicaAudio.volume = Math.max(0, Math.min(1, inicio + (destino - inicio) * t));
+    if (t >= 1) {
+      window.clearInterval(fadeMusicaTimer);
+      if (alTerminar) alTerminar();
+    }
+  }, 30);
+}
+
+function alternarMusica() {
+  if (!musicaDisponible) return;
+  if (sonandoMusica) {
+    sonandoMusica = false;
+    prefMusica = false;
+    guardarMusica();
+    pintarMusica();
+    fadeMusica(0, MUSICA_FADE_MS, () => {
+      if (!sonandoMusica) musicaAudio.pause();
+    });
+    return;
+  }
+  window.clearInterval(fadeMusicaTimer);
+  musicaAudio.volume = 0;
+  const promesa = musicaAudio.play();
+  if (!promesa || typeof promesa.then !== 'function') {
+    sonandoMusica = true;
+    prefMusica = true;
+    guardarMusica();
+    pintarMusica();
+    fadeMusica(MUSICA_VOLUMEN, MUSICA_FADE_MS);
+    return;
+  }
+  promesa.then(() => {
+    sonandoMusica = true;
+    prefMusica = true;
+    guardarMusica();
+    pintarMusica();
+    fadeMusica(MUSICA_VOLUMEN, MUSICA_FADE_MS);
+  }).catch(() => {
+    sonandoMusica = false;
+    musicaDisponible = false;
+    musicaBtn.hidden = true;
+  });
+}
+
+function comprobarMusica() {
+  fetch(musicaAudio.getAttribute('src'), { method: 'HEAD', cache: 'no-store' })
+    .then((respuesta) => {
+      if (!respuesta.ok) return;
+      musicaDisponible = true;
+      musicaBtn.hidden = false;
+      pintarMusica();
+    })
+    .catch(() => { /* sin archivo o sin red: el botón no aparece */ });
+}
+
+function bindMusica() {
+  musicaAudio.volume = MUSICA_VOLUMEN;
+  try { prefMusica = localStorage.getItem('esi-musica') === '1'; } catch (e) { prefMusica = false; }
+  musicaBtn.addEventListener('click', alternarMusica);
+  pintarMusica();
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    window.clearInterval(fadeMusicaTimer);
+    if (!musicaAudio.paused) musicaAudio.pause();
+    sonandoMusica = false;
+  });
+
+  const comprobar = () => {
+    if ('requestIdleCallback' in window) requestIdleCallback(comprobarMusica, { timeout: 2000 });
+    else setTimeout(comprobarMusica, 0);
+  };
+  if (document.readyState === 'complete') comprobar();
+  else window.addEventListener('load', comprobar, { once: true });
+}
+
 function bindNavigation() {
   document.querySelectorAll('[data-prev]').forEach((btn) => btn.addEventListener('click', () => goTo(current - 1)));
   document.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => {
@@ -1801,6 +1912,7 @@ function init() {
   bindNavigation();
   bindLightbox();
   bindAutoplay();
+  bindMusica();
   const entrySegments = [
     { label: 'Llegaron', value: DATA.summary.entry, color: COLORS.gold },
     { label: 'Ausentes', value: DATA.summary.entryAbsent, color: COLORS.coral },

@@ -141,6 +141,22 @@ check('el modo presentacion se oculta con prefers-reduced-motion y muestra pausa
   /id="autoplay-barra"/.test(HTML) &&
   /transition: transform 8s linear/.test(HTML) &&
   /transform: scaleX\(1\)/.test(HTML));
+check('musica opcional: audio sin precarga, bucle y boton oculto hasta confirmar el archivo',
+  /<audio id="musica-audio" src="assets\/audio\/fondo\.mp3" loop preload="none"/.test(HTML) &&
+  !/<audio[^>]*autoplay/.test(HTML) &&
+  /id="musica"[^>]*aria-pressed="false"[^>]*title="Activar música de fondo" hidden/.test(HTML) &&
+  /method: 'HEAD'/.test(HTML) &&
+  /if \(!respuesta\.ok\) return/.test(HTML) &&
+  /musicaBtn\.hidden = false/.test(HTML) &&
+  /\.catch\(\(\) => \{ \/\* sin archivo o sin red/);
+check('musica: volumen 0,4, fades de 600 ms y preferencia recordada sin autoplay',
+  /const MUSICA_VOLUMEN = 0\.4/.test(HTML) &&
+  /const MUSICA_FADE_MS = 600/.test(HTML) &&
+  /try \{ prefMusica = localStorage\.getItem\('esi-musica'\) === '1'; \} catch/.test(HTML) &&
+  /try \{ localStorage\.setItem\('esi-musica'/.test(HTML) &&
+  /addEventListener\('click', alternarMusica\)/.test(HTML) &&
+  /fadeMusica\(MUSICA_VOLUMEN, MUSICA_FADE_MS\)/.test(HTML) &&
+  /if \(!musicaAudio\.paused\) musicaAudio\.pause\(\)/.test(HTML));
 check('la foto horizontal del aula va con version 3', /aula-pizarron\.webp[?]v=3/.test(HTML) && /aula-pizarron-800\.webp[?]v=3/.test(HTML) && /aula-pizarron\.webp[?]v=3 1280w/.test(HTML) && /width="1280" height="720" decoding="async" style="--pos: 50% 55%"/.test(HTML));
 check('pantalla de carga con techo de 2,5 s', /id="carga"/.test(HTML) && /2500/.test(HTML) && /carga-listo/.test(HTML));
 check('fetchpriority solo en el logo del loader, el header y la primera foto', (HTML.match(/fetchpriority="\high"/g) || []).length === 3 && /fetchpriority="\high"[^>]*src="assets\/promo\/bandera-humo\.webp[?]v=2"/.test(HTML));
