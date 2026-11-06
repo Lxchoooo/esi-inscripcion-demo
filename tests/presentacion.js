@@ -181,8 +181,12 @@ check('el modo presentacion se oculta con prefers-reduced-motion y muestra pausa
   /id="autoplay-barra"/.test(HTML) &&
   /transition: transform 8s linear/.test(HTML) &&
   /transform: scaleX\(1\)/.test(HTML));
-check('musica: una sola cancion propia, sin precarga, en bucle y con boton oculto hasta confirmar el archivo',
-  /<audio id="musica-audio" src="assets\/audio\/fondo\.mp3(?:\?v=\d+)?" loop preload="none"/.test(HTML) &&
+check('musica: mezcla de canciones propia, sin precarga, con lista y boton oculto hasta confirmar el archivo',
+  /<audio id="musica-audio" src="assets\/audio\/promo\.mp3(?:\?v=\d+)?" preload="none"/.test(HTML) &&
+  /const MUSICA_PISTAS = \[/.test(HTML) &&
+  /addEventListener\('ended'/.test(HTML) &&
+  /ponerPista\(musicaPista \+ 1\)/.test(HTML) &&
+  /ponerPista\(0\)/.test(HTML) &&
   !/<audio[^>]*autoplay/.test(HTML) &&
   !/id="palabras-audio"/.test(HTML) &&
   !/palabras\.mp3/.test(HTML) &&
@@ -227,10 +231,10 @@ check('musica: se prima en silencio con el gesto para sonar sola al deslizar has
   /addEventListener\('pointerup', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
   /addEventListener\('keydown', primarMusica, true\)/.test(HTML) &&
   /addEventListener\('keyup', primarMusica, true\)/.test(HTML));
-check('musica: el mp3 existe, pesa menos de 3 MB y no viaja en el precache',
-  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3')) &&
-  fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3')).size < 3145728 &&
-  !/assets\/audio\/fondo\.mp3/.test(PRECACHE));
+check('musica: la mezcla existe, pesa menos de 7 MB y no viaja en el precache',
+  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3')) &&
+  fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3')).size < 7340032 &&
+  !/assets\/audio\/promo\.mp3/.test(PRECACHE));
 check('service worker relativo con scope del proyecto y precache de HTML, logos y 56 fotos',
   /register\('sw\.js'\)/.test(HTML) &&
   !/register\('\/sw\.js'\)/.test(HTML) &&

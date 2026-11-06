@@ -1363,7 +1363,7 @@
 <div class="progress" id="progress" aria-hidden="true"></div>
 <div class="autoplay-barra" id="autoplay-barra" aria-hidden="true" hidden><span></span></div>
 <!-- Música de la presentación: suena desde "Palabras para la promo" al final. -->
-  <audio id="musica-audio" src="assets/audio/fondo.mp3?v=2" loop preload="none" aria-hidden="true"></audio>
+  <audio id="musica-audio" src="assets/audio/promo.mp3?v=1" preload="none" aria-hidden="true"></audio>
 
 <noscript>
   <p style="position:fixed;inset:auto 20px 20px;z-index:100;background:#102a20;padding:16px;border-radius:12px;">Esta presentación necesita JavaScript para navegar y ver los gráficos.</p>
@@ -1466,6 +1466,7 @@ function setActive(index) {
       window.clearInterval(fadeMusicaTimer);
       musicaAudio.pause();
       musicaAudio.currentTime = 0;
+      ponerPista(0);
       musicaAudio.volume = MUSICA_VOLUMEN;
     }
   }
@@ -2082,7 +2083,9 @@ function bindAutoplay() {
   pintarAutoplay();
 }
 
-/* Música de la presentación: una sola canción, la que proveyó el proyecto.
+/* Música de la presentación: una mezcla de las dos canciones que proveyó el
+   proyecto. "No Me Olvides" suena hasta su tramo final y se cruza con
+   "Brindis", que suena completa; al terminar, la mezcla vuelve a empezar.
    Suena desde "Palabras para la promo" hasta la última diapositiva. Si el
    archivo no existe, el HEAD devuelve 404 y el botón queda oculto, sin
    errores en consola. */
@@ -2098,6 +2101,23 @@ let fadeMusicaTimer = 0;
 let musicaPrimada = false;
 let musicaPrimadaTimer = 0;
 let musicaPrecargada = false;
+
+/* La lista queda preparada para sumar más canciones: cada ruta se reproduce
+   en orden y al final vuelve al principio. Hoy tiene la mezcla de las dos. */
+const MUSICA_PISTAS = [
+  'assets/audio/promo.mp3?v=1'
+];
+let musicaPista = 0;
+
+function ponerPista(indice) {
+  if (!MUSICA_PISTAS.length) return false;
+  musicaPista = ((indice % MUSICA_PISTAS.length) + MUSICA_PISTAS.length) % MUSICA_PISTAS.length;
+  const src = MUSICA_PISTAS[musicaPista];
+  if (musicaAudio.getAttribute('src') === src) return false;
+  musicaAudio.setAttribute('src', src);
+  musicaAudio.load();
+  return true;
+}
 
 function pintarMusica() {
   musicaBtn.setAttribute('aria-pressed', sonandoMusica ? 'true' : 'false');
@@ -2183,6 +2203,7 @@ function primarMusica(evento) {
     window.clearInterval(fadeMusicaTimer);
     musicaAudio.pause();
     musicaAudio.currentTime = 0;
+    ponerPista(0);
     musicaAudio.volume = MUSICA_VOLUMEN;
   }, MUSICA_PRIMADA_MS);
   /* Un apagado a medias de la diapositiva anterior no debe cortar la primada. */
@@ -2267,6 +2288,15 @@ function bindMusica() {
   musicaAudio.volume = MUSICA_VOLUMEN;
   musicaBtn.addEventListener('click', alternarMusica);
   if (palabrasBtn) palabrasBtn.addEventListener('click', alternarMusica);
+  /* Al terminar una pista sigue la próxima de la lista. Con una sola pista
+     esto equivale al bucle de antes. */
+  musicaAudio.addEventListener('ended', () => {
+    ponerPista(musicaPista + 1);
+    if (!sonandoMusica) return;
+    musicaAudio.volume = MUSICA_VOLUMEN;
+    const promesa = musicaAudio.play();
+    if (promesa && typeof promesa.catch === 'function') promesa.catch(() => {});
+  });
   musicaAudio.addEventListener('error', () => {
     musicaDisponible = false;
     musicaBtn.hidden = true;
