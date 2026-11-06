@@ -131,6 +131,11 @@ check('la imagen para compartir es un JPEG 1200x630 de menos de 250 KB', (() => 
     size && size.width === 1200 && size.height === 630 &&
     fs.statSync(file).size < 250 * 1024;
 })());
+check('la presentacion no se indexa y no depende de robots.txt',
+  /<meta name="robots" content="noindex, nofollow, noarchive">/.test(HTML) &&
+  /Google no la muestra en búsquedas, pero cualquiera con el enlace puede verla/.test(HTML) &&
+  !fs.existsSync(path.join(__dirname, '..', 'docs', 'robots.txt')) &&
+  !fs.existsSync(path.join(__dirname, '..', 'robots.txt')));
 check('cuatro datos en la slide de charlas usan 2x2, sin tarjeta huerfana',
   /class="stat-row four"/.test(HTML) && /\.stat-row\.four \{ grid-template-columns: repeat\(2/.test(HTML));
 check('el grafico por curso tiene role=img y detalle accesible',
