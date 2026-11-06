@@ -567,8 +567,8 @@ async function main() {
   check('la foto se abre en un dialogo con el scroll bloqueado',
     abierto.visible && abierto.modal && abierto.bloqueado && abierto.foco === 'lightbox-cerrar',
     JSON.stringify(abierto));
-  check('el visor carga la version de 1280 px y ofrece pasar de foto',
-    /\.webp\?v=\d+$/.test(abierto.src) && !/-800\.webp/.test(abierto.src) && abierto.natural > 0 && abierto.siguienteVisible,
+  check('el visor carga la version de 1280 px en el mismo formato y ofrece pasar de foto',
+    /\.(avif|webp)\?v=\d+$/.test(abierto.src) && !/-800\./.test(abierto.src) && abierto.natural > 0 && abierto.siguienteVisible,
     abierto.src);
   const srcPrimera = abierto.src;
 
@@ -713,6 +713,7 @@ async function main() {
       scope: reg.scope,
       nombre: nombre,
       entradas: entradas.length,
+      audio: entradas.some((request) => request.url.indexOf('/assets/audio/promo.mp3') >= 0),
       controlada: !!navigator.serviceWorker.controller
     };
   });
@@ -721,8 +722,8 @@ async function main() {
     await wait(500);
     swInfo.controlada = await apPage.evaluate(() => !!navigator.serviceWorker.controller);
   }
-  check('el service worker instala y precachea las fotos',
-    swInfo.nombre === 'esi-v1' && swInfo.entradas >= 50 && swInfo.controlada,
+  check('el service worker instala y precachea las fotos y la música',
+    swInfo.nombre === 'esi-v2' && swInfo.entradas >= 30 && swInfo.audio && swInfo.controlada,
     JSON.stringify(swInfo));
   await apCtx.setOffline(true);
   let offline = null;

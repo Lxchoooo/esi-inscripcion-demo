@@ -459,9 +459,9 @@
   .promo-mensaje .lead + .lead { margin-top: 14px; }
   .promo-mensaje .thanks-actions { margin-top: 26px; }
 
-  /* Pantalla de carga liviana: logo + barra. Solo se muestra con JS y se va
-     cuando decodifican las fotos de las 3 primeras diapositivas con foto
-     (2+2+3) o a los 2,5 s como techo, lo que pase primero. */
+  /* Pantalla de carga: logo + barra. Solo se muestra con JS y se va cuando
+     terminó la precarga de fotos y música (o cuando la persona elige entrar
+     sin esperar). */
   .carga { display: none; }
   html.js .carga {
     display: grid;
@@ -469,7 +469,7 @@
     inset: 0;
     z-index: 90;
     place-content: center;
-    gap: 18px;
+    gap: 14px;
     justify-items: center;
     background: var(--ink);
     pointer-events: none;
@@ -477,10 +477,25 @@
   .carga img { width: clamp(72px, 12vmin, 110px); height: auto; animation: carga-pulso 1.4s ease-in-out infinite; }
   .carga-barra { width: min(46vw, 220px); height: 3px; border-radius: 3px; background: rgba(245, 241, 232, .14); overflow: hidden; }
   .carga-barra span { display: block; height: 100%; width: 100%; border-radius: 3px; background: var(--gold); transform: scaleX(0); transform-origin: left center; transition: transform .25s ease; }
+  .carga-texto { margin: 0; color: var(--muted); font-size: .78rem; letter-spacing: .02em; text-align: center; }
+  .carga-seguir {
+    pointer-events: auto;
+    border: 1px solid rgba(245, 241, 232, .28);
+    background: transparent;
+    color: var(--cream);
+    font: inherit;
+    font-size: .76rem;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .carga-seguir[hidden] { display: none; }
+  .carga-seguir:hover { border-color: var(--gold); color: var(--gold); }
   @keyframes carga-pulso { 50% { opacity: .5; } }
   html.carga-listo .carga {
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity .45s ease, visibility 0s .45s;
   }
   @media (prefers-reduced-motion: reduce) { .carga img { animation: none; } }
@@ -849,9 +864,11 @@
 </style>
 </head>
 <body>
-  <div class="carga" id="carga" aria-hidden="true">
+  <div class="carga" id="carga" role="status" aria-live="polite">
     <img src="assets/logo-iss-round.webp" alt="" width="128" height="128" fetchpriority="high">
     <div class="carga-barra"><span id="carga-progreso"></span></div>
+    <p class="carga-texto" id="carga-texto">Preparando fotos y música…</p>
+    <button class="carga-seguir" id="carga-seguir" type="button" hidden>Entrar sin esperar</button>
   </div>
 
 <header class="topbar">
@@ -1363,7 +1380,7 @@
 <div class="progress" id="progress" aria-hidden="true"></div>
 <div class="autoplay-barra" id="autoplay-barra" aria-hidden="true" hidden><span></span></div>
 <!-- Música de la presentación: suena desde "Palabras para la promo" al final. -->
-  <audio id="musica-audio" src="assets/audio/promo.mp3?v=2" preload="none" aria-hidden="true"></audio>
+  <audio id="musica-audio" src="assets/audio/promo.mp3?v=3" preload="none" aria-hidden="true"></audio>
 
 <noscript>
   <p style="position:fixed;inset:auto 20px 20px;z-index:100;background:#102a20;padding:16px;border-radius:12px;">Esta presentación necesita JavaScript para navegar y ver los gráficos.</p>
@@ -1602,10 +1619,18 @@ function moverPinch() {
   aplicarZoom();
 }
 
+/* La foto grande usa el mismo formato (AVIF o WebP) que eligió el navegador
+   para la miniatura, pero en 1280 px. Así el offline no baja dos formatos. */
+function fotoGrande(foto) {
+  const actual = foto.currentSrc || foto.getAttribute('src') || '';
+  if (!actual) return '';
+  return actual.replace(/-800(\.[a-z0-9]+)(\?.*)?$/i, '$1$2');
+}
+
 function pintarFotoLightbox() {
   const foto = fotosLightbox[fotoLightbox];
   if (!foto) return;
-  lightboxImg.src = foto.getAttribute('src');
+  lightboxImg.src = fotoGrande(foto);
   lightboxImg.alt = foto.alt || '';
   reiniciarZoom();
   const varias = fotosLightbox.length > 1;
@@ -2106,7 +2131,7 @@ let musicaPrecargada = false;
 /* La lista queda preparada para sumar más canciones: cada ruta se reproduce
    en orden y al final vuelve al principio. Hoy tiene la mezcla de las dos. */
 const MUSICA_PISTAS = [
-  'assets/audio/promo.mp3?v=2'
+  'assets/audio/promo.mp3?v=3'
 ];
 let musicaPista = 0;
 
@@ -2488,18 +2513,21 @@ try {
 }
 
   /* Pantalla de carga: logo + barra. El DOM tiene todo el contenido desde el
-     arranque (sin lazy): el loader cubre hasta que decodifican las fotos de
-     las 3 primeras diapositivas con foto (2+2+3 = 7) o 2,5 s de techo. Las
-     fotos se revelan con fade solo cuando ya estan decodificadas, asi ninguna
-     aparece de golpe. Despues, un pase en tiempo libre del hilo re-intenta
-     la decodificacion de las que falten, de a una, sin bloquear el scroll. */
+     arranque (sin lazy). El loader espera a que el service worker cachee las
+     fotos y la música de este dispositivo; si la conexión es mala, a los 6 s
+     aparece "Entrar sin esperar" y la descarga sigue en segundo plano. Las
+     fotos se revelan con fade solo cuando ya estan decodificadas. */
   (function () {
-    const frames = Array.from(document.querySelectorAll('.promo-frames img'));
-    if (!frames.length) return;
     const raiz = document.documentElement;
-    const carga = document.getElementById('carga');
+    const frames = Array.from(document.querySelectorAll('.promo-frames img'));
     const progreso = document.getElementById('carga-progreso');
-    const primeras = frames.slice(0, 7);
+    const texto = document.getElementById('carga-texto');
+    const seguir = document.getElementById('carga-seguir');
+    if (!document.getElementById('carga')) return;
+
+    let salido = false;
+    let techo = 0;
+    let skipTimer = 0;
 
     const revelar = (im) => {
       if (im.classList.contains('ok')) return Promise.resolve();
@@ -2512,34 +2540,102 @@ try {
       });
     };
 
-    let listas = 0;
-    const pinta = () => {
-      if (progreso) progreso.style.transform = 'scaleX(' + Math.min(1, listas / primeras.length + 0.02) + ')';
-    };
-    const pendientesPrimeras = primeras.map((im) => revelar(im).then(() => { listas += 1; pinta(); }));
-    /* Las demas se decodifican en el pase de tiempo libre (abajo): todas las
-       peticiones ya salieron (sin lazy, en orden del DOM), asi al decodificar
-       van a aparecer en cuanto su decodificacion resuelva, sin picos de
-       trabajo en el hilo durante la entrada. */
-
-    const salir = () => {
-      if (raiz.classList.contains('carga-listo')) return;
-      raiz.classList.add('carga-listo'); /* el CSS hace el fade de salida */
-      /* Decodificacion de la cola solo en tiempo realmente libre (sin timeout
-         que la fuerce a mitad del scrolleo) y ya con el loader fuera. */
-      if ('requestIdleCallback' in window) requestIdleCallback(arrancarse);
-      else setTimeout(arrancarse, 200);
-      /* Red de seguridad: si nunca hay idle, la cola igual se decodifica. */
-      setTimeout(() => { if (frames.some((x) => !x.classList.contains('ok'))) arrancarse(); }, 3500);
+    let ultimoPct = -1;
+    const pinta = (cargado, total, completados, archivos) => {
+      let pct = total > 0 ? cargado / total : (archivos > 0 ? completados / archivos : 0);
+      pct = Math.max(0.02, Math.min(1, pct));
+      const entero = Math.round(pct * 100);
+      /* No repintar por cada trozo de 64 KB: alcanza cada 5 % y no suma
+         trabajo al hilo principal durante la carga. */
+      if (entero === ultimoPct) return;
+      if (entero !== 100 && entero - ultimoPct < 5) return;
+      ultimoPct = entero;
+      if (progreso) progreso.style.transform = 'scaleX(' + pct.toFixed(4) + ')';
+      if (!texto) return;
+      texto.textContent = total > 0
+        ? 'Preparando fotos y música… ' + entero + '%'
+        : 'Preparando fotos y música…';
     };
 
-    Promise.all(pendientesPrimeras).then(() => { setTimeout(salir, 150); });
-    setTimeout(salir, 2500); /* techo: la presentacion se muestra igual */
+    const formatoFotos = () => {
+      const img = frames[0];
+      if (!img) return Promise.resolve('webp');
+      return new Promise((ok) => {
+        const decidir = () => ok(/\.avif(\?|$)/i.test(img.currentSrc || '') ? 'avif' : 'webp');
+        if (img.currentSrc) return decidir();
+        const timer = setTimeout(decidir, 1200);
+        img.addEventListener('load', () => { clearTimeout(timer); decidir(); }, { once: true });
+        img.addEventListener('error', () => { clearTimeout(timer); decidir(); }, { once: true });
+      });
+    };
 
-    /* Techo vencido o fotos sueltas: pase en tiempo libre del hilo que
-       decodifica lo que falte de a una, sin bloquear el scroll ni disparar
-       21 decodificaciones juntas en un celular de gama baja. Cubre tambien
-       el caso de una foto que fallo en el primer intento. */
+    /* Las fotos que usa este dispositivo, en las dos medidas: la que muestra
+       la diapositiva y la 1280 del visor. Más la canción completa. */
+    const urlsParaOffline = (formato) => {
+      const urls = new Set();
+      document.querySelectorAll('.promo-frames picture').forEach((pic) => {
+        const img = pic.querySelector('img');
+        if (!img) return;
+        const actual = img.currentSrc || '';
+        if (actual) urls.add(new URL(actual, location.href).href);
+        const fuente = formato === 'avif' ? pic.querySelector('source[type="image/avif"]') : img;
+        const srcset = fuente && fuente.getAttribute('srcset');
+        if (srcset) {
+          srcset.split(',').forEach((parte) => {
+            const url = parte.trim().split(/\s+/)[0];
+            if (url) urls.add(new URL(url, location.href).href);
+          });
+        } else {
+          const url = img.getAttribute('src');
+          if (url) urls.add(new URL(url, location.href).href);
+        }
+      });
+      const audio = document.getElementById('musica-audio');
+      const audioSrc = audio && (audio.getAttribute('src') || audio.currentSrc);
+      if (audioSrc) urls.add(new URL(audioSrc, location.href).href);
+      return Array.from(urls);
+    };
+
+    const precargarOffline = async (urls, onProgress) => {
+      if (!('serviceWorker' in navigator)) return { skipped: true };
+      let reg = null;
+      try {
+        reg = await navigator.serviceWorker.register('sw.js');
+      } catch (error) {
+        return { skipped: true };
+      }
+      await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((ok) => setTimeout(ok, 15000))
+      ]);
+      const sw = await new Promise((ok) => {
+        if (navigator.serviceWorker.controller) return ok(navigator.serviceWorker.controller);
+        const timer = setTimeout(() => ok(navigator.serviceWorker.controller || (reg && reg.active) || null), 4000);
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          clearTimeout(timer);
+          ok(navigator.serviceWorker.controller || (reg && reg.active) || null);
+        }, { once: true });
+      });
+      if (!sw) return { skipped: true };
+      return new Promise((ok) => {
+        const canal = new MessageChannel();
+        let terminado = false;
+        const fin = (resultado) => {
+          if (terminado) return;
+          terminado = true;
+          try { canal.port1.close(); } catch (error) { /* ya cerrado */ }
+          ok(resultado);
+        };
+        canal.port1.onmessage = (event) => {
+          const datos = event.data || {};
+          if (datos.type === 'progress' && onProgress) onProgress(datos);
+          else if (datos.type === 'done') fin(datos);
+        };
+        sw.postMessage({ type: 'PRECACHE', urls }, [canal.port2]);
+        setTimeout(() => fin({ timeout: true }), 120000);
+      });
+    };
+
     let colaActiva = false;
     const arrancarse = () => {
       if (colaActiva) return;
@@ -2555,15 +2651,52 @@ try {
       };
       siguiente();
     };
+
+    const salir = () => {
+      if (salido) return;
+      salido = true;
+      clearTimeout(techo);
+      clearTimeout(skipTimer);
+      raiz.classList.add('carga-listo');
+      if ('requestIdleCallback' in window) requestIdleCallback(arrancarse);
+      else setTimeout(arrancarse, 200);
+      setTimeout(() => { if (frames.some((x) => !x.classList.contains('ok'))) arrancarse(); }, 3500);
+    };
+
+    if (seguir) seguir.addEventListener('click', salir);
+    pinta(0, 0, 0, 1);
+    techo = setTimeout(salir, 60000);
+    skipTimer = setTimeout(() => { if (seguir && !salido) seguir.hidden = false; }, 6000);
+
+    (async () => {
+      if (!frames.length) { salir(); return; }
+      const formato = await formatoFotos();
+      const urls = urlsParaOffline(formato);
+      let fallos = 0;
+      const resultado = await precargarOffline(urls, (datos) => {
+        if (datos.type === 'progress') pinta(datos.loaded, datos.total, datos.completed, datos.files);
+        else if (datos.type === 'done') fallos = datos.failed || 0;
+      });
+      await Promise.race([
+        Promise.all(frames.slice(0, 7).map(revelar)),
+        new Promise((ok) => setTimeout(ok, 5000))
+      ]);
+      if (resultado && resultado.timeout) {
+        if (texto) texto.textContent = 'La conexión está lenta; podés entrar sin esperar.';
+      } else if (fallos) {
+        if (texto) texto.textContent = 'Listo (algunas fotos se cargan al pasar).';
+        await new Promise((ok) => setTimeout(ok, 450));
+      }
+      salir();
+    })().catch(() => salir());
   })();
 </script>
 <script>
   /* Service worker con ruta relativa: el sitio vive en /esi-inscripcion-demo/.
-     Si el navegador no lo soporta o falla, la presentación sigue igual. */
+     Se registra ya para que la pantalla de carga pueda precachear; si el
+     navegador no lo soporta o falla, la presentación sigue igual. */
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 </script>
 </body>

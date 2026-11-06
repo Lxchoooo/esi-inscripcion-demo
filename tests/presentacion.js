@@ -124,9 +124,11 @@ check('visor de fotos en grande con dialogo accesible y cierre por X, afuera, Es
   /event\.target === lightbox/.test(HTML) &&
   /event\.key === 'Escape'/.test(HTML) &&
   /Math\.abs\(dy\) > 70/.test(HTML) && /if \(dy > 0\) cerrarLightbox\(\)/.test(HTML));
-check('el visor usa la foto de 1280, bloquea solo el scroll y vuelve al mismo lugar',
-  /lightboxImg\.src = foto\.getAttribute\('src'\)/.test(HTML) &&
-  !/lightboxImg\.src = foto\.currentSrc/.test(HTML) &&
+check('el visor usa la foto de 1280 en el mismo formato, bloquea solo el scroll y vuelve al mismo lugar',
+  /function fotoGrande\(foto\)/.test(HTML) &&
+  /foto\.currentSrc \|\| foto\.getAttribute\('src'\)/.test(HTML) &&
+  /return actual\.replace\(\/-800/.test(HTML) &&
+  /lightboxImg\.src = fotoGrande\(foto\)/.test(HTML) &&
   /html\.lightbox-abierto, html\.lightbox-abierto body \{ overflow: hidden; \}/.test(HTML) &&
   /document\.documentElement\.classList\.add\('lightbox-abierto'\)/.test(HTML) &&
   /scrollAnterior = window\.scrollY/.test(HTML) &&
@@ -231,30 +233,38 @@ check('musica: se prima en silencio con el gesto para sonar sola al deslizar has
   /addEventListener\('pointerup', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
   /addEventListener\('keydown', primarMusica, true\)/.test(HTML) &&
   /addEventListener\('keyup', primarMusica, true\)/.test(HTML));
-check('musica: la mezcla existe, pesa menos de 7 MB y no viaja en el precache',
+check('musica: la mezcla existe, pesa menos de 7 MB y se precarga para uso offline',
   fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3')) &&
   fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3')).size < 7340032 &&
-  !/assets\/audio\/promo\.mp3/.test(PRECACHE));
-check('service worker relativo con scope del proyecto y precache de HTML, logos y 56 fotos',
+  /const audioSrc = audio && \(audio\.getAttribute\('src'\) \|\| audio\.currentSrc\)/.test(HTML) &&
+  /urls\.add\(new URL\(audioSrc, location\.href\)\.href\)/.test(HTML) &&
+  /type: 'PRECACHE'/.test(HTML) &&
+  /assets\/audio\/promo\.mp3\?v=3/.test(HTML) &&
+  PRECACHE.indexOf('assets/audio') < 0);
+check('service worker relativo con scope del proyecto y precache liviano de HTML y logos',
   /register\('sw\.js'\)/.test(HTML) &&
   !/register\('\/sw\.js'\)/.test(HTML) &&
-  /const CACHE = 'esi-v1'/.test(SW) &&
+  /const CACHE = 'esi-v2'/.test(SW) &&
   /const INDEX = new URL\('\.\/index\.html', SCOPE\)\.href/.test(SW) &&
-  (PRECACHE.match(/\.\/assets\/promo\//g) || []).length === 56 &&
+  (PRECACHE.match(/\.\/assets\/promo\//g) || []).length === 0 &&
   PRECACHE.indexOf('assets/audio') < 0 &&
   /\.\/assets\/logo-iss-round\.webp/.test(PRECACHE) &&
   /\.\/assets\/logo-aes-round\.webp/.test(PRECACHE) &&
-  /await cache\.addAll\(PRECACHE\)/.test(SW));
-check('service worker: HTML network-first, assets cache-first y sin duplicar ?v=N',
+  /await cache\.addAll\(PRECACHE\)/.test(SW) &&
+  /datos\.type !== 'PRECACHE'/.test(SW) &&
+  /event\.ports/.test(SW));
+check('service worker: HTML network-first, assets cache-first y audio con Range',
   /request\.mode === 'navigate'/.test(SW) &&
   /async function redPrimero/.test(SW) &&
   /async function cachePrimero/.test(SW) &&
-  /const respuesta = await fetch\(request, \{ cache: 'no-store' \}\)/.test(SW) &&
-  /limpia\.search = ''/.test(SW) &&
-  /function clave\(request\)/.test(SW) &&
-  /await cache\.put\(key, respuesta\.clone\(\)\)/.test(SW) &&
-  /cache\.match\(key\)/.test(SW));
-check('service worker: version nueva limpia caches viejas, toma control y no toca el audio',
+  /fetch\(request, \{ cache: 'no-store' \}\)/.test(SW) &&
+  /cache\.match\(request\.url, \{ ignoreVary: true \}\)/.test(SW) &&
+  /copia\.delete\('vary'\)/.test(SW) &&
+  /await cache\.put\(request\.url, respuesta\.clone\(\)\)/.test(SW) &&
+  /async function responderAudio/.test(SW) &&
+  /status: 206/.test(SW) &&
+  /Content-Range/.test(SW));
+check('service worker: version nueva limpia caches viejas, toma control y sirve el audio cacheado',
   /self\.addEventListener\('install'/.test(SW) &&
   /await self\.skipWaiting\(\)/.test(SW) &&
   /self\.addEventListener\('activate'/.test(SW) &&
@@ -263,9 +273,11 @@ check('service worker: version nueva limpia caches viejas, toma control y no toc
   /request\.method === 'HEAD'/.test(SW) &&
   /status: 204/.test(SW) &&
   /request\.method !== 'GET'/.test(SW) &&
-  /url\.pathname\.indexOf\('\/assets\/audio\/'\) >= 0\) return/.test(SW));
+  /function esAudio\(url\)/.test(SW) &&
+  /if \(esAudio\(url\)\)/.test(SW) &&
+  /responderAudio/.test(SW));
 check('la foto horizontal del aula va con version 3', /aula-pizarron\.webp[?]v=3/.test(HTML) && /aula-pizarron-800\.webp[?]v=3/.test(HTML) && /aula-pizarron\.webp[?]v=3 1280w/.test(HTML) && /width="1280" height="720" decoding="async" style="--pos: 50% 55%"/.test(HTML));
-check('pantalla de carga con techo de 2,5 s', /id="carga"/.test(HTML) && /2500/.test(HTML) && /carga-listo/.test(HTML));
+check('pantalla de carga con progreso y salida de emergencia', /id="carga"/.test(HTML) && /id="carga-progreso"/.test(HTML) && /id="carga-texto"/.test(HTML) && /id="carga-seguir"/.test(HTML) && /precargarOffline/.test(HTML) && /setTimeout\(salir, 60000\)/.test(HTML) && /seguir\.hidden = false/.test(HTML) && /carga-listo/.test(HTML));
 check('fetchpriority solo en el logo del loader, el header y la primera foto', (HTML.match(/fetchpriority="\high"/g) || []).length === 3 && /fetchpriority="\high"[^>]*src="assets\/promo\/bandera-humo\.webp[?]v=2"/.test(HTML));
 check('sizes por grupo de galeria', (HTML.match(/sizes="\(max-width: 768px\) 88vw, 532px"/g) || []).length === 16 && (HTML.match(/sizes="\(max-width: 768px\) 88vw, 349px"/g) || []).length === 6 && (HTML.match(/sizes="\(max-width: 768px\) 88vw, 880px"/g) || []).length === 2 && (HTML.match(/sizes="\(max-width: 768px\) 88vw, 1080px"/g) || []).length === 4);
 check('logos en webp y sin png/jpg grandes', /assets\/logo-iss-round\.webp/.test(HTML) && /assets\/logo-aes-round\.webp/.test(HTML) && !/logo-iss-round\.png/.test(HTML) && !/logo-aes-round\.png/.test(HTML));
