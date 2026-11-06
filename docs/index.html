@@ -477,7 +477,7 @@
   .carga img { width: clamp(72px, 12vmin, 110px); height: auto; animation: carga-pulso 1.4s ease-in-out infinite; }
   .carga-barra { width: min(46vw, 220px); height: 3px; border-radius: 3px; background: rgba(245, 241, 232, .14); overflow: hidden; }
   .carga-barra span { display: block; height: 100%; width: 100%; border-radius: 3px; background: var(--gold); transform: scaleX(0); transform-origin: left center; transition: transform .25s ease; }
-  .carga-texto { margin: 0; color: var(--muted); font-size: .78rem; letter-spacing: .02em; text-align: center; }
+  .carga-texto { margin: 0; max-width: min(78vw, 340px); color: var(--muted); font-size: .78rem; line-height: 1.45; letter-spacing: .02em; text-align: center; }
   .carga-seguir {
     pointer-events: auto;
     border: 1px solid rgba(245, 241, 232, .28);
@@ -867,7 +867,7 @@
   <div class="carga" id="carga" role="status" aria-live="polite">
     <img src="assets/logo-iss-round.webp" alt="" width="128" height="128" fetchpriority="high">
     <div class="carga-barra"><span id="carga-progreso"></span></div>
-    <p class="carga-texto" id="carga-texto">Preparando fotos y música…</p>
+    <p class="carga-texto" id="carga-texto">Preparando algo que no viste venir…</p>
     <button class="carga-seguir" id="carga-seguir" type="button" hidden>Entrar sin esperar</button>
   </div>
 
@@ -2529,6 +2529,17 @@ try {
     let techo = 0;
     let skipTimer = 0;
 
+    /* Un mensaje distinto en cada visita: la carga también puede sorprender. */
+    const mensajesCarga = [
+      'Preparando algo que no viste venir…',
+      'Acomodando cinco años en una pantalla…',
+      'Cargando recuerdos que no sabías que te faltaban…',
+      'Esto no es una carga: es un viaje en el tiempo…',
+      'Guardando risas, abrazos y un poquito de magia…'
+    ];
+    const mensajeCarga = mensajesCarga[Math.floor(Math.random() * mensajesCarga.length)];
+    if (texto) texto.textContent = mensajeCarga;
+
     const revelar = (im) => {
       if (im.classList.contains('ok')) return Promise.resolve();
       const listo = () => { if (!im.classList.contains('ok')) im.classList.add('ok'); return Promise.resolve(); };
@@ -2553,8 +2564,8 @@ try {
       if (progreso) progreso.style.transform = 'scaleX(' + pct.toFixed(4) + ')';
       if (!texto) return;
       texto.textContent = total > 0
-        ? 'Preparando fotos y música… ' + entero + '%'
-        : 'Preparando fotos y música…';
+        ? mensajeCarga + ' ' + entero + '%'
+        : mensajeCarga;
     };
 
     const formatoFotos = () => {
