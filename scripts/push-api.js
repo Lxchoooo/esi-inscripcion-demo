@@ -23,7 +23,12 @@ const path = require('path');
 const CWD = path.join(__dirname, '..');
 
 function git(...args) {
-  return execFileSync('git', args, { cwd: CWD, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  return execFileSync('git', args, {
+    cwd: CWD,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 128 * 1024 * 1024
+  });
 }
 
 function readToken() {
@@ -94,7 +99,10 @@ function modeFor(sha, file) {
 }
 
 function blobFor(sha, file) {
-  return execFileSync('git', ['show', `${sha}:${file}`], { cwd: CWD }).toString('base64');
+  return execFileSync('git', ['show', `${sha}:${file}`], {
+    cwd: CWD,
+    maxBuffer: 128 * 1024 * 1024
+  }).toString('base64');
 }
 
 function changedFiles(sha) {
