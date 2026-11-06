@@ -578,6 +578,38 @@ async function main() {
     JSON.stringify(cerrado));
   await lbCtx.close();
 
+  // Modo presentación: arranca solo con el botón, avanza a los 8 s y P pausa.
+  const apCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+  const apPage = await apCtx.newPage();
+  await apPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await apPage.waitForFunction(() => document.documentElement.classList.contains('carga-listo'));
+  await apPage.locator('#autoplay').click();
+  await wait(300);
+  const apOn = await apPage.evaluate(() => ({
+    pressed: document.getElementById('autoplay').getAttribute('aria-pressed'),
+    barra: !document.getElementById('autoplay-barra').hidden,
+    activa: document.getElementById('autoplay-barra').classList.contains('activo')
+  }));
+  check('el boton de autoplay se marca activo con su barra',
+    apOn.pressed === 'true' && apOn.barra && apOn.activa, JSON.stringify(apOn));
+  await wait(8300);
+  const apY = await apPage.evaluate(() => Math.round(window.scrollY));
+  check('el autoplay avanza una diapositiva a los 8 s', apY > 400, 'scrollY ' + apY);
+  await apPage.keyboard.press('p');
+  await wait(200);
+  const apPaused = await apPage.evaluate(() => ({
+    pressed: document.getElementById('autoplay').getAttribute('aria-pressed'),
+    barra: document.getElementById('autoplay-barra').hidden
+  }));
+  check('la tecla P pausa el autoplay', apPaused.pressed === 'false' && apPaused.barra,
+    JSON.stringify(apPaused));
+  await apPage.keyboard.press('p');
+  await wait(200);
+  const apResumed = await apPage.evaluate(() => document.getElementById('autoplay').getAttribute('aria-pressed'));
+  check('la tecla P vuelve a activar el autoplay', apResumed === 'true', apResumed);
+  await apPage.keyboard.press('p');
+  await apCtx.close();
+
   // Sin efecto de entrada: el contenido ya esta nítido apenas entra.
   const fadeInCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const fadePage = await fadeInCtx.newPage();

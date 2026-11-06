@@ -118,6 +118,29 @@ check('el visor solo anima opacity 150 ms y pasa fotos de la misma diapositiva',
   /const slide = foto\.closest\('\.slide'\)/.test(HTML) &&
   /fotoLightbox = \(fotoLightbox \+ delta \+ fotosLightbox\.length\) % fotosLightbox\.length/.test(HTML) &&
   /moverFotoLightbox\(dx < 0 \? 1 : -1\)/.test(HTML));
+check('modo presentacion: boton play/pausa, 8 s por diapositiva y fin en la ultima',
+  /id="autoplay"[^>]*aria-pressed="false"/.test(HTML) &&
+  /const AUTOPLAY_MS = 8000/.test(HTML) &&
+  /let autoplayOn = false/.test(HTML) &&
+  /goTo\(siguiente\)/.test(HTML) &&
+  /if \(current >= slides\.length - 1\) pausarAutoplay\(\)/.test(HTML) &&
+  /scrollIntoView/.test(HTML));
+check('autoplay se pausa con toque, scroll, teclado, visor o pestana oculta y nunca arranca solo',
+  /addEventListener\('scroll', \(\) => \{/.test(HTML) &&
+  /if \(autoplayOn\) pausarAutoplay\(\)/.test(HTML) &&
+  /addEventListener\('mousedown', pausaPorUsuario, true\)/.test(HTML) &&
+  /addEventListener\('touchstart', pausaPorUsuario/.test(HTML) &&
+  /event\.key === 'p' \|\| event\.key === 'P'/.test(HTML) &&
+  /addEventListener\('visibilitychange'/.test(HTML) &&
+  /if \(typeof pausarAutoplay === 'function'\) pausarAutoplay\(\)/.test(HTML) &&
+  !/^\s*activarAutoplay\(\);/m.test(HTML));
+check('el modo presentacion se oculta con prefers-reduced-motion y muestra pausa + barra fina',
+  /autoplayBtn\.hidden = reduceMotion\.matches/.test(HTML) &&
+  /autoplayPlay\.hidden = autoplayOn/.test(HTML) &&
+  /autoplayPausa\.hidden = !autoplayOn/.test(HTML) &&
+  /id="autoplay-barra"/.test(HTML) &&
+  /transition: transform 8s linear/.test(HTML) &&
+  /transform: scaleX\(1\)/.test(HTML));
 check('la foto horizontal del aula va con version 3', /aula-pizarron\.webp[?]v=3/.test(HTML) && /aula-pizarron-800\.webp[?]v=3/.test(HTML) && /aula-pizarron\.webp[?]v=3 1280w/.test(HTML) && /width="1280" height="720" decoding="async" style="--pos: 50% 55%"/.test(HTML));
 check('pantalla de carga con techo de 2,5 s', /id="carga"/.test(HTML) && /2500/.test(HTML) && /carga-listo/.test(HTML));
 check('fetchpriority solo en el logo del loader, el header y la primera foto', (HTML.match(/fetchpriority="\high"/g) || []).length === 3 && /fetchpriority="\high"[^>]*src="assets\/promo\/bandera-humo\.webp[?]v=2"/.test(HTML));
