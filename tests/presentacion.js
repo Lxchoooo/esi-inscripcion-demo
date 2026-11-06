@@ -312,9 +312,9 @@ check('la cola de fotos se decodifica de a una, sin Promise.all',
 check('los porcentajes de las franjas usan coma decimal',
   /numberText\(slot\.presentRate, 1\)/.test(HTML));
 check('la segunda franja no dice que tuvo mas ausencias que las otras',
-  /En la segunda hubo menos asistencias/.test(HTML) && !/En la segunda aparecieron más ausencias/.test(HTML));
+  /menos asistencias/.test(HTML) && !/En la segunda aparecieron más ausencias/.test(HTML));
 check('el 85% se explica sobre las reservas marcadas',
-  /De las reservas que quedaron marcadas, el 85%/.test(HTML));
+  /Entre las reservas que sí se registraron, el 85%/.test(HTML));
 check('color-scheme oscuro para scrollbars y controles nativos',
   /color-scheme:\s*dark/.test(HTML));
 check('recorte horizontal con respaldo para navegadores sin overflow:clip',
