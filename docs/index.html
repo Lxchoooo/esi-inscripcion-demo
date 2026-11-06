@@ -13,20 +13,26 @@
 <meta property="og:title" content="Jornada ESI 2026 · Una historia que no se detuvo">
 <meta property="og:description" content="Los números, los temas y lo que aprendimos de la primera jornada ESI virtual del ISS. Estadísticas agregadas, sin datos personales.">
 <meta property="og:url" content="https://lxchoooo.github.io/esi-inscripcion-demo/">
-<meta property="og:image" content="https://lxchoooo.github.io/esi-inscripcion-demo/assets/promo/pasillo-naranja-turquesa.webp">
-<meta property="og:image:width" content="1280">
-<meta property="og:image:height" content="854">
+<meta property="og:image" content="https://lxchoooo.github.io/esi-inscripcion-demo/assets/og-jornada.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="La Promo 26 Turismo en el pasillo el día de la murga, con remeras naranja y turquesa">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Jornada ESI 2026 · Una historia que no se detuvo">
+<meta name="twitter:description" content="Los números, los temas y lo que aprendimos de la primera jornada ESI virtual del ISS. Estadísticas agregadas, sin datos personales.">
+<meta name="twitter:image" content="https://lxchoooo.github.io/esi-inscripcion-demo/assets/og-jornada.jpg">
+<meta name="twitter:image:alt" content="La Promo 26 Turismo en el pasillo el día de la murga, con remeras naranja y turquesa">
 <title>Jornada ESI 2026 · Una historia que no se detuvo</title>
 <script>document.documentElement.classList.add('js');</script>
 <style>
   :root {
+    color-scheme: dark;
     --ink: #0b1f17;
     --ink-2: #102a20;
     --cream: #f5f1e8;
     --muted: rgba(245, 241, 232, .66);
-    --faint: rgba(245, 241, 232, .5);
+    --faint: rgba(245, 241, 232, .56);
     --gold: #e6b85c;
     --coral: #e07a5f;
     --sage: #9bc4a8;
@@ -280,6 +286,8 @@
   .legend-item i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .legend-item strong { color: var(--cream); font-weight: 600; }
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 26px; }
+  /* Cuatro datos: 2x2, asi no queda una tarjeta sola en la segunda fila. */
+  .stat-row.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-chip { padding: 14px 15px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255, 255, 255, .03); }
   .stat-chip strong { display: block; font-family: var(--serif); font-size: 1.45rem; line-height: 1; margin-bottom: 5px; }
   .stat-chip span { color: var(--faint); font-size: .7rem; line-height: 1.35; display: block; }
@@ -602,7 +610,7 @@
     .bar-label { grid-column: 1 / -1; white-space: normal; }
     .bar-track { grid-column: 1; }
     .bar-value { grid-column: 2; }
-    .stat-row { grid-template-columns: 1fr; }
+    .stat-row, .stat-row.four { grid-template-columns: 1fr; }
     .kpi-grid { gap: 10px; }
     .kpi { padding: 18px 16px; }
     .course-chart { height: 230px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
@@ -694,7 +702,7 @@
   </div>
   <div class="top-actions">
     <span id="counter" class="counter">01 / 23</span>
-    <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa">Pantalla completa</button>
+    <button id="fullscreen" class="icon-btn" type="button" aria-label="Pantalla completa" aria-pressed="false">Pantalla completa</button>
   </div>
 </header>
 
@@ -726,8 +734,8 @@
       </div>
       <div class="mini-grid">
         <div class="mini glass">
-          <div class="big">40 años del ISS</div>
-          <div class="tiny">Más de 15 de charlas de ESI, desde su gente</div>
+          <div class="big">Más de 40 años</div>
+          <div class="tiny">Desde 1984, con más de 15 años de charlas de ESI</div>
         </div>
         <div class="mini glass">
           <div class="big">30 charlas</div>
@@ -835,8 +843,8 @@
       <div>
         <p class="eyebrow">Las charlas</p>
         <h2>934 presencias, <span class="accent">934 historias.</span></h2>
-        <p class="lead">1.173 reservas, 934 presencias en charlas, 165 ausencias y 74 sin marcar. Cada alumno reservó casi tres charlas (una por franja), así que 934 no son 934 alumnos: son asistencias. En cada franja hubo alrededor de 311 alumnos de los 393. El 85% de las presencias registradas dijo presente. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor, para que la próxima jornada sea más justa con cada historia. Y lo que sí se registró dejó algo que ninguna planilla alcanza a mostrar: preguntas, silencios que se animaron a romperse y conversaciones que siguieron cuando la videollamada ya se había cerrado.</p>
-        <div class="stat-row">
+        <p class="lead">1.173 reservas, 934 presencias en charlas, 165 ausencias y 74 sin marcar. Cada alumno reservó casi tres charlas (una por franja), así que 934 no son 934 alumnos: son asistencias. En cada franja hubo alrededor de 311 alumnos de los 393. De las reservas que quedaron marcadas, el 85% terminó en presencia. Lo que no se registró también cuenta: es parte de lo que tenemos que aprender a mirar mejor, para que la próxima jornada sea más justa con cada historia. Y lo que sí se registró dejó algo que ninguna planilla alcanza a mostrar: preguntas, silencios que se animaron a romperse y conversaciones que siguieron cuando la videollamada ya se había cerrado.</p>
+        <div class="stat-row four">
           <div class="stat-chip"><strong>79,6%</strong><span>Presencias sobre reservas</span></div>
           <div class="stat-chip"><strong>85,0%</strong><span>Presencias sobre marcadas</span></div>
           <div class="stat-chip"><strong>311</strong><span>Promedio por franja</span></div>
@@ -861,10 +869,10 @@
       <p class="eyebrow">La jornada, curso por curso</p>
       <h2>No hubo un curso perfecto. <span class="accent">Hubo una escuela entera.</span></h2>
       <p class="lead" style="max-width: 72ch;">Cada curso llegó a su manera. Hubo grupos que entraron casi completos y otros donde faltó más. La jornada no fue de un curso: fue de todos, con sus ritmos, sus ausencias y sus ganas de estar. Y cuando se miran todas las barras juntas, se ve lo otro: las diferencias entre cursos importan menos que el total de la escuela sumada.</p>
-      <div class="course-chart" id="courseChart" aria-label="Gráfico de asistencia y entrada por curso"></div>
+      <div class="course-chart" id="courseChart" role="img" aria-label="Gráfico de asistencia y entrada por curso"></div>
       <div class="chart-legend">
-        <span><i style="background: var(--gold)"></i>Asistencia a charlas</span>
-        <span><i style="background: var(--sage)"></i>Llegada a la entrada</span>
+        <span><i style="background: var(--gold)" aria-hidden="true"></i>Asistencia a charlas</span>
+        <span><i style="background: var(--sage)" aria-hidden="true"></i>Llegada a la entrada</span>
       </div>
       <p class="note">1°A llegó al 100%. 6°Economía fue el curso con menor llegada: 77,4%. Cada barra es un porcentaje del total de su curso.</p>
     </div>
@@ -874,7 +882,7 @@
     <div class="wrap">
       <p class="eyebrow">Tres horarios, un mismo movimiento</p>
       <h2>La jornada tuvo <span class="accent">tres respiraciones.</span></h2>
-      <p class="lead" style="max-width: 72ch;">La primera y la tercera franja sostuvieron más presencias. En la segunda aparecieron más ausencias y más registros sin marcar: el mediodía se hizo sentir. Aun así, la rueda no se detuvo y la jornada siguió su curso, con los que estaban y con los que volvían. Cada franja tuvo su clima, y en ninguna dejó de haber gente eligiendo estar, aunque fuera desde el celular de la cocina de su casa.</p>
+      <p class="lead" style="max-width: 72ch;">La primera y la tercera franja sostuvieron más presencias. En la segunda hubo menos asistencias y muchos más registros sin marcar: el mediodía se hizo sentir. Aun así, la rueda no se detuvo y la jornada siguió su curso, con los que estaban y con los que volvían. Cada franja tuvo su clima, y en ninguna dejó de haber gente eligiendo estar, aunque fuera desde el celular de la cocina de su casa.</p>
       <div class="slot-grid" id="slotChart"></div>
       <p class="note">Cada barra muestra presentes, ausentes y sin marcar sobre las reservas de esa franja.</p>
     </div>
@@ -1134,7 +1142,6 @@ const COLORS = {
 const slides = Array.from(document.querySelectorAll('.slide'));
 const progressEl = document.getElementById('progress');
 const counterEl = document.getElementById('counter');
-const navCounterEl = document.getElementById('navCounter');
 const fmt = new Intl.NumberFormat('es-AR');
 let current = -1;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1182,13 +1189,15 @@ function setActive(index) {
   current = n;
   const label = String(n + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
   counterEl.textContent = label;
-  if (navCounterEl) navCounterEl.textContent = label;
   progressEl.style.transform = 'scaleX(' + ((n + 1) / slides.length).toFixed(4) + ')';
   try { history.replaceState(null, '', '#slide-' + (n + 1)); } catch (e) {}
 }
 
 function goTo(index) {
   const n = Math.max(0, Math.min(slides.length - 1, index));
+  /* Marcar el destino antes de scrollear permite encadenar flechas o clics
+     seguidos: si no, dos toques rapidos apuntan los dos a la misma slide. */
+  setActive(n);
   slides[n].scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
 }
 
@@ -1201,7 +1210,7 @@ function slideIndexFor(value) {
 
 function renderLegend(el, items) {
   el.innerHTML = items.map((item) =>
-    '<span class="legend-item"><i style="background:' + item.color + '"></i>' +
+    '<span class="legend-item"><i style="background:' + item.color + '" aria-hidden="true"></i>' +
     esc(item.label) + ' <strong>' + fmt.format(item.value) + '</strong></span>'
   ).join('');
 }
@@ -1209,7 +1218,8 @@ function renderLegend(el, items) {
 function renderDonut(el, segments, centerValue, centerLabel) {
   el.innerHTML = '';
   el.setAttribute('role', 'img');
-  el.setAttribute('aria-label', segments.map((seg) => esc(seg.label) + ': ' + fmt.format(seg.value)).join(', '));
+  /* setAttribute ya escapa las comillas: no hace falta pasar por esc(). */
+  el.setAttribute('aria-label', segments.map((seg) => seg.label + ': ' + fmt.format(seg.value)).join(', '));
   const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
   const radius = 70;
   const circumference = 2 * Math.PI * radius;
@@ -1273,7 +1283,7 @@ function renderTopics() {
 function renderCourses() {
   const el = document.getElementById('courseChart');
   el.innerHTML = DATA.courses.map((course) =>
-    '<div class="course" title="' + esc(course.course) + ': ' + course.presentRate + '% de asistencia, ' + course.entryRate + '% de entrada">' +
+    '<div class="course" title="' + esc(course.course) + ': ' + numberText(course.presentRate, 1) + '% de asistencia, ' + numberText(course.entryRate, 1) + '% de entrada">' +
       '<div class="course-bars">' +
         '<span class="course-bar present" style="--s:' + (course.presentRate / 100).toFixed(4) + '"></span>' +
         '<span class="course-bar entry" style="--s:' + (course.entryRate / 100).toFixed(4) + '"></span>' +
@@ -1281,6 +1291,12 @@ function renderCourses() {
       '<div class="course-label">' + esc(course.short) + '</div>' +
     '</div>'
   ).join('');
+  /* El grafico tiene role=img: el detalle por curso va en la etiqueta para
+     que un lector de pantalla no pierda los porcentajes. */
+  el.setAttribute('aria-label', 'Asistencia a charlas y llegada a la entrada por curso. ' +
+    DATA.courses.map((course) =>
+      course.course + ': ' + numberText(course.presentRate, 1) + '% de asistencia y ' + numberText(course.entryRate, 1) + '% de entrada'
+    ).join('; ') + '.');
 }
 
 function renderSlots() {
@@ -1301,7 +1317,7 @@ function renderSlots() {
         '<span><strong>' + slot.absent + '</strong> ausentes</span>' +
         '<span><strong>' + slot.unmarked + '</strong> sin marcar</span>' +
       '</div>' +
-      '<div class="slot-pct">' + slot.presentRate + '% de asistencia</div>' +
+      '<div class="slot-pct">' + numberText(slot.presentRate, 1) + '% de asistencia</div>' +
     '</div>';
   }).join('');
 }
@@ -1319,18 +1335,23 @@ function chartsSlide(slide) {
 
 function syncCurrent() {
   const y = window.scrollY || document.documentElement.scrollTop || 0;
+  /* Se elige la diapositiva que contiene el centro de la pantalla, no la que
+     tiene el borde mas cerca: en celular una diapositiva puede ser mas alta
+     que el viewport y el marcador tiene que seguir lo que se esta leyendo. */
+  const center = y + window.innerHeight / 2;
   let best = 0;
   let bestDist = Infinity;
   slides.forEach((slide, i) => {
-    const top = slide.getBoundingClientRect().top + y;
-    const dist = Math.abs(top - y);
+    const rect = slide.getBoundingClientRect();
+    const top = rect.top + y;
+    const bottom = top + rect.height;
+    const dist = center < top ? top - center : center > bottom ? center - bottom : 0;
     if (dist < bestDist) { bestDist = dist; best = i; }
   });
   setActive(best);
 }
 
 function bindNavigation() {
-  document.querySelectorAll('[data-next]').forEach((btn) => btn.addEventListener('click', () => goTo(current + 1)));
   document.querySelectorAll('[data-prev]').forEach((btn) => btn.addEventListener('click', () => goTo(current - 1)));
   document.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => {
     const index = slideIndexFor(btn.dataset.go);
@@ -1346,27 +1367,34 @@ function bindNavigation() {
   });
 
   const fullscreenBtn = document.getElementById('fullscreen');
-  fullscreenBtn.addEventListener('click', async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (e) {
-      fullscreenBtn.textContent = 'Pantalla completa';
-    }
-  });
-  document.addEventListener('fullscreenchange', () => {
-    fullscreenBtn.textContent = document.fullscreenElement ? 'Salir' : 'Pantalla completa';
-  });
+  if (!document.fullscreenEnabled || typeof document.documentElement.requestFullscreen !== 'function') {
+    /* iPhone Safari no permite pantalla completa real: mejor no mostrar un
+       boton que no hace nada. */
+    fullscreenBtn.hidden = true;
+  } else {
+    const pintarBoton = () => {
+      const activo = !!document.fullscreenElement;
+      fullscreenBtn.textContent = activo ? 'Salir' : 'Pantalla completa';
+      fullscreenBtn.setAttribute('aria-label', activo ? 'Salir de pantalla completa' : 'Pantalla completa');
+      fullscreenBtn.setAttribute('aria-pressed', activo ? 'true' : 'false');
+    };
+    fullscreenBtn.addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      } catch (e) { /* si el navegador lo rechaza, el boton queda igual */ }
+      pintarBoton();
+    });
+    document.addEventListener('fullscreenchange', pintarBoton);
+    pintarBoton();
+  }
 
   // El scroll lo maneja el navegador (rueda, touch y teclado). El JS solo
   // dispara contadores y graficos al entrar y actualiza el marcador cuando el
   // scroll reposa.
   const chartsOn = new IntersectionObserver((entries) => {
     entries.forEach((entry) => { if (entry.isIntersecting) chartsSlide(entry.target); });
-  }, { threshold: 0.45 });
+  }, { threshold: 0.25 });
   slides.forEach((slide) => { chartsOn.observe(slide); });
 
   let restTimer = 0;
@@ -1438,9 +1466,19 @@ function init() {
     window.scrollTo(0, 0);
   }
   syncCurrent();
+  /* Si se abrio un enlace #slide-N, los graficos de esa diapositiva arrancan
+     aunque el IntersectionObserver no llegue al umbral. */
+  if (current >= 0) chartsSlide(slides[current]);
 }
 
-init();
+try {
+  init();
+} catch (err) {
+  /* Si algo falla al armar los graficos, la presentacion igual tiene que
+     mostrarse: se saca el loader y queda el contenido del DOM. */
+  document.documentElement.classList.add('carga-listo');
+  console.error(err);
+}
 
   /* Pantalla de carga: logo + barra. El DOM tiene todo el contenido desde el
      arranque (sin lazy): el loader cubre hasta que decodifican las fotos de
@@ -1469,7 +1507,7 @@ init();
 
     let listas = 0;
     const pinta = () => {
-      if (progreso) progreso.style.transform = 'scaleX(' + (listas / primeras.length + 0.02) + ')';
+      if (progreso) progreso.style.transform = 'scaleX(' + Math.min(1, listas / primeras.length + 0.02) + ')';
     };
     const pendientesPrimeras = primeras.map((im) => revelar(im).then(() => { listas += 1; pinta(); }));
     /* Las demas se decodifican en el pase de tiempo libre (abajo): todas las
@@ -1492,11 +1530,23 @@ init();
     setTimeout(salir, 2500); /* techo: la presentacion se muestra igual */
 
     /* Techo vencido o fotos sueltas: pase en tiempo libre del hilo que
-       decodifica todo lo que falte, en paralelo, sin bloquear el scroll.
-       Cubre tambien el caso de una foto que fallo en el primer intento. */
+       decodifica lo que falte de a una, sin bloquear el scroll ni disparar
+       21 decodificaciones juntas en un celular de gama baja. Cubre tambien
+       el caso de una foto que fallo en el primer intento. */
+    let colaActiva = false;
     const arrancarse = () => {
+      if (colaActiva) return;
+      colaActiva = true;
       const pendientes = frames.filter((x) => !x.classList.contains('ok'));
-      Promise.all(pendientes.map(revelar)).catch(() => {});
+      const siguiente = () => {
+        const im = pendientes.shift();
+        if (!im) { colaActiva = false; return; }
+        revelar(im).then(() => {
+          if ('requestIdleCallback' in window) requestIdleCallback(siguiente, { timeout: 1200 });
+          else setTimeout(siguiente, 80);
+        }, () => { colaActiva = false; });
+      };
+      siguiente();
     };
   })();
 </script>
