@@ -634,7 +634,9 @@ async function main() {
   await apPage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
   await apPage.waitForFunction(() => document.documentElement.classList.contains('carga-listo'));
   await wait(1200);
-  if (!fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3'))) {
+  const audioOk = ['promo.m4a', 'promo.mp3'].some((nombre) =>
+    fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', nombre)));
+  if (!audioOk) {
     const musicaOculta = await apPage.evaluate(() => document.getElementById('musica').hidden);
     check('sin archivo de audio el boton de musica no aparece', musicaOculta);
   } else {
@@ -713,7 +715,7 @@ async function main() {
       scope: reg.scope,
       nombre: nombre,
       entradas: entradas.length,
-      audio: entradas.some((request) => request.url.indexOf('/assets/audio/promo.mp3') >= 0),
+      audio: entradas.some((request) => /\/assets\/audio\/promo\.(?:m4a|mp3)/.test(request.url)),
       controlada: !!navigator.serviceWorker.controller
     };
   });
@@ -723,7 +725,7 @@ async function main() {
     swInfo.controlada = await apPage.evaluate(() => !!navigator.serviceWorker.controller);
   }
   check('el service worker instala y precachea las fotos y la música',
-    swInfo.nombre === 'esi-v2' && swInfo.entradas >= 30 && swInfo.audio && swInfo.controlada,
+    swInfo.nombre === 'esi-v3' && swInfo.entradas >= 30 && swInfo.audio && swInfo.controlada,
     JSON.stringify(swInfo));
   await apCtx.setOffline(true);
   let offline = null;

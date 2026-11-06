@@ -17,11 +17,11 @@
  *   por mensaje las fotos y la música que necesita este dispositivo, así no
  *   baja las 56 variantes (AVIF/WebP, 800/1280) en todos los casos.
  *
- * Si cambian las fotos o cualquier asset, subir CACHE a esi-v3 (o siguiente)
+ * Si cambian las fotos o cualquier asset, subir CACHE a esi-v4 (o siguiente)
  * para que se descarte la copia vieja.
  */
 
-const CACHE = 'esi-v2';
+const CACHE = 'esi-v3';
 const SCOPE = self.registration.scope;
 const INDEX = new URL('./index.html', SCOPE).href;
 

@@ -123,7 +123,7 @@ check('15 susurros decorativos, aleatorios y sin informacion para lectores',
   /aria-hidden="true"><\/span>|aria-hidden="true" data-susurro/.test(HTML));
 check('boton de compartir y creditos de las tres canciones',
   /data-compartir/.test(HTML) && /navigator\.share/.test(HTML) &&
-  /No Me Olvides/.test(HTML) && /Brindis/.test(HTML) && /Yo romperé tus fotos/.test(HTML));
+  /No Me Olvides/.test(HTML) && /Brindis/.test(HTML) && /Para no verte más/.test(HTML) && /La Mosca Tsé-Tsé/.test(HTML));
 check('WAKAY queda destacada como nombre de la murga', /class="wakay">WAKAY</.test(HTML));
 check('la presentacion habla de seis anos y no de cinco',
   /Seis años no se resumen en una diapositiva/.test(HTML) && !/cinco años/i.test(HTML));
@@ -202,9 +202,11 @@ check('el modo presentacion se oculta con prefers-reduced-motion y muestra pausa
   /id="autoplay-barra"/.test(HTML) &&
   /transition: transform 8s linear/.test(HTML) &&
   /transform: scaleX\(1\)/.test(HTML));
-check('musica: mezcla de canciones propia, sin precarga, con lista y boton oculto hasta confirmar el archivo',
-  /<audio id="musica-audio" src="assets\/audio\/promo\.mp3(?:\?v=\d+)?" preload="none"/.test(HTML) &&
+check('musica: mezcla AAC-LC con respaldo MP3, sin precarga, con lista y boton oculto hasta confirmar el archivo',
+  /<audio id="musica-audio" preload="none" aria-hidden="true">[\s\S]*?<source src="assets\/audio\/promo\.m4a\?v=\d+" type="audio\/mp4">[\s\S]*?<source src="assets\/audio\/promo\.mp3\?v=\d+" type="audio\/mpeg">/.test(HTML) &&
   /const MUSICA_PISTAS = \[/.test(HTML) &&
+  /const MUSICA_TIPO_AAC = 'audio\/mp4; codecs="mp4a\.40\.2"'/.test(HTML) &&
+  /musicaAudio\.canPlayType\(MUSICA_TIPO_AAC\)/.test(HTML) &&
   /addEventListener\('ended'/.test(HTML) &&
   /ponerPista\(musicaPista \+ 1\)/.test(HTML) &&
   /ponerPista\(0\)/.test(HTML) &&
@@ -252,18 +254,20 @@ check('musica: se prima en silencio con el gesto para sonar sola al deslizar has
   /addEventListener\('pointerup', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
   /addEventListener\('keydown', primarMusica, true\)/.test(HTML) &&
   /addEventListener\('keyup', primarMusica, true\)/.test(HTML));
-check('musica: la mezcla existe, pesa menos de 7 MB y se precarga para uso offline',
-  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3')) &&
-  fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'promo.mp3')).size < 7340032 &&
+check('musica: las dos versiones existen, pesan menos de 8 MB y se precargan para uso offline',
+  ['promo.m4a', 'promo.mp3'].every((nombre) => {
+    const archivo = path.join(__dirname, '..', 'docs', 'assets', 'audio', nombre);
+    return fs.existsSync(archivo) && fs.statSync(archivo).size < 8388608;
+  }) &&
   /const audioSrc = audio && \(audio\.getAttribute\('src'\) \|\| audio\.currentSrc\)/.test(HTML) &&
   /urls\.add\(new URL\(audioSrc, location\.href\)\.href\)/.test(HTML) &&
   /type: 'PRECACHE'/.test(HTML) &&
-  /assets\/audio\/promo\.mp3\?v=4/.test(HTML) &&
+  /assets\/audio\/promo\.(?:m4a|mp3)\?v=5/.test(HTML) &&
   PRECACHE.indexOf('assets/audio') < 0);
 check('service worker relativo con scope del proyecto y precache liviano de HTML y logos',
   /register\('sw\.js'\)/.test(HTML) &&
   !/register\('\/sw\.js'\)/.test(HTML) &&
-  /const CACHE = 'esi-v2'/.test(SW) &&
+  /const CACHE = 'esi-v3'/.test(SW) &&
   /const INDEX = new URL\('\.\/index\.html', SCOPE\)\.href/.test(SW) &&
   (PRECACHE.match(/\.\/assets\/promo\//g) || []).length === 0 &&
   PRECACHE.indexOf('assets/audio') < 0 &&

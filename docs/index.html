@@ -1690,7 +1690,7 @@
       <p class="lead">Gracias, ISS, por estos años. Por los profes que nos bancaron, por los recreos que se hacían cortos, por la gente que nos tocó conocer acá y por todo lo que nos llevamos. Nos vamos con más de lo que vinimos a buscar. 🫶</p>
       <p class="lead">A la promo: que la vida nos cruce seguido y que nunca nos falte tema para hablar. 💛</p>
       <div class="creditos">
-        <p><strong>Música:</strong> “No Me Olvides” de Abel Pintos · “Brindis” de Soledad · “Yo romperé tus fotos” de La Mosca.</p>
+        <p><strong>Música:</strong> “No Me Olvides” de Abel Pintos · “Brindis” de Soledad · “Para no verte más” de La Mosca Tsé-Tsé.</p>
         <p>Fotos y recuerdos: Promo 26 Turismo. Presentación: Luciano Arias.</p>
       </div>
       <div class="thanks-actions" style="justify-content: center;">
@@ -1717,7 +1717,10 @@
 <div class="progress" id="progress" aria-hidden="true"></div>
 <div class="autoplay-barra" id="autoplay-barra" aria-hidden="true" hidden><span></span></div>
 <!-- Música de la presentación: suena desde "Palabras para la promo" al final. -->
-  <audio id="musica-audio" src="assets/audio/promo.mp3?v=4" preload="none" aria-hidden="true"></audio>
+  <audio id="musica-audio" preload="none" aria-hidden="true">
+    <source src="assets/audio/promo.m4a?v=5" type="audio/mp4">
+    <source src="assets/audio/promo.mp3?v=5" type="audio/mpeg">
+  </audio>
 
 <noscript>
   <p style="position:fixed;inset:auto 20px 20px;z-index:100;background:#102a20;padding:16px;border-radius:12px;">Esta presentación necesita JavaScript para navegar y ver los gráficos.</p>
@@ -2538,9 +2541,10 @@ function bindAutoplay() {
   pintarAutoplay();
 }
 
-/* Música de la presentación: una mezcla de las dos canciones que proveyó el
+/* Música de la presentación: una mezcla de las tres canciones que proveyó el
    proyecto. "No Me Olvides" suena hasta el cambio de sección de los 2:52 y se
-   cruza con "Brindis", que suena completa; al terminar, la mezcla vuelve a
+   cruza con "Brindis", que suena completa. Al terminar "Brindis" se cruza con
+   "Para no verte más", que también suena completa; después la mezcla vuelve a
    empezar.
    Suena desde "Palabras para la promo" hasta la última diapositiva. Si el
    archivo no existe, el HEAD devuelve 404 y el botón queda oculto, sin
@@ -2558,17 +2562,23 @@ let musicaPrimada = false;
 let musicaPrimadaTimer = 0;
 let musicaPrecargada = false;
 
-/* La lista queda preparada para sumar más canciones: cada ruta se reproduce
-   en orden y al final vuelve al principio. Hoy tiene la mezcla de las dos. */
+/* La lista queda preparada para sumar más canciones: cada pista tiene una
+   versión AAC-LC y un MP3 de respaldo. El navegador elige la primera que
+   puede reproducir y esa versión es la que se precarga para uso sin conexión. */
 const MUSICA_PISTAS = [
-  'assets/audio/promo.mp3?v=4'
+  {
+    aac: 'assets/audio/promo.m4a?v=5',
+    mp3: 'assets/audio/promo.mp3?v=5'
+  }
 ];
+const MUSICA_TIPO_AAC = 'audio/mp4; codecs="mp4a.40.2"';
 let musicaPista = 0;
 
 function ponerPista(indice) {
   if (!MUSICA_PISTAS.length) return false;
   musicaPista = ((indice % MUSICA_PISTAS.length) + MUSICA_PISTAS.length) % MUSICA_PISTAS.length;
-  const src = MUSICA_PISTAS[musicaPista];
+  const pista = MUSICA_PISTAS[musicaPista];
+  const src = musicaAudio.canPlayType(MUSICA_TIPO_AAC) ? pista.aac : pista.mp3;
   if (musicaAudio.getAttribute('src') === src) return false;
   musicaAudio.setAttribute('src', src);
   musicaAudio.load();
@@ -2720,7 +2730,7 @@ function esperarServiceWorker() {
 }
 
 function comprobarMusica() {
-  /* El HEAD pasa por el service worker: si el MP3 no existe, responde 204
+  /* El HEAD pasa por el service worker: si el audio no existe, responde 204
      sin un 404 en la consola. Sin service worker no se muestra el botón. */
   esperarServiceWorker()
     .then(() => {
@@ -2743,13 +2753,14 @@ function comprobarMusica() {
 }
 
 function bindMusica() {
+  ponerPista(0);
   musicaAudio.volume = MUSICA_VOLUMEN;
   musicaBtn.addEventListener('click', alternarMusica);
   if (palabrasBtn) palabrasBtn.addEventListener('click', alternarMusica);
   /* Al terminar una pista sigue la próxima de la lista. Con una sola pista
      esto equivale al bucle de antes. */
   musicaAudio.addEventListener('ended', () => {
-    ponerPista(musicaPista + 1);
+    if (!ponerPista(musicaPista + 1)) musicaAudio.currentTime = 0;
     if (!sonandoMusica) return;
     musicaAudio.volume = MUSICA_VOLUMEN;
     const promesa = musicaAudio.play();
