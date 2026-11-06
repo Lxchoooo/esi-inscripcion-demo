@@ -447,13 +447,14 @@
   /* Diapositivas nuevas de solo texto entre las fotos y el cierre. */
   .promo-mensaje { text-align: center; }
   .promo-mensaje .eyebrow { justify-content: center; margin-left: auto; margin-right: auto; }
-  .promo-mensaje h2 { font-size: clamp(2.1rem, 4.4vw, 3.6rem); margin-bottom: 26px; }
+  .promo-mensaje h2 { font-size: clamp(2.1rem, 4.4vw, 3.6rem); margin-bottom: 26px; text-wrap: wrap; }
   .promo-mensaje .lead {
     max-width: 60ch;
     margin-left: auto;
     margin-right: auto;
     font-size: clamp(.98rem, 1.38vw, 1.18rem);
     line-height: 1.62;
+    text-wrap: wrap;
   }
   .promo-mensaje .lead + .lead { margin-top: 14px; }
   .promo-mensaje .thanks-actions { margin-top: 26px; }
@@ -612,7 +613,7 @@
   @supports not (overflow: clip) {
     body, .cover, .promo, .promo-speech, .promo-mensaje, .farewell { overflow-x: hidden; }
   }
-  .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before {
+  .cover::before, .promo::before, .promo-speech::before, .farewell::before {
     content: "";
     position: absolute;
     inset: -18%;
@@ -625,7 +626,7 @@
     opacity: .38;
     transform: rotate(-8deg) scale(1.06);
   }
-  .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after {
+  .cover::after, .promo::after, .promo-speech::after, .farewell::after {
     content: "";
     position: absolute;
     right: -14vmin;
@@ -769,13 +770,13 @@
     .glass {
       background: linear-gradient(145deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .04));
     }
-    .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before {
+    .cover::before, .promo::before, .promo-speech::before, .farewell::before {
       inset: -6%;
       background-size: 78vmin;
       opacity: .3;
       animation: none;
     }
-    .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after {
+    .cover::after, .promo::after, .promo-speech::after, .farewell::after {
       width: 70vmin;
       height: 70vmin;
       right: -22vmin;
@@ -826,10 +827,10 @@
     /* En celulares de gama baja, sombras grandes son lo primero que traba. */
     .glass { box-shadow: none; }
     .brand-logo { filter: none; }
-    .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before { opacity: .22; }
-    .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after { opacity: .12; }
-    .cover::before, .promo::before, .promo-speech::before, .promo-mensaje::before, .farewell::before { filter: blur(4px); }
-    .cover::after, .promo::after, .promo-speech::after, .promo-mensaje::after, .farewell::after { filter: blur(5px); }
+    .cover::before, .promo::before, .promo-speech::before, .farewell::before { opacity: .22; }
+    .cover::after, .promo::after, .promo-speech::after, .farewell::after { opacity: .12; }
+    .cover::before, .promo::before, .promo-speech::before, .farewell::before { filter: blur(4px); }
+    .cover::after, .promo::after, .promo-speech::after, .farewell::after { filter: blur(5px); }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
