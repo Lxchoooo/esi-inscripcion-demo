@@ -1849,9 +1849,13 @@ let musicaSonabaAntesPalabras = false;
 /* Música propia de la diapositiva "Palabras para la promo". */
 const PALABRAS_VOLUMEN = 0.35;
 const PALABRAS_FADE_MS = 700;
+/* Cuánto puede quedar primada en silencio si no se llega a la diapositiva. */
+const PALABRAS_PRIMADA_MS = 4000;
 let palabrasSonando = false;
 let palabrasPausaUsuario = false;
 let palabrasFadeTimer = 0;
+let palabrasPrimada = false;
+let palabrasPrimadaTimer = 0;
 
 function pintarMusica() {
   musicaBtn.setAttribute('aria-pressed', prefMusica ? 'true' : 'false');
@@ -2028,6 +2032,8 @@ function callarPalabras() {
 function activarPalabras(forzar) {
   if (!palabrasAudio || !palabrasBtn) return;
   if (palabrasPausaUsuario && !forzar) return;
+  window.clearTimeout(palabrasPrimadaTimer);
+  palabrasPrimada = false;
   if (palabrasSonando) { pausarMusicaParaPalabras(); return; }
   pausarMusicaParaPalabras();
   window.clearInterval(palabrasFadeTimer);
@@ -2063,6 +2069,35 @@ function alternarPalabras() {
   activarPalabras(true);
 }
 
+/* Chrome y Safari solo permiten arrancar audio dentro de un gesto del usuario.
+   Por eso la música de esta diapositiva se "prima" en silencio apenas se toca
+   o se teclea algo: si el desplazamiento termina en "Palabras para la promo"
+   ya está sonando y solo hay que subirle el volumen; si no, se apaga sola. */
+function primarPalabras() {
+  if (!palabrasAudio || palabrasPausaUsuario || palabrasSonando) return;
+  if (slides[current] && slides[current].classList.contains('promo-speech')) {
+    activarPalabras(false);
+    return;
+  }
+  window.clearTimeout(palabrasPrimadaTimer);
+  palabrasPrimadaTimer = window.setTimeout(() => {
+    palabrasPrimada = false;
+    if (palabrasSonando) return;
+    window.clearInterval(palabrasFadeTimer);
+    palabrasAudio.pause();
+    palabrasAudio.currentTime = 0;
+    palabrasAudio.volume = PALABRAS_VOLUMEN;
+  }, PALABRAS_PRIMADA_MS);
+  /* Un apagado a medias de la diapositiva anterior no debe cortar la primada. */
+  window.clearInterval(palabrasFadeTimer);
+  if (!palabrasAudio.paused) { palabrasPrimada = true; return; }
+  palabrasAudio.volume = 0;
+  const promesa = palabrasAudio.play();
+  const alAndar = () => { if (!palabrasAudio.paused) palabrasPrimada = true; };
+  if (!promesa || typeof promesa.then !== 'function') { alAndar(); return; }
+  promesa.then(alAndar).catch(() => { palabrasPrimada = false; });
+}
+
 function bindPalabras() {
   if (!palabrasAudio || !palabrasBtn) return;
   palabrasAudio.volume = PALABRAS_VOLUMEN;
@@ -2070,9 +2105,22 @@ function bindPalabras() {
   palabrasAudio.addEventListener('error', () => { palabrasBtn.hidden = true; });
   pintarPalabras();
 
+  document.addEventListener('touchstart', primarPalabras, { passive: true, capture: true });
+  document.addEventListener('pointerdown', primarPalabras, { passive: true, capture: true });
+  document.addEventListener('keydown', primarPalabras, true);
+
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      if (!palabrasSonando) return;
+      if (!palabrasSonando) {
+        if (!palabrasPrimada) return;
+        window.clearTimeout(palabrasPrimadaTimer);
+        palabrasPrimada = false;
+        window.clearInterval(palabrasFadeTimer);
+        palabrasAudio.pause();
+        palabrasAudio.currentTime = 0;
+        palabrasAudio.volume = PALABRAS_VOLUMEN;
+        return;
+      }
       window.clearInterval(palabrasFadeTimer);
       palabrasAudio.pause();
       palabrasSonando = false;

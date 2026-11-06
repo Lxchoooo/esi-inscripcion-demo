@@ -761,6 +761,39 @@ async function main() {
   check('sin errores en la diapositiva de Palabras', palErrors.length === 0, palErrors.join(' | '));
   await palCtx.close();
 
+  // Deslizando con el dedo (sin tocar ningún botón) la música también arranca.
+  const swipeCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const swipePage = await swipeCtx.newPage();
+  await swipePage.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+  await swipePage.waitForFunction(() => document.documentElement.classList.contains('carga-listo'));
+  await wait(500);
+  await swipePage.evaluate((n) => { location.hash = '#slide-' + n; }, palIndex.gracias);
+  await wait(900);
+  const swipeCdp = await swipeCtx.newCDPSession(swipePage);
+  for (let i = 0; i < 8; i += 1) {
+    const at = await swipePage.evaluate(() => location.hash);
+    if (at === '#slide-' + palIndex.palabras) break;
+    await swipeCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 700 }] });
+    for (let step = 1; step <= 10; step += 1) {
+      await swipeCdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: 700 - step * 38 }] });
+      await wait(16);
+    }
+    await swipeCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await wait(700);
+  }
+  await wait(1400);
+  const swipePal = await swipePage.evaluate(() => ({
+    hash: location.hash,
+    paused: document.getElementById('palabras-audio').paused,
+    volume: document.getElementById('palabras-audio').volume,
+    pressed: document.getElementById('palabras-musica').getAttribute('aria-pressed')
+  }));
+  check('deslizando hasta Palabras su música arranca sola',
+    swipePal.hash === '#slide-' + palIndex.palabras && !swipePal.paused &&
+    swipePal.volume > 0.3 && swipePal.pressed === 'true',
+    JSON.stringify(swipePal));
+  await swipeCtx.close();
+
   // Sin efecto de entrada: el contenido ya esta nítido apenas entra.
   const fadeInCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const fadePage = await fadeInCtx.newPage();

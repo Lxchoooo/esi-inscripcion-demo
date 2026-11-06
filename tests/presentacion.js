@@ -193,6 +193,15 @@ check('palabras: suena solo en su diapositiva y convive con la musica de fondo',
   /reanudarMusicaDeFondo\(\)/.test(HTML) &&
   /pausarMusicaParaPalabras\(\)/.test(HTML) &&
   /palabrasPausaUsuario/.test(HTML));
+const PRIMAR_PALABRAS = (HTML.match(/function primarPalabras\(\)[\s\S]*?\n\}/) || [''])[0];
+check('palabras: se prima en silencio con el gesto para sonar sola al deslizar',
+  /palabrasAudio\.volume = 0;/.test(PRIMAR_PALABRAS) &&
+  /palabrasAudio\.play\(\)/.test(PRIMAR_PALABRAS) &&
+  /palabrasPrimadaTimer/.test(PRIMAR_PALABRAS) &&
+  /const PALABRAS_PRIMADA_MS = 4000/.test(HTML) &&
+  /addEventListener\('touchstart', primarPalabras, \{ passive: true, capture: true \}\)/.test(HTML) &&
+  /addEventListener\('pointerdown', primarPalabras, \{ passive: true, capture: true \}\)/.test(HTML) &&
+  /addEventListener\('keydown', primarPalabras, true\)/.test(HTML));
 check('palabras: el audio existe, pesa menos de 1,2 MB y no viaja en el precache',
   fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'palabras.mp3')) &&
   fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'palabras.mp3')).size < 1200000 &&
