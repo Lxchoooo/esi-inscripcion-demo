@@ -547,6 +547,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* El zoom se recorta dentro de la figura para no tapar las flechas. */
+    overflow: hidden;
   }
   .lightbox-figura img {
     display: block;
@@ -558,7 +560,16 @@
     object-fit: contain;
     border-radius: 8px;
     background: rgba(255, 255, 255, .04);
+    transform-origin: center center;
+    transition: transform .18s ease;
+    will-change: transform;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
   }
+  .lightbox.zoomando .lightbox-figura img { transition: none; }
+  .lightbox.zoomado .lightbox-figura img { cursor: grab; }
+  .lightbox.zoomando .lightbox-figura img { cursor: grabbing; }
   .lightbox-cerrar, .lightbox-flecha {
     display: inline-flex;
     align-items: center;
@@ -1340,7 +1351,7 @@
 
 </main>
 
-<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada" hidden>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Foto ampliada. Pellizcá o usá la rueda para hacer zoom" hidden>
   <button class="lightbox-cerrar" id="lightbox-cerrar" type="button" aria-label="Cerrar foto">×</button>
   <button class="lightbox-flecha lightbox-prev" id="lightbox-prev" type="button" aria-label="Foto anterior" hidden>‹</button>
   <figure class="lightbox-figura">
@@ -1469,22 +1480,133 @@ function goTo(index) {
 }
 
 /* Visor de fotos: se abre con la version de 1280 px, bloquea solo el scroll
-   del documento y vuelve a la misma diapositiva. Los gestos se leen entre
-   touchstart y touchend, sin cancelar el scroll nativo ni usar touchmove. */
+   del documento y vuelve a la misma diapositiva. Los gestos se leen con
+   Pointer Events: un dedo pasa de foto o cierra, dos dedos hacen zoom. */
 let fotosLightbox = [];
 let fotoLightbox = 0;
 let focoAnterior = null;
 let scrollAnterior = 0;
 let cierreLightboxTimer = 0;
-let toqueInicioX = 0;
-let toqueInicioY = 0;
 let swipeReciente = 0;
+
+/* Zoom de la foto: pellizco, doble toque, rueda del mouse y teclas + - 0.
+   Se aplica como transform sobre la imagen, sin tocar el layout del visor. */
+const ZOOM_MAX = 4;
+const zoomFoto = { escala: 1, x: 0, y: 0 };
+const punterosVisor = new Map();
+let pinchVisor = null;
+let pinchHecho = false;
+let arrastreVisor = null;
+let tapVisor = 0;
+let tapVisorX = 0;
+let tapVisorY = 0;
+
+function cajaVisor() {
+  const caja = lightboxImg.parentElement.getBoundingClientRect();
+  return {
+    x: caja.left + caja.width / 2,
+    y: caja.top + caja.height / 2,
+    w: caja.width,
+    h: caja.height
+  };
+}
+
+/* Deja la foto dentro de la figura: sin huecos raros al llegar a un borde. */
+function limitarZoom() {
+  if (!(zoomFoto.escala > 1)) {
+    zoomFoto.escala = 1;
+    zoomFoto.x = 0;
+    zoomFoto.y = 0;
+    return;
+  }
+  const caja = cajaVisor();
+  const maxX = Math.max(0, (lightboxImg.clientWidth * zoomFoto.escala - caja.w) / 2);
+  const maxY = Math.max(0, (lightboxImg.clientHeight * zoomFoto.escala - caja.h) / 2);
+  zoomFoto.x = Math.max(-maxX, Math.min(maxX, zoomFoto.x));
+  zoomFoto.y = Math.max(-maxY, Math.min(maxY, zoomFoto.y));
+}
+
+function aplicarZoom() {
+  if (zoomFoto.escala <= 1.001) {
+    zoomFoto.escala = 1;
+    zoomFoto.x = 0;
+    zoomFoto.y = 0;
+  }
+  const escala = zoomFoto.escala;
+  lightboxImg.dataset.zoom = escala.toFixed(2);
+  lightboxImg.style.transform = escala > 1
+    ? 'translate3d(' + zoomFoto.x.toFixed(1) + 'px,' + zoomFoto.y.toFixed(1) + 'px,0) scale(' + escala.toFixed(3) + ')'
+    : '';
+  lightbox.classList.toggle('zoomado', escala > 1);
+}
+
+function reiniciarZoom() {
+  zoomFoto.escala = 1;
+  zoomFoto.x = 0;
+  zoomFoto.y = 0;
+  pinchVisor = null;
+  pinchHecho = false;
+  arrastreVisor = null;
+  punterosVisor.clear();
+  lightbox.classList.remove('zoomando');
+  aplicarZoom();
+}
+
+/* Ancla el zoom en un punto de la pantalla: lo que está debajo del dedo (o
+   del cursor) se queda quieto mientras la foto se agranda o se achica. */
+function zoomEnPunto(escala, cx, cy) {
+  const s0 = zoomFoto.escala;
+  const s1 = Math.min(ZOOM_MAX, Math.max(1, escala));
+  const k = s1 / s0;
+  const x0 = zoomFoto.x;
+  const y0 = zoomFoto.y;
+  const caja = cajaVisor();
+  zoomFoto.escala = s1;
+  zoomFoto.x = (cx - caja.x) - k * (cx - caja.x - x0);
+  zoomFoto.y = (cy - caja.y) - k * (cy - caja.y - y0);
+  limitarZoom();
+  aplicarZoom();
+}
+
+function iniciarPinch() {
+  const dedos = Array.from(punterosVisor.values());
+  pinchVisor = null;
+  if (dedos.length < 2) return;
+  const dist = Math.hypot(dedos[1].x - dedos[0].x, dedos[1].y - dedos[0].y);
+  if (dist < 10) return;
+  pinchVisor = {
+    dist: dist,
+    escala: zoomFoto.escala,
+    x: zoomFoto.x,
+    y: zoomFoto.y,
+    mx: (dedos[0].x + dedos[1].x) / 2,
+    my: (dedos[0].y + dedos[1].y) / 2
+  };
+}
+
+function moverPinch() {
+  const dedos = Array.from(punterosVisor.values());
+  if (!pinchVisor || dedos.length < 2) return;
+  const dist = Math.hypot(dedos[1].x - dedos[0].x, dedos[1].y - dedos[0].y);
+  if (dist < 1) return;
+  const s1 = Math.min(ZOOM_MAX, Math.max(1, pinchVisor.escala * (dist / pinchVisor.dist)));
+  const k = s1 / pinchVisor.escala;
+  const mx = (dedos[0].x + dedos[1].x) / 2;
+  const my = (dedos[0].y + dedos[1].y) / 2;
+  const caja = cajaVisor();
+  zoomFoto.escala = s1;
+  zoomFoto.x = (mx - caja.x) - k * (pinchVisor.mx - caja.x - pinchVisor.x);
+  zoomFoto.y = (my - caja.y) - k * (pinchVisor.my - caja.y - pinchVisor.y);
+  limitarZoom();
+  aplicarZoom();
+}
 
 function pintarFotoLightbox() {
   const foto = fotosLightbox[fotoLightbox];
   if (!foto) return;
   lightboxImg.src = foto.getAttribute('src');
   lightboxImg.alt = foto.alt || '';
+  reiniciarZoom();
   const varias = fotosLightbox.length > 1;
   lightboxPrev.hidden = !varias;
   lightboxNext.hidden = !varias;
@@ -1517,6 +1639,7 @@ function abrirLightbox(foto) {
 
 function cerrarLightbox() {
   if (lightbox.hidden) return;
+  reiniciarZoom();
   lightbox.classList.remove('abierto');
   document.documentElement.classList.remove('lightbox-abierto');
   /* Si el navegador movio el scroll aunque sea un pixel (iOS), se vuelve
@@ -1557,29 +1680,137 @@ function bindLightbox() {
     }
   });
 
-  lightbox.addEventListener('touchstart', (event) => {
-    if (event.touches.length !== 1) return;
-    toqueInicioX = event.touches[0].clientX;
-    toqueInicioY = event.touches[0].clientY;
+  /* Un dedo: si hay zoom, arrastra la foto; si no, pasa de foto o cierra.
+     Dos dedos: pellizco para acercar y alejar. */
+  lightbox.addEventListener('pointerdown', (evento) => {
+    if (lightbox.hidden) return;
+    if (evento.pointerType === 'mouse' && evento.button !== 0) return;
+    if (evento.target && evento.target.closest && evento.target.closest('button')) return;
+    punterosVisor.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
+    lightbox.classList.add('zoomando');
+    if (punterosVisor.size >= 2) {
+      arrastreVisor = null;
+      pinchHecho = true;
+      iniciarPinch();
+      return;
+    }
+    pinchVisor = null;
+    arrastreVisor = {
+      id: evento.pointerId,
+      x: evento.clientX,
+      y: evento.clientY,
+      tx: zoomFoto.x,
+      ty: zoomFoto.y,
+      t: Date.now()
+    };
   }, { passive: true });
 
-  lightbox.addEventListener('touchend', (event) => {
-    if (!event.changedTouches.length) return;
-    const dx = event.changedTouches[0].clientX - toqueInicioX;
-    const dy = event.changedTouches[0].clientY - toqueInicioY;
+  lightbox.addEventListener('pointermove', (evento) => {
+    if (!punterosVisor.has(evento.pointerId)) return;
+    punterosVisor.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
+    if (punterosVisor.size >= 2) {
+      moverPinch();
+      evento.preventDefault();
+      return;
+    }
+    if (!arrastreVisor || arrastreVisor.id !== evento.pointerId) return;
+    if (zoomFoto.escala <= 1) return;
+    zoomFoto.x = arrastreVisor.tx + (evento.clientX - arrastreVisor.x);
+    zoomFoto.y = arrastreVisor.ty + (evento.clientY - arrastreVisor.y);
+    limitarZoom();
+    aplicarZoom();
+    evento.preventDefault();
+  }, { passive: false });
+
+  const soltarPuntero = (evento) => {
+    if (!punterosVisor.has(evento.pointerId)) return;
+    punterosVisor.delete(evento.pointerId);
+    const fin = punterosVisor.size === 0;
+
+    if (pinchHecho) {
+      arrastreVisor = null;
+      if (punterosVisor.size < 2) pinchVisor = null;
+      if (fin) {
+        pinchHecho = false;
+        lightbox.classList.remove('zoomando');
+        if (zoomFoto.escala < 1.05) reiniciarZoom();
+        else aplicarZoom();
+        swipeReciente = Date.now();
+      }
+      return;
+    }
+
+    if (punterosVisor.size > 0) {
+      arrastreVisor = null;
+      return;
+    }
+    lightbox.classList.remove('zoomando');
+    const inicio = arrastreVisor;
+    arrastreVisor = null;
+    if (!inicio) return;
+    const dx = evento.clientX - inicio.x;
+    const dy = evento.clientY - inicio.y;
+    const dt = Date.now() - inicio.t;
+
+    /* Toque sin arrastre: el segundo seguido acerca o vuelve al tamaño. */
+    if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && dt < 500) {
+      const ahora = Date.now();
+      if (ahora - tapVisor < 320 &&
+          Math.abs(evento.clientX - tapVisorX) < 40 &&
+          Math.abs(evento.clientY - tapVisorY) < 40) {
+        tapVisor = 0;
+        zoomEnPunto(zoomFoto.escala > 1 ? 1 : 2.5, evento.clientX, evento.clientY);
+        swipeReciente = ahora;
+      } else {
+        tapVisor = ahora;
+        tapVisorX = evento.clientX;
+        tapVisorY = evento.clientY;
+      }
+      return;
+    }
+
+    /* Con zoom, el dedo solo mueve la foto: no cambia de diapositiva. */
+    if (zoomFoto.escala > 1) {
+      swipeReciente = Date.now();
+      return;
+    }
+
     swipeReciente = Date.now();
     if (Math.abs(dy) > 70 && Math.abs(dy) > Math.abs(dx)) {
       if (dy > 0) cerrarLightbox();
       return;
     }
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) moverFotoLightbox(dx < 0 ? 1 : -1);
-  }, { passive: true });
+  };
+  lightbox.addEventListener('pointerup', soltarPuntero);
+  lightbox.addEventListener('pointercancel', soltarPuntero);
+
+  /* Rueda del mouse: acerca y aleja donde está el cursor. */
+  lightbox.addEventListener('wheel', (evento) => {
+    if (lightbox.hidden) return;
+    evento.preventDefault();
+    const factor = Math.min(1.6, Math.max(0.5, Math.exp(-evento.deltaY * 0.0015)));
+    zoomEnPunto(zoomFoto.escala * factor, evento.clientX, evento.clientY);
+    swipeReciente = Date.now();
+  }, { passive: false });
 
   window.addEventListener('keydown', (event) => {
     if (lightbox.hidden) return;
     if (event.key === 'Escape') cerrarLightbox();
     else if (event.key === 'ArrowLeft') moverFotoLightbox(-1);
     else if (event.key === 'ArrowRight') moverFotoLightbox(1);
+    else if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      const caja = cajaVisor();
+      zoomEnPunto(zoomFoto.escala * 1.5, caja.x, caja.y);
+    } else if (event.key === '-' || event.key === '_') {
+      event.preventDefault();
+      const caja = cajaVisor();
+      zoomEnPunto(zoomFoto.escala / 1.5, caja.x, caja.y);
+    } else if (event.key === '0') {
+      event.preventDefault();
+      reiniciarZoom();
+    }
   });
 }
 
@@ -1938,6 +2169,8 @@ function primarMusica(evento) {
      primara acá, el click encontraría la canción ya sonando y la pausaría. */
   const t = evento && evento.target;
   if (t && t.closest && t.closest('#musica, #palabras-musica')) return;
+  /* Con el visor de fotos abierto no hace falta primar nada. */
+  if (!lightbox.hidden) return;
   if (!musicaAudio || !musicaDisponible || sonandoMusica || musicaBloqueada) return;
   if (current >= MUSICA_DESDE) {
     encenderMusica(false);

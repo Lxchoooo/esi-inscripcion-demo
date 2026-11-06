@@ -571,10 +571,50 @@ async function main() {
     /\.webp\?v=\d+$/.test(abierto.src) && !/-800\.webp/.test(abierto.src) && abierto.natural > 0 && abierto.siguienteVisible,
     abierto.src);
   const srcPrimera = abierto.src;
+
+  // Zoom: pellizco de dos dedos (CDP), teclado, y vuelta al tamaño al pasar.
+  const lbCdp = await lbCtx.newCDPSession(lbPage);
+  await lbCdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: 170, y: 430, id: 0 }, { x: 220, y: 430, id: 1 }]
+  });
+  await wait(80);
+  for (let i = 1; i <= 6; i += 1) {
+    await lbCdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: 170 - i * 12, y: 430, id: 0 }, { x: 220 + i * 12, y: 430, id: 1 }]
+    });
+    await wait(30);
+  }
+  await lbCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await wait(400);
+  const conZoom = await lbPage.evaluate(() => {
+    const img = document.getElementById('lightbox-img');
+    return {
+      escala: Number(img.dataset.zoom || 0),
+      transform: img.style.transform,
+      abierto: !document.getElementById('lightbox').hidden,
+      src: img.getAttribute('src')
+    };
+  });
+  check('el pellizco de dos dedos acerca la foto sin cerrarla ni cambiarla',
+    conZoom.abierto && conZoom.escala > 1.4 && /scale\(/.test(conZoom.transform) && conZoom.src === srcPrimera,
+    JSON.stringify(conZoom));
+  await lbPage.keyboard.press('0');
+  await wait(300);
+  const sinZoom = await lbPage.evaluate(() => Number(document.getElementById('lightbox-img').dataset.zoom || 0));
+  check('la tecla 0 vuelve la foto a su tamaño', sinZoom === 1, String(sinZoom));
+  await lbPage.keyboard.press('+');
+  await wait(300);
+  const zoomTecla = await lbPage.evaluate(() => Number(document.getElementById('lightbox-img').dataset.zoom || 0));
+  check('la tecla + acerca la foto', zoomTecla > 1.2, String(zoomTecla));
+
   await lbPage.locator('#lightbox-next').click();
   await wait(250);
   const srcSegunda = await lbPage.evaluate(() => document.getElementById('lightbox-img').getAttribute('src'));
   check('las flechas pasan a otra foto de la misma diapositiva', srcSegunda !== srcPrimera, srcSegunda);
+  const zoomPasando = await lbPage.evaluate(() => Number(document.getElementById('lightbox-img').dataset.zoom || 0));
+  check('al pasar de foto el zoom vuelve a 1', zoomPasando === 1, String(zoomPasando));
   await lbPage.keyboard.press('Escape');
   await wait(300);
   const cerrado = await lbPage.evaluate(() => ({

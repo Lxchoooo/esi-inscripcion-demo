@@ -59,10 +59,15 @@ function over(foreground, background, alpha) {
 // Navegación nativa: el navegador maneja rueda, touch y teclado.
 check('scroll-snap-type en el documento', /scroll-snap-type:\s*y\s+(proximity|mandatory)/.test(HTML));
 check('cada diapositiva declara scroll-snap-align', /scroll-snap-align:\s*start/.test(HTML));
-check('no hay listener de touchmove', !/addEventListener\(\s*['"]touchmove['"]/.test(HTML));
-check('no hay listener de pointermove', !/addEventListener\(\s*['"]pointermove['"]/.test(HTML));
-check('no hay listener de wheel', !/addEventListener\(\s*['"]wheel['"]/.test(HTML));
-check('ningun handler cancela el scroll', !/preventDefault/.test(HTML));
+/* El visor de fotos es un modal aparte: ahí sí hace falta leer pointermove y
+   cancelar el gesto para el zoom. El scroll de la presentación queda nativo. */
+const VISOR = (HTML.match(/\/\* Visor de fotos:[\s\S]*?\/\* Los botones apuntan/) || [''])[0];
+const SIN_VISOR = HTML.replace(VISOR, '');
+check('el visor de fotos esta aislado del scroll de la presentacion', VISOR.length > 2000);
+check('no hay listener de touchmove', !/addEventListener\(\s*['"]touchmove['"]/.test(SIN_VISOR));
+check('no hay listener de pointermove', !/addEventListener\(\s*['"]pointermove['"]/.test(SIN_VISOR));
+check('no hay listener de wheel', !/addEventListener\(\s*['"]wheel['"]/.test(SIN_VISOR));
+check('ningun handler cancela el scroll', !/preventDefault/.test(SIN_VISOR));
 check('el JS no mueve el scroll en cada cambio', !/scrollTop\s*=/.test(HTML));
 check('los botones navegan con scrollIntoView', /scrollIntoView\(\s*\{/.test(HTML));
 check('las flechas izquierda/derecha cambian de diapositiva', /ArrowRight/.test(HTML) && /ArrowLeft/.test(HTML));
@@ -80,7 +85,8 @@ check('stack anima transform (no width)', /\.slide\.charts-in \.stack \.seg \{ t
 check('sin estados ocultos de entrada (nada depende de clases)', !/\.slide:not\(\.settled\)/.test(HTML) && !/\.slide\.in-view/.test(HTML) && !/\.slide\.instant/.test(HTML));
 check('blur solo en los logos de fondo decorativos (4 reglas, nada mas)', (HTML.match(/filter:\s*blur\(/g) || []).length === 4 && !/backdrop-filter/.test(HTML) && /filter:\s*blur\(8\px\);/.test(HTML) && /filter:\s*blur\(10\px\);/.test(HTML));
 check('sin stagger del efecto', !/transition-delay: \.\d/.test(HTML));
-check('sin will-change', !/will-change|willChange/.test(HTML));
+check('sin will-change fuera del visor', (HTML.match(/will-change/g) || []).length === 1 &&
+  /\.lightbox-figura img \{[^}]*will-change: transform;/.test(HTML));
 check('el IO solo dispara contadores y graficos, sin clase de visibilidad',
   /chartsSlide/.test(HTML) && /classList\.add\('charts-in'\)/.test(HTML) && !/classList\.add\('in-view'\)/.test(HTML) && !/classList\.add\('settled'\)/.test(HTML));
 check('la barra de progreso anima transform', /\.progress \{[^}]*transform: scaleX\(0\)/.test(HTML));
@@ -127,6 +133,23 @@ check('el visor usa la foto de 1280, bloquea solo el scroll y vuelve al mismo lu
   /window\.scrollTo\(0, scrollAnterior\)/.test(HTML) &&
   /lightboxCerrar\.focus\(\{ preventScroll: true \}\)/.test(HTML) &&
   /focoAnterior\.focus\(\{ preventScroll: true \}\)/.test(HTML));
+check('visor de fotos con zoom: pellizco, doble toque, rueda, teclado y topes',
+  /const ZOOM_MAX = 4/.test(HTML) &&
+  /\.lightbox-figura \{[^}]*overflow: hidden;/.test(HTML) &&
+  /\.lightbox\.zoomado \.lightbox-figura img \{ cursor: grab; \}/.test(HTML) &&
+  /lightboxImg\.dataset\.zoom = escala\.toFixed\(2\)/.test(HTML) &&
+  /lightboxImg\.style\.transform = escala > 1/.test(HTML) &&
+  /function reiniciarZoom\(\)/.test(HTML) &&
+  /function zoomEnPunto\(escala, cx, cy\)/.test(HTML) &&
+  /addEventListener\('pointerdown'/.test(HTML) &&
+  /addEventListener\('pointermove'/.test(HTML) &&
+  /addEventListener\('pointerup', soltarPuntero\)/.test(HTML) &&
+  /addEventListener\('wheel'/.test(HTML) &&
+  /event\.key === '\+'/.test(HTML) &&
+  /zoomEnPunto\(zoomFoto\.escala > 1 \? 1 : 2\.5, evento\.clientX, evento\.clientY\)/.test(HTML) &&
+  /if \(zoomFoto\.escala > 1\) \{/.test(HTML) &&
+  /moverFotoLightbox\(dx < 0 \? 1 : -1\)/.test(HTML) &&
+  /reiniciarZoom\(\);\n  const varias/.test(HTML));
 check('el visor solo anima opacity 150 ms y pasa fotos de la misma diapositiva',
   /transition: opacity \.15s ease/.test(HTML) &&
   /const slide = foto\.closest\('\.slide'\)/.test(HTML) &&
