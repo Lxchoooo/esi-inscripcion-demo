@@ -149,10 +149,25 @@ async function cachePrimero(request) {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
-  if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  /* La música es opcional y no se cachea. El HEAD lo contesta el service
+     worker para que un archivo ausente no deje un 404 en la consola de la
+     página: 200 si existe, 204 si no. */
+  if (request.method === 'HEAD' && url.pathname.indexOf('/assets/audio/') >= 0) {
+    event.respondWith((async () => {
+      try {
+        const respuesta = await fetch(request);
+        if (respuesta.ok) return new Response(null, { status: 200, headers: { 'X-ESI-Audio': '1' } });
+      } catch (error) { /* sin red */ }
+      return new Response(null, { status: 204, headers: { 'X-ESI-Audio': '0' } });
+    })());
+    return;
+  }
+
+  if (request.method !== 'GET') return;
+
   /* El audio opcional no forma parte del offline: no se precachea ni se
      guarda cuando el usuario lo reproduce. */
   if (url.pathname.indexOf('/assets/audio/') >= 0) return;

@@ -1795,10 +1795,37 @@ function alternarMusica() {
   });
 }
 
+function esperarServiceWorker() {
+  return new Promise((ok) => {
+    if (!('serviceWorker' in navigator)) { ok(false); return; }
+    const limite = window.setTimeout(() => ok(false), 6000);
+    navigator.serviceWorker.ready.then(() => {
+      if (navigator.serviceWorker.controller) {
+        window.clearTimeout(limite);
+        ok(true);
+        return;
+      }
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.clearTimeout(limite);
+        ok(!!navigator.serviceWorker.controller);
+      }, { once: true });
+    }, () => {
+      window.clearTimeout(limite);
+      ok(false);
+    });
+  });
+}
+
 function comprobarMusica() {
-  fetch(musicaAudio.getAttribute('src'), { method: 'HEAD', cache: 'no-store' })
+  /* El HEAD pasa por el service worker: si el MP3 no existe, responde 204
+     sin un 404 en la consola. Sin service worker no se muestra el botón. */
+  esperarServiceWorker()
+    .then((listo) => {
+      if (!listo) return null;
+      return fetch(musicaAudio.getAttribute('src'), { method: 'HEAD', cache: 'no-store' });
+    })
     .then((respuesta) => {
-      if (!respuesta.ok) return;
+      if (!respuesta || respuesta.status !== 200) return;
       musicaDisponible = true;
       musicaBtn.hidden = false;
       pintarMusica();

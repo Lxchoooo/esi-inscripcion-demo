@@ -148,7 +148,8 @@ check('musica opcional: audio sin precarga, bucle y boton oculto hasta confirmar
   !/<audio[^>]*autoplay/.test(HTML) &&
   /id="musica"[^>]*aria-pressed="false"[^>]*title="Activar música de fondo" hidden/.test(HTML) &&
   /method: 'HEAD'/.test(HTML) &&
-  /if \(!respuesta\.ok\) return/.test(HTML) &&
+  /esperarServiceWorker\(\)/.test(HTML) &&
+  /if \(!respuesta \|\| respuesta\.status !== 200\) return/.test(HTML) &&
   /musicaBtn\.hidden = false/.test(HTML) &&
   /\.catch\(\(\) => \{ \/\* sin archivo o sin red/);
 check('musica: volumen 0,4, fades de 600 ms y preferencia recordada sin autoplay',
@@ -184,6 +185,8 @@ check('service worker: version nueva limpia caches viejas, toma control y no toc
   /self\.addEventListener\('activate'/.test(SW) &&
   /nombre\.indexOf\('esi-'\) === 0 && nombre !== CACHE/.test(SW) &&
   /await self\.clients\.claim\(\)/.test(SW) &&
+  /request\.method === 'HEAD'/.test(SW) &&
+  /status: 204/.test(SW) &&
   /request\.method !== 'GET'/.test(SW) &&
   /url\.pathname\.indexOf\('\/assets\/audio\/'\) >= 0\) return/.test(SW));
 check('la foto horizontal del aula va con version 3', /aula-pizarron\.webp[?]v=3/.test(HTML) && /aula-pizarron-800\.webp[?]v=3/.test(HTML) && /aula-pizarron\.webp[?]v=3 1280w/.test(HTML) && /width="1280" height="720" decoding="async" style="--pos: 50% 55%"/.test(HTML));
