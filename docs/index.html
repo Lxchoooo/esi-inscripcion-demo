@@ -2046,5 +2046,14 @@ try {
     };
   })();
 </script>
+<script>
+  /* Service worker con ruta relativa: el sitio vive en /esi-inscripcion-demo/.
+     Si el navegador no lo soporta o falla, la presentación sigue igual. */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>

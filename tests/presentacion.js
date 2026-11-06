@@ -15,6 +15,8 @@ const fs = require('fs');
 const path = require('path');
 
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
+const SW = fs.readFileSync(path.join(__dirname, '..', 'docs', 'sw.js'), 'utf8');
+const PRECACHE = SW.split('const PRECACHE = [')[1].split('];')[0];
 
 const checks = [];
 function check(name, ok, detail) {
@@ -157,6 +159,33 @@ check('musica: volumen 0,4, fades de 600 ms y preferencia recordada sin autoplay
   /addEventListener\('click', alternarMusica\)/.test(HTML) &&
   /fadeMusica\(MUSICA_VOLUMEN, MUSICA_FADE_MS\)/.test(HTML) &&
   /if \(!musicaAudio\.paused\) musicaAudio\.pause\(\)/.test(HTML));
+check('service worker relativo con scope del proyecto y precache de HTML, logos y 56 fotos',
+  /register\('sw\.js'\)/.test(HTML) &&
+  !/register\('\/sw\.js'\)/.test(HTML) &&
+  /const CACHE = 'esi-v1'/.test(SW) &&
+  /const INDEX = new URL\('\.\/index\.html', SCOPE\)\.href/.test(SW) &&
+  (PRECACHE.match(/\.\/assets\/promo\//g) || []).length === 56 &&
+  PRECACHE.indexOf('assets/audio') < 0 &&
+  /\.\/assets\/logo-iss-round\.webp/.test(PRECACHE) &&
+  /\.\/assets\/logo-aes-round\.webp/.test(PRECACHE) &&
+  /await cache\.addAll\(PRECACHE\)/.test(SW));
+check('service worker: HTML network-first, assets cache-first y sin duplicar ?v=N',
+  /request\.mode === 'navigate'/.test(SW) &&
+  /async function redPrimero/.test(SW) &&
+  /async function cachePrimero/.test(SW) &&
+  /const respuesta = await fetch\(request, \{ cache: 'no-store' \}\)/.test(SW) &&
+  /limpia\.search = ''/.test(SW) &&
+  /function clave\(request\)/.test(SW) &&
+  /await cache\.put\(key, respuesta\.clone\(\)\)/.test(SW) &&
+  /cache\.match\(key\)/.test(SW));
+check('service worker: version nueva limpia caches viejas, toma control y no toca el audio',
+  /self\.addEventListener\('install'/.test(SW) &&
+  /await self\.skipWaiting\(\)/.test(SW) &&
+  /self\.addEventListener\('activate'/.test(SW) &&
+  /nombre\.indexOf\('esi-'\) === 0 && nombre !== CACHE/.test(SW) &&
+  /await self\.clients\.claim\(\)/.test(SW) &&
+  /request\.method !== 'GET'/.test(SW) &&
+  /url\.pathname\.indexOf\('\/assets\/audio\/'\) >= 0\) return/.test(SW));
 check('la foto horizontal del aula va con version 3', /aula-pizarron\.webp[?]v=3/.test(HTML) && /aula-pizarron-800\.webp[?]v=3/.test(HTML) && /aula-pizarron\.webp[?]v=3 1280w/.test(HTML) && /width="1280" height="720" decoding="async" style="--pos: 50% 55%"/.test(HTML));
 check('pantalla de carga con techo de 2,5 s', /id="carga"/.test(HTML) && /2500/.test(HTML) && /carga-listo/.test(HTML));
 check('fetchpriority solo en el logo del loader, el header y la primera foto', (HTML.match(/fetchpriority="\high"/g) || []).length === 3 && /fetchpriority="\high"[^>]*src="assets\/promo\/bandera-humo\.webp[?]v=2"/.test(HTML));

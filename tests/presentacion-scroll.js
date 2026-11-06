@@ -23,6 +23,8 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
   '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -34,7 +36,9 @@ function serve() {
     const url = decodeURIComponent(String(req.url || '/').split('?')[0]);
     let file = path.join(ROOT, url === '/' ? 'index.html' : url);
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-      file = path.join(ROOT, 'index.html');
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('No encontrado');
+      return;
     }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
     fs.createReadStream(file).pipe(res);
@@ -541,6 +545,10 @@ async function main() {
   const antesLightbox = await lbPage.evaluate(() => Math.round(window.scrollY));
   await lbPage.locator('section.slide.promo-foto img').first().click();
   await wait(250);
+  await lbPage.waitForFunction(() => {
+    const img = document.getElementById('lightbox-img');
+    return img && img.complete && img.naturalWidth > 0;
+  }, { timeout: 5000 }).catch(() => {});
   const abierto = await lbPage.evaluate(() => {
     const caja = document.getElementById('lightbox');
     const img = document.getElementById('lightbox-img');
@@ -613,6 +621,50 @@ async function main() {
   const apResumed = await apPage.evaluate(() => document.getElementById('autoplay').getAttribute('aria-pressed'));
   check('la tecla P vuelve a activar el autoplay', apResumed === 'true', apResumed);
   await apPage.keyboard.press('p');
+
+  // Service worker: instala, precachea y la pagina abre offline tras la primera visita.
+  const swInfo = await apPage.evaluate(async () => {
+    const reg = await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((ok) => {
+        const timer = setTimeout(ok, 5000);
+        navigator.serviceWorker.addEventListener('controllerchange', () => { clearTimeout(timer); ok(); }, { once: true });
+      });
+    }
+    const keys = await caches.keys();
+    const nombre = keys.find((k) => k.indexOf('esi-') === 0) || '';
+    const cache = nombre ? await caches.open(nombre) : null;
+    const entradas = cache ? await cache.keys() : [];
+    return {
+      scope: reg.scope,
+      nombre: nombre,
+      entradas: entradas.length,
+      controlada: !!navigator.serviceWorker.controller
+    };
+  });
+  if (!swInfo.controlada) {
+    await apPage.reload({ waitUntil: 'load' });
+    await wait(500);
+    swInfo.controlada = await apPage.evaluate(() => !!navigator.serviceWorker.controller);
+  }
+  check('el service worker instala y precachea las fotos',
+    swInfo.nombre === 'esi-v1' && swInfo.entradas >= 50 && swInfo.controlada,
+    JSON.stringify(swInfo));
+  await apCtx.setOffline(true);
+  let offline = null;
+  try {
+    await apPage.reload({ waitUntil: 'domcontentloaded', timeout: 8000 });
+    offline = await apPage.evaluate(() => ({
+      slides: document.querySelectorAll('section.slide').length,
+      titulo: document.querySelector('h1') ? document.querySelector('h1').textContent : ''
+    }));
+  } catch (e) {
+    offline = { error: String(e).slice(0, 160) };
+  }
+  await apCtx.setOffline(false);
+  check('la presentacion abre sin internet despues de la primera visita',
+    offline && offline.slides === 23 && /no se detuvo/.test(offline.titulo || ''),
+    JSON.stringify(offline));
   await apCtx.close();
 
   // Sin efecto de entrada: el contenido ya esta nítido apenas entra.

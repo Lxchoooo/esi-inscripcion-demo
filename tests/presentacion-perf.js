@@ -27,6 +27,7 @@ const TYPES = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.webp': 'image/webp',
+  '.avif': 'image/avif',
   '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8'
@@ -37,7 +38,9 @@ function serve() {
     const url = decodeURIComponent(String(req.url || '/').split('?')[0]);
     let file = path.join(ROOT, url === '/' ? 'index.html' : url);
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-      file = path.join(ROOT, 'index.html');
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('No encontrado');
+      return;
     }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
     fs.createReadStream(file).pipe(res);
