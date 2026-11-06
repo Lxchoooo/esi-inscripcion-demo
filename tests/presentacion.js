@@ -21,6 +21,21 @@ function check(name, ok, detail) {
   checks.push({ name: name, ok: !!ok, detail: detail || '' });
 }
 
+function jpegDimensions(file) {
+  const data = fs.readFileSync(file);
+  let i = 2;
+  while (i < data.length) {
+    if (data[i] !== 0xff) { i += 1; continue; }
+    const marker = data[i + 1];
+    if (marker >= 0xc0 && marker <= 0xc3) {
+      return { height: data.readUInt16BE(i + 5), width: data.readUInt16BE(i + 7) };
+    }
+    if (marker === 0xd8 || marker === 0xd9) { i += 2; continue; }
+    i += 2 + data.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
 function luminance(rgb) {
   const channel = (value) => {
     const v = value / 255;
@@ -99,14 +114,23 @@ check('prefers-reduced-motion no queda anidado en otro @media', (() => {
   return (before.match(/\{/g) || []).length === (before.match(/\}/g) || []).length;
 })());
 check('preview al compartir (Open Graph y Twitter Card)',
-  /property="og:title"/.test(HTML) && /property="og:image"/.test(HTML) && /name="twitter:card"/.test(HTML));
-check('la imagen para compartir es un JPEG 1200x630 (no webp)',
-  /property="og:image" content="[^"]+\.jpg"/.test(HTML) &&
-  /property="og:image:type" content="image\/jpeg"/.test(HTML) &&
-  /property="og:image:width" content="1200"/.test(HTML) &&
-  /property="og:image:height" content="630"/.test(HTML) &&
-  /name="twitter:image" content="[^"]+\.jpg"/.test(HTML) &&
-  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'og-jornada.jpg')));
+  /property="og:type" content="website"/.test(HTML) &&
+  /property="og:locale" content="es_AR"/.test(HTML) &&
+  /property="og:title" content="Jornada ESI 2026 · Una historia que no se detuvo"/.test(HTML) &&
+  /property="og:url" content="https:\/\/lxchoooo\.github\.io\/esi-inscripcion-demo\/"/.test(HTML) &&
+  /property="og:image" content="https:\/\/lxchoooo\.github\.io\/esi-inscripcion-demo\/assets\/og-cover\.jpg\?v=1"/.test(HTML) &&
+  /name="twitter:card" content="summary_large_image"/.test(HTML) &&
+  /name="twitter:image" content="https:\/\/lxchoooo\.github\.io\/esi-inscripcion-demo\/assets\/og-cover\.jpg\?v=1"/.test(HTML));
+check('la imagen para compartir es un JPEG 1200x630 de menos de 250 KB', (() => {
+  const file = path.join(__dirname, '..', 'docs', 'assets', 'og-cover.jpg');
+  if (!fs.existsSync(file)) return false;
+  const size = jpegDimensions(file);
+  return /property="og:image:type" content="image\/jpeg"/.test(HTML) &&
+    /property="og:image:width" content="1200"/.test(HTML) &&
+    /property="og:image:height" content="630"/.test(HTML) &&
+    size && size.width === 1200 && size.height === 630 &&
+    fs.statSync(file).size < 250 * 1024;
+})());
 check('cuatro datos en la slide de charlas usan 2x2, sin tarjeta huerfana',
   /class="stat-row four"/.test(HTML) && /\.stat-row\.four \{ grid-template-columns: repeat\(2/.test(HTML));
 check('el grafico por curso tiene role=img y detalle accesible',
