@@ -158,54 +158,48 @@ check('el modo presentacion se oculta con prefers-reduced-motion y muestra pausa
   /id="autoplay-barra"/.test(HTML) &&
   /transition: transform 8s linear/.test(HTML) &&
   /transform: scaleX\(1\)/.test(HTML));
-check('musica opcional: audio sin precarga, bucle y boton oculto hasta confirmar el archivo',
+check('musica: una sola cancion propia, sin precarga, en bucle y con boton oculto hasta confirmar el archivo',
   /<audio id="musica-audio" src="assets\/audio\/fondo\.mp3(?:\?v=\d+)?" loop preload="none"/.test(HTML) &&
   !/<audio[^>]*autoplay/.test(HTML) &&
-  /id="musica"[^>]*aria-pressed="false"[^>]*title="Activar música de fondo" hidden/.test(HTML) &&
+  !/id="palabras-audio"/.test(HTML) &&
+  !/palabras\.mp3/.test(HTML) &&
+  /id="musica"[^>]*aria-pressed="false"[^>]*title="Activar la música" hidden/.test(HTML) &&
   /method: 'HEAD'/.test(HTML) &&
   /esperarServiceWorker\(\)/.test(HTML) &&
-  /if \(!respuesta \|\| respuesta\.status !== 200\) return/.test(HTML) &&
+  /respuesta\.status !== 200/.test(HTML) &&
   /musicaBtn\.hidden = false/.test(HTML) &&
-  /\.catch\(\(\) => \{ \/\* sin archivo o sin red/);
-check('musica: volumen 0,4, fades de 600 ms y preferencia recordada sin autoplay',
+  /\.catch\(\(\) => \{ \/\* sin archivo o sin red/.test(HTML));
+check('musica: arranca en Palabras y sigue hasta el final, con volumen 0,4 y fades de 600 ms',
   /const MUSICA_VOLUMEN = 0\.4/.test(HTML) &&
   /const MUSICA_FADE_MS = 600/.test(HTML) &&
-  /try \{ prefMusica = localStorage\.getItem\('esi-musica'\) === '1'; \} catch/.test(HTML) &&
-  /try \{ localStorage\.setItem\('esi-musica'/.test(HTML) &&
+  /const MUSICA_DESDE = Math\.max\(0, slides\.findIndex\(\(s\) => s\.dataset\.title === 'Palabras para la promo'\)\);/.test(HTML) &&
+  /if \(n >= MUSICA_DESDE\) \{\n    if \(!sonandoMusica && !musicaBloqueada\) encenderMusica\(false\);/.test(HTML) &&
+  /else if \(sonandoMusica && !musicaManual\) \{\n    apagarMusica\(false\);/.test(HTML) &&
   /addEventListener\('click', alternarMusica\)/.test(HTML) &&
   /fadeMusica\(MUSICA_VOLUMEN, MUSICA_FADE_MS\)/.test(HTML) &&
   /if \(!musicaAudio\.paused\) musicaAudio\.pause\(\)/.test(HTML));
-check('palabras: audio propio, boton en la diapositiva y volumen con fade',
-  /<audio id="palabras-audio" src="assets\/audio\/palabras\.mp3(?:\?v=\d+)?" loop preload="none" aria-hidden="true">/.test(HTML) &&
-  !/<audio[^>]*autoplay/.test(HTML) &&
+check('musica: el boton de Palabras controla la misma cancion y respeta el silencio manual',
   /id="palabras-musica"[^>]*aria-pressed="false"/.test(HTML) &&
-  /const PALABRAS_VOLUMEN = 0\.35/.test(HTML) &&
-  /const PALABRAS_FADE_MS = 700/.test(HTML) &&
-  /addEventListener\('click', alternarPalabras\)/.test(HTML) &&
-  /palabrasAudio\.play\(\)/.test(HTML) &&
-  /fadePalabras\(PALABRAS_VOLUMEN, PALABRAS_FADE_MS\)/.test(HTML) &&
-  /bindPalabras\(\)/.test(HTML) &&
-  /palabras\.mp3/.test(HTML) &&
-  !/palabras\.mp3/.test(PRECACHE));
-check('palabras: suena solo en su diapositiva y convive con la musica de fondo',
-  /slides\[n\]\.classList\.contains\('promo-speech'\)\) activarPalabras\(false\)/.test(HTML) &&
-  /detenerPalabras\(PALABRAS_FADE_MS\)/.test(HTML) &&
-  /reanudarMusicaDeFondo\(\)/.test(HTML) &&
-  /pausarMusicaParaPalabras\(\)/.test(HTML) &&
-  /palabrasPausaUsuario/.test(HTML));
-const PRIMAR_PALABRAS = (HTML.match(/function primarPalabras\(\)[\s\S]*?\n\}/) || [''])[0];
-check('palabras: se prima en silencio con el gesto para sonar sola al deslizar',
-  /palabrasAudio\.volume = 0;/.test(PRIMAR_PALABRAS) &&
-  /palabrasAudio\.play\(\)/.test(PRIMAR_PALABRAS) &&
-  /palabrasPrimadaTimer/.test(PRIMAR_PALABRAS) &&
-  /const PALABRAS_PRIMADA_MS = 4000/.test(HTML) &&
-  /addEventListener\('touchstart', primarPalabras, \{ passive: true, capture: true \}\)/.test(HTML) &&
-  /addEventListener\('pointerdown', primarPalabras, \{ passive: true, capture: true \}\)/.test(HTML) &&
-  /addEventListener\('keydown', primarPalabras, true\)/.test(HTML));
-check('palabras: el audio existe, pesa menos de 1,2 MB y no viaja en el precache',
-  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'palabras.mp3')) &&
-  fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'palabras.mp3')).size < 1200000 &&
-  !/assets\/audio\/palabras\.mp3/.test(PRECACHE));
+  /if \(palabrasBtn\) palabrasBtn\.addEventListener\('click', alternarMusica\)/.test(HTML) &&
+  /palabrasBtn\.textContent = sonandoMusica \? 'Pausar música' : '♪ Escuchar música'/.test(HTML) &&
+  /let musicaManual = false;/.test(HTML) &&
+  /let musicaBloqueada = false;/.test(HTML) &&
+  /if \(manual\) \{ musicaManual = false; musicaBloqueada = true; \}/.test(HTML) &&
+  !/localStorage\.getItem\('esi-musica'\)/.test(HTML));
+const PRIMAR_MUSICA = (HTML.match(/function primarMusica\(\)[\s\S]*?\n\}/) || [''])[0];
+check('musica: se prima en silencio con el gesto para sonar sola al deslizar hasta Palabras',
+  /musicaAudio\.volume = 0;/.test(PRIMAR_MUSICA) &&
+  /musicaAudio\.play\(\)/.test(PRIMAR_MUSICA) &&
+  /musicaPrimadaTimer/.test(PRIMAR_MUSICA) &&
+  /if \(current >= MUSICA_DESDE\) \{\n    encenderMusica\(false\);/.test(PRIMAR_MUSICA) &&
+  /const MUSICA_PRIMADA_MS = 4000/.test(HTML) &&
+  /addEventListener\('touchstart', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
+  /addEventListener\('pointerdown', primarMusica, \{ passive: true, capture: true \}\)/.test(HTML) &&
+  /addEventListener\('keydown', primarMusica, true\)/.test(HTML));
+check('musica: el mp3 existe, pesa menos de 3 MB y no viaja en el precache',
+  fs.existsSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3')) &&
+  fs.statSync(path.join(__dirname, '..', 'docs', 'assets', 'audio', 'fondo.mp3')).size < 3145728 &&
+  !/assets\/audio\/fondo\.mp3/.test(PRECACHE));
 check('service worker relativo con scope del proyecto y precache de HTML, logos y 56 fotos',
   /register\('sw\.js'\)/.test(HTML) &&
   !/register\('\/sw\.js'\)/.test(HTML) &&
