@@ -1826,14 +1826,23 @@ function mostrarAvisoCompartir(texto) {
   }, 2400);
 }
 
+/* Compartir siempre el inicio del sitio, sin el #slide-N de la diapositiva
+   actual ni parametros de la visita. */
+function enlaceSitio() {
+  const url = new URL(location.href);
+  url.hash = '';
+  url.search = '';
+  return url.href;
+}
+
 async function copiarEnlace() {
   try {
-    await navigator.clipboard.writeText(location.href);
+    await navigator.clipboard.writeText(enlaceSitio());
     return true;
   } catch (error) { /* sigue el respaldo */ }
   try {
     const area = document.createElement('textarea');
-    area.value = location.href;
+    area.value = enlaceSitio();
     area.setAttribute('readonly', '');
     area.style.position = 'fixed';
     area.style.opacity = '0';
@@ -1851,7 +1860,7 @@ async function compartirPresentacion() {
   const datos = {
     title: document.title,
     text: 'Una historia que no se detuvo · Promo 26 Turismo',
-    url: location.href
+    url: enlaceSitio()
   };
   try {
     if (navigator.share) {

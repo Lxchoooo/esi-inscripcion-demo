@@ -125,6 +125,9 @@ check('15 susurros decorativos, aleatorios y sin informacion para lectores',
   /aria-hidden="true"><\/span>|aria-hidden="true" data-susurro/.test(HTML));
 check('boton de compartir y creditos de las tres canciones',
   /data-compartir/.test(HTML) && /navigator\.share/.test(HTML) &&
+  /function enlaceSitio\(\)/.test(HTML) &&
+  /navigator\.clipboard\.writeText\(enlaceSitio\(\)\)/.test(HTML) &&
+  /url: enlaceSitio\(\)/.test(HTML) && !/url: location\.href/.test(HTML) &&
   /No Me Olvides/.test(HTML) && /Brindis/.test(HTML) && /Para no verte más/.test(HTML) && /La Mosca Tsé-Tsé/.test(HTML));
 check('WAKAY queda destacada como nombre de la murga', /class="wakay">WAKAY</.test(HTML));
 check('la presentacion habla de seis anos y no de cinco',
