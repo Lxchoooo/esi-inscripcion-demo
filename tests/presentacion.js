@@ -116,7 +116,7 @@ check('el mapa incluye los lugares y destaca Mendoza como proxima parada',
   ['Ischigualasto', 'Talampaya', 'Villa San Agustín', 'Chamical', 'Cruz del Eje', 'La Estancita', 'UNC', 'Tres Cascadas', 'Ascochinga', 'Dique La Quebrada', 'Wayna Lodge', 'Orfeo Suites', 'Universidad Popular de Salsipuedes', 'Mendoza']
     .every((name) => MAPA.indexOf(name) >= 0) &&
   /mapa-tramo futuro[\s\S]*?Mendoza/.test(MAPA) && /Próxima parada/.test(MAPA) && !/Calamuchita/.test(HTML) &&
-  /~15 km ida y vuelta/.test(MAPA) && !/~80 km/.test(MAPA) &&
+  /~15 km/.test(MAPA) && !/ida y vuelta/.test(MAPA) && !/~80 km/.test(MAPA) &&
   !/Hogar de las Abejas|Salsipuedes Nueva|Kilómetros aproximados, ida y vuelta/.test(HTML));
 check('15 susurros decorativos, aleatorios y sin informacion para lectores',
   (HTML.match(/class="susurro"/g) || []).length === 15 &&
