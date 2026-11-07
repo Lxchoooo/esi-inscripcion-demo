@@ -447,6 +447,15 @@
   /* Diapositivas nuevas de solo texto entre las fotos y el cierre. */
   .promo-mensaje { text-align: center; }
   .promo-mensaje .eyebrow { justify-content: center; margin-left: auto; margin-right: auto; }
+  .promo .eyebrow::after,
+  .promo-mensaje .eyebrow::after,
+  .farewell .eyebrow::after {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: currentColor;
+    opacity: .7;
+  }
   .promo-mensaje h2 { font-size: clamp(2.1rem, 4.4vw, 3.6rem); margin-bottom: 26px; text-wrap: wrap; }
   .promo-mensaje .lead {
     max-width: 60ch;
@@ -963,6 +972,14 @@
       text-align: center;
     }
     .slide.promo-speech .eyebrow { margin-left: auto; margin-right: auto; }
+    .slide.promo-speech .eyebrow::after,
+    .slide.thanks .eyebrow::after {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: currentColor;
+      opacity: .7;
+    }
     .topbar {
       padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
       background: linear-gradient(180deg, rgba(8, 20, 15, .97), rgba(8, 20, 15, .72) 78%, transparent);
