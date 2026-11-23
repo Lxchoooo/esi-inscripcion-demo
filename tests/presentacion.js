@@ -112,10 +112,13 @@ const MAPA = HTML.slice(HTML.indexOf('data-title="Los viajes de Turismo"'), HTML
 check('el mapa de viajes va despues de la salida y antes de los festejos',
   HTML.indexOf('data-title="Lo que se aprende afuera del aula"') < HTML.indexOf('data-title="Los viajes de Turismo"') &&
   HTML.indexOf('data-title="Los viajes de Turismo"') < HTML.indexOf('data-title="Los festejos chiquitos"'));
-check('el mapa incluye los lugares y destaca Mendoza como proxima parada',
+check('el mapa incluye los lugares y muestra Mendoza como ultima salida',
   ['Ischigualasto', 'Talampaya', 'Villa San Agustín', 'Chamical', 'Cruz del Eje', 'La Estancita', 'UNC', 'Tres Cascadas', 'Ascochinga', 'Dique La Quebrada', 'Wayna Lodge', 'Orfeo Suites', 'Universidad Popular de Salsipuedes', 'Mendoza']
     .every((name) => MAPA.indexOf(name) >= 0) &&
-  /mapa-tramo futuro[\s\S]*?Mendoza/.test(MAPA) && /Próxima parada/.test(MAPA) && !/Calamuchita/.test(HTML) &&
+  !/mapa-tramo futuro/.test(MAPA) && !/Próxima parada/.test(MAPA) &&
+  /2026 · Última salida/.test(MAPA) && /~4\.000 km/.test(MAPA) && /Mendoza: ~1\.850 km/.test(MAPA) &&
+  /mendoza-nieve\.webp\?v=2 720w/.test(MAPA) && /mendoza-nieve\.avif\?v=2 720w/.test(MAPA) &&
+  !/Guaymallén|Uspallata|Las Cuevas|Cacheuta/.test(MAPA) && !/Calamuchita/.test(HTML) &&
   /~15 km/.test(MAPA) && !/ida y vuelta/.test(MAPA) && !/~80 km/.test(MAPA) &&
   !/Hogar de las Abejas|Salsipuedes Nueva|Kilómetros aproximados, ida y vuelta/.test(HTML));
 check('15 susurros decorativos, aleatorios y sin informacion para lectores',
@@ -132,10 +135,10 @@ check('boton de compartir y creditos de las tres canciones',
 check('WAKAY queda destacada como nombre de la murga', /class="wakay">WAKAY</.test(HTML));
 check('la presentacion habla de seis anos y no de cinco',
   /Seis años no se resumen en una diapositiva/.test(HTML) && !/cinco años/i.test(HTML));
-check('14 fotos referenciadas como src', (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
-check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/<img [^>]*src="assets\/promo\/[^>]*decoding="async"/g) || []).length === 14);
-check('las fotos van en webp con srcset 800w/1280w', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp[?]v=(2|3)"/g) || []).length === 14 && (HTML.match(/-800\.webp[?]v=(2|3) 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp[?]v=(2|3) 1280w"/g) || []).length === 14 && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
-check('cada foto ofrece avif y webp de respaldo', (HTML.match(/<source type="image\/avif"/g) || []).length === 14 && (HTML.match(/ src="assets\/promo\//g) || []).length === 14);
+check('15 fotos referenciadas como src', (HTML.match(/ src="assets\/promo\//g) || []).length === 15);
+check('ninguna foto va lazy: todo el DOM desde el arranque', !/loading="lazy"/.test(HTML) && (HTML.match(/<img [^>]*src="assets\/promo\/[^>]*decoding="async"/g) || []).length === 15);
+check('las fotos van en webp con srcset 800w/1280w (y la de Mendoza en 720w)', (HTML.match(/ src="assets\/promo\/[a-z0-9-]+\.webp[?]v=(2|3)"/g) || []).length === 15 && (HTML.match(/-800\.webp[?]v=(2|3) 800w, assets\/promo\//g) || []).length === 14 && (HTML.match(/\.webp[?]v=(2|3) 1280w"/g) || []).length === 14 && /mendoza-nieve\.webp\?v=2 720w/.test(HTML) && !/assets\/promo\/[a-z0-9-]+\.jpg/.test(HTML));
+check('cada foto ofrece avif y webp de respaldo', (HTML.match(/<source type="image\/avif"/g) || []).length === 15 && (HTML.match(/ src="assets\/promo\//g) || []).length === 15);
 check('todas las fotos referenciadas existen en disco', (HTML.match(/assets\/promo\/[a-z0-9-]+\.(?:webp|avif)(?:\?v=\d+)?/g) || [])
   .map((p) => p.replace(/\?.*$/, ''))
   .every((p) => fs.existsSync(path.join(__dirname, '..', 'docs', p))));
