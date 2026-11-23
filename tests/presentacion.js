@@ -83,7 +83,7 @@ check('columnas animan transform (no height)',
   /\.slide\.charts-in \.course-bar \{ transform: scaleY/.test(HTML) && !/\.course-bar[^}]*transition: height/.test(HTML));
 check('stack anima transform (no width)', /\.slide\.charts-in \.stack \.seg \{ transform: scaleX/.test(HTML));
 check('sin estados ocultos de entrada (nada depende de clases)', !/\.slide:not\(\.settled\)/.test(HTML) && !/\.slide\.in-view/.test(HTML) && !/\.slide\.instant/.test(HTML));
-check('blur solo en fondos decorativos: logos y la foto de Mendoza (5 reglas, nada mas)', (HTML.match(/filter:\s*blur\(/g) || []).length === 5 && !/backdrop-filter/.test(HTML) && /filter:\s*blur\(8\px\);/.test(HTML) && /filter:\s*blur\(4\px\) brightness\(1\.04\);/.test(HTML) && /filter:\s*blur\(10\px\);/.test(HTML));
+check('blur solo en fondos decorativos: logos y la foto de Mendoza (5 reglas, nada mas)', (HTML.match(/filter:\s*blur\(/g) || []).length === 5 && !/backdrop-filter/.test(HTML) && /filter:\s*blur\(8\px\);/.test(HTML) && /filter:\s*blur\(2\px\) brightness\(1\.04\);/.test(HTML) && /filter:\s*blur\(10\px\);/.test(HTML));
 check('sin stagger del efecto', !/transition-delay: \.\d/.test(HTML));
 check('sin will-change fuera del visor', (HTML.match(/will-change/g) || []).length === 1 &&
   /\.lightbox-figura img \{[^}]*will-change: transform;/.test(HTML));
@@ -125,7 +125,7 @@ check('la foto de Mendoza va de fondo dentro de la tarjeta y se abre con un boto
   (MAPA.match(/class="promo-frames/g) || []).length === 1 &&
   /<article class="mapa-tarjeta mapa-tarjeta-foto">\s*<div class="promo-frames mapa-fondo" aria-hidden="true">[\s\S]*?<\/div>\s*<div class="mapa-contenido">/.test(MAPA) &&
   /<button class="mapa-chip mapa-chip-foto" type="button" data-abrir-foto aria-label="Ver la foto del viaje a Mendoza">Ver la foto<\/button>/.test(MAPA) &&
-  /\.mapa-tarjeta-foto \.mapa-fondo img \{[^}]*filter: blur\(4px\) brightness\(1\.04\)/.test(HTML) &&
+  /\.mapa-tarjeta-foto \.mapa-fondo img \{[^}]*filter: blur\(2px\) brightness\(1\.04\)/.test(HTML) &&
   /foto\.closest\('\[aria-hidden="true"\]'\)/.test(HTML) &&
   /btn\.addEventListener\('click', \(event\) => \{[\s\S]*?abrirLightbox\(foto, btn\);/.test(HTML) &&
   /card\.addEventListener\('click', \(\) => \{/.test(HTML) &&
