@@ -294,6 +294,48 @@ async function main() {
     check('el final de la diapositiva larga es alcanzable', true, 'sin diapositivas > 900 px');
   }
 
+  // 4c. La tarjeta de Mendoza abre la foto en el visor con un toque.
+  await page.evaluate(() => {
+    /* Se apaga el snap un momento para que el scroll no devuelva la pagina
+       mientras se apunta al centro de la tarjeta. */
+    document.documentElement.style.scrollSnapType = 'none';
+    document.querySelector('.mapa-tarjeta-foto').scrollIntoView({ block: 'center' });
+  });
+  await page.waitForTimeout(300);
+  const cajaFoto = await page.locator('.mapa-tarjeta-foto p').boundingBox();
+  await page.mouse.click(cajaFoto.x + cajaFoto.width / 2, cajaFoto.y + cajaFoto.height / 2);
+  await page.waitForTimeout(300);
+  const abierta = await page.evaluate(() => {
+    const lb = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    return {
+      visible: !lb.hidden && lb.classList.contains('abierto'),
+      src: img.getAttribute('src') || '',
+      alt: img.getAttribute('alt') || ''
+    };
+  });
+  check('tocar cualquier parte de la tarjeta de Mendoza abre la foto',
+    abierta.visible && /mendoza-nieve/.test(abierta.src) && abierta.alt.length > 10,
+    abierta.src.split('/').pop());
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  const cerrada = await page.evaluate(() => document.getElementById('lightbox').hidden);
+  check('el visor se cierra con Escape y vuelve a la tarjeta', cerrada);
+
+  // El boton del chip sigue siendo el camino de teclado.
+  await page.locator('[data-abrir-foto]').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  const porTeclado = await page.evaluate(() => {
+    const lb = document.getElementById('lightbox');
+    return !lb.hidden && lb.classList.contains('abierto');
+  });
+  check('el chip "Ver la foto" tambien abre el visor con Enter', porTeclado);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { document.documentElement.style.scrollSnapType = ''; });
+
   // 5. Flechas de presentación (sin tocar el scroll vertical nativo).
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(250);
