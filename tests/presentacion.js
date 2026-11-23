@@ -126,7 +126,8 @@ check('la foto de Mendoza va de fondo dentro de la tarjeta y se abre con un boto
   /<article class="mapa-tarjeta mapa-tarjeta-foto">\s*<div class="promo-frames mapa-fondo" aria-hidden="true">[\s\S]*?<\/div>\s*<div class="mapa-contenido">/.test(MAPA) &&
   /<button class="mapa-chip mapa-chip-foto" type="button" data-abrir-foto aria-label="Ver la foto del viaje a Mendoza">Ver la foto<\/button>/.test(MAPA) &&
   /\.mapa-tarjeta-foto \.mapa-fondo img \{[^}]*filter: blur\(5px\) brightness\(1\.08\)[^}]*opacity: \.68/.test(HTML) &&
-  /foto\.closest\('\[aria-hidden="true"\]'\)/.test(HTML));
+  /foto\.closest\('\[aria-hidden="true"\]'\)/.test(HTML) &&
+  /btn\.addEventListener\('click', \(\) => abrirLightbox\(foto, btn\)\)/.test(HTML));
 check('15 susurros decorativos, aleatorios y sin informacion para lectores',
   (HTML.match(/class="susurro"/g) || []).length === 15 &&
   /function repartirSusurros\(\)/.test(HTML) &&
