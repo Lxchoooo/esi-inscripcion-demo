@@ -535,7 +535,8 @@
     user-select: none;
   }
 
-  /* Mapa de viajes de Turismo: ruta vertical simple, sin imagenes ni JS. */
+  /* Mapa de viajes de Turismo: ruta vertical simple. Mendoza cierra la ruta
+     con la foto del grupo de fondo y el boton que abre el visor. */
   .promo-mapa h2 { font-size: clamp(2rem, 4.3vw, 3.5rem); max-width: 22ch; }
   .promo-mapa .lead { max-width: 72ch; }
   .mapa-kpis { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
@@ -640,6 +641,59 @@
     background: rgba(224, 122, 95, .15);
     color: var(--cream);
   }
+
+  /* Mendoza cierra el mapa con la foto del grupo de fondo, difuminada.
+     La imagen queda en aria-hidden: se abre desde el boton "Ver la foto". */
+  .mapa-tarjeta-foto {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: rgba(230, 184, 92, .3);
+  }
+  .mapa-tarjeta-foto .mapa-fondo {
+    position: absolute;
+    inset: -18px;
+    z-index: 0;
+    display: block;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    pointer-events: none;
+  }
+  .mapa-tarjeta-foto .mapa-fondo figure {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .mapa-tarjeta-foto .mapa-fondo img {
+    filter: blur(6px);
+    opacity: .55;
+    transform: scale(1.35);
+  }
+  .mapa-tarjeta-foto::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(9, 26, 19, .5), rgba(9, 26, 19, .8));
+  }
+  .mapa-contenido { position: relative; z-index: 1; }
+  .mapa-chip-foto {
+    font: inherit;
+    font-size: .68rem;
+    line-height: 1.2;
+    color: var(--gold);
+    border-color: rgba(230, 184, 92, .5);
+    background: rgba(230, 184, 92, .14);
+    cursor: zoom-in;
+  }
+  .mapa-chip-foto:hover { background: rgba(230, 184, 92, .22); }
+  .mapa-chip-foto:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
   .creditos {
     max-width: 760px;
@@ -1563,17 +1617,22 @@
         </div>
         <div class="mapa-tramo">
           <span class="mapa-punto" aria-hidden="true"></span>
-          <article class="mapa-tarjeta">
-            <span class="mapa-anio">2026 · Última salida</span>
-            <h3>Mendoza</h3>
-            <p>La ruta más larga del año, la que esperamos desde el primer día. Salimos con la ilusión de la nieve. Volvimos con los ojos llenos de paisaje y el corazón lleno de nosotros: la montaña, el sol de la tarde, la música alta y las risas que todavía nos duran. Subimos hasta el punto más alto y entendimos que estábamos justo donde teníamos que estar. Fue la última salida y, casi sin darnos cuenta, la que más nos juntó. El mapa termina acá, pero Mendoza se queda con nosotros: en las fotos, en las anécdotas y en esa manera nueva de mirar. Fue hermoso.</p>
-            <div class="mapa-linea"><span class="mapa-chip destacado">Mendoza</span></div>
-            <span class="mapa-km">~1.850 km</span>
+          <article class="mapa-tarjeta mapa-tarjeta-foto">
+            <div class="promo-frames mapa-fondo" aria-hidden="true">
+              <figure><picture><source type="image/avif" srcset="assets/promo/mendoza-nieve.avif?v=2 720w"><img fetchpriority="low" src="assets/promo/mendoza-nieve.webp?v=2" srcset="assets/promo/mendoza-nieve.webp?v=2 720w" sizes="(max-width: 700px) 83vw, 720px" alt="El curso en la nieve durante el viaje de fin de año, con las manos arriba y la montaña de fondo" width="720" height="1280" decoding="async" style="--pos: 50% 52%"></picture></figure>
+            </div>
+            <div class="mapa-contenido">
+              <span class="mapa-anio">2026 · Última salida</span>
+              <h3>Mendoza</h3>
+              <p>La ruta más larga del año, la que esperamos desde el primer día. Salimos con la ilusión de la nieve. Volvimos con los ojos llenos de paisaje y el corazón lleno de nosotros: la montaña, el sol de la tarde, la música alta y las risas que todavía nos duran. Subimos hasta el punto más alto y entendimos que estábamos justo donde teníamos que estar. Fue la última salida y, casi sin darnos cuenta, la que más nos juntó. El mapa termina acá, pero Mendoza se queda con nosotros: en las fotos, en las anécdotas y en esa manera nueva de mirar. Fue hermoso.</p>
+              <div class="mapa-linea">
+                <span class="mapa-chip destacado">Mendoza</span>
+                <button class="mapa-chip mapa-chip-foto" type="button" data-abrir-foto aria-label="Ver la foto del viaje a Mendoza">Ver la foto</button>
+              </div>
+              <span class="mapa-km">~1.850 km</span>
+            </div>
           </article>
         </div>
-      </div>
-      <div class="promo-frames promo-solo" style="--ar: 2/1; width: 75%; max-width: 720px; margin: 14px auto 0;">
-        <figure><picture><source type="image/avif" srcset="assets/promo/mendoza-nieve.avif?v=2 720w"><img fetchpriority="low" src="assets/promo/mendoza-nieve.webp?v=2" srcset="assets/promo/mendoza-nieve.webp?v=2 720w" sizes="(max-width: 768px) 75vw, 720px" alt="El curso en la nieve durante el viaje de fin de año, con las manos arriba y la montaña de fondo" width="720" height="1280" decoding="async" style="--pos: 50% 52%"></picture></figure>
       </div>
       <div class="thanks-actions" style="justify-content: center;">
         <button class="ghost-btn" type="button" data-go="Los festejos chiquitos">Seguir →</button>
@@ -2104,13 +2163,13 @@ function moverFotoLightbox(delta) {
   pintarFotoLightbox();
 }
 
-function abrirLightbox(foto) {
+function abrirLightbox(foto, origen) {
   if (typeof pausarAutoplay === 'function') pausarAutoplay();
   const slide = foto.closest('.slide');
   fotosLightbox = Array.from((slide || document).querySelectorAll('.promo-frames img'));
   if (!fotosLightbox.length) fotosLightbox = [foto];
   fotoLightbox = Math.max(0, fotosLightbox.indexOf(foto));
-  focoAnterior = foto;
+  focoAnterior = origen || foto;
   scrollAnterior = window.scrollY || document.documentElement.scrollTop || 0;
   window.clearTimeout(cierreLightboxTimer);
   pintarFotoLightbox();
@@ -2145,6 +2204,9 @@ function cerrarLightbox() {
 
 function bindLightbox() {
   document.querySelectorAll('.promo-frames img').forEach((foto) => {
+    /* Las fotos de fondo (aria-hidden) no se enfocan ni se tocan: se abren
+       desde su boton "Ver la foto". */
+    if (foto.closest('[aria-hidden="true"]')) return;
     foto.tabIndex = 0;
     foto.setAttribute('role', 'button');
     foto.setAttribute('aria-haspopup', 'dialog');
@@ -2153,6 +2215,14 @@ function bindLightbox() {
     foto.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') abrirLightbox(foto);
     });
+  });
+
+  document.querySelectorAll('[data-abrir-foto]').forEach((btn) => {
+    const card = btn.closest('.mapa-tarjeta');
+    const foto = card && card.querySelector('.mapa-fondo img');
+    if (!foto) return;
+    btn.setAttribute('aria-haspopup', 'dialog');
+    btn.addEventListener('click', () => abrirLightbox(foto, btn));
   });
 
   lightboxCerrar.addEventListener('click', cerrarLightbox);
