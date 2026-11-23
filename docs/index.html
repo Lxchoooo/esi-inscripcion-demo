@@ -643,12 +643,13 @@
   }
 
   /* Mendoza cierra el mapa con la foto del grupo de fondo, difuminada.
-     La imagen queda en aria-hidden: se abre desde el boton "Ver la foto". */
+     La imagen queda en aria-hidden: se abre tocando la tarjeta o el boton. */
   .mapa-tarjeta-foto {
     position: relative;
     isolation: isolate;
     overflow: hidden;
     border-color: rgba(230, 184, 92, .3);
+    cursor: zoom-in;
   }
   .mapa-tarjeta-foto .mapa-fondo {
     position: absolute;
@@ -670,9 +671,8 @@
     box-shadow: none;
   }
   .mapa-tarjeta-foto .mapa-fondo img {
-    filter: blur(5px) brightness(1.08);
-    opacity: .68;
-    transform: scale(1.35);
+    filter: blur(4px) brightness(1.04);
+    transform: scale(1.25);
   }
   .mapa-tarjeta-foto::after {
     content: "";
@@ -680,9 +680,14 @@
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background: linear-gradient(180deg, rgba(9, 26, 19, .45), rgba(9, 26, 19, .78));
+    background: linear-gradient(180deg, rgba(9, 26, 19, .42), rgba(9, 26, 19, .74));
   }
-  .mapa-contenido { position: relative; z-index: 1; }
+  .mapa-contenido {
+    position: relative;
+    z-index: 1;
+    /* La foto se ve entera: el texto se despega con una sombra suave. */
+    text-shadow: 0 1px 10px rgba(9, 26, 19, .9), 0 1px 3px rgba(9, 26, 19, .8);
+  }
   .mapa-chip-foto {
     font: inherit;
     font-size: .68rem;
@@ -697,7 +702,7 @@
   @media (min-width: 701px) {
     /* En pantallas anchas la tarjeta es baja: conviene mostrar la montaña y
        no el grupo, para que el fondo no se vuelva manchas de color. */
-    .mapa-tarjeta-foto .mapa-fondo img { object-position: 50% 34%; opacity: .45; transform: scale(1.15); }
+    .mapa-tarjeta-foto .mapa-fondo img { object-position: 50% 34%; opacity: .8; transform: scale(1.1); }
   }
 
   .creditos {
@@ -2227,7 +2232,17 @@ function bindLightbox() {
     const foto = card && card.querySelector('.mapa-fondo img');
     if (!foto) return;
     btn.setAttribute('aria-haspopup', 'dialog');
-    btn.addEventListener('click', () => abrirLightbox(foto, btn));
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      abrirLightbox(foto, btn);
+    });
+    /* Toda la tarjeta abre la foto: el boton queda como control de teclado y
+       lector de pantalla. Si se estaba seleccionando texto, no se abre. */
+    card.addEventListener('click', () => {
+      const seleccion = window.getSelection && String(window.getSelection()).trim();
+      if (seleccion) return;
+      abrirLightbox(foto, btn);
+    });
   });
 
   lightboxCerrar.addEventListener('click', cerrarLightbox);
