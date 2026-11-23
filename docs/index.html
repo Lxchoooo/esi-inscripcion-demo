@@ -694,6 +694,11 @@
   }
   .mapa-chip-foto:hover { background: rgba(230, 184, 92, .22); }
   .mapa-chip-foto:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  @media (min-width: 701px) {
+    /* En pantallas anchas la tarjeta es baja: conviene mostrar la montaña y
+       no el grupo, para que el fondo no se vuelva manchas de color. */
+    .mapa-tarjeta-foto .mapa-fondo img { object-position: 50% 30%; opacity: .6; }
+  }
 
   .creditos {
     max-width: 760px;
